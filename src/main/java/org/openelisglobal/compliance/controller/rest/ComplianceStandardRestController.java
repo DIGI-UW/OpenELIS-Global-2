@@ -80,6 +80,16 @@ public class ComplianceStandardRestController extends BaseRestController {
         }
     }
 
+    /**
+     * OGC-768: the tests the selected standards ask for, for the regulation-driven
+     * test plan in environmental order entry.
+     */
+    @GetMapping("/suggested-tests")
+    public ResponseEntity<List<org.openelisglobal.compliance.form.SuggestedTest>> getSuggestedTests(
+            @RequestParam(required = false) List<String> standardIds) {
+        return ResponseEntity.ok(complianceStandardService.suggestedTests(standardIds));
+    }
+
     @GetMapping("/search")
     public ResponseEntity<List<ComplianceStandard>> searchStandards(@RequestParam(required = false) String name,
             @RequestParam(required = false) String issuingBody, @RequestParam(required = false) String regulationNumber,

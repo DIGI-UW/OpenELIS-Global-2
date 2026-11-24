@@ -1,5 +1,6 @@
 package org.openelisglobal.result.controller.rest;
 
+import jakarta.persistence.OptimisticLockException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -11,11 +12,14 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
-import org.hibernate.StaleObjectStateException;
+import org.hibernate.StaleStateException;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.service.AnalysisServiceImpl;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
+import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.audittrail.dao.HistoryDAO;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.action.IActionConstants;
@@ -24,6 +28,8 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.services.IResultSaveService;
+import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.common.services.registration.ResultUpdateRegister;
 import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -35,9 +41,11 @@ import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation
 import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
 import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
+import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.eqa.service.EQACycleSubmissionService;
 import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.microbiology.service.MicroCaseLockedException;
 import org.openelisglobal.referral.action.beanitems.ReferralItem;
 import org.openelisglobal.result.action.util.ResultEntryAlert;
 import org.openelisglobal.result.action.util.ResultUtil;
@@ -54,8 +62,10 @@ import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultEntryAcknowledgement;
 import org.openelisglobal.resultrun.form.WaitingRun;
 import org.openelisglobal.resultrun.service.ResultRunService;
+import org.openelisglobal.resultrun.service.RunQcService;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
+import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
@@ -70,7 +80,10 @@ import org.openelisglobal.testresultcomponent.service.TestResultComponentService
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.testresultinterpretation.service.TestResultInterpretationService;
 import org.openelisglobal.testresultinterpretation.valueholder.TestResultInterpretation;
+import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -116,6 +129,11 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
     private AnalysisService analysisService;
     @Autowired
     private ResultRunService resultRunService;
+    @Autowired
+    private RunQcService runQcService;
+    @Lazy
+    @Autowired
+    private AnalyzerResultsService analyzerResultsService;
 
     @Autowired(required = false)
     private org.openelisglobal.notifications.service.HeaderNotificationService headerNotificationService;
@@ -322,10 +340,29 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             return staleResponse;
         }
 
-        Optional<WaitingRun> waiting = resultRunService.waitingFor(analysis);
-        if (waiting.isPresent()) {
-            body.put("error", MessageUtil.getMessage("run.refusal.waiting", new String[] { waiting.get().label() }));
+        Optional<AnalyzerResults> runValue = Optional.empty();
+        if (StringUtils.isNotBlank(form.getRunRowId())) {
+            runValue = resultRunService.stagedValueFor(form.getRunRowId(), analysis, item.getTestResultComponentId());
+            if (runValue.isEmpty()) {
+                body.put("error", MessageUtil.getMessage("run.refusal.notInRun"));
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+            }
+        }
+
+        Optional<WaitingRun> waiting = resultRunService.waitingFor(analysis, item.getTestResultComponentId());
+        Long acceptedRun = runValue.map(AnalyzerResults::getRunId).orElse(null);
+        if (waiting.isPresent() && !waiting.get().runId().equals(acceptedRun)) {
+            body.put("error", MessageUtil.getMessage(waiting.get().held() ? "run.refusal.held" : "run.refusal.waiting",
+                    new String[] { waiting.get().label() }));
             body.put("waitingRun", waiting.get());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+        }
+
+        Optional<Long> holdingRun = holdingRun(acceptedRun, analysis);
+        if (holdingRun.isPresent()) {
+            WaitingRun held = resultRunService.heldRun(holdingRun.get());
+            body.put("error", MessageUtil.getMessage("run.refusal.held", new String[] { held.label() }));
+            body.put("waitingRun", held);
             return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
         }
 
@@ -384,9 +421,18 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         ResultUtil.createAnalysisOnlyUpdates(dataSet, request);
         ResultUtil.holdOpenWhileRequiredComponentsBlank(dataSet);
 
+        if (runValue.isPresent()) {
+            recordRunProvenance(dataSet, analysisId, runValue.get());
+        } else {
+            runQcService.detachFromDecidedRuns(resultsOf(dataSet));
+        }
+
         List<IResultUpdate> updaters = new ArrayList<>(ResultUpdateRegister.getRegisteredUpdaters());
         updaters.add(acknowledgementService.acknowledgementRecorder(alerts,
-                ResultEntryAcknowledgement.SOURCE_RESULTS_ENTRY, getSysUserId(request)));
+                runValue.isPresent() ? ResultEntryAcknowledgement.SOURCE_ANALYZER_REVIEW
+                        : ResultEntryAcknowledgement.SOURCE_RESULTS_ENTRY,
+                getSysUserId(request)));
+        runValue.ifPresent(staged -> updaters.add(leavesStaging(staged, getSysUserId(request))));
         try {
             List<Analysis> reflexAnalyses = logbookPersistService.persistDataSet(dataSet, updaters,
                     getSysUserId(request));
@@ -430,12 +476,17 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
                 });
             }
         } catch (LIMSRuntimeException e) {
-            if (e.getCause() instanceof StaleObjectStateException) {
+            if (isConcurrentWrite(e)) {
                 return rejectStale(analysis, body);
             }
             LogEvent.logError(e);
             body.put("error", "errors.UpdateException");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+        } catch (OptimisticLockingFailureException | OptimisticLockException e) {
+            return rejectStale(analysis, body);
+        } catch (MicroCaseLockedException e) {
+            body.put("error", MessageUtil.getMessage("result.refusal." + e.getMessage()));
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(body);
         }
 
         for (IResultUpdate updater : updaters) {
@@ -474,9 +525,23 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
                 .filter(r -> r != null && r.getId() != null).findFirst().ifPresent(r -> {
                     body.put("resultId", r.getId());
                     body.put("rawResultValue", StringUtil.blankIfNull(r.getEnteredValue()));
-                    body.put("resultValue", resultService.formatResultForDisplay(r, false));
+                    body.put("resultValue",
+                            TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(r.getResultType())
+                                    ? componentSelections(r)
+                                    : resultService.formatResultForDisplay(r, false));
                 });
         return ResponseEntity.ok(body);
+    }
+
+    private String componentSelections(Result saved) {
+        RuleResultScope scope = SpringContext.getBean(RuleResultScope.class);
+        DictionaryService dictionaries = SpringContext.getBean(DictionaryService.class);
+        String componentId = scope.componentIdOf(saved);
+        return resultService.getResultsByAnalysis(saved.getAnalysis()).stream()
+                .filter(r -> TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(r.getResultType())
+                        && !GenericValidator.isBlankOrNull(r.getValue())
+                        && java.util.Objects.equals(scope.componentIdOf(r), componentId))
+                .map(r -> dictionaries.getDataForId(r.getValue()).getDictEntry()).collect(Collectors.joining(","));
     }
 
     /**
@@ -690,6 +755,54 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         return null;
     }
 
+    /**
+     * A value accepted from a run names the run and keeps what the analyzer
+     * reported beside what was accepted (FR-E10a, FR-E13).
+     */
+    private static void recordRunProvenance(ResultsUpdateDataSet dataSet, String analysisId, AnalyzerResults staged) {
+        String reported = StringUtils.isNotBlank(staged.getRawResultValue()) ? staged.getRawResultValue()
+                : staged.getResult();
+        Stream.concat(dataSet.getNewResults().stream(), dataSet.getModifiedResults().stream())
+                .map(resultSet -> resultSet.result)
+                .filter(result -> result.getAnalysis() != null && analysisId.equals(result.getAnalysis().getId()))
+                .forEach(result -> {
+                    result.setRunId(staged.getRunId());
+                    result.setAnalyzerReportedValue(reported);
+                });
+    }
+
+    private static List<Result> resultsOf(ResultsUpdateDataSet dataSet) {
+        return Stream.concat(dataSet.getNewResults().stream(), dataSet.getModifiedResults().stream())
+                .map(resultSet -> resultSet.result).toList();
+    }
+
+    /** The accepted value leaves staging in the same transaction as the save. */
+    private IResultUpdate leavesStaging(AnalyzerResults staged, String sysUserId) {
+        return new IResultUpdate() {
+            @Override
+            public void transactionalUpdate(IResultSaveService saveService) {
+                analyzerResultsService.delete(staged.getId(), sysUserId);
+            }
+
+            @Override
+            public void postTransactionalCommitUpdate(IResultSaveService saveService) {
+            }
+        };
+    }
+
+    /**
+     * The run that holds this analysis's test (OGC-1200 FR-C4): the run a value is
+     * being accepted from, or the run its stored result came from. A held row is
+     * not accepted, entered or edited until the hold is dispositioned.
+     */
+    private Optional<Long> holdingRun(Long acceptedRun, Analysis analysis) {
+        String testId = analysis.getTest() == null ? null : analysis.getTest().getId();
+        if (acceptedRun != null && testId != null && runQcService.heldTestIds(acceptedRun).contains(testId)) {
+            return Optional.of(acceptedRun);
+        }
+        return Optional.ofNullable(runQcService.entryHoldingRuns(List.of(analysis.getId())).get(analysis.getId()));
+    }
+
     private ResponseEntity<Map<String, Object>> rejectIfStale(TestResultItem item, Analysis analysis,
             Map<String, Object> body) {
         Timestamp current = analysis.getLastupdated();
@@ -706,6 +819,23 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
      * editor gets "updated by {0} at {1} — refresh" rather than a silent merge. The
      * stale editor always loses; the active user's save is never overwritten.
      */
+    /**
+     * A save that lost to another save of the same rows: a stale version, or a row
+     * the other save already changed or removed (two accepts of one run value).
+     */
+    static boolean isConcurrentWrite(Throwable error) {
+        for (Throwable cause = error; cause != null; cause = cause.getCause()) {
+            if (cause instanceof StaleStateException || cause instanceof OptimisticLockException
+                    || cause instanceof OptimisticLockingFailureException) {
+                return true;
+            }
+            if (cause.getCause() == cause) {
+                return false;
+            }
+        }
+        return false;
+    }
+
     private ResponseEntity<Map<String, Object>> rejectStale(Analysis analysis, Map<String, Object> body) {
         body.put("error", "error.results.staleSave");
         if (analysis.getLastupdated() != null) {
@@ -740,7 +870,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         try {
             SystemUser user = systemUserService.getUserById(sysUserId);
             if (user != null) {
-                return user.getDisplayName();
+                return StringUtils.trim(user.getNameForDisplay());
             }
         } catch (RuntimeException e) {
             LogEvent.logError(e);

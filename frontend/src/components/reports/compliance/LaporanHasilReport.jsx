@@ -5,7 +5,6 @@ import {
   Button,
   Tag,
   Tile,
-  DatePicker,
   DatePickerInput,
   Dropdown,
   DataTable,
@@ -30,6 +29,7 @@ import {
   TextInput,
   InlineLoading,
 } from "@carbon/react";
+import { DatePicker } from "../../common/DatePicker";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
@@ -37,6 +37,7 @@ import {
   toLocalIsoDate,
 } from "../../utils/Utils";
 import { labNow } from "../../utils/labClock";
+import { format } from "date-fns";
 import useSiteDateFormat from "../../common/useSiteDateFormat";
 
 const STATUS_TAG_TYPE = {
@@ -65,6 +66,12 @@ function statusTag(status, statusLabels) {
 export default function LaporanHasilReport() {
   const intl = useIntl();
   const siteDate = useSiteDateFormat();
+  const shownDateTime = (value) => {
+    const when = new Date(value);
+    return Number.isNaN(when.getTime())
+      ? String(value)
+      : format(when, `${siteDate.pattern} HH:mm`);
+  };
 
   const generationStatusItems = [
     { id: "all", text: intl.formatMessage({ id: "laporanHasil.filter.all" }) },
@@ -130,6 +137,10 @@ export default function LaporanHasilReport() {
         setComplianceStatusItems([
           { id: "all", text: intl.formatMessage({ id: "laporanHasil.filter.all", defaultMessage: "All" }) },
           ...data,
+          {
+            id: "RESULTS",
+            text: intl.formatMessage({ id: "laporanHasil.status.resultsReport" }),
+          },
         ]);
       },
     );
@@ -210,7 +221,7 @@ export default function LaporanHasilReport() {
           a.download = `LH-${safeLabel}.pdf`;
           a.click();
           URL.revokeObjectURL(url);
-          const now = labNow().toLocaleString();
+          const now = labNow();
           setReportData((prev) => {
             if (!prev) return prev;
             const firstTime = !prev.orders.find((o) => o.sampleId === sampleId)
@@ -276,7 +287,7 @@ export default function LaporanHasilReport() {
         a.click();
         URL.revokeObjectURL(url);
 
-        const now = labNow().toLocaleString();
+        const now = labNow();
         setReportData((prev) => {
           if (!prev) return prev;
           return {
@@ -307,11 +318,11 @@ export default function LaporanHasilReport() {
     standardName: order.regulationNumber
       ? `${order.regulationNumber}`
       : (order.standardName ?? "–"),
-    collectionDate: order.collectionDate || "–",
+    collectionDate: siteDate.formatIsoDateTime(order.collectionDate) || "–",
     testCount: order.testCount ?? 0,
     complianceStatus: order.complianceStatus || "NONE",
     lastGenerated: order.lastGenerated
-      ? new Date(order.lastGenerated).toLocaleString()
+      ? shownDateTime(order.lastGenerated)
       : intl.formatMessage({ id: "laporanHasil.filter.notGenerated" }),
     actions: order.sampleId,
     _order: order,
@@ -539,11 +550,14 @@ export default function LaporanHasilReport() {
                                 <TableCell key={cell.id}>
                                   {statusTag(cell.value, {
                                     ...statusLabels,
-                                    NONE: intl.formatMessage({
-                                      id: "laporanHasil.status.notGraded",
-                                    }),
                                     INELIGIBLE: intl.formatMessage({
                                       id: "laporanHasil.tile.ineligible",
+                                    }),
+                                    NONE: intl.formatMessage({
+                                      id:
+                                        order?.reportKind === "RESULTS"
+                                          ? "laporanHasil.status.resultsReport"
+                                          : "laporanHasil.status.notGraded",
                                     }),
                                   })}
                                 </TableCell>
@@ -552,22 +566,18 @@ export default function LaporanHasilReport() {
                             if (cell.info.header === "actions") {
                               const isIneligible =
                                 order?.complianceStatus === "INELIGIBLE";
-                              const hasBeenReleased = !!order?.hasBeenReleased;
+                              const reportIssued = !!order?.reportIssued;
                               return (
                                 <TableCell key={cell.id}>
                                   {isIneligible ? (
                                     <span style={{ color: "#525252", fontSize: "0.875rem" }}>
-                                      {order?.ineligibleReason ===
-                                      "NOT_VALIDATED" ? (
-                                        <FormattedMessage id="laporanHasil.status.notValidated" />
+                                      {order?.ineligibleReason === "NO_TESTS" ? (
+                                        <FormattedMessage id="laporanHasil.status.noTests" />
                                       ) : (
-                                        <FormattedMessage
-                                          id="laporanHasil.status.ineligible"
-                                          defaultMessage="No standard linked"
-                                        />
+                                        <FormattedMessage id="laporanHasil.status.notValidated" />
                                       )}
                                     </span>
-                                  ) : hasBeenReleased ? (
+                                  ) : reportIssued ? (
                                     <Button
                                       size="sm"
                                       kind="tertiary"
@@ -688,6 +698,17 @@ export default function LaporanHasilReport() {
 
 function OrderDetail({ order, statusLabels }) {
   const intl = useIntl();
+  const siteDate = useSiteDateFormat();
+  const certificate = order.reportKind !== "RESULTS";
+  const resultHeaders = [
+    "laporanHasil.detail.sample",
+    "laporanHasil.detail.parameter",
+    "laporanHasil.detail.result",
+    "laporanHasil.detail.unit",
+    "laporanHasil.detail.method",
+    "laporanHasil.detail.guideline",
+    ...(certificate ? ["laporanHasil.detail.status"] : []),
+  ];
   return (
     <Grid narrow style={{ padding: "1rem 0" }}>
       <Column lg={5} md={4} sm={4}>
@@ -699,7 +720,10 @@ function OrderDetail({ order, statusLabels }) {
             {[
               ["laporanHasil.detail.site", order.siteName || order.siteCode],
               ["laporanHasil.detail.gps", order.gpsCoordinates],
-              ["laporanHasil.detail.collectionDateTime", order.collectionDate],
+              [
+                "laporanHasil.detail.collectionDateTime",
+                siteDate.formatIsoDateTime(order.collectionDate),
+              ],
               ["laporanHasil.detail.collectionMethod", order.collectionMethod],
               ["laporanHasil.detail.ppNo", order.regulationNumber],
               ["laporanHasil.detail.standard", order.standardName],
@@ -738,6 +762,7 @@ function OrderDetail({ order, statusLabels }) {
         </StructuredListWrapper>
       </Column>
 
+      {certificate ? (
       <Column lg={7} md={8} sm={4}>
         <h5 style={{ marginBottom: "0.5rem" }}>
           <FormattedMessage id="laporanHasil.detail.complianceSummary" />
@@ -796,6 +821,59 @@ function OrderDetail({ order, statusLabels }) {
           <p style={{ color: "#525252", fontSize: "0.875rem" }}>–</p>
         )}
       </Column>
+      ) : (
+        <Column lg={7} md={8} sm={4}>
+          <h5 style={{ marginBottom: "0.5rem" }}>
+            <FormattedMessage id="laporanHasil.detail.complianceSummary" />
+          </h5>
+          <p
+            style={{ color: "#525252", fontSize: "0.875rem" }}
+            data-testid="laporan-hasil-results-only"
+          >
+            <FormattedMessage id="laporanHasil.detail.resultsOnly" />
+          </p>
+        </Column>
+      )}
+
+      <Column lg={16} md={8} sm={4} style={{ marginTop: "1rem" }}>
+        <h5 style={{ marginBottom: "0.5rem" }}>
+          <FormattedMessage id="laporanHasil.detail.results" />
+        </h5>
+        {order.reportRows && order.reportRows.length > 0 ? (
+          <Table size="sm" data-testid="laporan-hasil-report-rows">
+            <TableHead>
+              <TableRow>
+                {resultHeaders.map((id) => (
+                  <TableHeader key={id}>
+                    <FormattedMessage id={id} />
+                  </TableHeader>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {order.reportRows.map((row, index) => (
+                <TableRow key={index}>
+                  <TableCell>
+                    {`${row.sampleNumber ?? "–"}. ${row.sampleType ?? ""}`}
+                  </TableCell>
+                  <TableCell>{row.parameter || "–"}</TableCell>
+                  <TableCell>{row.result || "–"}</TableCell>
+                  <TableCell>{row.unit || ""}</TableCell>
+                  <TableCell>{row.method || ""}</TableCell>
+                  <TableCell>{row.guideline || ""}</TableCell>
+                  {certificate && (
+                    <TableCell>
+                      {row.status ? statusTag(row.status, statusLabels) : ""}
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <p style={{ color: "#525252", fontSize: "0.875rem" }}>–</p>
+        )}
+      </Column>
 
       <Column lg={16} md={8} sm={4} style={{ marginTop: "1rem" }}>
         <h5 style={{ marginBottom: "0.5rem" }}>
@@ -821,6 +899,7 @@ function OrderDetail({ order, statusLabels }) {
 }
 
 function SignatureCard({ sig, defaultRole }) {
+  const siteDate = useSiteDateFormat();
   return (
     <Tile>
       <p style={{ fontWeight: "600", marginBottom: "0.25rem" }}>
@@ -833,7 +912,7 @@ function SignatureCard({ sig, defaultRole }) {
             {sig.signerRole || "–"}
           </p>
           <p style={{ fontSize: "0.75rem", color: "#525252" }}>
-            {sig.signedAt || "–"}
+            {siteDate.formatIsoDateTime(sig.signedAt) || "–"}
           </p>
         </>
       ) : (

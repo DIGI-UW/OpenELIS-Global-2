@@ -43,11 +43,19 @@ vi.mock("../../layout/Layout", async () => {
   };
 });
 
+const sectionMounts = vi.hoisted(() => ({ basicInfo: [] }));
+
 vi.mock("./sections/BasicInfoSection", async () => {
   const React = await import("react");
   return {
-    default: () =>
-      React.createElement("div", { "data-testid": "basic-info-section" }),
+    default: ({ testId }) => {
+      React.useEffect(() => {
+        sectionMounts.basicInfo.push(testId);
+      }, []);
+      return React.createElement("div", {
+        "data-testid": "basic-info-section",
+      });
+    },
   };
 });
 
@@ -117,7 +125,7 @@ vi.mock("./sections/PanelsSection", async () => {
 
 // ========== IMPORTS ==========
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { BrowserRouter } from "react-router-dom";
@@ -155,6 +163,7 @@ const envelope = {
 beforeEach(() => {
   vi.clearAllMocks();
   mockParams = { testId: "7" };
+  sectionMounts.basicInfo = [];
 });
 
 describe("TestCatalogEditor shell", () => {
@@ -174,6 +183,19 @@ describe("TestCatalogEditor shell", () => {
     expect(
       await screen.findByText(messages["label.testCatalog.editor.loadError"]),
     ).toBeInTheDocument();
+  });
+
+  it("never mounts a section for a test that failed to load", async () => {
+    mockParams = { testId: "7", section: "basic-info" };
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      Promise.resolve().then(() => cb(undefined)),
+    );
+    renderEditor();
+
+    expect(
+      await screen.findByText(messages["label.testCatalog.editor.loadError"]),
+    ).toBeInTheDocument();
+    expect(sectionMounts.basicInfo).toEqual([]);
   });
 
   it("renders the test name + mounts the section named in the URL", async () => {
@@ -218,6 +240,22 @@ describe("TestCatalogEditor shell", () => {
       );
     },
   );
+
+  it("mounts the section once, after the test has loaded", async () => {
+    mockParams = { testId: "7", section: "basic-info" };
+    let respond;
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      respond = cb;
+    });
+    renderEditor();
+
+    expect(screen.queryByTestId("basic-info-section")).toBeNull();
+    expect(sectionMounts.basicInfo).toEqual([]);
+    act(() => respond(envelope));
+
+    expect(await screen.findByTestId("basic-info-section")).toBeInTheDocument();
+    expect(sectionMounts.basicInfo).toEqual(["7"]);
+  });
 
   it("navigates to the test list on Cancel", async () => {
     mockParams = { testId: "7", section: "basic-info" };

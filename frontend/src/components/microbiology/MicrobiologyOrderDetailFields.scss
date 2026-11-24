@@ -78,6 +78,11 @@
   margin: spacing.$spacing-03 0 0;
 }
 
+// Read-only order detail keeps its guidance readable at 4.5:1.
+.microbiology-order-detail-fields .cds--form__helper-text--disabled {
+  color: var(--cds-text-helper);
+}
+
 .microbiology-order-detail-fields__collection-context {
   @include type.type-style("helper-text-01");
 

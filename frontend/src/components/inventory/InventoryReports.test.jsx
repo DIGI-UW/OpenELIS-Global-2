@@ -123,7 +123,7 @@ describe("InventoryReports — the four period reports", () => {
   it("offers include-expired only on Expiring", async () => {
     await renderReports();
     await chooseReport("Stock on hand");
-    expect(screen.getByLabelText(/include inactive/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/include deactivated/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/include expired/i)).not.toBeInTheDocument();
 
     await chooseReport("Expiring");

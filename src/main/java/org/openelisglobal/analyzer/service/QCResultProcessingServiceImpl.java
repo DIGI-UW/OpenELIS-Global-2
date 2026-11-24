@@ -8,9 +8,12 @@ import org.openelisglobal.qc.dao.QCControlLotDAO;
 import org.openelisglobal.qc.service.QCResultService;
 import org.openelisglobal.qc.valueholder.QCControlLot;
 import org.openelisglobal.qc.valueholder.QCQualitativeOutcome;
+import org.openelisglobal.qc.valueholder.QCResult;
+import org.openelisglobal.resultrun.service.RunQcService;
 import org.openelisglobal.testcatalog.service.TestQcTargetService;
 import org.openelisglobal.testcatalog.valueholder.TestQcTarget;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,10 +37,14 @@ public class QCResultProcessingServiceImpl implements QCResultProcessingService 
     @Autowired
     private TestQcTargetService testQcTargetService;
 
+    @Lazy
+    @Autowired
+    private RunQcService runQcService;
+
     @Override
     @Transactional(propagation = Propagation.REQUIRED)
-    public Outcome processQCResult(String analyzerId, String testId, String accessionNumber, String controlLevel,
-            BigDecimal resultValue, String unit, LocalDateTime timestamp) {
+    public Outcome processQCResult(String analyzerId, String testId, String componentId, String accessionNumber,
+            String controlLevel, BigDecimal resultValue, String unit, LocalDateTime timestamp, Long runId) {
 
         if (testId == null || analyzerId == null || accessionNumber == null) {
             LogEvent.logWarn(CLASS_NAME, "processQCResult", "Skipping QC processing — missing required field: testId="
@@ -59,8 +66,11 @@ public class QCResultProcessingServiceImpl implements QCResultProcessingService 
 
         // Persistence failures must roll back the caller's result staging and delivery
         // receipt too.
-        qcResultService.createQCResult(analyzerId, testId, lot.getId(), lot.getControlLevel(), resultValue, unit,
-                timestamp);
+        QCResult recorded = qcResultService.createQCResult(analyzerId, testId, lot.getId(), lot.getControlLevel(),
+                resultValue, unit, timestamp);
+        if (runId != null) {
+            runQcService.attachAnalyzerControl(recorded, runId, componentId);
+        }
         LogEvent.logInfo(CLASS_NAME, "processQCResult",
                 "QC result created for lot=" + lot.getLotNumber() + " test=" + testId + " instrument=" + analyzerId);
         return Outcome.RECORDED;
@@ -69,7 +79,8 @@ public class QCResultProcessingServiceImpl implements QCResultProcessingService 
     @Override
     @Transactional(propagation = Propagation.REQUIRED)
     public Outcome processQualitativeQCResult(String analyzerId, String testId, String componentId,
-            String accessionNumber, String controlLevel, String answerDictionaryId, LocalDateTime timestamp) {
+            String accessionNumber, String controlLevel, String answerDictionaryId, LocalDateTime timestamp,
+            Long runId) {
         QCControlLot lot = findMatchingControlLot(accessionNumber, controlLevel, testId, analyzerId);
         if (lot == null) {
             LogEvent.logError(CLASS_NAME, "processQualitativeQCResult",
@@ -85,7 +96,11 @@ public class QCResultProcessingServiceImpl implements QCResultProcessingService 
         QCQualitativeOutcome outcome = target.getExpectedDictResultId().equals(answerDictionaryId)
                 ? QCQualitativeOutcome.PASS
                 : QCQualitativeOutcome.FAIL;
-        qcResultService.createAnalyzerQualitativeQCResult(analyzerId, testId, lot.getId(), outcome, timestamp);
+        QCResult recorded = qcResultService.createAnalyzerQualitativeQCResult(analyzerId, testId, lot.getId(), outcome,
+                timestamp);
+        if (runId != null) {
+            runQcService.attachAnalyzerControl(recorded, runId, componentId);
+        }
         return Outcome.RECORDED;
     }
 

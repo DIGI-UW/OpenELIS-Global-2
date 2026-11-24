@@ -25,7 +25,7 @@ vi.mock("../../common/PageBreadCrumb", () => ({
 }));
 
 // vi.mock is hoisted, so the context is created inside the factory.
-vi.mock("../../layout/Layout", async () => {
+vi.mock("../../layout/contexts", async () => {
   const { createContext } = await import("react");
   return {
     NotificationContext: createContext({

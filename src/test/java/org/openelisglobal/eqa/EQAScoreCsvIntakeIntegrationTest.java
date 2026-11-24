@@ -81,6 +81,42 @@ public class EQAScoreCsvIntakeIntegrationTest extends EQASpineTestBase {
         }
     }
 
+    /**
+     * The provider's scores CSV now carries a qualitative target (OGC-1665); it is
+     * kept as the provider's target, which this lab's follow-up shows.
+     */
+    @Test
+    public void aQualitativeTargetInTheScoresCsvIsKeptAsTheProvidersTarget() {
+        jdbc.update("UPDATE clinlims.eqa_participant_result SET result_value = 'NR', provider_sample_code = 'HIV-C-2'"
+                + " WHERE cycle_id = ?", cycle.getId());
+        String csv = "test,analyte_name,result_value,target_value,z_score,performance_status,scored_on,sample_code\n"
+                + "Determine,csv intake analyte,NR,R,,UNACCEPTABLE,2026-11-23,HIV-C-2\n";
+
+        cycleSubmissionService.intakeScoresCsv(cycle.getId(), ENROLLMENT, csv, USER);
+
+        Map<String, Object> scored = jdbc.queryForMap("SELECT provider_target, performance_status"
+                + " FROM clinlims.eqa_participant_result WHERE cycle_id = ?", cycle.getId());
+        assertEquals("R", scored.get("provider_target"));
+        assertEquals("UNACCEPTABLE", scored.get("performance_status"));
+    }
+
+    /**
+     * The provider writes a "+" target guarded as "'+"; the laboratory keeps "+"
+     * (OGC-1665 review).
+     */
+    @Test
+    public void aGuardedTargetIsKeptWithoutItsGuard() {
+        jdbc.update("UPDATE clinlims.eqa_participant_result SET result_value = '-' WHERE cycle_id = ?", cycle.getId());
+        String csv = "test,analyte_name,result_value,target_value,z_score,performance_status,scored_on\n"
+                + "Determine,csv intake analyte,'-,'+,,UNACCEPTABLE,2026-11-23\n";
+
+        cycleSubmissionService.intakeScoresCsv(cycle.getId(), ENROLLMENT, csv, USER);
+
+        assertEquals("+",
+                jdbc.queryForObject("SELECT provider_target FROM clinlims.eqa_participant_result WHERE cycle_id = ?",
+                        String.class, cycle.getId()));
+    }
+
     @Test
     public void aCsvWithoutTheScoreColumnsIsRefused() {
         try {

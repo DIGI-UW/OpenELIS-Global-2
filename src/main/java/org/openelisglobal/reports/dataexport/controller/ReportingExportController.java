@@ -46,10 +46,25 @@ public class ReportingExportController extends BaseRestController {
         return catalog.definitions();
     }
 
+    /**
+     * The fields of a report type, named in {@code locale} when given (the page's
+     * language), else in the session's. A page that has just switched language asks
+     * before the session switch has landed, so it names the language.
+     */
     @GetMapping("/variables")
-    public Object variables(@RequestParam String reportType,
-            @RequestParam(defaultValue = "SPREADSHEET") String layout) {
-        return catalog.catalog(owner(), reportType, layout);
+    public Object variables(@RequestParam String reportType, @RequestParam(defaultValue = "SPREADSHEET") String layout,
+            @RequestParam(required = false) String locale) {
+        if (locale == null || locale.isBlank()) {
+            return catalog.catalog(owner(), reportType, layout);
+        }
+        java.util.Locale previous = org.springframework.context.i18n.LocaleContextHolder.getLocale();
+        org.springframework.context.i18n.LocaleContextHolder
+                .setLocale(java.util.Locale.forLanguageTag(locale.trim().replace('_', '-')));
+        try {
+            return catalog.catalog(owner(), reportType, layout);
+        } finally {
+            org.springframework.context.i18n.LocaleContextHolder.setLocale(previous);
+        }
     }
 
     @GetMapping("/saved-configs")
