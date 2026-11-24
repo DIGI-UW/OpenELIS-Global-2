@@ -26,6 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
@@ -86,6 +87,8 @@ import org.openelisglobal.result.valueholder.ResultSignature;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimit.valueholder.ResultLimitSelection;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.openelisglobal.resultrun.form.RunQcFact;
+import org.openelisglobal.resultrun.service.RunQcService;
 import org.openelisglobal.resultvalidation.action.util.ResultValidationItem;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
 import org.openelisglobal.resultvalidation.bean.QcFailureItem;
@@ -875,8 +878,37 @@ public class ResultsValidationUtility {
             }
         }
 
+        markRunQc(analysisResultList);
         markClearLane(analysisResultList);
         return analysisResultList;
+    }
+
+    /**
+     * OGC-1200 FR-G3: the verdict of the run a result came from reaches the row's
+     * quality-control slot, so a recorded failure, one accepted despite QC
+     * included, keeps the row out of Clear (clearance FR-1), and a passing run
+     * reads as passed without clearing the row by itself (D-056). No control and
+     * Not required are no fact and leave the slot as it was. A lookup failure is
+     * not swallowed: a row is never assumed clear.
+     */
+    private void markRunQc(List<AnalysisItem> rows) {
+        if (rows.isEmpty()) {
+            return;
+        }
+        Map<String, RunQcFact> facts = SpringContext.getBean(RunQcService.class)
+                .qcOfAnalyses(rows.stream().map(AnalysisItem::getAnalysisId).filter(Objects::nonNull).toList());
+        for (AnalysisItem row : rows) {
+            RunQcFact fact = facts.get(row.getAnalysisId());
+            if (fact == null) {
+                continue;
+            }
+            row.setRunQc(fact);
+            if (fact.failed()) {
+                row.setQcStatus(ValidationSignals.QC_FAIL);
+            } else if (fact.passed() && !ValidationSignals.QC_FAIL.equals(row.getQcStatus())) {
+                row.setQcStatus(ValidationSignals.QC_PASS);
+            }
+        }
     }
 
     /**

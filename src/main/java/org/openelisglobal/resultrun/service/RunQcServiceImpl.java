@@ -37,6 +37,7 @@ import org.openelisglobal.resultrun.dao.ResultRunRetestDAO.RetestedSample;
 import org.openelisglobal.resultrun.dao.ResultRunTestDispositionDAO;
 import org.openelisglobal.resultrun.form.RunLink;
 import org.openelisglobal.resultrun.form.RunQcBlock;
+import org.openelisglobal.resultrun.form.RunQcFact;
 import org.openelisglobal.resultrun.form.RunTestVerdict;
 import org.openelisglobal.resultrun.valueholder.ResultRun;
 import org.openelisglobal.resultrun.valueholder.ResultRunEvent;
@@ -152,6 +153,54 @@ public class RunQcServiceImpl implements RunQcService {
     @Transactional(readOnly = true)
     public Map<String, Long> holdingRuns(Collection<String> analysisIds) {
         return runsHolding(analysisIds, this::blockingTestIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, RunQcFact> qcOfAnalyses(Collection<String> analysisIds) {
+        List<String> ids = analysisIds == null ? List.of()
+                : analysisIds.stream().filter(StringUtils::isNumeric).distinct().toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, Object[]> latestRunOfAnalysis = new HashMap<>();
+        for (Object[] row : resultRunDAO.getRunsOfAnalyses(ids)) {
+            String analysisId = String.valueOf(row[0]);
+            Object[] known = latestRunOfAnalysis.get(analysisId);
+            if (known == null || ((Number) row[1]).longValue() > ((Number) known[1]).longValue()) {
+                latestRunOfAnalysis.put(analysisId, row);
+            }
+        }
+        Map<Long, Map<String, RunQcFact>> factsByRun = new HashMap<>();
+        Map<String, RunQcFact> facts = new HashMap<>();
+        latestRunOfAnalysis.forEach((analysisId, row) -> {
+            Long runId = ((Number) row[1]).longValue();
+            RunQcFact fact = factsByRun.computeIfAbsent(runId, this::factsOfRun).get(String.valueOf(row[2]));
+            if (fact != null) {
+                facts.put(analysisId, fact);
+            }
+        });
+        return facts;
+    }
+
+    private Map<String, RunQcFact> factsOfRun(Long runId) {
+        Map<String, RunTestVerdict> verdicts = testVerdicts(runId);
+        List<QCResult> controls = controlsOf(runId);
+        Map<String, QCControlLot> lots = new HashMap<>();
+        Map<String, ResultRunTestDisposition> decisions = new HashMap<>();
+        dispositionDAO.getDispositions(runId).forEach(decision -> decisions.put(decision.getTestId(), decision));
+        Map<String, RunQcFact> facts = new HashMap<>();
+        verdicts.forEach((testId, verdict) -> {
+            ResultRunTestDisposition decision = decisions.get(testId);
+            facts.put(testId,
+                    new RunQcFact(runId, ResultRun.labelOf(runId), verdict.name(),
+                            decision == null ? null : decision.getAction().name(),
+                            decision == null ? null : decision.getReason(),
+                            decision == null || decision.getNceId() == null ? null : nceNumberOf(decision.getNceId()),
+                            controls.stream().filter(control -> testId.equals(control.getTestId()))
+                                    .map(control -> controlLine(control, lots)).toList()));
+        });
+        return facts;
     }
 
     @Override
@@ -399,7 +448,7 @@ public class RunQcServiceImpl implements RunQcService {
             return null;
         }
         SystemUser user = systemUserService.getUserById(String.valueOf(userId));
-        return user == null ? null : user.getDisplayName();
+        return user == null ? null : StringUtils.trim(user.getNameForDisplay());
     }
 
     @Override

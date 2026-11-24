@@ -76,6 +76,8 @@ public class RunQcServiceIntegrationTest extends BaseWebContextSensitiveTest {
     @Autowired
     private TestService testService;
     @Autowired
+    private org.openelisglobal.systemuser.service.SystemUserService systemUserService;
+    @Autowired
     private javax.sql.DataSource dataSource;
     @PersistenceContext
     private EntityManager entityManager;
@@ -188,6 +190,11 @@ public class RunQcServiceIntegrationTest extends BaseWebContextSensitiveTest {
         assertEquals(RunControlVerdict.FAIL, stored.getRunVerdict());
         assertEquals(RunVerdictSource.DECLARED, stored.getVerdictSource());
         assertEquals(Set.of(OTHER_TEST), runQcService.heldTestIds(run.getId()));
+        org.openelisglobal.systemuser.valueholder.SystemUser technician = systemUserService.getUserById("1");
+        assertEquals("the control names who recorded it as sign-offs do",
+                technician.getFirstName().trim() + " " + technician.getLastName().trim(),
+                line(run.getId(), OTHER_TEST).controls().stream().filter(c -> c.id().equals(control.getId()))
+                        .findFirst().orElseThrow().operator());
     }
 
     @Test
