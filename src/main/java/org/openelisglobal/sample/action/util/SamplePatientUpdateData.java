@@ -126,6 +126,7 @@ public class SamplePatientUpdateData {
     private QuestionnaireResponse programQuestionnaireResponse;
 
     private List<String> pendingComplianceStandardIds = Collections.emptyList();
+    private boolean complianceStandardsSent;
 
     private boolean eqaSample;
     private String eqaProgramId;
@@ -317,6 +318,15 @@ public class SamplePatientUpdateData {
 
     public void setPendingComplianceStandardIds(List<String> ids) {
         this.pendingComplianceStandardIds = ids != null ? ids : Collections.emptyList();
+    }
+
+    /**
+     * OGC-768: whether this save sent the order's compliance standards at all. A
+     * sent empty list removes the order's standards; a save that leaves them out
+     * keeps them.
+     */
+    public boolean isComplianceStandardsSent() {
+        return complianceStandardsSent;
     }
 
     public List<OrganizationAddress> getOrgAddressExtra() {
@@ -1083,8 +1093,11 @@ public class SamplePatientUpdateData {
                 ValueType.LITERAL);
         // siteType, siteSubtype, environmentalZone are not snapshotted — they are
         // resolved at read time from vector_sampling_site via ENV_SAMPLING_SITE_ID.
-        createObservation(getStringValue(envFields, "regulatoryReference"),
+        createClearableObservation(getStringValue(envFields, "regulatoryReference"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_REGULATORY_REFERENCE),
+                ValueType.LITERAL);
+        createClearableObservation(getStringValue(envFields, "orderBranch"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_ORDER_BRANCH),
                 ValueType.LITERAL);
         createClearableObservation(getStringValue(envFields, "collectionMethod"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_COLLECTION_METHOD),
@@ -1104,6 +1117,7 @@ public class SamplePatientUpdateData {
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_FIELD_NOTES),
                 ValueType.LITERAL);
         String complianceStandardsRaw = getStringValue(envFields, "complianceStandards");
+        complianceStandardsSent = envFields.containsKey("complianceStandards");
         createObservation(complianceStandardsRaw,
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_COMPLIANCE_STANDARDS),
                 ValueType.LITERAL);

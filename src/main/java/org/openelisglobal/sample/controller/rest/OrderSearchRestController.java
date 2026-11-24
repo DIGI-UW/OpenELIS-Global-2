@@ -1725,6 +1725,10 @@ public class OrderSearchRestController extends BaseRestController {
         if (regulatoryRef != null) {
             envFields.put("regulatoryReference", regulatoryRef);
         }
+        String orderBranch = observationHistoryService.getRawValueForSample(ObservationType.ENV_ORDER_BRANCH, sampleId);
+        if (orderBranch != null) {
+            envFields.put("orderBranch", orderBranch);
+        }
         String collectionMethod = observationHistoryService.getRawValueForSample(ObservationType.ENV_COLLECTION_METHOD,
                 sampleId);
         if (collectionMethod != null) {
