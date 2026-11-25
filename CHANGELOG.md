@@ -604,7 +604,7 @@ releases v3.0/v2.7/v2.6
   (OGC-1112) · _Unified test editor_
 - Associate tests with treatment regimens directly in the catalog. · _Unified
   test editor_
-- Define per-test result components with an is_primary flag, show-on-report
+- Define per-test result components with an `is_primary` flag, show-on-report
   control, multi-component terminology, and analyzer ingestion; molecular seed
   data included. (OGC-1131 epic still in progress — initial delivery.)
   (OGC-1131) · _Unified test editor_
