@@ -92,6 +92,26 @@ describe("LocalizationSection", () => {
     ).toBe("Glucose FR");
   });
 
+  // OGC-1465 review: the English value every screen falls back to cannot be
+  // blanked; the section says so instead of a generic save error.
+  it("refuses to blank the English name and says why", async () => {
+    mockHappyPath();
+    renderSection("en");
+    const name = await screen.findByRole("textbox", {
+      name: messages["label.testCatalog.localization.field.name"],
+    });
+
+    fireEvent.change(name, { target: { value: "   " } });
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+
+    expect(
+      await screen.findByText(
+        messages["label.testCatalog.localization.fallbackRequired"],
+      ),
+    ).toBeInTheDocument();
+    expect(putToOpenElisServerFullResponse).not.toHaveBeenCalled();
+  });
+
   // OGC-1457 review: each translation input is named by its field, so a screen
   // reader announces "Test Name", not a bare text box.
   it("names each translation input after its field", async () => {
@@ -108,6 +128,33 @@ describe("LocalizationSection", () => {
         name: messages["label.testCatalog.localization.field.reportingName"],
       }),
     ).toHaveAttribute("id", "localization-input-reportingName");
+  });
+
+  it("names a result component's field after its label and shows that label until it is translated", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.includes("supportedlocales")) {
+        cb(LOCALES);
+      } else if (url.includes("/rest/localizations/")) {
+        cb({ id: "102", translations: {} });
+      } else if (url.includes("/rest/test-catalog/")) {
+        cb({
+          testId: "42",
+          fields: [
+            {
+              field: "component:EBOV",
+              localizationId: "102",
+              label: "Ebola target",
+            },
+          ],
+        });
+      }
+    });
+    renderSection("fr");
+
+    const input = await screen.findByRole("textbox", {
+      name: "Component: Ebola target",
+    });
+    expect(input).toHaveAttribute("placeholder", "Ebola target");
   });
 
   // The two localization records resolve independently, so the render order must
@@ -245,6 +292,24 @@ describe("LocalizationSection", () => {
       ).toBeInTheDocument();
       // The drafts are cleared on success, so nothing is left to save.
       expect(saveButton()).toBeDisabled();
+    });
+
+    /** OGC-1463: another admin's French, saved after this page loaded, stands. */
+    it("sends only the locales that changed", async () => {
+      await renderLoaded();
+      putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+        cb({ ok: true }),
+      );
+
+      type(
+        document.getElementById("localization-input-reportingName"),
+        "Glucose Report EN",
+      );
+      fireEvent.click(saveButton());
+
+      const [url, body] = putToOpenElisServerFullResponse.mock.calls[0];
+      expect(url).toBe("/rest/localizations/101/translations");
+      expect(JSON.parse(body)).toEqual({ en: "Glucose Report EN" });
     });
 
     it("keeps the draft so nothing is retyped when the save fails", async () => {

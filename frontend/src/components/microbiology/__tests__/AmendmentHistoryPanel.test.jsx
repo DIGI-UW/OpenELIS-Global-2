@@ -1,10 +1,19 @@
+vi.mock("../../common/textMacro/TextMacroService", () => ({
+  getTextMacros: vi.fn(() => Promise.resolve([])),
+}));
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import AmendmentHistoryPanel from "../AmendmentHistoryPanel";
 import messages from "../../../languages/en.json";
+import { getTextMacros } from "../../common/textMacro/TextMacroService";
+import {
+  expandedPhrase,
+  offerOnePhrasePerContext,
+  typePhraseCode,
+} from "./phraseFields";
 
 const renderPanel = ({
   finalReleaseState = "FINAL_RELEASED",
@@ -31,6 +40,69 @@ const baseService = () => ({
 });
 
 describe("AmendmentHistoryPanel", () => {
+  it("expands an amendment-reason phrase and opens the amendment with that text", async () => {
+    offerOnePhrasePerContext();
+    const service = baseService();
+    service.openCaseAmendment.mockResolvedValue({
+      id: "amendment-1",
+      sequenceNumber: 1,
+      status: "OPEN",
+      reason: "Seen",
+    });
+    renderPanel({ service, onCaseUpdated: vi.fn().mockResolvedValue() });
+
+    const field = await screen.findByLabelText("Amendment reason");
+    await typePhraseCode(field);
+
+    expect(field).toHaveValue("Seen Phrase for MICROBIOLOGY_AMENDMENT_REASON ");
+    expect(getTextMacros).toHaveBeenCalledWith(
+      "MICROBIOLOGY_AMENDMENT_REASON",
+      expect.any(AbortSignal),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open amendment" }));
+    await waitFor(() =>
+      expect(service.openCaseAmendment).toHaveBeenCalledWith("case-1", {
+        reason: expect.stringMatching(
+          expandedPhrase("MICROBIOLOGY_AMENDMENT_REASON"),
+        ),
+      }),
+    );
+  });
+
+  it("renders the structured issued snapshot in amendment history", async () => {
+    const service = baseService();
+    service.getCaseReportVersions.mockResolvedValue([
+      {
+        id: "version-1",
+        versionNumber: 1,
+        releaseType: "FINAL",
+        content: null,
+        report: {
+          labUnitName: "Culture unit",
+          classification: "NOT_APPLICABLE",
+          initial: [],
+          cultures: [
+            {
+              id: "row-1",
+              label: "Bottle 1",
+              outcome: "NO_GROWTH",
+              incubationHours: 48,
+            },
+          ],
+          isolates: [],
+          additional: [],
+          notes: [],
+        },
+      },
+    ]);
+    renderPanel({ service });
+    expect(await screen.findByText(/Bottle 1: No growth/)).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "Culture findings" }),
+    ).toBeVisible();
+    expect(screen.getByText("Version 1")).toBeVisible();
+  });
+
   it("requires a reason, opens an amendment, and restores focus", async () => {
     const user = userEvent.setup();
     const service = baseService();
@@ -172,4 +244,20 @@ describe("AmendmentHistoryPanel", () => {
     await waitFor(() => expect(onCaseUpdated).toHaveBeenCalled());
     expect(screen.getByRole("heading", { name: "Amendments" })).toHaveFocus();
   });
+});
+
+it("calls a partial report version Partial", async () => {
+  const service = baseService();
+  service.getCaseReportVersions.mockResolvedValue([
+    {
+      id: "version-1",
+      versionNumber: 1,
+      releaseType: "PRELIMINARY",
+      content: "Partial content",
+      report: null,
+    },
+  ]);
+  renderPanel({ service });
+  expect(await screen.findByText("Partial")).toBeInTheDocument();
+  expect(screen.queryByText("Preliminary")).not.toBeInTheDocument();
 });

@@ -22,9 +22,12 @@ import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelAntibioticDAO;
+import org.openelisglobal.microbiology.dao.MicroAstPanelAssignmentDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
+import org.openelisglobal.microbiology.dao.MicroBreakpointRuleDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.dao.MicroPatientOriginDAO;
+import org.openelisglobal.microbiology.dao.MicroWhonetOrganismDAO;
 import org.openelisglobal.microbiology.form.MicroAntibioticAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAntibioticAdminForm;
@@ -50,18 +53,25 @@ public class MicrobiologyReferenceAdminServiceTest {
     @Mock
     private MicroAstPanelAntibioticDAO panelAntibioticDAO;
     @Mock
+    private MicroAstPanelAssignmentDAO assignmentDAO;
+    @Mock
     private MicroPatientOriginDAO patientOriginDAO;
     @Mock
     private MethodService methodService;
     @Mock
     private TypeOfSampleService typeOfSampleService;
+    @Mock
+    private MicroBreakpointRuleDAO breakpointRuleDAO;
+    @Mock
+    private MicroWhonetOrganismDAO whonetOrganismDAO;
 
     private MicrobiologyReferenceAdminService service;
 
     @Before
     public void setUp() {
         service = new MicrobiologyReferenceAdminServiceImpl(organismDAO, antibioticDAO, panelDAO, panelAntibioticDAO,
-                patientOriginDAO, methodService, typeOfSampleService);
+                patientOriginDAO, methodService, typeOfSampleService, assignmentDAO, breakpointRuleDAO,
+                whonetOrganismDAO);
     }
 
     @Test
@@ -213,7 +223,7 @@ public class MicrobiologyReferenceAdminServiceTest {
 
         MicroAstPanelAdminForm request = new MicroAstPanelAdminForm();
         request.name = "Gram negative panel";
-        request.antibiotics = List.of(panelAntibiotic("gen", 1, "ALWAYS"), panelAntibiotic("cip", 2, "CASCADE"));
+        request.antibiotics = List.of(panelAntibiotic("gen"), panelAntibiotic("cip"));
 
         MicroAstPanelAdminForm result = service.publishPanelVersion("panel-v1", request, "42");
 
@@ -252,11 +262,9 @@ public class MicrobiologyReferenceAdminServiceTest {
         return antibiotic;
     }
 
-    private MicroAstPanelAntibioticAdminForm panelAntibiotic(String id, int tier, String behavior) {
+    private MicroAstPanelAntibioticAdminForm panelAntibiotic(String id) {
         MicroAstPanelAntibioticAdminForm form = new MicroAstPanelAntibioticAdminForm();
         form.antibioticId = id;
-        form.tier = tier;
-        form.reportBehavior = behavior;
         return form;
     }
 }

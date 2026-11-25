@@ -41,6 +41,23 @@ describe("AffectedAnalyzerList", () => {
     expect(within(item("Main Lab")).queryByRole("link")).toBeNull();
   });
 
+  it("says which analyzers on the type are confirmed and current and which are behind", () => {
+    renderList([
+      analyzer("501", "Main Lab", { mappingConfirmed: true }),
+      analyzer("502", "TB Bench", { mappingConfirmed: false }),
+      analyzer("503", "Annex", {
+        mappingConfirmed: true,
+        newerProfileRevision: true,
+      }),
+    ]);
+
+    expect(
+      within(item("Main Lab")).getByText("Confirmed and current"),
+    ).toBeVisible();
+    expect(within(item("TB Bench")).getByText("Behind")).toBeVisible();
+    expect(within(item("Annex")).getByText("Behind")).toBeVisible();
+  });
+
   it("links an analyzer with a saved revision not yet in force to verifying it", () => {
     renderList([
       analyzer("503", "Reference Lab", { newerMappingRevision: true }),

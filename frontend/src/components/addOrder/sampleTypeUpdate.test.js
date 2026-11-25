@@ -1,5 +1,9 @@
 import { describe, expect, test } from "vitest";
-import { applySampleTypeUpdate, newSampleKey } from "./sampleTypeUpdate";
+import {
+  applySampleTypeUpdate,
+  newSampleKey,
+  rejectedWithoutReason,
+} from "./sampleTypeUpdate";
 
 const sample = (overrides) => ({
   index: 1,
@@ -119,5 +123,25 @@ describe("applySampleTypeUpdate", () => {
 describe("newSampleKey", () => {
   test("never repeats", () => {
     expect(newSampleKey()).not.toBe(newSampleKey());
+  });
+});
+
+describe("rejectedWithoutReason (OGC-1488)", () => {
+  test("a sample ticked Reject with no reason blocks the order", () => {
+    expect(
+      rejectedWithoutReason([
+        { sampleXML: { rejected: true, rejectionReason: "" } },
+      ]),
+    ).toBe(true);
+  });
+
+  test("a reason, or no Reject, lets the order through", () => {
+    expect(
+      rejectedWithoutReason([
+        { sampleXML: { rejected: true, rejectionReason: "7" } },
+        { sampleXML: { rejected: false, rejectionReason: "" } },
+        { sampleRejected: false },
+      ]),
+    ).toBe(false);
   });
 });

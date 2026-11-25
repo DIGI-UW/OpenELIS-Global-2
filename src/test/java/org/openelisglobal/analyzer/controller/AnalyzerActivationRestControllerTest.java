@@ -16,6 +16,7 @@ import org.openelisglobal.analyzer.service.AnalyzerActivationResult;
 import org.openelisglobal.analyzer.service.AnalyzerActivationService;
 import org.openelisglobal.analyzer.service.AnalyzerDeactivationResult;
 import org.openelisglobal.analyzer.service.AnalyzerRequestException;
+import org.openelisglobal.analyzer.service.AnalyzerSetupReceptionResult;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
@@ -47,6 +48,16 @@ public class AnalyzerActivationRestControllerTest {
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(readiness, response.getBody());
+    }
+
+    @Test
+    public void startsSetupReceptionWithTheAuthenticatedActorWithoutClaimingClinicalActivation() {
+        var reception = new AnalyzerSetupReceptionResult("77", Analyzer.AnalyzerStatus.VALIDATION, true, List.of());
+        when(service.startSetupReception("77", "17")).thenReturn(reception);
+        var response = controller.startSetupReception("77", authenticatedRequest(17));
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(reception, response.getBody());
+        verify(service).startSetupReception("77", "17");
     }
 
     @Test

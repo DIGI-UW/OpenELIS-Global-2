@@ -99,6 +99,29 @@ const handleSessionError = (response: Response): Response => {
   return response;
 };
 
+/**
+ * A write that "succeeds" with a page instead of an API answer: a redirect to
+ * the login page, or an HTML body from a REST endpoint (which only ever answers
+ * JSON or nothing). That is what a proxy or SSO layer hands back once the
+ * session has ended, and it means nothing was saved (OGC-1461).
+ */
+const answeredWithLoginPage = (
+  response: Response,
+  endPoint: string,
+): boolean => {
+  if (!response.ok) {
+    return false;
+  }
+  if (response.redirected && /login/i.test(response.url || "")) {
+    return true;
+  }
+  const contentType = response.headers?.get("content-type") || "";
+  return endPoint.includes("/rest/") && contentType.includes("text/html");
+};
+
+/** Reports an ended session as the 401 it really is. */
+const SESSION_ENDED_STATUS = 401;
+
 const DATE_FMT = "yyyy-MM-dd";
 
 /**
@@ -288,7 +311,11 @@ export const postToOpenElisServer = <TExtra = unknown>(
     },
   )
     .then(handleSessionError)
-    .then((response) => response.status)
+    .then((response) =>
+      answeredWithLoginPage(response, endPoint)
+        ? SESSION_ENDED_STATUS
+        : response.status,
+    )
     .then((status) => {
       callback(status, extraParams);
     })
@@ -322,7 +349,17 @@ const sendForFullResponse = <TExtra = unknown>(
     ...(payLoad === undefined ? {} : { body: payLoad as BodyInit }),
   })
     .then(handleSessionError)
-    .then((response) => callback(response, extraParams))
+    .then((response) =>
+      callback(
+        answeredWithLoginPage(response, endPoint)
+          ? new Response(null, {
+              status: SESSION_ENDED_STATUS,
+              statusText: "Session ended",
+            })
+          : response,
+        extraParams,
+      ),
+    )
     .catch((error) => {
       console.error(error);
       callback(undefined, extraParams);
@@ -357,7 +394,11 @@ export const postToOpenElisServerFormData = <TExtra = unknown>(
     },
   )
     .then(handleSessionError)
-    .then((response) => response.status)
+    .then((response) =>
+      answeredWithLoginPage(response, endPoint)
+        ? SESSION_ENDED_STATUS
+        : response.status,
+    )
     .then((status) => {
       callback(status, extraParams);
     })
@@ -471,8 +512,9 @@ export const postToOpenElisServerJsonResponse = <
             statusText: response.statusText,
           }));
       }
-      // For successful responses, parse JSON normally
-      return response.json();
+      // A 2xx with no body (201 or 204 from .build()) is a success, not a
+      // network error: it answers an empty object.
+      return response.text().then((raw) => (raw ? JSON.parse(raw) : {}));
     })
     .then((json) => {
       callback(json as T, extraParams);
@@ -620,7 +662,11 @@ export const putToOpenElisServer = (
 
   fetch(config.serverBaseUrl + endPoint, options)
     .then(handleSessionError)
-    .then((response) => response.status)
+    .then((response) =>
+      answeredWithLoginPage(response, endPoint)
+        ? SESSION_ENDED_STATUS
+        : response.status,
+    )
     .then((status) => {
       callback(status);
     })
@@ -649,15 +695,20 @@ export const putToOpenElisServerJsonResponse = <TExtra = unknown>(
   })
     .then(handleSessionError)
     .then((response) => {
+      // An empty body, on a refusal or on a 2xx, is parsed as an empty object
+      // so the HTTP status reaches the caller instead of a parse error.
+      const parsed = response
+        .text()
+        .then((raw) => (raw ? JSON.parse(raw) : {}));
       if (!response.ok) {
-        return response.json().then((errorJson) => ({
+        return parsed.then((errorJson) => ({
           ...errorJson,
           status: response.status,
           statusCode: response.status,
           statusText: response.statusText,
         }));
       }
-      return response.json();
+      return parsed;
     })
     .then((json) => {
       callback(json, extraParams);
@@ -709,7 +760,11 @@ export const deleteFromOpenElisServer = (
     },
   })
     .then(handleSessionError)
-    .then((response) => response.status)
+    .then((response) =>
+      answeredWithLoginPage(response, endPoint)
+        ? SESSION_ENDED_STATUS
+        : response.status,
+    )
     .then((status) => {
       callback(status);
     })
@@ -987,3 +1042,15 @@ export const toBase64 = (file: Blob): Promise<string> =>
     reader.onload = () => resolve(reader.result as string);
     reader.onerror = reject;
   });
+
+export const csvCell = (value: unknown): string =>
+  `"${String(value ?? "").replace(/"/g, '""')}"`;
+
+export const downloadBlob = (blob: Blob, filename: string) => {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+};

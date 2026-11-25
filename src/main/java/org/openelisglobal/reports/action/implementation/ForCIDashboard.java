@@ -23,7 +23,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.validator.GenericValidator;
-import org.jfree.util.Log;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.project.service.ProjectService;
@@ -61,7 +61,7 @@ public class ForCIDashboard extends CSVSampleExportReport implements IReportPara
             form.setUseDashboard(Boolean.TRUE);
             form.setProjectCodeList(getProjectList());
         } catch (RuntimeException e) {
-            Log.error("Error in CIDashboard.setRequestParemeters: ", e);
+            LogEvent.logError("Error in CIDashboard.setRequestParemeters: ", e);
         }
     }
 
@@ -129,7 +129,7 @@ public class ForCIDashboard extends CSVSampleExportReport implements IReportPara
             csvColumnBuilder = getColumnBuilder();
             csvColumnBuilder.buildDataSource();
         } catch (SQLException e) {
-            Log.error("Error in " + this.getClass().getSimpleName() + ".createReportItems: ", e);
+            LogEvent.logError("Error in " + this.getClass().getSimpleName() + ".createReportItems: ", e);
             add1LineErrorMessage("report.error.message.general.error");
         }
     }

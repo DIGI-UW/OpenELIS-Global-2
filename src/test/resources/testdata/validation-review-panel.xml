@@ -57,7 +57,7 @@
     <!-- The numeric test_result row the modify path binds a corrected value
         to. -->
     <test_result id="1" test_id="1" result_group="1"
-        tst_rslt_type="N" significant_digits="2"
+        tst_rslt_type="N" reporting_decimal_places="2"
         lastupdated="2025-01-01 12:00:00" sort_order="1"
         is_quantifiable="false" is_active="true" is_normal="true" />
 

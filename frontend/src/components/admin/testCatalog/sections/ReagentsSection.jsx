@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Stack,
   Button,
@@ -19,6 +19,7 @@ import {
   Tag,
   InlineNotification,
 } from "@carbon/react";
+import CultureMediaDefaultsModal from "./CultureMediaDefaultsModal";
 import { Add, TrashCan } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -40,11 +41,23 @@ import LinkReagentModal from "./LinkReagentModal";
 // Common reagent-consumption units; the ComboBox also accepts custom values.
 const UNIT_OPTIONS = ["mL", "µL", "L", "mg", "g", "count", "drops", "units"];
 
+const seedOf = (r) => ({
+  usageType: r.usageType || "PRIMARY",
+  quantityPerTest: r.quantityPerTest != null ? String(r.quantityPerTest) : "",
+  quantityUnit: r.quantityUnit || "",
+});
+
+/** quantity_unit holds 50 characters, stored as typed (OGC-1465). */
+const UNIT_MAX_LENGTH = 50;
+
+const unitTooLong = (unit) => (unit || "").length > UNIT_MAX_LENGTH;
+
 const ReagentsSection = ({ testId }) => {
   const intl = useIntl();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [cultureTarget, setCultureTarget] = useState(null);
   const [reagents, setReagents] = useState([]);
   const [edits, setEdits] = useState({});
   const [linkModalOpen, setLinkModalOpen] = useState(false);
@@ -52,38 +65,59 @@ const ReagentsSection = ({ testId }) => {
   const [notification, setNotification] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  const load = useCallback(() => {
-    if (!testId) {
-      return;
-    }
-    setLoading(true);
-    setError(false);
-    getFromOpenElisServer(`/rest/test-catalog/${testId}/reagents`, (res) => {
-      setLoading(false);
-      if (!res) {
-        setError(true);
+  /**
+   * Fetches the links. A background reload keeps the section (and an open Link
+   * dialog) mounted and leaves the list as it is if the fetch fails.
+   */
+  const load = useCallback(
+    (background = false) => {
+      if (!testId) {
         return;
       }
-      setReagents(res);
-    });
-  }, [testId]);
+      if (!background) {
+        setLoading(true);
+        setError(false);
+      }
+      getFromOpenElisServer(`/rest/test-catalog/${testId}/reagents`, (res) => {
+        setLoading(false);
+        if (!res) {
+          if (!background) {
+            setError(true);
+          }
+          return;
+        }
+        setReagents(res);
+      });
+    },
+    [testId],
+  );
 
   useEffect(() => {
     load();
   }, [load]);
 
-  // Seed the per-row editable model whenever the server list changes.
+  const seededFrom = useRef({});
+
+  // Seed a row's editable model when it is new or its stored values changed; a
+  // pending edit on any other row survives a reload or another row's save.
   useEffect(() => {
-    const next = {};
+    const previous = seededFrom.current;
+    const seeds = {};
     reagents.forEach((r) => {
-      next[r.id] = {
-        usageType: r.usageType || "PRIMARY",
-        quantityPerTest:
-          r.quantityPerTest != null ? String(r.quantityPerTest) : "",
-        quantityUnit: r.quantityUnit || "",
-      };
+      seeds[r.id] = seedOf(r);
     });
-    setEdits(next);
+    seededFrom.current = seeds;
+    setEdits((prev) => {
+      const next = {};
+      Object.entries(seeds).forEach(([id, seed]) => {
+        const unchanged =
+          prev[id] &&
+          previous[id] &&
+          JSON.stringify(previous[id]) === JSON.stringify(seed);
+        next[id] = unchanged ? prev[id] : seed;
+      });
+      return next;
+    });
   }, [reagents]);
 
   const byId = {};
@@ -122,8 +156,7 @@ const ReagentsSection = ({ testId }) => {
   };
 
   // PUT one row (usage type / quantity / unit). Driven by Save, never by leaving a
-  // field. Optimistic: the UI already shows the edited values; on failure the row
-  // rolls back to the server snapshot.
+  // field. On failure the edited values stay on screen for a retry.
   const saveRow = (id, overrides = {}, onDone) => {
     const link = byId[id];
     if (!link) {
@@ -165,18 +198,6 @@ const ReagentsSection = ({ testId }) => {
             }),
           });
         } else {
-          // Roll the edit back to the last saved server values.
-          setEdits((prev) => ({
-            ...prev,
-            [id]: {
-              usageType: link.usageType || "PRIMARY",
-              quantityPerTest:
-                link.quantityPerTest != null
-                  ? String(link.quantityPerTest)
-                  : "",
-              quantityUnit: link.quantityUnit || "",
-            },
-          }));
           if (onDone) {
             onDone(false);
             return;
@@ -199,6 +220,15 @@ const ReagentsSection = ({ testId }) => {
   // leaves the edits in place to retry rather than reporting success.
   const handleSave = () => {
     if (dirtyRowIds.length === 0 || saving) {
+      return;
+    }
+    if (dirtyRowIds.some((id) => unitTooLong(edits[id]?.quantityUnit))) {
+      setNotification({
+        kind: "error",
+        text: intl.formatMessage({
+          id: "label.testCatalog.reagents.unitTooLong",
+        }),
+      });
       return;
     }
     setSaving(true);
@@ -229,20 +259,7 @@ const ReagentsSection = ({ testId }) => {
   };
 
   const handleCancel = () => {
-    setEdits(
-      reagents.reduce(
-        (acc, r) => ({
-          ...acc,
-          [r.id]: {
-            usageType: r.usageType || "PRIMARY",
-            quantityPerTest:
-              r.quantityPerTest != null ? String(r.quantityPerTest) : "",
-            quantityUnit: r.quantityUnit || "",
-          },
-        }),
-        {},
-      ),
-    );
+    setEdits(reagents.reduce((acc, r) => ({ ...acc, [r.id]: seedOf(r) }), {}));
     setNotification(null);
   };
 
@@ -343,6 +360,17 @@ const ReagentsSection = ({ testId }) => {
 
   return (
     <Stack gap={6} data-testid="reagents-section">
+      {cultureTarget && (
+        <CultureMediaDefaultsModal
+          testId={testId}
+          link={cultureTarget}
+          onClose={() => setCultureTarget(null)}
+          onSaved={() => {
+            setCultureTarget(null);
+            load();
+          }}
+        />
+      )}
       {notification && (
         <InlineNotification
           kind={notification.kind}
@@ -465,6 +493,10 @@ const ReagentsSection = ({ testId }) => {
                               })}
                               items={UNIT_OPTIONS}
                               selectedItem={e.quantityUnit || null}
+                              invalid={unitTooLong(e.quantityUnit)}
+                              invalidText={intl.formatMessage({
+                                id: "label.testCatalog.reagents.unitTooLong",
+                              })}
                               onChange={({ selectedItem }) =>
                                 setEdit(
                                   link.id,
@@ -484,6 +516,17 @@ const ReagentsSection = ({ testId }) => {
                           </Tag>
                         </TableCell>
                         <TableCell>
+                          {link.microbiologyMedium && (
+                            <Button
+                              kind="ghost"
+                              size="sm"
+                              onClick={() => setCultureTarget(link)}
+                            >
+                              {intl.formatMessage({
+                                id: "microbiology.culture.mediaDefaults",
+                              })}
+                            </Button>
+                          )}
                           <Button
                             kind="ghost"
                             size="sm"
@@ -541,7 +584,7 @@ const ReagentsSection = ({ testId }) => {
         onClose={() => setLinkModalOpen(false)}
         testId={testId}
         linkedReagentIds={reagents.map((r) => r.reagentId)}
-        onLinked={load}
+        onLinked={() => load(true)}
       />
 
       <Modal

@@ -115,7 +115,7 @@ test.describe("App shell (OGC-1448)", () => {
     ["/CytologyDashboard", "Cytology"],
     ["/NoteBookDashboard", "Notebook"],
     ["/genericProgram", "Order Programs"],
-    ["/inventory", "Inventory Items"],
+    ["/inventory", "Items"],
     ["/Storage/racks", "Storage Management"],
     ["/qa/qms/audit-trail?type=system", "System Audit Trail"],
     ["/qa/qms/audit-trail?type=order", "Audit Trail"],

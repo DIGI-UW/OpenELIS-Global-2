@@ -234,6 +234,25 @@ public class LabUnitManagementRestControllerSecurityTest extends SecuritySliceMo
         Mockito.when(supportedLocaleService.getFallbackLocaleCode()).thenReturn("en");
     }
 
+    @Test
+    public void nonOrderableTestsCannotBeConfiguredAsGramStainShortcuts() throws Exception {
+        stubExistingSection();
+        var test = new org.openelisglobal.test.valueholder.Test();
+        test.setId("42");
+        test.setIsActive("Y");
+        var actor = new org.openelisglobal.login.valueholder.UserSessionData();
+        actor.setSytemUserId(1);
+        for (Boolean orderable : new Boolean[] { false, null }) {
+            test.setOrderable(orderable);
+            Mockito.when(testSectionService.getTestsInSection("1")).thenReturn(java.util.List.of(test));
+            mockMvc.perform(put("/rest/lab-units-management/1").with(user("admin").roles("ADMIN"))
+                    .requestAttr(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA, actor)
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"gramStainTestId\":\"42\"}"))
+                    .andExpect(status().isUnprocessableEntity());
+        }
+        Mockito.verify(testSectionService, Mockito.never()).update(Mockito.any());
+    }
+
     private static String nameOfLength(int length) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < length; i++) {

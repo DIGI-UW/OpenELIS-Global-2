@@ -22,6 +22,9 @@ import {
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
+import StaleSaveNotice, {
+  isStaleConflict,
+} from "../../../common/StaleSaveNotice";
 
 /**
  * OGC-224 — Panel editor · Tests (the centerpiece, FRS v2.2).
@@ -47,6 +50,8 @@ const PanelTestsSection = ({ panel, autoActivate, onSaved }) => {
   // that empty list would remove every member (OGC-1456).
   const [loadFailed, setLoadFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [version, setVersion] = useState(null);
+  const [stale, setStale] = useState(false);
   const [candidates, setCandidates] = useState([]);
   const [sampleTypes, setSampleTypes] = useState([]);
   // optional narrowing of the picker by sample type — same control and
@@ -71,6 +76,8 @@ const PanelTestsSection = ({ panel, autoActivate, onSaved }) => {
           return;
         }
         setMembers(res.tests);
+        setVersion(res.version || null);
+        setStale(false);
         setLoaded(true);
       },
     );
@@ -165,12 +172,14 @@ const PanelTestsSection = ({ panel, autoActivate, onSaved }) => {
       JSON.stringify({
         tests: members.map((m, i) => ({ testId: m.testId, position: i + 1 })),
         autoActivate: !!autoActivate,
+        version,
       }),
       async (response) => {
         setSaving(false);
         if (response && response.ok) {
           const body = await response.json();
           setMembers(Array.isArray(body?.tests) ? body.tests : []);
+          setVersion(body?.version || null);
           notify(NotificationKinds.success, "success.add.edited.msg");
           if (body?.panel) {
             onSaved(body.panel);
@@ -179,6 +188,13 @@ const PanelTestsSection = ({ panel, autoActivate, onSaved }) => {
         }
         // OGC-1232 — the domain guard names the tests it refused
         let body = null;
+        if (response && response.status === 409) {
+          body = await response.json().catch(() => null);
+          if (isStaleConflict(409, body)) {
+            setStale(true);
+            return;
+          }
+        }
         if (response && response.status === 422) {
           try {
             body = await response.json();
@@ -407,12 +423,18 @@ const PanelTestsSection = ({ panel, autoActivate, onSaved }) => {
       >
         <FormattedMessage id="note.panel.positionShared" />
       </p>
+      {stale && (
+        <StaleSaveNotice
+          testId="panel-tests-stale-save"
+          onRefresh={() => setReloadKey((k) => k + 1)}
+        />
+      )}
       <div>
         <Button
           kind="primary"
           renderIcon={Add}
           onClick={handleSave}
-          disabled={saving || !loaded}
+          disabled={saving || !loaded || stale}
         >
           <FormattedMessage id="label.button.save" />
         </Button>

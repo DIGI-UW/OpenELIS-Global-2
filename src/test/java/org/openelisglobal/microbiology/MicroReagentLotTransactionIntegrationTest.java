@@ -23,7 +23,6 @@ import org.openelisglobal.inventory.service.InventoryLotUnavailableException;
 import org.openelisglobal.inventory.service.InventoryManagementService;
 import org.openelisglobal.inventory.service.InventoryTransactionService;
 import org.openelisglobal.inventory.service.InventoryUsageService;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
@@ -31,7 +30,6 @@ import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures.ReferenceData;
 import org.openelisglobal.microbiology.service.MicroCaseAnalysisService;
-import org.openelisglobal.microbiology.service.MicroCaseInoculationService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.service.MicroCaseStateService;
 import org.openelisglobal.microbiology.service.MicroLotSelection;
@@ -64,9 +62,6 @@ public class MicroReagentLotTransactionIntegrationTest extends BaseWebContextSen
 
     @Autowired
     private MicroCaseService caseService;
-
-    @Autowired
-    private MicroCaseInoculationService inoculationService;
 
     @Autowired
     private InventoryLotService inventoryLotService;
@@ -146,20 +141,6 @@ public class MicroReagentLotTransactionIntegrationTest extends BaseWebContextSen
         assertTrue(reagentLotService.getUsageHistory(fixture.caseId()).isEmpty());
     }
 
-    @Test
-    public void inoculationPersistsNumericMethodReferenceAndSelectedLotProvenance() {
-        SelectedLot fixture = createSelectedLot("inoculation");
-
-        var inoculation = inoculationService.record(fixture.caseId(), null,
-                "UAT-INTEGRATION-BOTTLE-" + UUID.randomUUID(), "Blood culture bottle", null, null,
-                List.of(fixture.selection()), fixture.userId());
-
-        assertEquals(fixture.caseId(), inoculation.getCaseId());
-        assertTrue(inoculation.getMethodId().matches("\\d+"));
-        assertEquals(1, reagentLotService.getUsageHistory(fixture.caseId()).size());
-        assertEquals(fixture.lotNumber(), reagentLotService.getUsageHistory(fixture.caseId()).get(0).lotNumber);
-    }
-
     private SelectedLot createSelectedLot(String scenarioName) {
         String userId = fixtures.defaultUserId();
         String methodId = fixtures.createMethodId();
@@ -227,7 +208,6 @@ public class MicroReagentLotTransactionIntegrationTest extends BaseWebContextSen
         item.setFhirUuid(UUID.randomUUID());
         item.setName("M8 reagent " + UUID.randomUUID().toString().substring(0, 12));
         item.setDescription("Service-created M8 transaction fixture");
-        item.setItemType(ItemType.REAGENT);
         item.setCategory("Microbiology test");
         item.setUnits("unit");
         item.setQuantityPerUnit(1);

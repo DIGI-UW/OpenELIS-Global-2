@@ -2,8 +2,6 @@ package org.openelisglobal.typeofsample.service;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -11,6 +9,7 @@ import java.util.Map;
 import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.common.util.CsvParsingUtil;
 import org.openelisglobal.configuration.service.CsvLoadSummary;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.configuration.service.LoadedRow;
@@ -39,14 +38,15 @@ import org.springframework.transaction.PlatformTransactionManager;
  * (auto-assigned if not provided) - loinc is optional; a code given here is
  * recorded as a LOINC / SAME_AS terminology mapping, which is what the Sample
  * Type Editor reads, and an omitted column says nothing about LOINC rather than
- * asking for an existing mapping to be cleared - localization:xx columns (where
- * xx is a locale code like en, fr, es) provide translations - If no
- * localization columns are provided, description is used as the default value
- * for the fallback locale (en) - Existing sample types with matching
- * localAbbreviation and domain will be updated - description is limited to 40
- * and localAbbreviation to 10 characters; a row over either limit is skipped
- * with its line number - every row runs in its own transaction, so a rejected
- * row never aborts the rest of the file - each file ends with a
+ * asking for an existing mapping to be cleared - whonetCode is optional;
+ * without the column a sample type keeps its code, and a blank cell clears it -
+ * localization:xx columns (where xx is a locale code like en, fr, es) provide
+ * translations - If no localization columns are provided, description is used
+ * as the default value for the fallback locale (en) - Existing sample types
+ * with matching localAbbreviation and domain will be updated - description is
+ * limited to 40 and localAbbreviation to 10 characters; a row over either limit
+ * is skipped with its line number - every row runs in its own transaction, so a
+ * rejected row never aborts the rest of the file - each file ends with a
  * {@code SUMMARY file=... domain=sample-types created= updated= skipped=} line
  */
 @Component
@@ -106,7 +106,7 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
 
     @Override
     public void processConfiguration(InputStream inputStream, String fileName, boolean dryRun) throws Exception {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+        BufferedReader reader = CsvParsingUtil.openCsvReader(inputStream);
 
         // Read and validate header
         String headerLine = reader.readLine();
@@ -126,6 +126,7 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
         // Optional: a LOINC code for the specimen, surfaced in the Sample Type
         // Editor as a LOINC / SAME_AS terminology mapping.
         int loincIndex = findColumnIndex(headers, "loinc");
+        int whonetCodeIndex = findColumnIndex(headers, "whonetCode");
 
         // Detect localization columns (localization:en, localization:fr, etc.)
         Map<String, Integer> localizationColumns = detectLocalizationColumns(headers);
@@ -136,28 +137,32 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
         int lineNumber = 1; // Start at 1 since we already read the header
         int nextSortOrder = getNextAvailableSortOrder();
 
-        while ((line = reader.readLine()) != null) {
-            lineNumber++;
-            // Skip empty lines and comments
-            if (line.trim().isEmpty() || line.trim().startsWith("#")) {
-                continue;
-            }
+        try {
+            while ((line = reader.readLine()) != null) {
+                lineNumber++;
+                // Skip empty lines and comments
+                if (line.trim().isEmpty() || line.trim().startsWith("#")) {
+                    continue;
+                }
 
-            String[] values = parseCsvLine(line);
-            int rowLine = lineNumber;
-            int defaultSortOrder = nextSortOrder;
-            LoadedRow<TypeOfSample> result;
-            try {
-                result = rowTransaction.run(() -> processCsvLine(values, descriptionIndex, localAbbreviationIndex,
-                        domainIndex, isActiveIndex, sortOrderIndex, loincIndex, localizationColumns, rowLine, fileName,
-                        defaultSortOrder));
-            } catch (Exception e) {
-                result = LoadedRow.skipped(CsvLoadSummary.reason(e));
+                String[] values = parseCsvLine(line);
+                int rowLine = lineNumber;
+                int defaultSortOrder = nextSortOrder;
+                LoadedRow<TypeOfSample> result;
+                try {
+                    result = rowTransaction.run(() -> processCsvLine(values, descriptionIndex, localAbbreviationIndex,
+                            domainIndex, isActiveIndex, sortOrderIndex, loincIndex, whonetCodeIndex,
+                            localizationColumns, rowLine, fileName, defaultSortOrder));
+                } catch (Exception e) {
+                    result = LoadedRow.skipped(CsvLoadSummary.reason(e));
+                }
+                summary.record(result, getClass().getSimpleName(), rowLine);
+                if (!result.isSkipped()) {
+                    nextSortOrder++;
+                }
             }
-            summary.record(result, getClass().getSimpleName(), rowLine);
-            if (!result.isSkipped()) {
-                nextSortOrder++;
-            }
+        } finally {
+            rowTransaction.close();
         }
 
         // Clear caches and refresh display lists
@@ -256,7 +261,7 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
     }
 
     private LoadedRow<TypeOfSample> processCsvLine(String[] values, int descriptionIndex, int localAbbreviationIndex,
-            int domainIndex, int isActiveIndex, int sortOrderIndex, int loincIndex,
+            int domainIndex, int isActiveIndex, int sortOrderIndex, int loincIndex, int whonetCodeIndex,
             Map<String, Integer> localizationColumns, int lineNumber, String fileName, int defaultSortOrder) {
 
         // Get required fields
@@ -300,6 +305,7 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
             // Update existing sample type
             updateSampleTypeFromCsv(existingSampleType, values, description, localAbbreviation, isActiveIndex,
                     sortOrderIndex, localizationColumns, defaultSortOrder);
+            setWhonetCode(existingSampleType, values, whonetCodeIndex);
             typeOfSampleService.update(existingSampleType);
             syncLoincMapping(existingSampleType, values, loincIndex);
             LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
@@ -309,7 +315,7 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
 
         // Create new sample type
         TypeOfSample created = createSampleType(values, description, localAbbreviation, domain, isActiveIndex,
-                sortOrderIndex, localizationColumns, defaultSortOrder);
+                sortOrderIndex, whonetCodeIndex, localizationColumns, defaultSortOrder);
         syncLoincMapping(created, values, loincIndex);
         return LoadedRow.created(created);
     }
@@ -333,6 +339,13 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "syncLoincMapping", "Could not record LOINC " + loinc
                     + " for sample type " + sampleType.getDescription() + ": " + e.getMessage());
+        }
+    }
+
+    private void setWhonetCode(TypeOfSample sampleType, String[] values, int whonetCodeIndex) {
+        if (whonetCodeIndex >= 0) {
+            String whonetCode = getValueOrEmpty(values, whonetCodeIndex);
+            sampleType.setWhonetCode(whonetCode.isEmpty() ? null : whonetCode);
         }
     }
 
@@ -380,7 +393,8 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
     }
 
     private TypeOfSample createSampleType(String[] values, String description, String localAbbreviation, String domain,
-            int isActiveIndex, int sortOrderIndex, Map<String, Integer> localizationColumns, int defaultSortOrder) {
+            int isActiveIndex, int sortOrderIndex, int whonetCodeIndex, Map<String, Integer> localizationColumns,
+            int defaultSortOrder) {
 
         // Build translations map
         Map<String, String> translations = buildTranslationsMap(values, description, localizationColumns);
@@ -405,6 +419,7 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
         sampleType.setLocalAbbreviation(localAbbreviation);
         sampleType.setDomain(Domain.normalize(domain));
         sampleType.setLocalization(localization);
+        setWhonetCode(sampleType, values, whonetCodeIndex);
 
         // Set active status
         String isActive = getValueOrEmpty(values, isActiveIndex);

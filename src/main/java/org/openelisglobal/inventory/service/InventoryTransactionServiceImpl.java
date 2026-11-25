@@ -2,6 +2,7 @@ package org.openelisglobal.inventory.service;
 
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.inventory.dao.InventoryLotDAO;
 import org.openelisglobal.inventory.dao.InventoryTransactionDAO;
@@ -48,6 +49,19 @@ public class InventoryTransactionServiceImpl extends AuditableBaseObjectServiceI
     @Transactional(readOnly = true)
     public List<InventoryTransaction> getByDateRange(Timestamp startDate, Timestamp endDate) {
         return inventoryTransactionDAO.getByDateRange(startDate, endDate);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<InventoryTransaction> getByTypeAndDateRange(TransactionType transactionType, Timestamp startDate,
+            Timestamp endDate) {
+        return inventoryTransactionDAO.getByTypeAndDateRange(transactionType, startDate, endDate);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, Double> getQuantityOnHandAsOf(Timestamp asOf) {
+        return inventoryTransactionDAO.getQuantityOnHandAsOf(asOf);
     }
 
     @Override

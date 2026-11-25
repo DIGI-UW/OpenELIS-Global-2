@@ -28,7 +28,7 @@ import { useIntl } from "react-intl";
 import { Link as RouterLink, useHistory } from "react-router-dom";
 import config from "../../../config.json";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import { formatDateOnly, getFromOpenElisServer } from "../../utils/Utils";
 import {
   CycleStatusTag,
   hintStyle,
@@ -36,14 +36,14 @@ import {
   kpiValueStyle,
 } from "../eqaCommon";
 import {
-  createMyCycle,
   fetchMyCycles,
-  fetchMyPrograms,
   importScoresCsv,
   submitCycle,
   submitCycleManually,
 } from "./cyclesApi";
 import { asList } from "../eqaApi";
+import { fetchOpenEqaNceCount } from "../Performance/performanceApi";
+import NewEqaCycleModal from "./NewEqaCycleModal";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -80,7 +80,8 @@ const SCHEME_TYPES = [
 ];
 
 const ENTRY_TAG = {
-  entered: "green",
+  validated: "green",
+  entered: "teal",
   in_progress: "blue",
   empty: "gray",
 };
@@ -93,13 +94,11 @@ const resultEntryUrl = (labNo) =>
 const reviewGateOpen = (cycle) =>
   cycle.requiresCycleReview && cycle.status === "ready_to_submit";
 
-// The automatic channel gives up after five attempts and never tries again, so
-// from here on the only way out is a submission recorded by hand. The alert the
-// sweep raises says exactly that; this is where it can now be acted on.
-const MAX_SUBMISSION_ATTEMPTS = 5;
-const retriesSpent = (cycle) =>
-  cycle.status === "ready_to_submit" &&
-  (cycle.submissionAttempts || 0) >= MAX_SUBMISSION_ATTEMPTS;
+const retriesSpent = (cycle) => cycle.autoSubmitReason === "RETRIES_SPENT";
+
+// Server time as "yyyy-MM-dd HH:mm:ss.f", the lab's own clock.
+const formatDueAt = (value) =>
+  `${formatDateOnly(value.substring(0, 10))} ${value.substring(11, 16)}`;
 
 // A validation is a real instant, so it renders in the viewer's timezone —
 // unlike deadlines, which are end-of-day values read as UTC (formatDateOnly).
@@ -148,6 +147,7 @@ const MyCyclesPage = () => {
 
   const [cycles, setCycles] = useState([]);
   const [uncycledOrders, setUncycledOrders] = useState([]);
+  const [openNce, setOpenNce] = useState(0);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
   const [bucket, setBucket] = useState("active");
@@ -192,50 +192,20 @@ const MyCyclesPage = () => {
     });
   };
 
-  // "New cycle": a participant records a cycle for a provider that does not
-  // send consignments to this OpenELIS. Consignments from an
-  // OpenELIS provider open their cycle on import, so this is the fallback.
-  const EMPTY_NEW_CYCLE = {
-    schemeName: "",
-    cycleName: "",
-    distributionDate: "",
-    submissionDeadline: "",
-  };
   const [newCycleOpen, setNewCycleOpen] = useState(false);
-  const [newCycle, setNewCycle] = useState(EMPTY_NEW_CYCLE);
-  const [myPrograms, setMyPrograms] = useState([]);
-  const [newCycleError, setNewCycleError] = useState(null);
   const [newCycleNotice, setNewCycleNotice] = useState(null);
-  const [savingCycle, setSavingCycle] = useState(false);
 
-  const openNewCycle = () => {
-    setNewCycleError(null);
-    setNewCycle(EMPTY_NEW_CYCLE);
-    fetchMyPrograms(setMyPrograms);
-    setNewCycleOpen(true);
-  };
+  const openNewCycle = () => setNewCycleOpen(true);
 
-  const handleCreateCycle = () => {
-    setSavingCycle(true);
-    setNewCycleError(null);
-    createMyCycle(newCycle, (result) => {
-      setSavingCycle(false);
-      if (!result.ok) {
-        setNewCycleError(
-          result.error ||
-            t("eqa.cycle.new.error", "Could not create the cycle"),
-        );
-        return;
-      }
-      setNewCycleOpen(false);
-      setNewCycleNotice(
-        t(
-          "eqa.cycle.new.created",
-          'Cycle created. It is listed as Planned; use "Receive panel" when the panel arrives.',
-        ),
-      );
-      fetchMyCycles(setCycles);
-    });
+  const handleCycleCreated = () => {
+    setNewCycleOpen(false);
+    setNewCycleNotice(
+      t(
+        "eqa.cycle.new.created",
+        'Cycle created. It is listed as Planned; use "Receive panel" when the panel arrives.',
+      ),
+    );
+    fetchMyCycles(setCycles);
   };
 
   useEffect(() => {
@@ -249,6 +219,7 @@ const MyCyclesPage = () => {
       // EQA order is uncycled by definition.
       setUncycledOrders(asList(data).filter((o) => !o.cycleId));
     });
+    fetchOpenEqaNceCount(setOpenNce);
   }, []);
 
   const schemeTypeLabel = (type) =>
@@ -339,7 +310,6 @@ const MyCyclesPage = () => {
     (c) => c.status === "ready_to_submit",
   ).length;
   const awaitingCount = cycles.filter((c) => c.status === "submitted").length;
-  const openNce = cycles.filter((c) => c.hasNce).length;
 
   const filteredCycles = cycles.filter((c) => {
     if (!BUCKETS[bucket].includes(c.status)) return false;
@@ -362,6 +332,31 @@ const MyCyclesPage = () => {
     setBucket("active");
     setTypeFilter("all");
     setSearch("");
+  };
+
+  const autoSubmitLine = (cycle) => {
+    switch (cycle.autoSubmitReason) {
+      case "NO_CHANNEL":
+        return t(
+          "eqa.cycle.autoSubmit.noChannel",
+          "This site has no automatic channel to the provider, so submit by hand.",
+        );
+      case "WAITING":
+        return cycle.autoSubmitDueAt
+          ? t(
+              "eqa.cycle.autoSubmit.waiting",
+              "Sends automatically at {time} unless you submit by hand now.",
+              { time: formatDueAt(cycle.autoSubmitDueAt) },
+            )
+          : null;
+      case "DUE":
+        return t(
+          "eqa.cycle.autoSubmit.due",
+          "Sends automatically within a few minutes unless you submit by hand now.",
+        );
+      default:
+        return null;
+    }
   };
 
   const renderExpanded = (cycle) => (
@@ -398,6 +393,14 @@ const MyCyclesPage = () => {
           {t("eqa.report.download", "Download performance report")}
         </Button>
       </div>
+      {autoSubmitLine(cycle) && (
+        <p
+          data-testid={`auto-submit-${cycle.id}`}
+          style={{ ...hintStyle, textAlign: "right", margin: "0.25rem 0" }}
+        >
+          {autoSubmitLine(cycle)}
+        </p>
+      )}
       {retriesSpent(cycle) && (
         <ActionableNotification
           kind="error"
@@ -876,7 +879,7 @@ const MyCyclesPage = () => {
                     <TableCell>
                       <CycleStatusTag status={c.status} />
                     </TableCell>
-                    <TableCell>{c.deadline}</TableCell>
+                    <TableCell>{formatDateOnly(c.deadline)}</TableCell>
                     <TableCell>
                       {c.progress.entered} / {c.progress.total}
                     </TableCell>
@@ -948,11 +951,7 @@ const MyCyclesPage = () => {
                       </TableCell>
                       <TableCell>{o.programName || ""}</TableCell>
                       <TableCell>{o.status || ""}</TableCell>
-                      <TableCell>
-                        {o.deadline
-                          ? new Date(o.deadline).toLocaleDateString()
-                          : ""}
-                      </TableCell>
+                      <TableCell>{formatDateOnly(o.deadline)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -963,95 +962,10 @@ const MyCyclesPage = () => {
       </Grid>
 
       {newCycleOpen && (
-        <Modal
-          open
-          size="sm"
-          modalHeading={t("eqa.cycle.new.heading", "New EQA cycle")}
-          primaryButtonText={t("eqa.cycle.new.create", "Create cycle")}
-          secondaryButtonText={t("eqa.queue.cancel", "Cancel")}
-          primaryButtonDisabled={
-            savingCycle ||
-            !newCycle.schemeName ||
-            !newCycle.cycleName.trim() ||
-            !newCycle.submissionDeadline
-          }
-          onRequestClose={() => setNewCycleOpen(false)}
-          onSecondarySubmit={() => setNewCycleOpen(false)}
-          onRequestSubmit={handleCreateCycle}
-        >
-          <p style={{ color: "#525252", marginBottom: "1rem" }}>
-            {t(
-              "eqa.cycle.new.help",
-              'For a provider that does not send consignments to this OpenELIS: record the cycle the panel belongs to so it appears here with "Receive panel". Consignments from an OpenELIS provider open their cycle on import.',
-            )}
-          </p>
-          {newCycleError && (
-            <InlineNotification
-              kind="error"
-              lowContrast
-              hideCloseButton
-              title={newCycleError}
-              style={{ marginBottom: "1rem" }}
-            />
-          )}
-          <Select
-            id="new-cycle-scheme"
-            labelText={t(
-              "eqa.cycle.new.scheme",
-              "Scheme (from My EQA Schemes)",
-            )}
-            helperText={
-              myPrograms.length === 0
-                ? t(
-                    "eqa.cycle.new.noPrograms",
-                    "Enroll in a scheme under My EQA Schemes first.",
-                  )
-                : undefined
-            }
-            value={newCycle.schemeName}
-            onChange={(e) =>
-              setNewCycle({ ...newCycle, schemeName: e.target.value })
-            }
-          >
-            <SelectItem value="" text="" />
-            {myPrograms.map((prog) => (
-              <SelectItem
-                key={prog.id}
-                value={prog.programName}
-                text={prog.programName}
-              />
-            ))}
-          </Select>
-          <TextInput
-            id="new-cycle-name"
-            labelText={t("eqa.cycle.new.name", "Cycle name")}
-            value={newCycle.cycleName}
-            onChange={(e) =>
-              setNewCycle({ ...newCycle, cycleName: e.target.value })
-            }
-            style={{ marginTop: "1rem" }}
-          />
-          <TextInput
-            id="new-cycle-distribution"
-            type="date"
-            labelText={t("eqa.cycle.new.distributionDate", "Distribution date")}
-            value={newCycle.distributionDate}
-            onChange={(e) =>
-              setNewCycle({ ...newCycle, distributionDate: e.target.value })
-            }
-            style={{ marginTop: "1rem" }}
-          />
-          <TextInput
-            id="new-cycle-deadline"
-            type="date"
-            labelText={t("eqa.cycle.new.deadline", "Submission deadline")}
-            value={newCycle.submissionDeadline}
-            onChange={(e) =>
-              setNewCycle({ ...newCycle, submissionDeadline: e.target.value })
-            }
-            style={{ marginTop: "1rem" }}
-          />
-        </Modal>
+        <NewEqaCycleModal
+          onClose={() => setNewCycleOpen(false)}
+          onCreated={handleCycleCreated}
+        />
       )}
       {scoreImport && (
         <Modal

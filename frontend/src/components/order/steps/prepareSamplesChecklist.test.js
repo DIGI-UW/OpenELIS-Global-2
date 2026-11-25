@@ -3,7 +3,10 @@
  * collector is optional: many tubes arrive with no name on them, so a sample
  * with a type and a collection date and time can move on without one.
  */
-import { prepareSamplesToContinue } from "./prepareSamplesChecklist";
+import {
+  prepareSamplesToContinue,
+  consentApplies,
+} from "./prepareSamplesChecklist";
 
 const intl = {
   formatMessage: ({ id }, values) =>
@@ -107,5 +110,60 @@ describe("prepareSamplesToContinue — a sample with no tests (OGC-1443)", () =>
     expect(
       itemsFor([serum(), serum({ tests: [], sampleRejected: true })]),
     ).toEqual([]);
+  });
+});
+
+describe("a container the catalog asks for (OGC-1611 FR-G8)", () => {
+  it("holds a sample whose tests name containers until one is chosen", () => {
+    expect(
+      itemsFor([serum({ containerRequired: true, containerTypeId: "" })]).map(
+        (item) => [item.id, item.targetId],
+      ),
+    ).toEqual([["container-0", "containerType-0"]]);
+    expect(
+      itemsFor([serum({ containerRequired: true, containerTypeId: "11" })]),
+    ).toEqual([]);
+  });
+
+  it("never holds a sample whose tests name no container, or a rejected one", () => {
+    expect(itemsFor([serum({ containerRequired: false })])).toEqual([]);
+    expect(
+      itemsFor([serum({ containerRequired: true, sampleRejected: true })]),
+    ).toEqual([]);
+  });
+});
+
+describe("consentApplies (OGC-1483)", () => {
+  const required = { CONSENT_REQUIRED_FOR_COLLECTION: "true" };
+
+  it("holds a clinical order where the laboratory requires consent", () => {
+    expect(consentApplies(required, { sampleOrderItems: {} })).toBe(true);
+  });
+
+  it("never holds an EQA order, which has no person to consent", () => {
+    expect(
+      consentApplies(required, { sampleOrderItems: { isEQASample: true } }),
+    ).toBe(false);
+  });
+
+  it("holds nothing where consent is advisory", () => {
+    expect(consentApplies({}, { sampleOrderItems: {} })).toBe(false);
+  });
+});
+
+// OGC-1657 review: a bad sample time held both saves with only the field's
+// own mark, so the checklist names it.
+describe("prepareSamplesToContinue sample times (OGC-1657)", () => {
+  it.each([[{ collectionTime: "1430" }], [{ receivedTime: "25:99" }]])(
+    "names a sample whose time is not hh:mm (%j)",
+    (fields) => {
+      expect(itemsFor([serum(fields)]).map((item) => item.id)).toEqual([
+        "sampleTimes-0",
+      ]);
+    },
+  );
+
+  it("names nothing for times on the clock", () => {
+    expect(itemsFor([serum({ receivedTime: "14:20" })])).toEqual([]);
   });
 });

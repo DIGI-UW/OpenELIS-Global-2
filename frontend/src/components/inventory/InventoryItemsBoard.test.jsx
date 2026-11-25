@@ -186,7 +186,8 @@ const lot = (overrides) => ({
 });
 
 // Lot expiry ships as epoch milliseconds (java.sql.Timestamp), not an ISO string.
-const expiry = (daysFromNow) => shiftDays(daysFromNow).getTime();
+// Expiry tags count elapsed 24-hour periods, including across daylight-saving changes.
+const expiry = (daysFromNow) => TODAY.getTime() + daysFromNow * 86400000;
 
 const LOTS = [
   lot({
@@ -374,15 +375,16 @@ describe("InventoryItemsBoard", () => {
     ).toHaveTextContent("—");
   });
 
-  it("keeps the server's urgency ordering until a column is sorted", async () => {
+  it("keeps the server's urgency ordering until a column is sorted, and returns to it on a third click", async () => {
     await renderBoard();
-    expect(
-      bodyRows().map((row) => within(row).getAllByRole("cell")[1].textContent),
-    ).toEqual([
+    const urgencyOrder = [
       expect.stringContaining(CARTRIDGE.name),
       expect.stringContaining(SYPHILIS.name),
       expect.stringContaining(MALARIA.name),
-    ]);
+    ];
+    const itemOrder = () =>
+      bodyRows().map((row) => within(row).getAllByRole("cell")[1].textContent);
+    expect(itemOrder()).toEqual(urgencyOrder);
 
     const sortByOnHand = () =>
       fireEvent.click(
@@ -404,6 +406,12 @@ describe("InventoryItemsBoard", () => {
         within(row).getAllByRole("cell")[2].textContent.trim(),
       ),
     ).toEqual(["60 tests", "12 tests", "8 tests"]);
+
+    sortByOnHand();
+    expect(itemOrder()).toEqual(urgencyOrder);
+    expect(
+      screen.getByRole("columnheader", { name: /On hand/i }),
+    ).toHaveAttribute("aria-sort", "none");
   });
 
   it("narrows in place by status", async () => {
@@ -713,6 +721,44 @@ describe("InventoryItemsBoard", () => {
       expect(new Set(ids).size).toBe(ids.length);
     });
 
+    it("keeps the row count for the one live lot, counts a used-up lot below it, and leaves disposed lots out", async () => {
+      const spent = (overrides) =>
+        lot({
+          currentQuantity: 0,
+          availableForUse: false,
+          countsAsAvailableStock: false,
+          inventoryItem: { id: 2, name: SYPHILIS.name },
+          location: { hierarchicalPath: "Room 2" },
+          ...overrides,
+        });
+      await renderBoard(undefined, [
+        ...LOTS,
+        spent({ id: 202, lotNumber: "SYPH-12", status: "CONSUMED" }),
+        spent({ id: 203, lotNumber: "SYPH-31", status: "DISPOSED" }),
+      ]);
+      enterCountMode();
+
+      const row = rowNamed(SYPHILIS.name);
+      expect(within(row).getByRole("spinbutton")).toBeInTheDocument();
+      expect(row).toHaveTextContent("of 8 tests");
+
+      fireEvent.click(screen.getByRole("button", { name: SYPHILIS.name }));
+      expect(screen.getByRole("button", { name: "SYPH-77" })).toBeVisible();
+      expect(screen.getByRole("button", { name: "SYPH-12" })).toBeVisible();
+      expect(
+        screen.queryByRole("button", { name: "SYPH-31" }),
+      ).not.toBeInTheDocument();
+
+      fireEvent.change(countField(202), { target: { value: "3" } });
+      fireEvent.click(screen.getByRole("button", { name: "Confirm count" }));
+
+      await waitFor(() =>
+        expect(InventoryCountAPI.record).toHaveBeenCalledWith([
+          { lotId: 202, countedQuantity: 3 },
+        ]),
+      );
+    });
+
     it("refuses to count an item with several lots from the row", async () => {
       await renderBoard();
       enterCountMode();
@@ -817,6 +863,17 @@ describe("InventoryItemsBoard", () => {
     });
   });
 
+  it("does not refetch while it simply stays visible", async () => {
+    await renderBoard();
+    expect(InventoryBoardAPI.get).toHaveBeenCalledTimes(1);
+
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "gene" },
+    });
+
+    expect(InventoryBoardAPI.get).toHaveBeenCalledTimes(1);
+  });
+
   it("opens the tag directory from the toolbar", async () => {
     await renderBoard();
 
@@ -910,7 +967,7 @@ describe("InventoryItemsBoard", () => {
         lot({
           id: 104,
           lotNumber: "MTB-3001",
-          effectiveExpirationDate: expiry("2027-02-01T00:00:00Z"),
+          effectiveExpirationDate: Date.parse("2027-02-01T00:00:00Z"),
           currentQuantity: 4,
           qcStatus: "PENDING",
           availableForUse: false,
@@ -920,7 +977,7 @@ describe("InventoryItemsBoard", () => {
         lot({
           id: 105,
           lotNumber: "MTB-3002",
-          effectiveExpirationDate: expiry("2027-03-01T00:00:00Z"),
+          effectiveExpirationDate: Date.parse("2027-03-01T00:00:00Z"),
           currentQuantity: 2,
           inventoryItem: { id: 1, name: CARTRIDGE.name },
         }),
@@ -1140,7 +1197,7 @@ describe("InventoryItemsBoard", () => {
   describe("quick log usage", () => {
     const openQuickLog = async () => {
       await renderBoard();
-      fireEvent.click(screen.getByRole("button", { name: "Log usage" }));
+      fireEvent.click(screen.getByRole("button", { name: "Record Usage" }));
     };
 
     it("posts a consumption for the chosen item, not an adjustment", async () => {
@@ -1152,7 +1209,11 @@ describe("InventoryItemsBoard", () => {
       fireEvent.change(screen.getByRole("spinbutton"), {
         target: { value: "7" },
       });
-      fireEvent.click(screen.getByRole("button", { name: "Record Usage" }));
+      fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+          name: "Record Usage",
+        }),
+      );
 
       await waitFor(() =>
         expect(InventoryManagementAPI.consume).toHaveBeenCalledWith({
@@ -1169,8 +1230,16 @@ describe("InventoryItemsBoard", () => {
       InventoryManagementAPI.consume.mockResolvedValue({});
       await renderBoard();
       await openRowMenu(CARTRIDGE.name);
-      fireEvent.click(screen.getByText("Record Usage"));
-      fireEvent.click(screen.getByRole("button", { name: "Record Usage" }));
+      fireEvent.click(
+        screen
+          .getAllByText("Record Usage")
+          .find((el) => el.closest('[role="menu"]')),
+      );
+      fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+          name: "Record Usage",
+        }),
+      );
 
       await waitFor(() =>
         expect(InventoryManagementAPI.consume).toHaveBeenCalledWith({
@@ -1187,7 +1256,11 @@ describe("InventoryItemsBoard", () => {
       fireEvent.change(screen.getByRole("spinbutton"), {
         target: { value: "0.5" },
       });
-      fireEvent.click(screen.getByRole("button", { name: "Record Usage" }));
+      fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+          name: "Record Usage",
+        }),
+      );
 
       expect(
         screen.getByText("Enter a whole number of units, at least 1."),
@@ -1202,7 +1275,11 @@ describe("InventoryItemsBoard", () => {
       await openQuickLog();
       fireEvent.click(screen.getByRole("combobox", { name: /Item Name/i }));
       fireEvent.click(screen.getByText(`${MALARIA.name} (${MALARIA.code})`));
-      fireEvent.click(screen.getByRole("button", { name: "Record Usage" }));
+      fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+          name: "Record Usage",
+        }),
+      );
 
       await waitFor(() =>
         expect(
@@ -1288,6 +1365,33 @@ describe("InventoryItemsBoard", () => {
       expect(within(dialog).getByText(/GeneXpert/)).toBeInTheDocument();
       expect(within(dialog).getByText(/Malaria RDT/)).toBeInTheDocument();
       expect(within(dialog).queryByText(/Syphilis/)).not.toBeInTheDocument();
+    });
+
+    it("banners only critical items that carry the selected tag", async () => {
+      await renderBoard();
+      expect(
+        document.querySelector(".board-critical-banner"),
+      ).toHaveTextContent(CARTRIDGE.name);
+
+      openTagFilter();
+      await selectTag("Malaria");
+
+      await waitFor(() => expect(bodyRows()).toHaveLength(1));
+      expect(document.querySelector(".board-critical-banner")).toBeNull();
+    });
+
+    it("suggests only items that carry the selected tag", async () => {
+      await renderBoard();
+      openTagFilter();
+      await selectTag("Malaria");
+      await waitFor(() => expect(bodyRows()).toHaveLength(1));
+
+      fireEvent.click(
+        screen.getByRole("button", { name: "Reorder suggestions (1)" }),
+      );
+      const dialog = screen.getByRole("dialog");
+      expect(within(dialog).getByText(/Malaria RDT/)).toBeInTheDocument();
+      expect(within(dialog).queryByText(/GeneXpert/)).not.toBeInTheDocument();
     });
 
     it("marks the whole selection in one call and refreshes the board", async () => {
@@ -1381,5 +1485,56 @@ describe("InventoryItemsBoard", () => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
       expect(InventoryBoardAPI.get).toHaveBeenCalledTimes(1);
     });
+  });
+  const PAGED_ITEMS = Array.from({ length: 30 }, (_, index) => ({
+    ...CARTRIDGE,
+    itemId: 1000 + index,
+    name: `Paged item ${String(index + 1).padStart(2, "0")}`,
+    code: `PG-${index + 1}`,
+    tags: [],
+  }));
+
+  it("pages the board at 25 rows and returns to page 1 when the search changes", async () => {
+    await renderBoard(PAGED_ITEMS, []);
+
+    expect(bodyRows()).toHaveLength(25);
+    expect(screen.getByText(/1-25 of 30 items/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Next Page" }));
+    expect(bodyRows()).toHaveLength(5);
+    expect(rowNamed("Paged item 30")).toBeTruthy();
+
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "Paged item 0" },
+    });
+    expect(bodyRows()).toHaveLength(9);
+    expect(screen.queryByRole("button", { name: "Next Page" })).toBeNull();
+  });
+
+  it("shows every row in count mode, however many pages the board has", async () => {
+    await renderBoard(PAGED_ITEMS, []);
+    expect(bodyRows()).toHaveLength(25);
+
+    fireEvent.click(screen.getByRole("button", { name: "Count mode" }));
+    expect(bodyRows()).toHaveLength(30);
+    expect(screen.queryByRole("button", { name: "Next Page" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Leave count mode" }));
+    expect(bodyRows()).toHaveLength(25);
+  });
+
+  it("keeps the pager when a larger page size fits every row", async () => {
+    await renderBoard(PAGED_ITEMS, []);
+
+    fireEvent.change(screen.getByLabelText("Items per page"), {
+      target: { value: "50" },
+    });
+    expect(bodyRows()).toHaveLength(30);
+
+    fireEvent.change(screen.getByLabelText("Items per page"), {
+      target: { value: "25" },
+    });
+    expect(bodyRows()).toHaveLength(25);
+    expect(screen.getByText(/1-25 of 30 items/)).toBeInTheDocument();
   });
 });

@@ -1,3 +1,4 @@
+import NotebookAttachmentPreview from "./NotebookAttachmentPreview";
 import React, { useContext, useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import PageBreadCrumb from "../common/PageBreadCrumb";
@@ -33,7 +34,7 @@ import {
   TableRow,
   Pagination,
 } from "@carbon/react";
-import { Launch, Checkmark } from "@carbon/react/icons";
+import { Checkmark } from "@carbon/react/icons";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
@@ -52,9 +53,11 @@ import { Add } from "@carbon/icons-react";
 import AddSample from "../addOrder/AddSample";
 import { sampleObject } from "../addOrder/Index";
 import {
+  missingTestsTitle,
   samplesMissingTests,
   samplesWithTests,
 } from "../addOrder/orderSamples";
+import useSampleTypeNames from "../addOrder/useSampleTypeNames";
 import { ModifyOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import UnifiedResults from "../resultPage/unified/UnifiedResults";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
@@ -69,6 +72,7 @@ import GenericSampleOrderEdit from "../genericSample/GenericSampleOrderEdit";
 import GenericSampleOrderImport from "../genericSample/GenericSampleOrderImport";
 
 const NoteBookInstanceEntryForm = () => {
+  const sampleTypeNames = useSampleTypeNames();
   let breadcrumbs = [
     { label: "home.label", link: "/" },
     { label: "notebook.label.dashboard", link: "/NoteBookDashboard" },
@@ -193,10 +197,8 @@ const NoteBookInstanceEntryForm = () => {
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "save.success" }),
       });
-      // Reload data to get comments with proper id and author from backend
-      getFromOpenElisServer("/rest/notebook/view/" + body.id, loadInitialData);
-      // Reload audit trail after save
-      loadAuditTrail(body.id);
+      // The saved notebook, its comments and audit trail load on the new page.
+      window.location.href = "/NoteBookInstanceEditForm/" + body.id;
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -204,7 +206,6 @@ const NoteBookInstanceEntryForm = () => {
         message: intl.formatMessage({ id: "error.save.msg" }),
       });
     }
-    window.location.href = "/NoteBookInstanceEditForm/" + body.id;
   };
 
   // Check if a sample is already added (by sampleItemId)
@@ -1672,9 +1673,11 @@ const NoteBookInstanceEntryForm = () => {
                                       kind="error"
                                       lowContrast
                                       hideCloseButton
-                                      title={intl.formatMessage(
-                                        { id: "order.sample.missingTests" },
-                                        { sampleNumber },
+                                      title={missingTestsTitle(
+                                        intl,
+                                        samples,
+                                        sampleNumber,
+                                        sampleTypeNames,
                                       )}
                                     />
                                   ),
@@ -2027,23 +2030,7 @@ const NoteBookInstanceEntryForm = () => {
                         <Column key={index} lg={8} md={8} sm={12}>
                           <Tile style={{ marginBottom: "1rem" }}>
                             <p>{file.fileName}</p>
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                var win = window.open();
-                                win.document.write(
-                                  '<iframe src="' +
-                                    "data:" +
-                                    file.fileType +
-                                    ";base64," +
-                                    file.fileData +
-                                    '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
-                                );
-                              }}
-                            >
-                              <Launch />{" "}
-                              <FormattedMessage id="pathology.label.view" />
-                            </Button>
+                            <NotebookAttachmentPreview size="sm" file={file} />
                           </Tile>
                         </Column>
                       ))}
@@ -2087,23 +2074,7 @@ const NoteBookInstanceEntryForm = () => {
                       <Column key={index} lg={8} md={8} sm={12}>
                         <Tile style={{ marginBottom: "1rem" }}>
                           <p>{file.fileName}</p>
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              var win = window.open();
-                              win.document.write(
-                                '<iframe src="' +
-                                  "data:" +
-                                  file.fileType +
-                                  ";base64," +
-                                  file.fileData +
-                                  '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
-                              );
-                            }}
-                          >
-                            <Launch />{" "}
-                            <FormattedMessage id="pathology.label.view" />
-                          </Button>
+                          <NotebookAttachmentPreview size="sm" file={file} />
                           <Button
                             kind="danger--tertiary"
                             size="sm"

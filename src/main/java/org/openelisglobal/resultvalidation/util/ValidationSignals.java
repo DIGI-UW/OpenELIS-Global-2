@@ -158,7 +158,8 @@ public final class ValidationSignals {
         if (TypeOfTestResultServiceImpl.ResultType.DICTIONARY.matches(result.getResultType())) {
             return result.getValue().equals(limit.getDictionaryNormalId());
         }
-        String numeric = result.getValue(true);
+        String numeric = "N".equals(result.getResultType()) ? StringUtil.getActualNumericValue(result.getValue())
+                : result.getValue(true);
         if (!GenericValidator.isDouble(numeric)) {
             return false;
         }

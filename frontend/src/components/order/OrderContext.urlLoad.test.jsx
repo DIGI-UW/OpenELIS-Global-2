@@ -1,6 +1,6 @@
 import React from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useHistory } from "react-router-dom";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ConfigurationContext } from "../layout/Layout";
 import { OrderProvider, useOrderContext } from "./OrderContext";
@@ -319,5 +319,132 @@ describe("OrderContext — a step's own defaults are not edits (OGC-1443)", () =
     fireEvent.click(screen.getByText("type"));
     expect(screen.getByTestId("time")).toHaveTextContent("09:45");
     expect(screen.getByTestId("dirty")).toHaveTextContent("true");
+  });
+});
+
+// OGC-1657 walk: loadOrder cleared isLoading before it set the order, and React
+// 17 renders after each update outside an event handler, so a step page saw a
+// render with no order and no load running and sent the user back to Enter
+// Order. Once a load starts, no render may show it finished without the order.
+describe("OrderContext — the load ends with the order in place", () => {
+  it("never shows the load over before the order it loaded", async () => {
+    const answers = [];
+    getFromOpenElisServerMock.mockReset();
+    getFromOpenElisServerMock.mockImplementation((url, callback) => {
+      if (url.startsWith("/rest/order/search?labNumber=")) {
+        answers.push(() => callback(orderResponse("DEV-6")));
+      } else if (typeof callback === "function") {
+        callback({});
+      }
+    });
+    const seen = [];
+    const Recorder = () => {
+      const { isLoading, labNumber } = useOrderContext();
+      seen.push({ isLoading, labNumber });
+      return <span data-testid="lab">{labNumber || ""}</span>;
+    };
+    render(
+      <ConfigurationContext.Provider
+        value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "fr-FR" } }}
+      >
+        <MemoryRouter
+          initialEntries={["/order/environmental/label?order=DEV-6"]}
+        >
+          <OrderProvider workflowType="environmental">
+            <Recorder />
+          </OrderProvider>
+        </MemoryRouter>
+      </ConfigurationContext.Provider>,
+    );
+    const started = seen.findIndex((state) => state.isLoading);
+    expect(started).toBeGreaterThanOrEqual(0);
+
+    answers[0]();
+
+    expect(await screen.findByText("DEV-6")).toBeTruthy();
+    expect(
+      seen
+        .slice(started)
+        .filter((state) => !state.isLoading && !state.labNumber),
+    ).toEqual([]);
+  });
+});
+
+// OGC-1657 review: the address was read once per provider mount, so Back to
+// Label & Store at ?order= after the dashboard had been reloaded left an
+// empty step that never loaded.
+describe("OrderContext — an address that changes after the provider mounted", () => {
+  let history;
+  const Navigator = () => {
+    history = useHistory();
+    return null;
+  };
+  const Editor = () => {
+    const { setOrderData } = useOrderContext();
+    return (
+      <button
+        type="button"
+        onClick={() =>
+          setOrderData((prev) => ({
+            ...prev,
+            sampleOrderItems: { ...prev?.sampleOrderItems, priority: "STAT" },
+          }))
+        }
+      >
+        edit
+      </button>
+    );
+  };
+  const mountAt = (url) =>
+    render(
+      <ConfigurationContext.Provider
+        value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "fr-FR" } }}
+      >
+        <MemoryRouter initialEntries={[url]}>
+          <OrderProvider workflowType="environmental">
+            <Navigator />
+            <Editor />
+            <Probe />
+          </OrderProvider>
+        </MemoryRouter>
+      </ConfigurationContext.Provider>,
+    );
+
+  beforeEach(() => {
+    getFromOpenElisServerMock.mockReset();
+    getFromOpenElisServerMock.mockImplementation(answerServer);
+  });
+
+  it("loads the order a later address names", async () => {
+    mountAt("/order/environmental");
+    expect(searchCalls()).toEqual([]);
+
+    act(() => history.push("/order/environmental/label?order=DEV-8"));
+
+    expect(await screen.findByText("DEV-8")).toBeTruthy();
+  });
+
+  it("moves to the order Back returns to", async () => {
+    mountAt("/order/environmental/label?order=DEV-9");
+    expect(await screen.findByText("DEV-9")).toBeTruthy();
+
+    act(() => history.push("/order/environmental/label?order=DEV-10"));
+
+    expect(await screen.findByText("DEV-10")).toBeTruthy();
+    expect(searchCalls()).toEqual([
+      "/rest/order/search?labNumber=DEV-9",
+      "/rest/order/search?labNumber=DEV-10",
+    ]);
+  });
+
+  it("keeps an order with unsaved edits", async () => {
+    mountAt("/order/environmental/label?order=DEV-11");
+    expect(await screen.findByText("DEV-11")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "edit" }));
+
+    act(() => history.push("/order/environmental/label?order=DEV-12"));
+
+    expect(screen.getByTestId("lab").textContent).toBe("DEV-11");
+    expect(searchCalls()).toEqual(["/rest/order/search?labNumber=DEV-11"]);
   });
 });

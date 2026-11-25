@@ -35,6 +35,7 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerMappingTestPK;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
+import org.openelisglobal.terminology.Coding;
 
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerMappingConfirmationServiceTest {
@@ -42,6 +43,7 @@ public class AnalyzerMappingConfirmationServiceTest {
     private static final String BINDING_FINGERPRINT = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
     private static final String RECOGNITION_FINGERPRINT = "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
     private static final String PROFILE_FINGERPRINT = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    private static final String EDITED_FINGERPRINT = "sha256:" + "e".repeat(64);
 
     @Mock
     private AnalyzerMappingConfirmationDAO confirmationDAO;
@@ -67,8 +69,9 @@ public class AnalyzerMappingConfirmationServiceTest {
         actor.setLastName("Lovelace");
         actor.setLoginName("ada");
         when(systemUserService.getUserById("17")).thenReturn(actor);
-        when(mappingCatalogService.searchActiveTests(null)).thenReturn(
-                List.of(new AnalyzerMappingCatalogService.TestOption("1", "Mock Test", "MOCK", List.of("1234-5"))));
+        when(mappingCatalogService.searchActiveTests(null))
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.TestOption("1", "Mock Test", "MOCK",
+                        List.of(Coding.loinc("1234-5")))));
         when(mappingCatalogService.getActiveResultOptions("1")).thenReturn(
                 List.of(new AnalyzerMappingCatalogService.ResultOption("11", "DETECTED", "Detected", List.of())));
         when(confirmationDAO.insert(any(AnalyzerMappingConfirmation.class))).thenAnswer(invocation -> {
@@ -85,7 +88,7 @@ public class AnalyzerMappingConfirmationServiceTest {
         AnalyzerMappingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
         AnalyzerMappingConfirmationRequest request = exactRequest();
 
-        AnalyzerMappingConfirmationView confirmed = service.confirm(candidate, RECOGNITION_FINGERPRINT, request, "17");
+        AnalyzerMappingConfirmationView confirmed = service.confirm(candidate, request, "17");
 
         ArgumentCaptor<AnalyzerMappingConfirmation> saved = ArgumentCaptor.forClass(AnalyzerMappingConfirmation.class);
         verify(confirmationDAO).insert(saved.capture());
@@ -94,7 +97,7 @@ public class AnalyzerMappingConfirmationServiceTest {
         assertEquals(2, saved.getValue().getProfileRevision());
         assertEquals(PROFILE_FINGERPRINT, saved.getValue().getProfileRevisionFingerprint());
         assertEquals(BINDING_FINGERPRINT, saved.getValue().getMappingFingerprint());
-        assertEquals(RECOGNITION_FINGERPRINT, saved.getValue().getRecognitionFingerprint());
+        assertNull(saved.getValue().getRecognitionFingerprint());
         assertEquals("91", saved.getValue().getAuditEventId());
         assertEquals("17", saved.getValue().getConfirmedBy());
         assertEquals(AnalyzerMappingConfirmationView.State.CURRENT, confirmed.state());
@@ -110,8 +113,7 @@ public class AnalyzerMappingConfirmationServiceTest {
         when(auditTrailService.saveNewHistory(any(AnalyzerMappingConfirmation.class), eq("17"),
                 eq("analyzer_mapping_confirmation"))).thenReturn(null);
 
-        AnalyzerMappingConfirmationView confirmed = service.confirm(completeCandidate("61", BINDING_FINGERPRINT),
-                RECOGNITION_FINGERPRINT, exactRequest(), "17");
+        AnalyzerMappingConfirmationView confirmed = service.confirm(completeCandidate("61", BINDING_FINGERPRINT), exactRequest(), "17");
 
         ArgumentCaptor<AnalyzerMappingConfirmation> saved = ArgumentCaptor
                 .forClass(AnalyzerMappingConfirmation.class);
@@ -122,13 +124,13 @@ public class AnalyzerMappingConfirmationServiceTest {
     }
 
     @Test
-    public void rejectsAStaleMappingOrRecognitionFingerprintBeforeWriting() {
+    public void rejectsAStaleMappingFingerprintBeforeWriting() {
         AnalyzerMappingConfirmationRequest stale = new AnalyzerMappingConfirmationRequest(
-                "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", RECOGNITION_FINGERPRINT,
+                "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
                 exactRequest().confirmedRows(), exactRequest().excludedRows());
 
-        assertThrows(IllegalArgumentException.class, () -> service.confirm(completeCandidate("61", BINDING_FINGERPRINT),
-                RECOGNITION_FINGERPRINT, stale, "17"));
+        assertThrows(IllegalArgumentException.class,
+                () -> service.confirm(completeCandidate("61", BINDING_FINGERPRINT), stale, "17"));
         verify(confirmationDAO, never()).insert(any());
     }
 
@@ -139,8 +141,7 @@ public class AnalyzerMappingConfirmationServiceTest {
         AnalyzerMappingSnapshot candidate = new AnalyzerMappingSnapshot(base.mapping(),
                 List.of(base.tests().get(0), base.tests().get(1), pending), base.results());
 
-        AnalyzerMappingConfirmationView view = service.confirm(candidate, RECOGNITION_FINGERPRINT, exactRequest(),
-                "17");
+        AnalyzerMappingConfirmationView view = service.confirm(candidate, exactRequest(), "17");
 
         assertEquals(AnalyzerMappingConfirmationView.State.CURRENT, view.state());
         assertEquals(exactRequest().confirmedRows(), view.confirmedRows());
@@ -150,7 +151,7 @@ public class AnalyzerMappingConfirmationServiceTest {
                 .forClass(AnalyzerMappingConfirmation.class);
         verify(confirmationDAO).insert(written.capture());
         when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(written.getValue()));
-        assertTrue(service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).mappingsCurrent());
+        assertTrue(service.assessCurrent(candidate).mappingsCurrent());
     }
 
     @Test
@@ -158,13 +159,11 @@ public class AnalyzerMappingConfirmationServiceTest {
         AnalyzerMappingSnapshot unresolved = completeCandidate("61", BINDING_FINGERPRINT);
         unresolved.tests().get(0).setMappingState(AnalyzerMappingState.UNRESOLVED);
         AnalyzerMappingConfirmationRequest omitted = new AnalyzerMappingConfirmationRequest(BINDING_FINGERPRINT,
-                RECOGNITION_FINGERPRINT, List.of(new AnalyzerMappingSourceRow("RAW-A", "Detected")),
-                exactRequest().excludedRows());
+                List.of(new AnalyzerMappingSourceRow("RAW-A", "Detected")), exactRequest().excludedRows());
 
+        assertThrows(IllegalArgumentException.class, () -> service.confirm(unresolved, exactRequest(), "17"));
         assertThrows(IllegalArgumentException.class,
-                () -> service.confirm(unresolved, RECOGNITION_FINGERPRINT, exactRequest(), "17"));
-        assertThrows(IllegalArgumentException.class, () -> service.confirm(completeCandidate("61", BINDING_FINGERPRINT),
-                RECOGNITION_FINGERPRINT, omitted, "17"));
+                () -> service.confirm(completeCandidate("61", BINDING_FINGERPRINT), omitted, "17"));
         verify(confirmationDAO, never()).insert(any());
     }
 
@@ -175,8 +174,7 @@ public class AnalyzerMappingConfirmationServiceTest {
         AnalyzerMappingConfirmation stored = storedConfirmation(former, exactRequest());
         when(confirmationDAO.findLatestByAnalyzerId("42")).thenReturn(Optional.of(stored));
 
-        AnalyzerMappingConfirmationView status = service.getStatus(completeCandidate("61", BINDING_FINGERPRINT),
-                RECOGNITION_FINGERPRINT);
+        AnalyzerMappingConfirmationView status = service.getStatus(completeCandidate("61", BINDING_FINGERPRINT));
 
         assertEquals(AnalyzerMappingConfirmationView.State.STALE, status.state());
         assertEquals(former.mapping().getMappingFingerprint(), status.mappingFingerprint());
@@ -184,23 +182,19 @@ public class AnalyzerMappingConfirmationServiceTest {
     }
 
     @Test
-    public void reportsAConfirmationAsStaleWhenControlRecognitionChanges() throws Exception {
+    public void parserProvenanceDoesNotInvalidateApprovedLocalMappings() throws Exception {
         AnalyzerMappingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
         AnalyzerMappingConfirmation stored = storedConfirmation(candidate, exactRequest());
+        stored.setProfileRevision(1);
+        stored.setProfileRevisionFingerprint("sha256:" + "e".repeat(64));
+        stored.setRecognitionFingerprint("sha256:" + "d".repeat(64));
+        stored.setTypeReadingJson("{\"numberFormat\":\",\"}");
         when(confirmationDAO.findLatestByAnalyzerId("42")).thenReturn(Optional.of(stored));
         when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(stored));
 
-        AnalyzerMappingConfirmationView status = service.getStatus(candidate,
-                "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd");
-        AnalyzerMappingVerificationAssessment assessment = service.assessCurrent(candidate,
-                "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd");
-
-        assertEquals(AnalyzerMappingConfirmationView.State.STALE, status.state());
-        assertEquals(RECOGNITION_FINGERPRINT, status.recognitionFingerprint());
-        assertTrue(assessment.mappingsCurrent());
-        assertFalse(assessment.recognitionCurrent());
-        assertEquals(Optional.empty(), assessment.currentConfirmation());
-        assertFalse(service.hasMatchingConfirmation(candidate, "sha256:" + "d".repeat(64)));
+        assertEquals(AnalyzerMappingConfirmationView.State.CURRENT, service.getStatus(candidate).state());
+        assertTrue(service.assessCurrent(candidate).currentConfirmation().isPresent());
+        assertTrue(service.hasMatchingConfirmation(candidate));
     }
 
     @Test
@@ -211,7 +205,7 @@ public class AnalyzerMappingConfirmationServiceTest {
         stored.setAuditEventId(null);
         when(confirmationDAO.findLatestByAnalyzerId("42")).thenReturn(Optional.of(stored));
 
-        AnalyzerMappingConfirmationView status = service.getStatus(candidate, RECOGNITION_FINGERPRINT);
+        AnalyzerMappingConfirmationView status = service.getStatus(candidate);
 
         assertEquals(AnalyzerMappingConfirmationView.State.STALE, status.state());
     }
@@ -224,8 +218,8 @@ public class AnalyzerMappingConfirmationServiceTest {
         stored.setProfileRevision(3);
         when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(stored));
 
-        assertEquals(Optional.empty(), service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).currentConfirmation());
-        assertFalse(service.hasMatchingConfirmation(candidate, RECOGNITION_FINGERPRINT));
+        assertEquals(Optional.empty(), service.assessCurrent(candidate).currentConfirmation());
+        assertFalse(service.hasMatchingConfirmation(candidate));
     }
 
     @Test
@@ -236,8 +230,8 @@ public class AnalyzerMappingConfirmationServiceTest {
         stored.setConfirmedAt(null);
         when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(stored));
 
-        assertEquals(Optional.empty(), service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).currentConfirmation());
-        assertFalse(service.hasMatchingConfirmation(candidate, RECOGNITION_FINGERPRINT));
+        assertEquals(Optional.empty(), service.assessCurrent(candidate).currentConfirmation());
+        assertFalse(service.hasMatchingConfirmation(candidate));
     }
 
     @Test
@@ -248,14 +242,22 @@ public class AnalyzerMappingConfirmationServiceTest {
         when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(stored));
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of());
 
-        AnalyzerMappingConfirmationView status = service.getStatus(candidate, RECOGNITION_FINGERPRINT);
-        AnalyzerMappingVerificationAssessment assessment = service.assessCurrent(candidate, RECOGNITION_FINGERPRINT);
+        AnalyzerMappingConfirmationView status = service.getStatus(candidate);
+        AnalyzerMappingVerificationAssessment assessment = service.assessCurrent(candidate);
 
         assertEquals(AnalyzerMappingConfirmationView.State.STALE, status.state());
         assertFalse(assessment.mappingsCurrent());
-        assertTrue(assessment.recognitionCurrent());
         assertEquals(Optional.empty(), assessment.currentConfirmation());
-        assertTrue(service.hasMatchingConfirmation(candidate, RECOGNITION_FINGERPRINT));
+        assertTrue(service.hasMatchingConfirmation(candidate));
+    }
+
+    @Test
+    public void aRemovedLocalComponentMakesTheAuditedMappingStale() throws Exception {
+        AnalyzerMappingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
+        candidate.tests().get(0).setComponentId("removed-component");
+        when(confirmationDAO.findByMappingId("61"))
+                .thenReturn(Optional.of(storedConfirmation(candidate, exactRequest())));
+        assertFalse(service.assessCurrent(candidate).mappingsCurrent());
     }
 
     @Test
@@ -265,7 +267,7 @@ public class AnalyzerMappingConfirmationServiceTest {
                 .thenReturn(Optional.of(storedConfirmation(candidate, exactRequest())));
         when(mappingCatalogService.getActiveResultOptions("1")).thenReturn(List.of());
 
-        AnalyzerMappingConfirmationView status = service.getStatus(candidate, RECOGNITION_FINGERPRINT);
+        AnalyzerMappingConfirmationView status = service.getStatus(candidate);
 
         assertEquals(AnalyzerMappingConfirmationView.State.STALE, status.state());
     }
@@ -279,10 +281,9 @@ public class AnalyzerMappingConfirmationServiceTest {
         when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(stored));
         when(confirmationDAO.findLatestByAnalyzerId("42")).thenReturn(Optional.of(stored));
 
-        assertEquals(Optional.empty(), service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).currentConfirmation());
-        assertFalse(service.hasMatchingConfirmation(candidate, RECOGNITION_FINGERPRINT));
-        assertEquals(AnalyzerMappingConfirmationView.State.STALE,
-                service.getStatus(candidate, RECOGNITION_FINGERPRINT).state());
+        assertEquals(Optional.empty(), service.assessCurrent(candidate).currentConfirmation());
+        assertFalse(service.hasMatchingConfirmation(candidate));
+        assertEquals(AnalyzerMappingConfirmationView.State.STALE, service.getStatus(candidate).state());
     }
 
     @Test
@@ -293,9 +294,9 @@ public class AnalyzerMappingConfirmationServiceTest {
         when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(stored));
         when(confirmationDAO.findLatestByAnalyzerId("42")).thenReturn(Optional.of(stored));
 
-        assertEquals(Optional.empty(), service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).currentConfirmation());
-        assertFalse(service.hasMatchingConfirmation(candidate, RECOGNITION_FINGERPRINT));
-        AnalyzerMappingConfirmationView status = service.getStatus(candidate, RECOGNITION_FINGERPRINT);
+        assertEquals(Optional.empty(), service.assessCurrent(candidate).currentConfirmation());
+        assertFalse(service.hasMatchingConfirmation(candidate));
+        AnalyzerMappingConfirmationView status = service.getStatus(candidate);
         assertEquals(AnalyzerMappingConfirmationView.State.STALE, status.state());
         assertEquals(List.of(), status.confirmedRows());
     }
@@ -305,7 +306,7 @@ public class AnalyzerMappingConfirmationServiceTest {
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of());
 
         assertThrows(IllegalArgumentException.class,
-                () -> service.confirm(completeCandidate("61", BINDING_FINGERPRINT), RECOGNITION_FINGERPRINT,
+                () -> service.confirm(completeCandidate("61", BINDING_FINGERPRINT),
                         exactRequest(), "17"));
 
         verify(confirmationDAO, never()).insert(any());
@@ -313,7 +314,7 @@ public class AnalyzerMappingConfirmationServiceTest {
     }
 
     private static AnalyzerMappingConfirmationRequest exactRequest() {
-        return new AnalyzerMappingConfirmationRequest(BINDING_FINGERPRINT, RECOGNITION_FINGERPRINT,
+        return new AnalyzerMappingConfirmationRequest(BINDING_FINGERPRINT,
                 List.of(new AnalyzerMappingSourceRow("RAW-A", null), new AnalyzerMappingSourceRow("RAW-A", "Detected")),
                 List.of(new AnalyzerMappingSourceRow("RAW-B", null), new AnalyzerMappingSourceRow("RAW-B", "Invalid")));
     }

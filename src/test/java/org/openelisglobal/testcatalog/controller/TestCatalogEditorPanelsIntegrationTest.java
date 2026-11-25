@@ -947,11 +947,13 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
             assertEquals("24331-1", jdbc.queryForObject("SELECT loinc FROM clinlims.panel WHERE id = ?", String.class,
                     Long.parseLong(panelId)));
 
-            // validation: unknown source and in-request duplicates are 422s
+            // validation: a source longer than its column and in-request duplicates are
+            // 422s
             mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                     .put("/rest/test-catalog/panels/" + panelId + "/terminology")
                     .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-                    .content("{\"mappings\":[{\"source\":\"BOGUS\",\"code\":\"1\"}]}").session(authedSession()))
+                    .content("{\"mappings\":[{\"source\":\"ABCDEFGHIJKLMNOPQRSTU\",\"code\":\"1\"}]}")
+                    .session(authedSession()))
                     .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
                             .isUnprocessableEntity());
             mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
@@ -1221,5 +1223,29 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
         assertEquals(400,
                 send("PUT", "/rest/test-catalog/panels/" + panelAId + "/terminology", "{}").getResponse().getStatus());
         assertEquals("the member stays", Long.valueOf(1L), membershipRowCount(panelAId));
+    }
+
+    /**
+     * OGC-1463: a member list saved from a page loaded before another editor's
+     * save.
+     */
+    @org.junit.Test
+    public void savePanelTests_fromAnOldPageIsRefusedAsStale() throws Exception {
+        String url = "/rest/test-catalog/panels/" + panelAId + "/tests";
+        String loadedVersion = json(send("GET", "/rest/test-catalog/panels/" + panelAId + "/test-order", ""))
+                .path("version").asText();
+        assertEquals(200, send("PUT", url, testsBody(testId())).getResponse().getStatus());
+
+        org.springframework.test.web.servlet.MvcResult stale = send("PUT", url,
+                "{\"tests\":[],\"version\":\"" + loadedVersion + "\"}");
+
+        assertEquals(409, stale.getResponse().getStatus());
+        assertEquals("stale", json(stale).path("conflict").asText());
+        assertEquals("the other editor's member stands", Long.valueOf(1L), membershipRowCount(panelAId));
+        String current = json(send("GET", "/rest/test-catalog/panels/" + panelAId + "/test-order", "")).path("version")
+                .asText();
+        assertEquals(200, send("PUT", url,
+                "{\"tests\":[{\"testId\":\"" + testId() + "\",\"position\":1}],\"version\":\"" + current + "\"}")
+                .getResponse().getStatus());
     }
 }

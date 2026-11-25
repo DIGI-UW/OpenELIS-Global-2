@@ -18,7 +18,6 @@
 package org.openelisglobal.reports.action.implementation;
 
 import java.sql.SQLException;
-import org.jfree.util.Log;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.reports.action.implementation.reportBeans.HaitiColumnBuilder;
@@ -43,7 +42,7 @@ public class HaitiExportReport extends CSVSampleExportReport implements IReportP
             form.setUseLowerDateRange(Boolean.TRUE);
             form.setUseUpperDateRange(Boolean.TRUE);
         } catch (RuntimeException e) {
-            Log.error("Error in " + this.getClass().getSimpleName() + ".setRequestParemeters: ", e);
+            LogEvent.logError("Error in " + this.getClass().getSimpleName() + ".setRequestParemeters: ", e);
         }
     }
 
@@ -92,7 +91,7 @@ public class HaitiExportReport extends CSVSampleExportReport implements IReportP
             csvColumnBuilder = new HaitiColumnBuilder(dateRange);
             csvColumnBuilder.buildDataSource();
         } catch (SQLException e) {
-            Log.error("Error in " + this.getClass().getSimpleName() + ".createReportItems: ", e);
+            LogEvent.logError("Error in " + this.getClass().getSimpleName() + ".createReportItems: ", e);
             LogEvent.logDebug(e);
             add1LineErrorMessage("report.error.message.general.error");
         }

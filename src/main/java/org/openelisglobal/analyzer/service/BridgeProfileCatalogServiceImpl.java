@@ -73,6 +73,11 @@ public class BridgeProfileCatalogServiceImpl implements BridgeProfileCatalogServ
         return profileRevision;
     }
 
+    @Override
+    public boolean isConfigured() {
+        return !bridgeUrl.isBlank();
+    }
+
     private BridgeHttpClient.BridgeResponse get(String url) {
         if (bridgeUrl.isBlank()) {
             throw new BridgeProfileCatalogException("Bridge URL is not configured");
@@ -84,6 +89,8 @@ public class BridgeProfileCatalogServiceImpl implements BridgeProfileCatalogServ
                         "Bridge profile catalog request failed with HTTP " + response.status);
             }
             return response;
+        } catch (BridgeHttpClient.BridgeNotPairedException e) {
+            throw BridgeProfileCatalogException.notPaired(e);
         } catch (IOException e) {
             throw new BridgeProfileCatalogException("Bridge profile catalog request failed", e);
         }

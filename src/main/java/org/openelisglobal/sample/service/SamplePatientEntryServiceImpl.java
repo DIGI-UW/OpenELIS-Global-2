@@ -33,6 +33,7 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.compliance.service.ComplianceStandardService;
 import org.openelisglobal.compliance.valueholder.ComplianceStandard;
+import org.openelisglobal.containertype.service.ContainerProposalService;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
 import org.openelisglobal.eqa.service.EQAPanelReceiptService;
 import org.openelisglobal.eqa.service.SampleEQAService;
@@ -107,6 +108,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class SamplePatientEntryServiceImpl implements SamplePatientEntryService {
 
     private static final String DEFAULT_ANALYSIS_TYPE = "MANUAL";
+    private static final String TEST_CANCELLED_SUBJECT = "Test cancelled";
     private final String SAMPLE_SUBJECT = "Sample Note";
     // private String currentUserId;
 
@@ -115,6 +117,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
 
     @Autowired
     private OrganizationAddressService organizationAddressService;
+    @Lazy
+    @Autowired
+    private ContainerProposalService containerProposalService;
     @Autowired
     private TestSectionService testSectionService;
     @Autowired
@@ -193,6 +198,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     @Lazy
     @Autowired
     private PanelItemService panelItemService;
+    @Lazy
+    @Autowired
+    private org.openelisglobal.panel.service.PanelService panelService;
 
     @Transactional(readOnly = true)
     @Override
@@ -242,6 +250,10 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     public void persistData(SamplePatientUpdateData updateData, PatientManagementUpdate patientUpdate,
             PatientManagementInfo patientInfo, SamplePatientEntryForm form, HttpServletRequest request) {
 
+        if (form.getLabelPersistRequest() != null) {
+            orderLabelRequestService.validateQuantities(form.getLabelPersistRequest());
+        }
+
         boolean useInitialSampleCondition = FormFields.getInstance().useField(Field.InitialSampleCondition);
         boolean useSampleNature = FormFields.getInstance().useField(Field.SampleNature);
 
@@ -256,9 +268,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         persistProviderData(updateData);
         persistRequestorContactData(updateData);
         persistSampleData(updateData);
-        persistRequestedSampleTypes(updateData.getSample(), form.getRequestedSampleTypes(),
-                updateData.getCurrentUserId());
+        persistRequestedSampleTypes(updateData, form.getRequestedSampleTypes());
         fulfillRequestedSampleTypes(updateData);
+        cancelTakenOffTests(updateData, form.getRequestedSampleTypes());
 
         // Only persist requester data and observations if sample was successfully
         // created
@@ -375,7 +387,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
 
     private void persistComplianceStandards(SamplePatientUpdateData updateData) {
         List<String> ids = updateData.getPendingComplianceStandardIds();
-        if (ids == null || ids.isEmpty()) {
+        if (!updateData.isComplianceStandardsSent() && (ids == null || ids.isEmpty())) {
             return;
         }
         String sampleId = updateData.getSample() != null ? updateData.getSample().getId() : null;
@@ -558,6 +570,10 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 savedItem = sampleItemService.get(sampleTestCollection.existingSampleItemId);
                 if (savedItem != null) {
                     sampleItemId = savedItem.getId();
+                    if (sampleTestCollection.suppliedCollectionFields.contains("containerTypeId")) {
+                        checkContainer(sampleTestCollection.item, savedItem);
+                        savedItem.setContainerTypeId(sampleTestCollection.item.getContainerTypeId());
+                    }
                     // Update existing sample item with new collection data
                     savedItem.setSysUserId(sampleTestCollection.item.getSysUserId());
                     // Copy collection details from the incoming item
@@ -596,8 +612,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 }
             }
 
-            // If no existing sample item, create new one
+            boolean createdInThisSave = savedItem == null;
             if (savedItem == null) {
+                checkContainer(sampleTestCollection.item, null);
                 if (GenericValidator.isBlankOrNull(sampleTestCollection.item.getFhirUuidAsString())) {
                     sampleTestCollection.item.setFhirUuid(UUID.randomUUID());
                 }
@@ -624,19 +641,12 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 createQcProfile(sampleTestCollection, updateData, savedItem);
             }
 
-            if (savedItem.isRejected()) {
-                String rejectReasonId = savedItem.getRejectReasonId();
-                String currentUserId = savedItem.getSysUserId();
-                for (IdValuePair rejectReason : DisplayListService.getInstance().getList(ListType.REJECTION_REASONS)) {
-                    if (rejectReasonId.equals(rejectReason.getId())) {
-                        Note note = noteService.createSavableNote(savedItem, NoteType.REJECTION_REASON,
-                                rejectReason.getValue(), SAMPLE_SUBJECT, currentUserId);
-                        noteService.insert(note);
-                        break;
-                    }
-                }
+            if (rejectionNoteDue(savedItem, createdInThisSave)) {
+                recordRejectionReasonNote(savedItem,
+                        DisplayListService.getInstance().getList(ListType.REJECTION_REASONS));
             }
             sampleTestCollection.analysises = new ArrayList<>();
+            List<Analysis> onItem = createdInThisSave ? List.of() : analysisService.getAnalysesBySampleItem(savedItem);
             for (Test test : sampleTestCollection.tests) {
                 test = testService.get(test.getId());
 
@@ -645,9 +655,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                     continue;
                 }
 
-                // Check if analysis already exists for this sample item + test (for updates)
-                Analysis existingAnalysis = analysisService.getAnalysisBySampleItemAndTest(savedItem.getId(),
-                        test.getId());
+                Analysis existingAnalysis = activeAnalysisOf(onItem, test.getId());
                 if (existingAnalysis != null) {
                     sampleTestCollection.analysises.add(existingAnalysis);
                     continue;
@@ -731,9 +739,35 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         }
     }
 
+    /**
+     * The rejection reason of a specimen rejected on this order screen, kept as its
+     * note. Only a specimen created in this save gets one: every later step
+     * re-saves the order's specimens, and one rejected earlier already has its note
+     * (OGC-1488).
+     */
+    static boolean rejectionNoteDue(SampleItem item, boolean createdInThisSave) {
+        return createdInThisSave && item.isRejected();
+    }
+
+    void recordRejectionReasonNote(SampleItem item, List<IdValuePair> rejectionReasons) {
+        for (IdValuePair rejectReason : rejectionReasons) {
+            if (rejectReason.getId().equals(item.getRejectReasonId())) {
+                Note note = noteService.createSavableNote(item, NoteType.REJECTION_REASON, rejectReason.getValue(),
+                        SAMPLE_SUBJECT, item.getSysUserId());
+                noteService.insert(note);
+                return;
+            }
+        }
+    }
+
     // Package-private so the EQA order/receipt wiring can be exercised directly
-    // (same reason as persistOrderSpecimenBarcodeCounts below).
+    // (same reason as persistOrderSpecimenBarcodeCounts below). Every later step
+    // re-saves the order with its EQA flag, so an order that already has its EQA
+    // record keeps it (OGC-1483).
     void persistSampleEQAData(SamplePatientUpdateData updateData) {
+        if (sampleEQAService.findBySampleId(Long.parseLong(updateData.getSample().getId())).isPresent()) {
+            return;
+        }
         SampleEQA sampleEQA = new SampleEQA();
         sampleEQA.setSampleId(Long.parseLong(updateData.getSample().getId()));
         sampleEQA.setIsEqaSample(true);
@@ -811,11 +845,14 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
      * are cancelled rather than left behind. A save that does not carry the list at
      * all, such as one made from a later stage, leaves the specimens untouched.
      */
-    private void persistRequestedSampleTypes(Sample sample, List<SampleTypeRequestDTO> requestedSampleTypes,
-            String currentUserId) {
+    private void persistRequestedSampleTypes(SamplePatientUpdateData updateData,
+            List<SampleTypeRequestDTO> requestedSampleTypes) {
+        Sample sample = updateData.getSample();
+        String currentUserId = updateData.getCurrentUserId();
         if (sample == null || sample.getId() == null || requestedSampleTypes == null) {
             return;
         }
+        Set<String> inManifest = OrderTestEdits.manifestSampleItemIds(updateData.getSampleItemsTests());
 
         // A specimen already collected still satisfies its entry in the list, so it
         // is paired and left alone rather than requested a second time.
@@ -858,6 +895,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 request = takePendingRequestFor(reusable, typeOfSample);
             }
             if (request != null && request.getStatus() == SampleTypeRequest.Status.COLLECTED) {
+                if (request.getSampleItem() != null && !inManifest.contains(request.getSampleItem().getId())) {
+                    applyRequestedTestsToCollected(request, requested, currentUserId);
+                }
                 sortOrder++;
                 continue;
             }
@@ -899,6 +939,114 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 sampleTypeRequestService.cancelRequest(removed.getId());
             }
         }
+    }
+
+    /**
+     * The Enter Order step lists a collected specimen's tests on its requested row
+     * only. A test added there is ordered on the specimen; one taken off is
+     * cancelled afterwards by {@link #cancelTakenOffTests}.
+     */
+    private void applyRequestedTestsToCollected(SampleTypeRequest request, SampleTypeRequestDTO requested,
+            String currentUserId) {
+        Set<String> testIds = OrderTestEdits.requestedTests(requested.getRequestedTests(),
+                requested.getRequestedPanels(), this::panelTestIds);
+        if (testIds.isEmpty()) {
+            return;
+        }
+        request.setRequestedTests(requested.getRequestedTests());
+        request.setRequestedPanels(requested.getRequestedPanels());
+        request.setSysUserId(currentUserId);
+        sampleTypeRequestService.update(request);
+
+        SampleItem item = sampleItemService.get(request.getSampleItem().getId());
+        List<Analysis> onItem = analysisService.getAnalysesBySampleItem(item);
+        String analysisRevision = ConfigurationProperties.getInstance().getPropertyValue("analysis.default.revision");
+        for (String testId : testIds) {
+            if (activeAnalysisOf(onItem, testId) != null) {
+                continue;
+            }
+            Test test = testService.get(testId);
+            if (test == null || (test.isOpensMicrobiologyCase() && "CASE".equals(test.getMicrobiologyCaseRole()))
+                    || !effectiveTestStatusService.isEffectivelyActive(test)) {
+                continue;
+            }
+            Analysis analysis = new Analysis();
+            analysis.setTest(test);
+            analysis.setPanel(panelOrderedWith(testId, requested.getRequestedPanels()));
+            analysis.setIsReportable(test.getIsReportable());
+            analysis.setAnalysisType(DEFAULT_ANALYSIS_TYPE);
+            analysis.setSampleItem(item);
+            analysis.setSysUserId(currentUserId);
+            analysis.setRevision(analysisRevision);
+            analysis.setStartedDate(DateUtil.getNowAsTimestamp());
+            analysis.setStatusId(SpringContext.getBean(IStatusService.class)
+                    .getStatusID(item.isRejected() ? AnalysisStatus.SampleRejected : AnalysisStatus.NotStarted));
+            analysis.setTestSection(test.getTestSection());
+            analysis.setFhirUuid(UUID.randomUUID());
+            analysisService.insert(analysis);
+        }
+    }
+
+    /**
+     * Cancels the analyses an order save takes off a specimen the order already
+     * has. Results are kept; the reason given for removing a resulted test is noted
+     * on each cancelled analysis.
+     */
+    void cancelTakenOffTests(SamplePatientUpdateData updateData, List<SampleTypeRequestDTO> requestedSampleTypes) {
+        Sample sample = updateData.getSample();
+        if (sample == null || sample.getId() == null) {
+            return;
+        }
+        Map<String, Set<String>> requestedBySampleItem = OrderTestEdits
+                .requestedTestsBySampleItem(updateData.getSampleItemsTests(), requestedSampleTypes, this::panelTestIds);
+        if (requestedBySampleItem.isEmpty()) {
+            return;
+        }
+        String cancelledStatusId = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled);
+        String reason = updateData.getCancelReason();
+        for (Analysis analysis : analysisService.getAnalysesBySampleId(sample.getId())) {
+            if (!OrderTestEdits.isTakenOff(analysis, requestedBySampleItem, cancelledStatusId)) {
+                continue;
+            }
+            analysis.setStatusId(cancelledStatusId);
+            analysis.setSysUserId(updateData.getCurrentUserId());
+            analysisService.update(analysis);
+            if (!GenericValidator.isBlankOrNull(reason)) {
+                Note note = noteService.createSavableNote(analysis, NoteType.INTERNAL, reason.trim(),
+                        TEST_CANCELLED_SUBJECT, updateData.getCurrentUserId());
+                noteService.insert(note);
+            }
+        }
+    }
+
+    private static Analysis activeAnalysisOf(List<Analysis> analyses, String testId) {
+        IStatusService statusService = SpringContext.getBean(IStatusService.class);
+        for (Analysis analysis : analyses) {
+            if (analysis.getTest() != null && testId.equals(analysis.getTest().getId())
+                    && !statusService.matches(analysis.getStatusId(), AnalysisStatus.Canceled)) {
+                return analysis;
+            }
+        }
+        return null;
+    }
+
+    private List<String> panelTestIds(String panelId) {
+        List<String> testIds = new ArrayList<>();
+        for (PanelItem item : panelItemService.getPanelItemsForPanel(panelId)) {
+            if (item.getTest() != null) {
+                testIds.add(item.getTest().getId());
+            }
+        }
+        return testIds;
+    }
+
+    private Panel panelOrderedWith(String testId, String panelIds) {
+        for (String panelId : splitIds(panelIds)) {
+            if (panelTestIds(panelId).contains(testId)) {
+                return panelService.getPanelById(panelId);
+            }
+        }
+        return null;
     }
 
     /**
@@ -1063,6 +1211,23 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             request.setSysUserId(updateData.getCurrentUserId());
             sampleTypeRequestService.update(request);
             linkedItemIds.add(item.getId());
+        }
+    }
+
+    /**
+     * A clinical sample's container must yield its sample type, and be active
+     * unless the sample already had it (OGC-1611 FR-G3, G8).
+     */
+    private void checkContainer(SampleItem incoming, SampleItem saved) {
+        Long containerTypeId = incoming.getContainerTypeId();
+        if (containerTypeId == null) {
+            return;
+        }
+        String sampleTypeId = incoming.getTypeOfSample() != null ? incoming.getTypeOfSample().getId()
+                : saved == null ? null : saved.getTypeOfSampleId();
+        Long kept = saved == null ? null : saved.getContainerTypeId();
+        if (sampleTypeId == null || !containerProposalService.canHold(containerTypeId, sampleTypeId, kept)) {
+            throw new IllegalArgumentException("order.sample.container.refused");
         }
     }
 

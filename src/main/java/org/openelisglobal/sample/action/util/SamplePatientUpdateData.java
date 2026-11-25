@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.address.valueholder.OrganizationAddress;
@@ -39,6 +40,7 @@ import org.openelisglobal.common.services.TableIdService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.IsoDateNormalizer;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
@@ -124,6 +126,7 @@ public class SamplePatientUpdateData {
     private QuestionnaireResponse programQuestionnaireResponse;
 
     private List<String> pendingComplianceStandardIds = Collections.emptyList();
+    private boolean complianceStandardsSent;
 
     private boolean eqaSample;
     private String eqaProgramId;
@@ -317,6 +320,15 @@ public class SamplePatientUpdateData {
         this.pendingComplianceStandardIds = ids != null ? ids : Collections.emptyList();
     }
 
+    /**
+     * OGC-768: whether this save sent the order's compliance standards at all. A
+     * sent empty list removes the order's standards; a save that leaves them out
+     * keeps them.
+     */
+    public boolean isComplianceStandardsSent() {
+        return complianceStandardsSent;
+    }
+
     public List<OrganizationAddress> getOrgAddressExtra() {
         return orgAddressExtra;
     }
@@ -404,6 +416,12 @@ public class SamplePatientUpdateData {
         // assure that all samples have tests (skip for order-entry-only mode)
         if (requireSampleItems && !allSamplesHaveTests()) {
             errors.rejectValue("sampleOrderItems", "errors.samples.with.no.tests", "errors.samples.with.no.tests");
+        }
+
+        if (sampleItemsTests != null && sampleItemsTests.stream()
+                .anyMatch(collection -> collection.item != null && StringUtils.isBlank(collection.existingSampleItemId)
+                        && collection.item.isRejected() && StringUtils.isBlank(collection.item.getRejectReasonId()))) {
+            errors.rejectValue("sampleOrderItems", "sample.reject.reasonRequired", "sample.reject.reasonRequired");
         }
 
         if (sampleOrder != null && ("environmental".equals(workflowType) || "vector".equals(workflowType))) {
@@ -971,9 +989,9 @@ public class SamplePatientUpdateData {
                     ValueType.DICTIONARY);
         }
 
-        createObservation(sampleOrder.getRequestDate(),
+        createObservation(IsoDateNormalizer.toIso(sampleOrder.getRequestDate()),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.REQUEST_DATE), ValueType.LITERAL);
-        createClearableObservation(sampleOrder.getNextVisitDate(),
+        createClearableObservation(IsoDateNormalizer.toIso(sampleOrder.getNextVisitDate()),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.NEXT_VISIT_DATE),
                 ValueType.LITERAL);
         createObservation(sampleOrder.getTestLocationCode(),
@@ -1075,8 +1093,11 @@ public class SamplePatientUpdateData {
                 ValueType.LITERAL);
         // siteType, siteSubtype, environmentalZone are not snapshotted — they are
         // resolved at read time from vector_sampling_site via ENV_SAMPLING_SITE_ID.
-        createObservation(getStringValue(envFields, "regulatoryReference"),
+        createClearableObservation(getStringValue(envFields, "regulatoryReference"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_REGULATORY_REFERENCE),
+                ValueType.LITERAL);
+        createClearableObservation(getStringValue(envFields, "orderBranch"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_ORDER_BRANCH),
                 ValueType.LITERAL);
         createClearableObservation(getStringValue(envFields, "collectionMethod"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_COLLECTION_METHOD),
@@ -1096,6 +1117,7 @@ public class SamplePatientUpdateData {
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_FIELD_NOTES),
                 ValueType.LITERAL);
         String complianceStandardsRaw = getStringValue(envFields, "complianceStandards");
+        complianceStandardsSent = envFields.containsKey("complianceStandards");
         createObservation(complianceStandardsRaw,
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_COMPLIANCE_STANDARDS),
                 ValueType.LITERAL);

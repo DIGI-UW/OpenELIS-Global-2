@@ -31,6 +31,7 @@ public class FhirRestfulServer extends RestfulServer {
 
         setResourceProviders(providers);
 
+        registerInterceptor(new FhirReadAuthorizationInterceptor());
         registerInterceptor(new StrictSearchParameterInterceptor());
     }
 }

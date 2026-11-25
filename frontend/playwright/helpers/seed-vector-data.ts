@@ -1,4 +1,5 @@
 import { Page, expect } from "@playwright/test";
+import { chooseCarbonOption } from "./carbon-select";
 
 /** API context path — the JSESSIONID is scoped to the /api/OpenELIS-Global webapp. */
 const API_PREFIX = "/api/OpenELIS-Global";
@@ -125,7 +126,7 @@ export async function seedVectorPositivity(
     .locator(".search-results tr", { hasText: siteCode })
     .getByRole("button", { name: "Select" })
     .click();
-  await page.locator("#sampleType-0").selectOption({ label: "Mosquito" });
+  await chooseCarbonOption(page.locator("#sampleType-0"), "Mosquito");
 
   // Order both pathogen tests. Filter the test list, then click the (Carbon
   // visually-hidden) checkbox via its label.
@@ -138,7 +139,7 @@ export async function seedVectorPositivity(
   await addRequestingOrganization(page, `E2E Positivity Org ${stamp}`);
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(
-    page.getByText("Sample Order Entry has been saved successfully").first(),
+    page.getByText(/Order \S+ has been saved\./).first(),
   ).toBeVisible({ timeout: 20_000 });
 
   // 2. Identify the pool's specimens as Anopheles (CONFIRMED) — MIR is by species.

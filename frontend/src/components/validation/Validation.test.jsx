@@ -23,16 +23,20 @@ vi.mock("../utils/Utils", async (importOriginal) => {
 });
 
 vi.mock("../esignature/ESignatureButton", () => ({
-  default: ({ children, onSign, disabled }) => (
+  default: ({ children, onSign, disabled, meaning }) => (
     <button
       type="button"
+      data-meaning={meaning}
       disabled={disabled}
-      onClick={() => onSign && onSign()}
+      onClick={() => onSign && onSign(globalThis.__nextSignature)}
     >
       {children}
     </button>
   ),
-  SignatureMeaning: { VALIDATED_AND_RELEASED: "VALIDATED_AND_RELEASED" },
+  SignatureMeaning: {
+    VALIDATED_AND_RELEASED: "VALIDATED_AND_RELEASED",
+    REVIEWED: "REVIEWED",
+  },
 }));
 
 vi.mock("../esignature/api", () => ({
@@ -71,11 +75,12 @@ const renderValidation = (
   rows,
   configurationProperties = { AccessionFormat: "" },
   params = "",
+  addNotification = vi.fn(),
 ) =>
   render(
     <ConfigurationContext.Provider value={{ configurationProperties }}>
       <NotificationContext.Provider
-        value={{ setNotificationVisible: vi.fn(), addNotification: vi.fn() }}
+        value={{ setNotificationVisible: vi.fn(), addNotification }}
       >
         <IntlProvider locale="en" messages={messages}>
           <Validation
@@ -399,6 +404,49 @@ describe("Validation — Check before release (OGC-1027)", () => {
     expect(payload.doRange).toBe(false);
     expect(payload.accessionNumber).toBe("ACC0");
     expect(payload.rows.map((r) => r.analysisId)).toEqual(["100", "102"]);
+    expect(payload.signatureId).toBeNull();
+  });
+
+  it("a bulk release carries the e-signature the validator gave (OGC-1364 v2)", () => {
+    postToOpenElisServerJsonResponse.mockReset();
+    globalThis.__nextSignature = { signatureId: 77 };
+    try {
+      renderValidation([row(0)], BULK_ON, "?type=order&accessionNumber=ACC0");
+      fireEvent.click(screen.getByTestId("release-all-clear"));
+      fireEvent.click(
+        screen.getByTestId("release-all-clear-sign").querySelector("button"),
+      );
+      const [, body] = postToOpenElisServerJsonResponse.mock.calls[0];
+      expect(JSON.parse(body).signatureId).toBe(77);
+    } finally {
+      globalThis.__nextSignature = undefined;
+    }
+  });
+
+  it("a bulk release that only validates part of a test says the test stays open (OGC-1608)", () => {
+    postToOpenElisServerJsonResponse.mockReset();
+    postToOpenElisServerJsonResponse.mockImplementation((url, body, callback) =>
+      callback({ released: [], accepted: ["100"], skipped: [] }),
+    );
+    const addNotification = vi.fn();
+    renderValidation(
+      [row(0)],
+      BULK_ON,
+      "?type=order&accessionNumber=ACC0",
+      addNotification,
+    );
+    fireEvent.click(screen.getByTestId("release-all-clear"));
+    fireEvent.click(
+      screen.getByTestId("release-all-clear-sign").querySelector("button"),
+    );
+
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "success",
+        message:
+          "1 result(s) validated on tests that stay open until their other components are resulted and validated.",
+      }),
+    );
   });
 
   it("a needs-review row offers 'Review →' which opens its panel (OGC-1029)", () => {
@@ -454,6 +502,56 @@ describe("Validation — Check before release (OGC-1027)", () => {
     expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
   });
 
+  it("an auto-validated row shows when it was released, who saved it and the rule that released it (OGC-1017)", () => {
+    getFromOpenElisServer.mockReset();
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.startsWith("/rest/AccessionValidation/auto-validated")) {
+        callback([
+          {
+            analysisId: "901",
+            accessionNumber: "ACC0",
+            testName: "Recorded Test(Serum)",
+            result: "7",
+            normalRange: "5 - 9",
+            resultDate: "01/09/2026",
+            autoReleasedAt: "02/09/2026 10:15",
+            autoReleasedBy: "Ada Tech",
+            autoReleaseRule: "Hematology policy: No review",
+            autoValidated: true,
+          },
+          {
+            analysisId: "902",
+            accessionNumber: "ACC0",
+            testName: "Older Test(Serum)",
+            result: "8",
+            normalRange: "5 - 9",
+            resultDate: "01/08/2026",
+            autoValidated: true,
+          },
+        ]);
+      }
+    });
+    renderValidation([row(0)], BULK_ON, "?type=order&accessionNumber=ACC0");
+    const toggle = screen.getByTestId("auto-validated-toggle");
+    fireEvent.click(toggle.querySelector('[role="switch"], button, input'));
+
+    const recorded = screen.getByTestId("auto-validated-row-901");
+    expect(recorded).toHaveTextContent("02/09/2026 10:15");
+    expect(recorded).not.toHaveTextContent("01/09/2026");
+    expect(recorded).toHaveTextContent("Ada Tech");
+    expect(screen.getByTestId("auto-validated-rule-901")).toHaveTextContent(
+      "Hematology policy: No review",
+    );
+    expect(screen.getByTestId("auto-validated-row-902")).toHaveTextContent(
+      "01/08/2026",
+    );
+    expect(screen.getByTestId("auto-validated-rule-902")).toHaveTextContent(
+      "Not recorded",
+    );
+    expect(screen.getByText("Released under")).toBeInTheDocument();
+    expect(screen.getByText("Saved by")).toBeInTheDocument();
+  });
+
   it("'Include auto-validated' stays reachable when nothing on the accession awaits validation (OGC-1361)", () => {
     render(
       <ConfigurationContext.Provider
@@ -506,5 +604,348 @@ describe("Validation — Check before release (OGC-1027)", () => {
     expect(screen.getByTestId("validation-lane-summary")).toHaveTextContent(
       "Needs review: 1",
     );
+  });
+});
+
+describe("Validation — sequential sign-off (OGC-1364 v2)", () => {
+  it("tags each row with its review level and offers Review to whoever can sign its next level", () => {
+    renderValidation(
+      [
+        row(0, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 1 }),
+        row(1, {
+          sequentialSignOff: true,
+          reviewLevels: 2,
+          reviewLevel: 2,
+          reviewRoleName: "Pathologist",
+          reviewBlockedReason: "roleRequired",
+        }),
+        row(2, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 2 }),
+        row(3),
+      ],
+      BULK_ON,
+    );
+
+    expect(screen.getByTestId("review-level-0")).toHaveTextContent(
+      "Level 1 of 2",
+    );
+    expect(screen.queryByTestId("review-level-3")).toBeNull();
+    expect(screen.getByTestId("review-row-0")).toBeInTheDocument();
+    expect(screen.getByTestId("review-row-2")).toBeInTheDocument();
+    expect(screen.queryByTestId("review-row-3")).toBeNull();
+    expect(screen.getByTestId("release-all-clear")).toHaveTextContent(
+      "Release all clear (2)",
+    );
+
+    expect(screen.queryByTestId("review-level-1")).toBeNull();
+    const toggle = screen.getByRole("switch", {
+      name: "Show results waiting for others (1)",
+    });
+    fireEvent.click(toggle);
+    expect(screen.getByTestId("review-level-1")).toHaveTextContent(
+      "Level 2 of 2",
+    );
+    expect(screen.queryByTestId("review-row-1")).toBeNull();
+  });
+
+  // QA on OGC-1364: the validator who could sign level 2 of 2 had no Review
+  // link, and the one who had signed level 1 still had one.
+  it("offers Review on a held row only to someone who can sign it", () => {
+    renderValidation(
+      [
+        held(0, { normal: false }),
+        held(1, {
+          critical: true,
+          sequentialSignOff: true,
+          reviewLevels: 1,
+          reviewLevel: 1,
+          reviewBlockedReason: "validationRightsRequired",
+        }),
+      ],
+      BULK_ON,
+    );
+
+    fireEvent.click(
+      screen.getByRole("switch", {
+        name: "Show results waiting for others (1)",
+      }),
+    );
+    expect(screen.getByTestId("check-before-release-1")).toBeInTheDocument();
+    expect(screen.getByTestId("review-row-0")).toBeInTheDocument();
+    expect(screen.queryByTestId("review-row-1")).toBeNull();
+  });
+
+  it("offers no Review on a result its own author may not validate", () => {
+    renderValidation(
+      [
+        held(0, { normal: false }),
+        held(1, {
+          normal: false,
+          sequentialSignOff: true,
+          reviewLevels: 2,
+          reviewLevel: 1,
+          selfValidationBlocked: true,
+        }),
+        held(2, { critical: true, selfValidationBlocked: true }),
+      ],
+      BULK_ON,
+    );
+
+    fireEvent.click(
+      screen.getByRole("switch", {
+        name: "Show results waiting for others (1)",
+      }),
+    );
+    expect(screen.getByTestId("review-level-1")).toBeInTheDocument();
+    expect(screen.getByTestId("check-before-release-2")).toBeInTheDocument();
+    expect(screen.getByTestId("review-row-0")).toBeInTheDocument();
+    expect(screen.queryByTestId("review-row-1")).toBeNull();
+    expect(screen.queryByTestId("review-row-2")).toBeNull();
+  });
+
+  it("hides nothing and offers no switch while sequential sign-off is off", () => {
+    renderValidation(
+      [
+        row(0, {
+          reviewLevels: 1,
+          reviewLevel: 1,
+          selfValidationBlocked: true,
+        }),
+      ],
+      BULK_ON,
+    );
+    expect(screen.queryByTestId("show-waiting-toggle")).toBeNull();
+    expect(screen.getByText("1 item on this page")).toBeInTheDocument();
+  });
+
+  it("offers no waiting-for-others switch when nothing waits for others", () => {
+    renderValidation(
+      [
+        row(0, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 1 }),
+        row(1),
+      ],
+      BULK_ON,
+    );
+    expect(screen.queryByTestId("show-waiting-toggle")).toBeNull();
+  });
+
+  it("signs level 1 of every clear row at an earlier level under one Reviewed signature", () => {
+    postToOpenElisServerJsonResponse.mockReset();
+    globalThis.__nextSignature = { signatureId: 91 };
+    try {
+      renderValidation(
+        [
+          row(0, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 1 }),
+          row(1, { sequentialSignOff: true, reviewLevels: 3, reviewLevel: 1 }),
+          row(2, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 2 }),
+          row(3, {
+            reviewLevels: 2,
+            reviewLevel: 1,
+            clear: false,
+            normal: false,
+          }),
+        ],
+        BULK_ON,
+        "?type=order&accessionNumber=ACC0",
+      );
+      const open = screen.getByTestId("sign-all-clear");
+      expect(open).toHaveTextContent("Sign level 1 for all clear (2)");
+      expect(screen.getByTestId("release-all-clear")).toHaveTextContent(
+        "Release all clear (1)",
+      );
+      fireEvent.click(open);
+      expect(screen.getByTestId("release-all-clear-row-0")).toBeInTheDocument();
+      expect(screen.getByTestId("release-all-clear-row-1")).toBeInTheDocument();
+      expect(screen.queryByTestId("release-all-clear-row-2")).toBeNull();
+      const sign = screen
+        .getByTestId("release-all-clear-sign")
+        .querySelector("button");
+      expect(sign).toHaveAttribute("data-meaning", "REVIEWED");
+      fireEvent.click(sign);
+      const [url, body] = postToOpenElisServerJsonResponse.mock.calls[0];
+      expect(url).toBe("/rest/AccessionValidation/sign-clear");
+      const payload = JSON.parse(body);
+      expect(payload.rows.map((r) => r.analysisId)).toEqual(["100", "101"]);
+      expect(payload.signatureId).toBe(91);
+    } finally {
+      globalThis.__nextSignature = undefined;
+    }
+  });
+
+  it("names no single level when the clear rows are at different earlier levels", () => {
+    renderValidation(
+      [
+        row(0, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 1 }),
+        row(1, { sequentialSignOff: true, reviewLevels: 3, reviewLevel: 2 }),
+      ],
+      BULK_ON,
+    );
+    expect(screen.getByTestId("sign-all-clear")).toHaveTextContent(
+      "Sign the next level for all clear (2)",
+    );
+  });
+
+  describe("when another validator got there first", () => {
+    const renderWithRefresh = (rows, refreshResults, addNotification) =>
+      render(
+        <ConfigurationContext.Provider
+          value={{ configurationProperties: BULK_ON }}
+        >
+          <NotificationContext.Provider
+            value={{ setNotificationVisible: vi.fn(), addNotification }}
+          >
+            <IntlProvider locale="en" messages={messages}>
+              <Validation
+                params=""
+                refreshResults={refreshResults}
+                results={{ resultList: rows, qcFailureList: [] }}
+              />
+            </IntlProvider>
+          </NotificationContext.Provider>
+        </ConfigurationContext.Provider>,
+      );
+
+    const answerWith = (response) => {
+      postToOpenElisServerJsonResponse.mockReset();
+      postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
+        cb(response),
+      );
+    };
+
+    it("titles the signing dialog for signing, and reloads the queue when every row went stale", () => {
+      answerWith({
+        signed: [],
+        skipped: [{ analysisId: "100", reason: "stale" }],
+      });
+      const refreshResults = vi.fn();
+      const addNotification = vi.fn();
+      renderWithRefresh(
+        [row(0, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 1 })],
+        refreshResults,
+        addNotification,
+      );
+
+      fireEvent.click(screen.getByTestId("sign-all-clear"));
+      expect(
+        screen.getByText("Sign the next level for all clear results"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Release all clear results")).toBeNull();
+      fireEvent.click(
+        screen.getByTestId("release-all-clear-sign").querySelector("button"),
+      );
+
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "The queue changed while you were reviewing. Reloading…",
+        }),
+      );
+      expect(refreshResults).toHaveBeenCalled();
+    });
+
+    it("says the bulk signing failed in signing words", () => {
+      answerWith({ error: "persistFailed" });
+      const addNotification = vi.fn();
+      renderWithRefresh(
+        [row(0, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 1 })],
+        vi.fn(),
+        addNotification,
+      );
+
+      fireEvent.click(screen.getByTestId("sign-all-clear"));
+      fireEvent.click(
+        screen.getByTestId("release-all-clear-sign").querySelector("button"),
+      );
+
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "The bulk signing could not be completed.",
+        }),
+      );
+    });
+
+    it("reloads the queue when every row of a bulk release went stale", () => {
+      answerWith({
+        released: [],
+        skipped: [{ analysisId: "100", reason: "stale" }],
+      });
+      const refreshResults = vi.fn();
+      renderWithRefresh([row(0)], refreshResults, vi.fn());
+
+      fireEvent.click(screen.getByTestId("release-all-clear"));
+      fireEvent.click(
+        screen.getByTestId("release-all-clear-sign").querySelector("button"),
+      );
+
+      expect(refreshResults).toHaveBeenCalled();
+    });
+
+    it("closes the dialog and reloads the queue when none of the rows was still clear", () => {
+      answerWith({
+        released: [],
+        skipped: [{ analysisId: "100", reason: "notClear" }],
+      });
+      const refreshResults = vi.fn();
+      const addNotification = vi.fn();
+      renderWithRefresh([row(0)], refreshResults, addNotification);
+
+      fireEvent.click(screen.getByTestId("release-all-clear"));
+      fireEvent.click(
+        screen.getByTestId("release-all-clear-sign").querySelector("button"),
+      );
+
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message:
+            "None of the selected results is still clear; nothing was released.",
+        }),
+      );
+      expect(refreshResults).toHaveBeenCalled();
+      expect(screen.queryByTestId("release-all-clear-sign")).toBeNull();
+    });
+
+    it("closes the signing dialog and reloads the queue when nothing could be signed", () => {
+      answerWith({
+        signed: [],
+        skipped: [{ analysisId: "100", reason: "notClear" }],
+      });
+      const refreshResults = vi.fn();
+      renderWithRefresh(
+        [row(0, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 1 })],
+        refreshResults,
+        vi.fn(),
+      );
+
+      fireEvent.click(screen.getByTestId("sign-all-clear"));
+      fireEvent.click(
+        screen.getByTestId("release-all-clear-sign").querySelector("button"),
+      );
+
+      expect(refreshResults).toHaveBeenCalled();
+      expect(screen.queryByTestId("release-all-clear-sign")).toBeNull();
+    });
+
+    it("keeps the dialog open when the release was refused before anything was decided", () => {
+      answerWith({ error: "qcAcknowledgmentRequired" });
+      const refreshResults = vi.fn();
+      renderWithRefresh([row(0)], refreshResults, vi.fn());
+
+      fireEvent.click(screen.getByTestId("release-all-clear"));
+      fireEvent.click(
+        screen.getByTestId("release-all-clear-sign").querySelector("button"),
+      );
+
+      expect(refreshResults).not.toHaveBeenCalled();
+      expect(screen.getByTestId("release-all-clear-sign")).toBeInTheDocument();
+    });
+  });
+
+  it("the release modal still signs Validated and Released", () => {
+    renderValidation(
+      [row(0, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 2 })],
+      BULK_ON,
+    );
+    fireEvent.click(screen.getByTestId("release-all-clear"));
+    expect(
+      screen.getByTestId("release-all-clear-sign").querySelector("button"),
+    ).toHaveAttribute("data-meaning", "VALIDATED_AND_RELEASED");
   });
 });

@@ -2,6 +2,7 @@ package org.openelisglobal.testcatalog.controller;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -17,6 +18,7 @@ import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestContr
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.ResultComponentDto;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.SampleResults;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpSession;
@@ -398,7 +400,63 @@ public class TestCatalogSampleResultsLifecycleIntegrationTest extends BaseWebCon
                 Integer.class, copied));
     }
 
+    /**
+     * OGC-1608: copying a test whose primary has another code retires the blank
+     * pre-seeded PRIMARY instead of keeping it as a required primary nobody
+     * configured; the copied primary and the required flags come across.
+     */
+    @org.junit.Test
+    public void aCopyFromASourceWithAnotherPrimaryCodeRetiresTheBlankPrimary() {
+        ResultComponentDto value = comp(primaryId(), "VALUE", "Value", true, 0);
+        value.isRequired = true;
+        ResultComponentDto interpretation = comp(null, "INTERP", "Interpretation", false, 1);
+        interpretation.isRequired = true;
+        assertEquals(200, save(value, interpretation));
+        jdbc.update(
+                "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
+                        + " VALUES (?, 'LifecycleIT copy', 'LifecycleIT copy desc', 'N', ?, NOW())",
+                COPY_TARGET_ID, UUID.randomUUID().toString());
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, display_order,"
+                + " allow_multiple_readings, is_primary, show_on_report, is_required, is_active, lastupdated,"
+                + " last_updated) VALUES (?, ?, 'PRIMARY', 'Result', 0, false, true, true, true, 'Y', NOW(),"
+                + " NOW())", UUID.randomUUID().toString(), COPY_TARGET_ID);
+
+        componentService.copyComponentsFromTest(testId(), String.valueOf(COPY_TARGET_ID), "1");
+
+        var active = componentService.getActiveComponentsByTestId(String.valueOf(COPY_TARGET_ID));
+        assertEquals(java.util.List.of("VALUE", "INTERP"), active.stream().map(c -> c.getCode()).toList());
+        assertTrue("the copied primary stays the primary", active.get(0).getIsPrimary());
+        assertTrue(active.get(0).getIsRequired());
+        assertTrue(active.get(1).getIsRequired());
+    }
+
     // -- 6, 7, 8: the rulings of 11 Oct 2026 ---------------------------------
+
+    @org.junit.Test
+    public void copyingATestPreservesItsReceivedLogReportingPolicy() {
+        ResultComponentDto primary = comp(primaryId(), "PRIMARY", "Measurement", true, 0);
+        primary.displayLog10 = true;
+        primary.log10SourceComponentCode = "LOG";
+        ResultComponentDto received = comp(null, "LOG", "Received log10", false, 1);
+        assertEquals(200, save(primary, received));
+        jdbc.update(
+                "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
+                        + " VALUES (?, 'LifecycleIT copy', 'LifecycleIT copy desc', 'N', ?, NOW())",
+                COPY_TARGET_ID, UUID.randomUUID().toString());
+
+        componentService.copyComponentsFromTest(testId(), String.valueOf(COPY_TARGET_ID), "1");
+
+        var copied = componentService.getByTestIdAndCode(String.valueOf(COPY_TARGET_ID), "PRIMARY");
+        assertTrue(copied.getDisplayLog10());
+        assertEquals("LOG", copied.getLog10SourceComponentCode());
+        var copiedSource = componentService.getByTestIdAndCode(String.valueOf(COPY_TARGET_ID),
+                copied.getLog10SourceComponentCode());
+        assertNotEquals(byCode("LOG").id, copiedSource.getId());
+        assertEquals(String.valueOf(COPY_TARGET_ID), copiedSource.getTestId());
+        assertEquals("N", copiedSource.getResultType());
+        assertTrue(copiedSource.getShowOnReport());
+        assertEquals("LOG", byCode("PRIMARY").log10SourceComponentCode);
+    }
 
     @org.junit.Test
     public void anActiveTestKeepsAtLeastOneComponent_anInactiveOneMayHaveNone() {
@@ -431,5 +489,40 @@ public class TestCatalogSampleResultsLifecycleIntegrationTest extends BaseWebCon
                 .post("/rest/test-catalog/tests/" + testId() + "/sample-results/copy-from/" + testId())
                 .session((MockHttpSession) authedRequest().getSession())).andReturn().getResponse().getStatus();
         assertTrue("got " + status, status == 404 || status == 405 || status == 410);
+    }
+
+    // -- OGC-1463: two editors ----------------------------------------------
+
+    @org.junit.Test
+    public void anOldCopyNamingARemovedComponentIsRefusedAsStale_evenWithoutAVersion() {
+        String primary = primaryId();
+        assertEquals(200, save(comp(primary, "PRIMARY", "Result", true, 0), comp(null, "SECOND", "Second", false, 1)));
+        SampleResults pageA = load();
+        assertEquals(200, save(comp(primary, "PRIMARY", "Result", true, 0)));
+
+        pageA.version = null;
+        pageA.components.forEach(c -> c.label = "A " + c.label);
+        ResponseEntity<SampleResults> stale = controller.saveSampleResults(testId(), pageA, authedRequest());
+
+        assertEquals(409, stale.getStatusCode().value());
+        assertEquals("stale", stale.getBody().conflict);
+        assertNull("the removal stands", byCode("SECOND"));
+        assertEquals("Result", byCode("PRIMARY").label);
+    }
+
+    @org.junit.Test
+    public void aSaveSentWithAnOlderVersionIsRefused_andTheCurrentOneSaves() {
+        String primary = primaryId();
+        SampleResults pageA = load();
+        assertEquals(200, save(comp(primary, "PRIMARY", "Renamed by B", true, 0)));
+
+        pageA.components.get(0).label = "Renamed by A";
+        assertEquals(409, controller.saveSampleResults(testId(), pageA, authedRequest()).getStatusCode().value());
+        assertEquals("Renamed by B", byCode("PRIMARY").label);
+
+        SampleResults reloaded = load();
+        reloaded.components.get(0).label = "Renamed by A";
+        assertEquals(200, controller.saveSampleResults(testId(), reloaded, authedRequest()).getStatusCode().value());
+        assertEquals("Renamed by A", byCode("PRIMARY").label);
     }
 }

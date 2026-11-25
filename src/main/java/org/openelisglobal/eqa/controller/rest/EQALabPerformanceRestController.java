@@ -28,4 +28,9 @@ public class EQALabPerformanceRestController extends BaseRestController {
     public Map<String, Object> labPerformance() {
         return labPerformanceService.getLabPerformance();
     }
+
+    @GetMapping(value = "/lab-performance/open-nce-count", produces = MediaType.APPLICATION_JSON_VALUE)
+    public Map<String, Integer> openNceCount() {
+        return Map.of("open", labPerformanceService.countOpenEqaNces());
+    }
 }

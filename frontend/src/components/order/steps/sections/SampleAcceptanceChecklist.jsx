@@ -24,6 +24,7 @@ import {
 } from "../../api/sampleAcceptanceApi";
 import InlineNceForm from "../../../nonconform/common/InlineNceForm";
 import ResampleDialog from "./ResampleDialog";
+import useSiteDateFormat from "../../../common/useSiteDateFormat";
 import RejectDialog from "./RejectDialog";
 import "./SampleAcceptanceChecklist.css";
 
@@ -84,6 +85,7 @@ const SampleAcceptanceChecklist = ({
   rejected = false,
 }) => {
   const intl = useIntl();
+  const siteDate = useSiteDateFormat();
   const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
@@ -104,6 +106,8 @@ const SampleAcceptanceChecklist = ({
   // are terminal (no resample / re-collection).
   const poolMode = !!vectorPoolId;
   const isVector = domain === "VECTOR";
+  const isEqa = evaluation?.eqa === true;
+  const rejectsOnly = isVector || isEqa;
 
   const seedAnswers = useCallback((latest) => {
     const seeded = {};
@@ -377,6 +381,8 @@ const SampleAcceptanceChecklist = ({
                   id="sampleAcceptance.qa.subtitle.rejectedVector"
                   defaultMessage="This catch was rejected — read-only."
                 />
+              ) : isEqa ? (
+                <FormattedMessage id="sampleAcceptance.qa.subtitle.rejectedEqa" />
               ) : (
                 <FormattedMessage
                   id="sampleAcceptance.qa.subtitle.rejected"
@@ -460,13 +466,13 @@ const SampleAcceptanceChecklist = ({
               id="sampleAcceptance.qa.context.collected"
               defaultMessage="Collected"
             />{" "}
-            <strong>{collectedAt || "—"}</strong>
+            <strong>{siteDate.formatIsoDateTime(collectedAt) || "—"}</strong>
             {" · "}
             <FormattedMessage
               id="sampleAcceptance.qa.context.received"
               defaultMessage="Received"
             />{" "}
-            <strong>{receivedAt || "—"}</strong>
+            <strong>{siteDate.formatIsoDateTime(receivedAt) || "—"}</strong>
           </div>
         )}
         {transitMinutes !== null && (
@@ -580,9 +586,9 @@ const SampleAcceptanceChecklist = ({
           hideCloseButton
           title=""
           subtitle={intl.formatMessage({
-            id: "sampleAcceptance.qa.failHint",
-            defaultMessage:
-              "This sample has failed checks — report an NCE or resample instead of accepting.",
+            id: rejectsOnly
+              ? "sampleAcceptance.qa.failHint.reject"
+              : "sampleAcceptance.qa.failHint",
           })}
         />
       )}
@@ -609,7 +615,7 @@ const SampleAcceptanceChecklist = ({
               defaultMessage="Report NCE"
             />
           </Button>
-          {canResample && !isVector && (
+          {canResample && !rejectsOnly && (
             <Button
               kind="tertiary"
               renderIcon={Renew}
@@ -621,7 +627,7 @@ const SampleAcceptanceChecklist = ({
               />
             </Button>
           )}
-          {canResample && isVector && (
+          {canResample && rejectsOnly && (
             <Button
               kind="danger--tertiary"
               renderIcon={Close}
@@ -676,6 +682,7 @@ const SampleAcceptanceChecklist = ({
       {showNce && (
         <InlineNceForm
           accessionNumber={labNumber}
+          sampleItemId={sampleItemId}
           initialDescription={buildFailureReason()}
           onClose={() => setShowNce(false)}
           onSubmitSuccess={() => setShowNce(false)}
@@ -698,6 +705,7 @@ const SampleAcceptanceChecklist = ({
           sampleItemId={sampleItemId}
           labNumber={labNumber}
           initialReason={buildFailureReason()}
+          eqa={isEqa}
           onClose={() => setShowReject(false)}
           onSuccess={handleRejectSuccess}
         />

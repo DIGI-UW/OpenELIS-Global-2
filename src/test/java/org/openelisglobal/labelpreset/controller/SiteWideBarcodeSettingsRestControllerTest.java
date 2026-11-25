@@ -1,10 +1,10 @@
 package org.openelisglobal.labelpreset.controller;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,6 +12,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.labelpreset.controller.rest.SiteWideBarcodeSettingsRestController.SiteBarcodePreprintSettings;
 import org.openelisglobal.siteinformation.service.SiteInformationDomainService;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
@@ -20,6 +21,7 @@ import org.openelisglobal.siteinformation.valueholder.SiteInformationDomain;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Integration tests for
@@ -29,6 +31,7 @@ import org.springframework.test.web.servlet.MvcResult;
  * <p>
  * Real service + real DB; no @MockBean of code-under-test.
  */
+@Transactional
 public class SiteWideBarcodeSettingsRestControllerTest extends BaseWebContextSensitiveTest {
 
     private static final String BASE_URL = "/api/siteSettings/barcode";
@@ -43,8 +46,10 @@ public class SiteWideBarcodeSettingsRestControllerTest extends BaseWebContextSen
     @Before
     public void setUp() throws Exception {
         super.setUp();
-        ensureLabelsDomainAndBarcodeRows();
         executeDataSetWithStateManagement("testdata/system-user.xml");
+        executeDataSetWithStateManagement("testdata/site-barcode-localization.xml");
+        ensureLabelsDomainAndBarcodeRows();
+        ConfigurationProperties.loadDBValuesIntoConfiguration();
     }
 
     private void ensureLabelsDomainAndBarcodeRows() {
@@ -57,19 +62,34 @@ public class SiteWideBarcodeSettingsRestControllerTest extends BaseWebContextSen
         }
         ensureSiteInfoRow("prePrintAltAccessionPrefix", "", labelsDomain);
         ensureSiteInfoRow("prePrintUseAltAccession", "false", labelsDomain);
+        // Saving settings reloads all configuration, including these localized values.
+        // Own their rows inside the test transaction instead of relying on suite seeds.
+        localizedSetting(Property.BANNER_TEXT, 993410L, labelsDomain);
+        localizedSetting(Property.BILLING_REFERENCE_NUMBER_LABEL, 993411L, labelsDomain);
+    }
+
+    private void localizedSetting(Property property, long id, SiteInformationDomain domain) {
+        ensureSiteInfoRow(property.getDBName(), Long.toString(id), domain);
+        SiteInformation row = siteInformationService.getSiteInformationByName(property.getDBName());
+        row.setValue(Long.toString(id));
+        row.setValueType("text");
+        row.setTag("localization");
+        row.setSysUserId(TEST_SYS_USER_ID);
+        siteInformationService.save(row);
     }
 
     private void ensureSiteInfoRow(String name, String defaultValue, SiteInformationDomain domain) {
-        if (siteInformationService.getSiteInformationByName(name) != null) {
-            return;
+        SiteInformation row = siteInformationService.getSiteInformationByName(name);
+        boolean isNew = row == null;
+        if (isNew) {
+            row = new SiteInformation();
+            row.setName(name);
+            row.setValueType("text");
+            row.setDomain(domain);
         }
-        SiteInformation row = new SiteInformation();
-        row.setName(name);
         row.setValue(defaultValue);
-        row.setValueType("text");
-        row.setDomain(domain);
         row.setSysUserId(TEST_SYS_USER_ID);
-        siteInformationService.insert(row);
+        siteInformationService.persistData(row, isNew);
     }
 
     @Test
@@ -79,12 +99,8 @@ public class SiteWideBarcodeSettingsRestControllerTest extends BaseWebContextSen
 
     @Test
     public void getSettings_returnsPrePrintFields() throws Exception {
-        MvcResult result = mockMvc.perform(get(BASE_URL).accept(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
-                .andReturn();
-
-        SiteBarcodePreprintSettings settings = JSON.readValue(result.getResponse().getContentAsString(),
-                SiteBarcodePreprintSettings.class);
-        assertNotNull("Response should not be null", settings);
+        mockMvc.perform(get(BASE_URL).accept(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.prePrintUseAltAccession").value(false));
     }
 
     @Test
@@ -94,8 +110,14 @@ public class SiteWideBarcodeSettingsRestControllerTest extends BaseWebContextSen
         body.setPrePrintAltAccessionPrefix("TEST");
 
         mockMvc.perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(body)))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk()).andExpect(jsonPath("$.prePrintUseAltAccession").value(true))
+                .andExpect(jsonPath("$.prePrintAltAccessionPrefix").value("TEST"));
 
+        ConfigurationProperties.loadDBValuesIntoConfiguration();
+
+        mockMvc.perform(get(BASE_URL).accept(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.prePrintUseAltAccession").value(true))
+                .andExpect(jsonPath("$.prePrintAltAccessionPrefix").value("TEST"));
         SiteBarcodePreprintSettings saved = readSettings();
         assertEquals("Alt accession prefix should be saved", "TEST", saved.getPrePrintAltAccessionPrefix());
         assertEquals("UseAltAccession flag should be saved", Boolean.TRUE, saved.getPrePrintUseAltAccession());
@@ -108,14 +130,25 @@ public class SiteWideBarcodeSettingsRestControllerTest extends BaseWebContextSen
         body1.setPrePrintUseAltAccession(false);
         body1.setPrePrintAltAccessionPrefix("FRST");
         mockMvc.perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(body1)))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk()).andExpect(jsonPath("$.prePrintUseAltAccession").value(false))
+                .andExpect(jsonPath("$.prePrintAltAccessionPrefix").value("FRST"));
 
         // Second save (update)
         SiteBarcodePreprintSettings body2 = new SiteBarcodePreprintSettings();
         body2.setPrePrintUseAltAccession(true);
         body2.setPrePrintAltAccessionPrefix("SCND");
         mockMvc.perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(body2)))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk()).andExpect(jsonPath("$.prePrintUseAltAccession").value(true))
+                .andExpect(jsonPath("$.prePrintAltAccessionPrefix").value("SCND"));
+
+        ConfigurationProperties.loadDBValuesIntoConfiguration();
+
+        mockMvc.perform(get(BASE_URL).accept(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.prePrintUseAltAccession").value(true))
+                .andExpect(jsonPath("$.prePrintAltAccessionPrefix").value("SCND"));
+
+        assertEquals("SCND", siteInformationService.getSiteInformationByName("prePrintAltAccessionPrefix").getValue());
+        assertEquals("true", siteInformationService.getSiteInformationByName("prePrintUseAltAccession").getValue());
 
         SiteBarcodePreprintSettings saved = readSettings();
         assertEquals("Should reflect updated prefix", "SCND", saved.getPrePrintAltAccessionPrefix());
@@ -217,6 +250,57 @@ public class SiteWideBarcodeSettingsRestControllerTest extends BaseWebContextSen
         mockMvc.perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(kept)))
                 .andExpect(status().isOk());
         assertEquals("AB", readSettings().getPrePrintAltAccessionPrefix());
+    }
+
+    /**
+     * Regression guard for the initially-absent-row case.
+     *
+     * <p>
+     * If neither DB row exists at test startup, setUp() inserts rows (via
+     * resetSettingsToDefaults()) and teardown deletes them. Without explicit cache
+     * restoration the in-memory cache still holds the values written by the test
+     * after teardown, corrupting the next test's baseline.
+     *
+     * <p>
+     * This test verifies that after a POST the GET reflects the posted values, and
+     * — by relying on setUp()/tearDown() — that the fixture properly cleans up even
+     * when both rows were absent before the suite began.
+     */
+    @Test
+    public void postSettings_whenRowsInitiallyAbsent_savesAndCacheIsRestoredOnTeardown() throws Exception {
+        // Delete both rows so they are absent for this logical scenario
+        SiteInformation prefixSi = siteInformationService.getSiteInformationByName("prePrintAltAccessionPrefix");
+        if (prefixSi != null) {
+            siteInformationService.delete(prefixSi);
+        }
+        SiteInformation useAltSi = siteInformationService.getSiteInformationByName("prePrintUseAltAccession");
+        if (useAltSi != null) {
+            siteInformationService.delete(useAltSi);
+        }
+        // After deletion reload so the cache reflects the absent state
+        ConfigurationProperties.loadDBValuesIntoConfiguration();
+
+        // GET must still succeed (controller must handle missing rows gracefully)
+        mockMvc.perform(get(BASE_URL).accept(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
+
+        // POST creates the rows from scratch
+        SiteBarcodePreprintSettings body = new SiteBarcodePreprintSettings();
+        body.setPrePrintUseAltAccession(true);
+        body.setPrePrintAltAccessionPrefix("AB12");
+        mockMvc.perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(body)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.prePrintUseAltAccession").value(true))
+                .andExpect(jsonPath("$.prePrintAltAccessionPrefix").value("AB12"));
+
+        SiteBarcodePreprintSettings saved = readSettings();
+        assertEquals("prefix persisted after creation from absent state", "AB12",
+                saved.getPrePrintAltAccessionPrefix());
+        assertEquals("useAltAccession persisted after creation from absent state", Boolean.TRUE,
+                saved.getPrePrintUseAltAccession());
+
+        // Verify the cache values reflect what was posted
+        ConfigurationProperties cfg = ConfigurationProperties.getInstance();
+        assertEquals("AB12", cfg.getPropertyValue(Property.ALT_ACCESSION_PREFIX));
+        assertEquals("true", cfg.getPropertyValue(Property.USE_ALT_ACCESSION_PREFIX));
     }
 
     private SiteBarcodePreprintSettings readSettings() throws Exception {

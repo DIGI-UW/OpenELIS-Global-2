@@ -29,8 +29,15 @@ import SamplesCollectionSection from "./sections/SamplesCollectionSection";
 import PrepareLabelsSection from "./sections/PrepareLabelsSection";
 import ConsentAccordionSection from "./sections/ConsentAccordionSection";
 import "../order-workflow.scss";
-import { prepareSamplesToContinue } from "./prepareSamplesChecklist";
+import {
+  prepareSamplesToContinue,
+  consentApplies,
+} from "./prepareSamplesChecklist";
 import { samplesFromPendingRequests } from "./pendingRequestSamples";
+import { sampleTimesValid } from "../dateUtils";
+import { proposeContainers } from "../api/containerProposalApi";
+import { applyProposals, proposalSignature } from "./containerProposals";
+import { orderSavedMessage } from "../orderSavedMessage";
 
 /**
  * OrderCollect - Step 2: Collect Sample
@@ -135,6 +142,79 @@ const OrderCollect = () => {
     };
   }, [workflowType]);
 
+  const [containerMessage, setContainerMessage] = useState("");
+  const [proposalFailed, setProposalFailed] = useState(false);
+  const proposalAnswered = useRef(false);
+  const proposalSamples = useRef(samples);
+  useEffect(() => {
+    proposalSamples.current = samples;
+  });
+  const proposalKey =
+    workflowType === "clinical" ? proposalSignature(samples) : "[]";
+  useEffect(() => {
+    if (proposalKey === "[]") {
+      return undefined;
+    }
+    let active = true;
+    proposeContainers(JSON.parse(proposalKey))
+      .then((views) => {
+        if (
+          !active ||
+          proposalSignature(proposalSamples.current) !== proposalKey
+        ) {
+          return;
+        }
+        const outcome = applyProposals(proposalSamples.current, views);
+        if (outcome.changed) {
+          seedSamples(outcome.samples);
+        }
+        if (
+          proposalAnswered.current &&
+          (outcome.added.length > 0 ||
+            outcome.joined.length > 0 ||
+            outcome.removed.length > 0)
+        ) {
+          setContainerMessage(
+            [
+              ...outcome.added.map((entry) =>
+                intl.formatMessage(
+                  { id: "collect.containers.added" },
+                  {
+                    count: entry.count,
+                    container: entry.name,
+                    tests: entry.testNames.join(", "),
+                  },
+                ),
+              ),
+              ...outcome.joined.map((entry) =>
+                intl.formatMessage(
+                  { id: "collect.containers.joined" },
+                  {
+                    container: entry.name,
+                    tests: entry.testNames.join(", "),
+                  },
+                ),
+              ),
+              ...outcome.removed.map((entry) =>
+                intl.formatMessage(
+                  { id: "collect.containers.removed" },
+                  { count: entry.count, container: entry.name },
+                ),
+              ),
+            ].join(" "),
+          );
+        }
+        proposalAnswered.current = true;
+        setProposalFailed(false);
+      })
+      .catch(() => {
+        if (active) setProposalFailed(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [proposalKey]);
+
   // Load pending sample type requests when orderId is available
   useEffect(() => {
     const loadPendingRequests = async () => {
@@ -168,12 +248,15 @@ const OrderCollect = () => {
   // prepareSamplesToContinue). Informed consent stays advisory by default (FRS
   // FR-5-001/FR-5-002); a site whose regulator requires it turns
   // consentRequiredForCollection on. Environmental and vector samples have no
-  // human subject, so consent never applies to them.
+  // human subject, so consent never applies to them, and neither does an EQA
+  // proficiency sample, which has no person to consent (OGC-1483).
   // Published under the Property enum's name, the way REQUESTER_REQUIRED is.
-  const consentRequired =
-    configurationProperties.CONSENT_REQUIRED_FOR_COLLECTION === "true";
+  const consentRequired = consentApplies(configurationProperties, orderData);
   const consentSatisfied = !consentRequired || consentData.consentGiven;
-  const canSave = samples?.length > 0 && samples.some((s) => s.sampleTypeId);
+  const canSave =
+    samples?.length > 0 &&
+    samples.some((s) => s.sampleTypeId) &&
+    samples.every(sampleTimesValid);
   const toContinue = prepareSamplesToContinue({
     samples,
     labNumber,
@@ -197,7 +280,10 @@ const OrderCollect = () => {
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "save.order.success.msg" }),
+        message: orderSavedMessage(
+          intl,
+          labNumber || orderData?.sampleOrderItems?.labNo,
+        ),
       });
       setNotificationVisible(true);
       return true;
@@ -212,8 +298,9 @@ const OrderCollect = () => {
     }
   };
 
-  // Save and next opens Sample check when the laboratory uses it; otherwise
-  // this save finishes order entry (FR-K15) and the dashboard says so. An
+  // Save and next opens Sample check when the laboratory uses it, with the
+  // same saved message as Save (OGC-1598); otherwise this save finishes order
+  // entry (FR-K15) and the dashboard says so. An
   // order whose every tube is referred out has nothing for the in-house
   // Sample check, so it finishes here too (OGC-1423).
   const fullyReferred = isFullyReferred(samples);
@@ -222,6 +309,15 @@ const OrderCollect = () => {
       await saveOrder(false, false, null, false, progressStep);
       markStepComplete("collect");
       if (sampleCheckEnabled && !fullyReferred) {
+        addNotification({
+          kind: NotificationKinds.success,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: orderSavedMessage(
+            intl,
+            labNumber || orderData?.sampleOrderItems?.labNo,
+          ),
+        });
+        setNotificationVisible(true);
         history.push(
           labNumber
             ? `${workflowPrefix}/qa?order=${encodeURIComponent(labNumber)}`
@@ -365,6 +461,32 @@ const OrderCollect = () => {
             orderId={orderId}
             labNumber={labNumber}
             samples={samples}
+          />
+        )}
+
+        {proposalFailed && (
+          <InlineNotification
+            kind="warning"
+            data-testid="container-proposal-failed"
+            title={intl.formatMessage({
+              id: "collect.containers.failed.title",
+            })}
+            subtitle={intl.formatMessage({
+              id: "collect.containers.failed",
+            })}
+            hideCloseButton
+            lowContrast
+          />
+        )}
+
+        {containerMessage && (
+          <InlineNotification
+            kind="info"
+            data-testid="container-proposal-message"
+            title={intl.formatMessage({ id: "collect.containers.title" })}
+            subtitle={containerMessage}
+            onClose={() => setContainerMessage("")}
+            lowContrast
           />
         )}
 

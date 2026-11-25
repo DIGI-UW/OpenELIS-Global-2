@@ -15,6 +15,7 @@ import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
@@ -34,9 +35,12 @@ final class FakeBridge implements AutoCloseable {
     final List<String> receivedServerFingerprints = Collections.synchronizedList(new ArrayList<>());
     final AtomicInteger pairingAttempts = new AtomicInteger();
     private final HttpsServer server;
+    private final AtomicBoolean closed = new AtomicBoolean();
     private final String code;
     private volatile String pairedClient;
     private volatile String announcedFingerprint;
+    private volatile String stateAnswer;
+    private volatile boolean stallState;
 
     FakeBridge(String code) throws Exception {
         this.code = code;
@@ -64,12 +68,42 @@ final class FakeBridge implements AutoCloseable {
         return pairedClient;
     }
 
+    /** Drops its pairing, as a Bridge whose state volume was replaced does. */
+    void forget() {
+        pairedClient = null;
+    }
+
+    /** Answers a pairing-state request with this body instead of its own state. */
+    void answerStateWith(String body) {
+        stateAnswer = body;
+    }
+
+    /**
+     * Takes a pairing-state request and answers only after the caller has given up,
+     * as a hung Bridge does.
+     */
+    void stallStateAnswers() {
+        stallState = true;
+    }
+
     /** Answers pairing with this fingerprint instead of its own certificate's. */
     void announce(String fingerprint) {
         announcedFingerprint = fingerprint;
     }
 
     private void pairing(HttpExchange exchange) throws IOException {
+        if ("GET".equals(exchange.getRequestMethod())) {
+            if (stallState) {
+                try {
+                    Thread.sleep(7_000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            respond(exchange, 200, stateAnswer != null ? stateAnswer
+                    : "{\"paired\":" + (pairedClient != null) + ",\"open\":" + (pairedClient == null) + "}");
+            return;
+        }
         pairingAttempts.incrementAndGet();
         JsonNode body = JSON.readTree(exchange.getRequestBody());
         if (pairedClient != null) {
@@ -123,7 +157,9 @@ final class FakeBridge implements AutoCloseable {
 
     @Override
     public void close() {
-        server.stop(0);
+        if (closed.compareAndSet(false, true)) {
+            server.stop(0);
+        }
     }
 
     private static final class AnyClient extends X509ExtendedTrustManager {

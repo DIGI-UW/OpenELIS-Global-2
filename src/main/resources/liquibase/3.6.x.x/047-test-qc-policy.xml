@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+ <changeSet id="OGC-1200-test-qc-policy" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <not>
+    <tableExists schemaName="clinlims" tableName="test_qc_policy"/>
+   </not>
+  </preConditions>
+  <comment>OGC-1200 FR-H1: what each run of a test must carry. A control may be required per run, and a missing one either warns or holds the test's rows. A test without a row requires nothing.</comment>
+  <createTable schemaName="clinlims" tableName="test_qc_policy">
+   <column name="test_id" type="numeric(10)">
+    <constraints primaryKey="true" primaryKeyName="test_qc_policy_pk" nullable="false"
+     foreignKeyName="test_qc_policy_test_fk" referencedTableSchemaName="clinlims" referencedTableName="test" referencedColumnNames="id"/>
+   </column>
+   <column name="control_required" type="boolean" defaultValueBoolean="false">
+    <constraints nullable="false"/>
+   </column>
+   <column name="control_when_missing" type="varchar(10)" defaultValue="WARN">
+    <constraints nullable="false"/>
+   </column>
+   <column name="sys_user_id" type="numeric(10)"/>
+   <column name="last_updated" type="timestamp" defaultValueComputed="now()">
+    <constraints nullable="false"/>
+   </column>
+  </createTable>
+  <sql>ALTER TABLE clinlims.test_qc_policy ADD CONSTRAINT test_qc_policy_when_missing_ck CHECK (control_when_missing IN ('WARN', 'HOLD'))</sql>
+ </changeSet>
+</databaseChangeLog>

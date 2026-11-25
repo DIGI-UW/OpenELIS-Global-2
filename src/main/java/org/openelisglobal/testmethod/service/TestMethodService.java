@@ -61,7 +61,17 @@ public interface TestMethodService extends BaseObjectService<TestMethod, String>
 
     String getDefaultMethodId(String testId);
 
+    /**
+     * The active methods linked to a test, A to Z, or null when the test has no
+     * active link.
+     */
     List<IdValuePair> getMethodDisplayListForTest(String testId);
+
+    /**
+     * OGC-1614: what a result's Method list offers for a test: its linked active
+     * methods, A to Z, or every active method, A to Z, when it has none linked.
+     */
+    List<IdValuePair> getMethodChoicesForTest(String testId);
 
     List<TestMethodDto> getLinkedMethodDtos(String testId);
 

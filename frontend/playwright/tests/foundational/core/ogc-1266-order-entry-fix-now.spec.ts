@@ -1,6 +1,7 @@
 import { test, expect, Page } from "../../../helpers/test-base";
 import { NAV_TIMEOUT } from "../../../helpers/timeouts";
 import { csrfToken } from "../../../helpers/api-session";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 
 /**
  * OGC-1266 (Clinical Order Entry v4, slice M1) — the fix-now bundle, driven
@@ -59,7 +60,11 @@ async function panelMemberTest(page: Page) {
         .split(",")
         .find((id: string) => testIds.has(id));
       if (member) {
-        return { sampleTypeId: type.id, testId: member, panelId: panel.id };
+        return {
+          sampleTypeName: type.value as string,
+          testId: member,
+          panelId: panel.id,
+        };
       }
     }
   }
@@ -165,7 +170,7 @@ test.describe("OGC-1266 order entry fix-now bundle", () => {
     page,
   }) => {
     const lastName = await seedPatient(page);
-    const { sampleTypeId, testId } = await panelMemberTest(page);
+    const { sampleTypeName, testId } = await panelMemberTest(page);
     const mapped = await (
       await page.request.get(`${API}/rest/test-sample-types?testIds=${testId}`)
     ).json();
@@ -178,7 +183,10 @@ test.describe("OGC-1266 order entry fix-now bundle", () => {
     const labNumber = await page.locator("#labNumber").inputValue();
     await selectPatient(page, lastName);
     const samples = page.getByTestId("order-sample-test-section");
-    await samples.getByLabel("Sample Type").first().selectOption(sampleTypeId);
+    await chooseCarbonOption(
+      samples.getByRole("combobox", { name: /^Sample Type/ }).first(),
+      sampleTypeName,
+    );
     await samples.locator(`label[for="test-0-${testId}"]`).click();
     await expect(samples.locator(`#test-0-${testId}`)).toBeChecked();
     await page.getByRole("button", { name: "Save and next" }).click();

@@ -18,8 +18,13 @@ public class NotificationLogChannel implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
+    /**
+     * QUEUED waits for the delivery worker; SUCCESS is shown as Sent; FAILED is
+     * final after the retries; SKIPPED was never attempted (no address for the
+     * channel, inactive recipient).
+     */
     public enum ChannelStatus {
-        SUCCESS, FAILED
+        QUEUED, SUCCESS, FAILED, SKIPPED
     }
 
     @Enumerated(EnumType.STRING)
@@ -38,6 +43,18 @@ public class NotificationLogChannel implements Serializable {
 
     @Column(name = "last_attempted_at", nullable = false)
     private Timestamp lastAttemptedAt;
+
+    @Column(name = "next_attempt_at")
+    private Timestamp nextAttemptAt;
+
+    @Column(name = "locked_by", length = 64)
+    private String lockedBy;
+
+    @Column(name = "locked_until")
+    private Timestamp lockedUntil;
+
+    @Column(name = "gateway_message_id", length = 128)
+    private String gatewayMessageId;
 
     public NotificationLogChannel() {
     }
@@ -89,6 +106,38 @@ public class NotificationLogChannel implements Serializable {
 
     public void setLastAttemptedAt(Timestamp lastAttemptedAt) {
         this.lastAttemptedAt = lastAttemptedAt;
+    }
+
+    public Timestamp getNextAttemptAt() {
+        return nextAttemptAt;
+    }
+
+    public void setNextAttemptAt(Timestamp nextAttemptAt) {
+        this.nextAttemptAt = nextAttemptAt;
+    }
+
+    public String getLockedBy() {
+        return lockedBy;
+    }
+
+    public void setLockedBy(String lockedBy) {
+        this.lockedBy = lockedBy;
+    }
+
+    public Timestamp getLockedUntil() {
+        return lockedUntil;
+    }
+
+    public void setLockedUntil(Timestamp lockedUntil) {
+        this.lockedUntil = lockedUntil;
+    }
+
+    public String getGatewayMessageId() {
+        return gatewayMessageId;
+    }
+
+    public void setGatewayMessageId(String gatewayMessageId) {
+        this.gatewayMessageId = gatewayMessageId;
     }
 
     // equals/hashCode keyed by channel only — the parent's @ElementCollection

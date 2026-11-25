@@ -106,7 +106,7 @@ public class InventoryLotServiceTest {
         when(inventoryLotDAO.get(5L)).thenReturn(Optional.of(lot(5L, null, LotStatus.DISPOSED)));
 
         try {
-            inventoryLotService.adjustLotQuantity(5L, 3.0, "recount", "1");
+            inventoryLotService.adjustLotQuantity(5L, 3.0, "recount", null, "1");
             fail("Expected adjustment of a DISPOSED lot to be refused");
         } catch (IllegalStateException expected) {
             assertEquals("Cannot adjust a DISPOSED lot: LOT-5", expected.getMessage());
@@ -122,7 +122,7 @@ public class InventoryLotServiceTest {
         when(inventoryLotDAO.get(5L)).thenReturn(Optional.of(lot(5L, null, LotStatus.CONSUMED)));
 
         try {
-            inventoryLotService.adjustLotQuantity(5L, 3.0, "recount", "1");
+            inventoryLotService.adjustLotQuantity(5L, 3.0, "recount", null, "1");
             fail("Expected adjustment of a CONSUMED lot to be refused");
         } catch (IllegalStateException expected) {
             assertEquals("Cannot adjust a CONSUMED lot: LOT-5", expected.getMessage());

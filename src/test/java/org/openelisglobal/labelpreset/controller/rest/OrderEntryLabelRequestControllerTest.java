@@ -3,7 +3,6 @@ package org.openelisglobal.labelpreset.controller.rest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -119,7 +118,7 @@ public class OrderEntryLabelRequestControllerTest extends BaseWebContextSensitiv
         assertEquals(5, specimenCell.get("max").asInt());
         assertFalse(specimenCell.get("locked").asBoolean());
         assertEquals(1L, specimenCell.get("source_test_id").asLong());
-        assertTrue("source_test_name present for a test-driven cell", specimenCell.hasNonNull("source_test_name"));
+        assertEquals(testService.getTestById("1").getName(), specimenCell.get("source_test_name").asText());
     }
 
     /** First array element whose {@code preset_id} matches, or null. */
@@ -143,7 +142,7 @@ public class OrderEntryLabelRequestControllerTest extends BaseWebContextSensitiv
 
         mockMvc.perform(post(URL).contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(payload)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.order_columns").isArray())
-                .andExpect(jsonPath("$.sample_rows").isArray());
+                .andExpect(jsonPath("$.sample_rows").isArray()).andExpect(jsonPath("$.sample_rows").isEmpty());
     }
 
     private LabelPreset savePerSamplePreset(String name) {

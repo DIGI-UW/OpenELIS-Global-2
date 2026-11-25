@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.organization.locations.LocationsApi;
 import org.openelisglobal.organization.locations.LocationsApi.ActiveRequest;
@@ -21,6 +22,7 @@ import org.openelisglobal.organization.locations.LocationsApi.Page;
 import org.openelisglobal.organization.locations.LocationsApi.Query;
 import org.openelisglobal.organization.locations.LocationsApi.SaveRequest;
 import org.openelisglobal.organization.locations.LocationsApi.SaveResult;
+import org.openelisglobal.organization.locations.LocationsApi.ThisLaboratory;
 import org.openelisglobal.organization.locations.LocationsApi.UsageDetail;
 import org.openelisglobal.organization.locations.LocationsApi.Ward;
 import org.openelisglobal.organization.locations.LocationsApi.WardRequest;
@@ -67,6 +69,21 @@ public class LocationsRestController extends BaseRestController {
     @Autowired
     private FhirTransformService fhirTransformService;
 
+    @Autowired(required = false)
+    private DisplayListService displayListService;
+
+    /**
+     * Organization-backed pick lists (reference labs, referring clinics, health
+     * regions) are cached; reload them after a save so the change is offered at
+     * once, not after a restart.
+     */
+    private void refreshOrganizationLists() {
+        DisplayListService lists = displayListService != null ? displayListService : DisplayListService.getInstance();
+        if (lists != null) {
+            lists.refreshOrganizationLists();
+        }
+    }
+
     /**
      * Writes a saved organization, with its site Location, to the FHIR store, as
      * the older Organization Management page did, so the store does not keep a
@@ -111,6 +128,7 @@ public class LocationsRestController extends BaseRestController {
                 body.gpsLongitude(), body.contactName(), body.phone(), body.fax(), body.email(), body.internetAddress(),
                 body.identifiers(), body.referral(), body.site(), body.serviceType(), null), getSysUserId(request));
         publish(result.detail().row().id());
+        refreshOrganizationLists();
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
@@ -123,6 +141,7 @@ public class LocationsRestController extends BaseRestController {
                 body.identifiers(), body.referral(), body.site(), body.serviceType(), body.lastupdated()),
                 getSysUserId(request));
         publish(result.detail().row().id());
+        refreshOrganizationLists();
         return result;
     }
 
@@ -135,6 +154,7 @@ public class LocationsRestController extends BaseRestController {
     public ActiveResult setActive(@RequestBody ActiveRequest body, HttpServletRequest request) {
         ActiveResult result = locationsService.setActive(body, getSysUserId(request));
         result.changed().forEach(this::publish);
+        refreshOrganizationLists();
         return result;
     }
 
@@ -151,6 +171,7 @@ public class LocationsRestController extends BaseRestController {
                         body.phone(), body.email(), body.gpsLatitude(), body.gpsLongitude(), null),
                 getSysUserId(request));
         publish(ward.id());
+        refreshOrganizationLists();
         return ResponseEntity.status(HttpStatus.CREATED).body(ward);
     }
 
@@ -162,6 +183,7 @@ public class LocationsRestController extends BaseRestController {
                         body.email(), body.gpsLatitude(), body.gpsLongitude(), body.lastupdated()),
                 getSysUserId(request));
         publish(ward.id());
+        refreshOrganizationLists();
         return ward;
     }
 
@@ -170,6 +192,7 @@ public class LocationsRestController extends BaseRestController {
             HttpServletRequest request) {
         Ward ward = locationsService.moveWard(wardId, body.get("parentId"), getSysUserId(request));
         publish(ward.id());
+        refreshOrganizationLists();
         return ward;
     }
 
@@ -181,6 +204,12 @@ public class LocationsRestController extends BaseRestController {
     @GetMapping(value = "/identifier-collisions", produces = MediaType.APPLICATION_JSON_VALUE)
     public List<IdentifierCollision> identifierCollisions() {
         return locationsService.identifierCollisions();
+    }
+
+    @GetMapping(value = "/this-laboratory", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ThisLaboratory> thisLaboratory() {
+        ThisLaboratory thisLaboratory = locationsService.thisLaboratory();
+        return thisLaboratory == null ? ResponseEntity.noContent().build() : ResponseEntity.ok(thisLaboratory);
     }
 
     @GetMapping(value = "/lists", produces = MediaType.APPLICATION_JSON_VALUE)

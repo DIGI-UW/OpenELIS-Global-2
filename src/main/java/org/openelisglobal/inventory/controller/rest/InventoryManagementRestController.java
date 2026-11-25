@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -26,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/inventory/management")
+@PreAuthorize("hasAnyRole('RESULTS', 'ADMIN')")
 public class InventoryManagementRestController extends BaseRestController {
 
     @Autowired
@@ -62,6 +64,26 @@ public class InventoryManagementRestController extends BaseRestController {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ErrorResponse("Internal server error"));
+        }
+    }
+
+    @PostMapping(value = "/receive/batch", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> receiveInventoryBatch(@RequestBody java.util.List<InventoryLot> lots,
+            HttpServletRequest httpRequest) {
+        try {
+            UserSessionData usd = (UserSessionData) httpRequest.getSession().getAttribute(USER_SESSION_DATA);
+            String sysUserId = String.valueOf(usd.getSystemUserId());
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(inventoryManagementService.receiveInventoryBatch(lots, sysUserId));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(java.util.Map.of("message", e.getMessage()));
+        } catch (LocalizedValidationException e) {
+            return ResponseEntity.badRequest().body(InventoryErrorBody.localized(e));
+        } catch (ObjectNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(InventoryErrorBody.notFound(e));
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 

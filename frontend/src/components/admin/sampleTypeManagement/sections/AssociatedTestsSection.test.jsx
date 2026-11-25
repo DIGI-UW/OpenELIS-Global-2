@@ -73,6 +73,22 @@ describe("AssociatedTestsSection", () => {
     );
   });
 
+  /** OGC-1465: a test of another domain is refused, and the screen says why. */
+  it("explains a domain refusal when adding", async () => {
+    putToOpenElisServer.mockImplementation((_url, _body, cb) => cb(422));
+    renderSection();
+    await screen.findByText("Glucose (Serum)");
+
+    fireEvent.click(document.getElementById("assoc-test-combo"));
+    fireEvent.click(await screen.findByText("Sodium (Serum)"));
+
+    expect(
+      await screen.findByText(
+        messages["label.sampleType.tests.domainMismatch"],
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("narrows candidates by the selected sample-type filter", async () => {
     renderSection();
     await screen.findByText("Glucose (Serum)");
@@ -98,5 +114,31 @@ describe("AssociatedTestsSection", () => {
       "/rest/sample-types/5/tests/10",
       expect.any(Function),
     );
+  });
+
+  it("explains why the last sample type of an active test stays (OGC-1460)", async () => {
+    deleteFromOpenElisServer.mockImplementation((_url, cb) => cb(422));
+    renderSection();
+    await screen.findByText("Glucose (Serum)");
+
+    fireEvent.click(screen.getByRole("button", { name: /Remove test/i }));
+
+    expect(
+      await screen.findByText(
+        messages["label.sampleType.tests.removeLastOfActive"],
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the generic message for any other failure", async () => {
+    deleteFromOpenElisServer.mockImplementation((_url, cb) => cb(500));
+    renderSection();
+    await screen.findByText("Glucose (Serum)");
+
+    fireEvent.click(screen.getByRole("button", { name: /Remove test/i }));
+
+    expect(
+      await screen.findByText(messages["label.sampleType.tests.removeError"]),
+    ).toBeInTheDocument();
   });
 });

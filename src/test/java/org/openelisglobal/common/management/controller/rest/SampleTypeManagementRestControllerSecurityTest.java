@@ -173,6 +173,22 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
     }
 
     @Test
+    public void terminology_AdminRole_AcceptsACodeInAnyOtherSystem() throws Exception {
+        TypeOfSample typeOfSample = new TypeOfSample();
+        typeOfSample.setId("1");
+        when(typeOfSampleService.getTypeOfSampleById("1")).thenReturn(typeOfSample);
+        UserSessionData sessionData = new UserSessionData();
+        sessionData.setSytemUserId(42);
+
+        mockMvc.perform(put("/rest/sample-types/1/terminology").with(user("admin").roles("ADMIN"))
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, sessionData).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"mappings\":[{\"source\":\"CPHL\",\"code\":\"PLS\"}]}")).andExpect(status().isOk());
+
+        verify(terminologyService).saveMappingsForSampleType(eq("1"),
+                argThat(mappings -> mappings.size() == 1 && "CPHL".equals(mappings.get(0).getSource())), anyString());
+    }
+
+    @Test
     public void terminology_AdminRole_PreservesUnchangedLegacyWhonetMapping() throws Exception {
         TypeOfSample typeOfSample = new TypeOfSample();
         typeOfSample.setId("1");

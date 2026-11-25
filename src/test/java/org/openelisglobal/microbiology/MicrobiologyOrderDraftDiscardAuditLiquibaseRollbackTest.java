@@ -12,9 +12,11 @@ import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.Test;
+import org.openelisglobal.IsolatedDatabase;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.MountableFile;
 
+@IsolatedDatabase
 public class MicrobiologyOrderDraftDiscardAuditLiquibaseRollbackTest {
 
     @Test

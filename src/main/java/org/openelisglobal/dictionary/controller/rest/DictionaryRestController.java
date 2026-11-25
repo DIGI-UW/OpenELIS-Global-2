@@ -57,12 +57,19 @@ public class DictionaryRestController extends BaseController {
     @Autowired
     private DictionaryTerminologyMappingService answerTerminology;
 
+    /**
+     * Runs before every handler of this controller, the shared lookups included, so
+     * it is open to any signed-in user; each admin handler keeps its own guard.
+     */
     @ModelAttribute("form")
+    @PreAuthorize("isAuthenticated()")
     public DictionaryForm form() {
         return new DictionaryForm();
     }
 
+    /** Runs before binding for every handler, as {@link #form()} does. */
     @InitBinder
+    @PreAuthorize("isAuthenticated()")
     public void initBinder(WebDataBinder binder) {
         binder.setAllowedFields(ALLOWED_FIELDS);
     }

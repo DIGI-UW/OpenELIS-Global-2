@@ -30,6 +30,7 @@ import {
   Checkbox,
   Modal,
   NumberInput,
+  Pagination,
 } from "@carbon/react";
 import { ArrowUp, ArrowDown, Subtract, Add } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -47,6 +48,7 @@ import DisposeLotModal from "./DisposeLotModal";
 import UpdateQCStatusModal from "./UpdateQCStatusModal";
 import InventoryItemForm from "./InventoryItemForm";
 import ManageTagsModal from "./ManageTagsModal";
+import ImportItemsModal from "./ImportItemsModal";
 import QuickReceiveModal from "./QuickReceiveModal";
 import QuickLogUsageModal from "./QuickLogUsageModal";
 import ReorderSuggestionsModal, {
@@ -116,6 +118,8 @@ const compare = (a, b) => {
   return String(a).localeCompare(String(b));
 };
 
+const PAGE_SIZES = [25, 50, 100];
+
 const InventoryItemsBoard = () => {
   const intl = useIntl();
   const [rows, setRows] = useState([]);
@@ -128,6 +132,7 @@ const InventoryItemsBoard = () => {
   const [tagFilter, setTagFilter] = useState([]);
   const [activeTags, setActiveTags] = useState([]);
   const [manageTagsOpen, setManageTagsOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [showDeactivated, setShowDeactivated] = useState(false);
   const [countMode, setCountMode] = useState(false);
   // Keyed by lot id. A blank or absent entry means not counted, not zero.
@@ -135,6 +140,8 @@ const InventoryItemsBoard = () => {
   const [countSaving, setCountSaving] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [sort, setSort] = useState({ key: null, ascending: true });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [detailLot, setDetailLot] = useState(null);
 
   const [action, setAction] = useState(null);
@@ -186,8 +193,12 @@ const InventoryItemsBoard = () => {
   const countableLots = (row) =>
     (lotsByItem.get(row.itemId) || []).filter(
       (lot) =>
-        !locationFilter || lot.location?.hierarchicalPath === locationFilter,
+        lot.status !== "DISPOSED" &&
+        (!locationFilter || lot.location?.hierarchicalPath === locationFilter),
     );
+
+  const liveLots = (row) =>
+    countableLots(row).filter((lot) => lot.status !== "CONSUMED");
 
   // Includes the expired and QC-failed lots that row.onHand leaves out.
   const expectedFor = (row) =>
@@ -353,17 +364,22 @@ const InventoryItemsBoard = () => {
     return [...names].sort((a, b) => a.localeCompare(b));
   }, [rows, activeTags]);
 
+  // Tags also scope the banner and suggestions; the other filters narrow only the table.
+  const taggedRows = useMemo(
+    () =>
+      tagFilter.length === 0
+        ? rows
+        : rows.filter((row) =>
+            tagFilter.some((tag) => row.tags?.includes(tag)),
+          ),
+    [rows, tagFilter],
+  );
+
   const visibleRows = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const matched = rows.filter((row) => {
+    const matched = taggedRows.filter((row) => {
       const itemLots = lotsByItem.get(row.itemId) || [];
       if (statusFilter && row.status !== statusFilter) return false;
-      if (
-        tagFilter.length > 0 &&
-        !tagFilter.some((tag) => row.tags?.includes(tag))
-      ) {
-        return false;
-      }
       if (
         locationFilter &&
         !itemLots.some(
@@ -393,14 +409,26 @@ const InventoryItemsBoard = () => {
       if (left == null || right == null) return compare(left, right);
       return sort.ascending ? compare(left, right) : compare(right, left);
     });
-  }, [rows, lotsByItem, search, statusFilter, locationFilter, tagFilter, sort]);
+  }, [taggedRows, lotsByItem, search, statusFilter, locationFilter, sort]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter, locationFilter, tagFilter, sort]);
+
+  // A stock-take covers everything in scope, so count mode shows every row.
+  const paged = !countMode && visibleRows.length > PAGE_SIZES[0];
+  const currentPage = Math.min(page, Math.ceil(visibleRows.length / pageSize));
+  const pagedRows = paged
+    ? visibleRows.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+    : visibleRows;
 
   const toggleSort = (key) =>
-    setSort((current) =>
-      current.key === key
-        ? { key, ascending: !current.ascending }
-        : { key, ascending: true },
-    );
+    setSort((current) => {
+      if (current.key !== key) return { key, ascending: true };
+      return current.ascending
+        ? { key, ascending: false }
+        : { key: null, ascending: true };
+    });
 
   const sortableHeader = (key, labelId, extraProps = {}) => (
     <TableHeader
@@ -749,10 +777,10 @@ const InventoryItemsBoard = () => {
   };
 
   // Items have no criticality flag: "critical" means REORDER_NOW and not yet marked ordered.
-  const unaddressedCritical = rows.filter(
+  const unaddressedCritical = taggedRows.filter(
     (row) => row.status === "REORDER_NOW" && !row.orderedOn,
   );
-  const suggestionCount = rows.filter(isSuggested).length;
+  const suggestionCount = taggedRows.filter(isSuggested).length;
 
   if (loading) {
     return (
@@ -896,10 +924,18 @@ const InventoryItemsBoard = () => {
         <Button
           kind="tertiary"
           size="lg"
+          className="board-import-items"
+          onClick={() => setImportOpen(true)}
+        >
+          <FormattedMessage id="inventory.import.button" />
+        </Button>
+        <Button
+          kind="tertiary"
+          size="lg"
           className="board-log-usage"
           onClick={() => setAction({ kind: "quickLog" })}
         >
-          <FormattedMessage id="inventory.logUsage.button" />
+          <FormattedMessage id="usage.record.button" />
         </Button>
         <Button
           kind="tertiary"
@@ -1015,7 +1051,7 @@ const InventoryItemsBoard = () => {
                 </TableCell>
               </TableRow>
             )}
-            {visibleRows.map((row) => {
+            {pagedRows.map((row) => {
               const isOpen = expandedId === row.itemId;
               const statusTag = STATUS_TAGS[row.status] || STATUS_TAGS.ADEQUATE;
               return (
@@ -1040,11 +1076,11 @@ const InventoryItemsBoard = () => {
                     </TableCell>
                     <TableCell>
                       {countMode ? (
-                        countableLots(row).length === 1 ? (
+                        liveLots(row).length === 1 ? (
                           renderCountEntry(
                             `count-item-${row.itemId}`,
-                            countableLots(row)[0].id,
-                            countableLots(row)[0].currentQuantity || 0,
+                            liveLots(row)[0].id,
+                            liveLots(row)[0].currentQuantity || 0,
                             row.units,
                             intl.formatMessage(
                               { id: "inventory.count.countOf" },
@@ -1055,7 +1091,7 @@ const InventoryItemsBoard = () => {
                           <span className="board-muted">
                             <FormattedMessage
                               id={
-                                countableLots(row).length === 0
+                                liveLots(row).length === 0
                                   ? "inventory.count.nothingHere"
                                   : "inventory.count.perLot"
                               }
@@ -1160,6 +1196,33 @@ const InventoryItemsBoard = () => {
           </TableBody>
         </Table>
       </TableContainer>
+      {paged && (
+        <Pagination
+          page={currentPage}
+          pageSize={pageSize}
+          pageSizes={PAGE_SIZES}
+          totalItems={visibleRows.length}
+          onChange={({ page: nextPage, pageSize: nextSize }) => {
+            setPage(nextPage);
+            setPageSize(nextSize);
+          }}
+          forwardText={intl.formatMessage({ id: "pagination.forward" })}
+          backwardText={intl.formatMessage({ id: "pagination.backward" })}
+          itemsPerPageText={intl.formatMessage({
+            id: "pagination.items-per-page",
+          })}
+          pageNumberText={intl.formatMessage({ id: "pagination.page-number" })}
+          itemRangeText={(min, max, total) =>
+            intl.formatMessage(
+              { id: "pagination.item-range" },
+              { min, max, total },
+            )
+          }
+          pageRangeText={(current, total) =>
+            intl.formatMessage({ id: "pagination.page-range" }, { total })
+          }
+        />
+      )}
 
       <LotDetailsPanel
         open={detailLot !== null}
@@ -1301,10 +1364,18 @@ const InventoryItemsBoard = () => {
         />
       )}
 
+      {importOpen && (
+        <ImportItemsModal
+          open
+          onClose={() => setImportOpen(false)}
+          onImported={refresh}
+        />
+      )}
+
       {action?.kind === "suggestions" && (
         <ReorderSuggestionsModal
           open
-          rows={rows}
+          rows={taggedRows}
           onClose={closeAction}
           onMarked={(count, outcome) => {
             setAction(null);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import {
   Modal,
   TextArea,
@@ -9,27 +9,24 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { InventoryLotAPI } from "./InventoryService";
+import { useIsMounted } from "./useIsMounted";
 
 const DisposeLotModal = ({ open, onClose, onSave, lot }) => {
   const intl = useIntl();
 
-  // onSave() unmounts this modal before the finally block runs.
-  const isMountedRef = useRef(true);
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
+  const isMounted = useIsMounted();
 
   const disposalReasons = [
-    { id: "EXPIRED", text: "Expired" },
-    { id: "DAMAGED", text: "Damaged" },
-    { id: "CONTAMINATED", text: "Contaminated" },
-    { id: "RECALLED", text: "Manufacturer Recall" },
-    { id: "QC_FAILED", text: "Failed Quality Control" },
-    { id: "OTHER", text: "Other" },
-  ];
+    "EXPIRED",
+    "DAMAGED",
+    "CONTAMINATED",
+    "RECALLED",
+    "QC_FAILED",
+    "OTHER",
+  ].map((id) => ({
+    id,
+    text: intl.formatMessage({ id: `disposal.reason.${id}` }),
+  }));
 
   const [formData, setFormData] = useState({
     reason: "EXPIRED",
@@ -46,12 +43,14 @@ const DisposeLotModal = ({ open, onClose, onSave, lot }) => {
 
   const validate = () => {
     if (!formData.reason) {
-      setError("Please select a disposal reason");
+      setError(intl.formatMessage({ id: "disposal.error.reasonRequired" }));
       return false;
     }
 
     if (formData.reason === "OTHER" && !formData.notes?.trim()) {
-      setError("Please provide notes when selecting 'Other' as reason");
+      setError(
+        intl.formatMessage({ id: "common.error.notesRequiredForOther" }),
+      );
       return false;
     }
 
@@ -75,9 +74,9 @@ const DisposeLotModal = ({ open, onClose, onSave, lot }) => {
       onSave();
     } catch (err) {
       console.error("Error disposing lot:", err);
-      if (isMountedRef.current) setError(err.message || "Error disposing lot");
+      if (isMounted()) setError(err.message || "Error disposing lot");
     } finally {
-      if (isMountedRef.current) setSaving(false);
+      if (isMounted()) setSaving(false);
     }
   };
 
