@@ -114,6 +114,20 @@ const flagValue = async (page: Page) => {
   return (await menu.getSettingValue(FLAG)).trim();
 };
 
+const SELF_BLOCK = "Block validating your own results";
+
+const setSelfValidationBlock = async (page: Page, on: boolean) => {
+  const menu = await openResultConfiguration(page);
+  await searchSettings(page, "blockSelfValidation");
+  await menu.setBooleanSetting(SELF_BLOCK, on);
+};
+
+const selfValidationBlockOn = async (page: Page) => {
+  const menu = await openResultConfiguration(page);
+  await searchSettings(page, "blockSelfValidation");
+  return /true/i.test((await menu.getSettingValue(SELF_BLOCK)).trim());
+};
+
 const choosePolicy = async (page: Page, label: string) => {
   const section = page.getByTestId("validation-policy");
   await expect(section).toBeVisible({ timeout: NAV_TIMEOUT });
@@ -545,7 +559,8 @@ test.describe("OGC-1364 validation policy", () => {
       await expect(main.getByText("Level 2 of 2")).toBeVisible({
         timeout: UI_TIMEOUT,
       });
-      await main.locator('[data-testid^="review-row-"]').first().click();
+      await expect(main.locator('[data-testid^="review-row-"]')).toHaveCount(0);
+      await main.getByRole("button", { name: "Expand Row" }).first().click();
       await expect(main.getByTestId("review-level-blocked")).toContainText(
         "You signed a level of this result.",
       );
@@ -554,6 +569,9 @@ test.describe("OGC-1364 validation policy", () => {
       ).toBeDisabled();
       await expect(main.getByTestId("review-sign-off-1")).toContainText(
         "Level 1 of 2",
+      );
+      await expect(main.getByTestId("review-sign-off-1")).toHaveText(
+        /, \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/,
       );
     });
 
@@ -566,7 +584,7 @@ test.describe("OGC-1364 validation policy", () => {
         await expect(main.getByText("Level 2 of 2")).toBeVisible({
           timeout: LONG_TIMEOUT,
         });
-        await main.getByRole("button", { name: "Expand Row" }).first().click();
+        await main.locator('[data-testid^="review-row-"]').first().click();
         await main.getByRole("button", { name: "Validate & release" }).click();
         await signIfAsked(second.page);
         await openQueueFor(second.page, accession);
@@ -579,6 +597,55 @@ test.describe("OGC-1364 validation policy", () => {
         await second.context.close();
       }
     });
+  });
+
+  test("a result its author may not validate waits for others and offers its author no Review", async ({
+    page,
+  }) => {
+    const blockBefore = await selfValidationBlockOn(page);
+    try {
+      await test.step("Every result waits for a validator, and authors may not validate their own", async () => {
+        await restoreLabDefault(page, {
+          trigger: "ALL",
+          levels: 1,
+          levelRoles: [],
+        });
+        await setSelfValidationBlock(page, true);
+      });
+
+      await test.step("The author finds an abnormal result among those waiting for others, without Review", async () => {
+        const order = await createEsigSampleOrder(page);
+        expect(order, "a sample order is needed").toBeTruthy();
+        await enterResult(page, order!.accessionNumber, "12");
+        await openQueueFor(page, order!.accessionNumber);
+        const main = page.getByRole("main");
+        await expect(main.getByTestId("show-waiting-toggle")).toContainText(
+          "Show results waiting for others (1)",
+          { timeout: LONG_TIMEOUT },
+        );
+        await main
+          .getByTestId("show-waiting-toggle")
+          .locator("label")
+          .first()
+          .click();
+        const expand = main.getByRole("button", { name: "Expand Row" }).first();
+        await expect(expand).toBeVisible({ timeout: UI_TIMEOUT });
+        await expect(main.locator('[data-testid^="review-row-"]')).toHaveCount(
+          0,
+        );
+        await expand.click();
+        await expect(
+          main.getByText(
+            "You entered this result; another validator must validate it.",
+          ),
+        ).toBeVisible({ timeout: UI_TIMEOUT });
+        await expect(
+          main.getByRole("button", { name: "Validate & release" }),
+        ).toBeDisabled();
+      });
+    } finally {
+      await setSelfValidationBlock(page, blockBefore);
+    }
   });
 
   test("one Reviewed signature signs level 1 of the clear results, and another validator releases them all clear", async ({

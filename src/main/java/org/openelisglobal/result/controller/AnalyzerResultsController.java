@@ -43,6 +43,7 @@ import org.openelisglobal.result.form.AnalyzerResultsForm;
 import org.openelisglobal.result.service.ResultEntryAcknowledgementService;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.resultrun.form.RunHoldCause;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
@@ -401,10 +402,13 @@ public class AnalyzerResultsController extends BaseController {
         resultItem.setUserChoiceReflex(giveUserChoice(result));
         resultItem.setUserChoicePending(false);
         resultItem.setImportIssueReason(result.getImportIssueReason());
-        if (GenericValidator.isBlankOrNull(result.getImportIssueReason()) && result.getRunId() != null
-                && result.getTestId() != null
-                && runQcService.heldTestIds(result.getRunId()).contains(result.getTestId())) {
-            resultItem.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_RUN_QC_FAILED);
+        RunHoldCause hold = GenericValidator.isBlankOrNull(result.getImportIssueReason()) && result.getRunId() != null
+                && result.getTestId() != null ? runQcService.holdCauses(result.getRunId()).get(result.getTestId())
+                        : null;
+        if (hold != null) {
+            resultItem
+                    .setImportIssueReason(hold == RunHoldCause.QC_MISSING ? AnalyzerResults.IMPORT_ISSUE_RUN_QC_MISSING
+                            : AnalyzerResults.IMPORT_ISSUE_RUN_QC_FAILED);
             resultItem.setReadOnly(true);
             resultItem.setHeldRunId(result.getRunId());
         }

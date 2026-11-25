@@ -4,6 +4,7 @@ import {
   seedMicrobiologyCultureWorkspace,
 } from "../../../helpers/seed-microbiology-data";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
+import { openMicrobiologyCaseScope } from "../../../helpers/microbiology-ui";
 
 test("places an incoming result and keeps it pending validation", async ({
   page,
@@ -36,9 +37,7 @@ test("places an incoming result and keeps it pending validation", async ({
       .getByRole("status")
       .filter({ hasText: "1 incoming result needs placement" }),
   ).toHaveCount(0);
-  await page
-    .getByLabel("Testing section", { exact: true })
-    .selectOption("ADDITIONAL");
+  await openMicrobiologyCaseScope(page, "ADDITIONAL");
   const assay = page
     .getByRole("row")
     .filter({ hasText: "UAT Microbiology follow-up assay" })
@@ -50,9 +49,7 @@ test("places an incoming result and keeps it pending validation", async ({
     contentType: "image/png",
   });
   await page.reload();
-  await page
-    .getByLabel("Testing section", { exact: true })
-    .selectOption("INCOMING");
+  await openMicrobiologyCaseScope(page, "INCOMING");
   await expect(
     page
       .getByRole("row")

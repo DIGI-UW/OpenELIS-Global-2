@@ -8,6 +8,29 @@ import {
   SelectItem,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
+import { isStaleConflict } from "../../../common/StaleSaveNotice";
+
+/**
+ * What the server said when it refused a policy save: stale (someone else
+ * changed the policy after this page loaded it, with who and when), or the
+ * refusal code naming the rule the policy breaks.
+ */
+export async function refusalOf(response) {
+  let body;
+  try {
+    body = (await response?.json()) || {};
+  } catch {
+    body = {};
+  }
+  if (isStaleConflict(response?.status, body)) {
+    return {
+      stale: true,
+      modifiedBy: body.modifiedBy || "",
+      modifiedAt: body.modifiedAt || "",
+    };
+  }
+  return { code: body.code || "saveFailed" };
+}
 
 export const TRIGGERS = ["ALL", "NEEDS_REVIEW", "NONE"];
 

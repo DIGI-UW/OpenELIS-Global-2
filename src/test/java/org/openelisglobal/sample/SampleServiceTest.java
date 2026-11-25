@@ -85,6 +85,32 @@ public class SampleServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertEquals("2024-06-03 00:00:00.0", sampleService.getOrderedDate(savedSample).toString());
     }
 
+    /**
+     * OGC-1669: a request date stored as an ISO date reads the same whatever the
+     * site's date format.
+     */
+    @Test
+    public void getOrderedDate_readsARequestDateStoredAsIso() throws Exception {
+        List<String> typeIds = jdbcTemplate.queryForList(
+                "SELECT id FROM clinlims.observation_history_type WHERE type_name = 'requestDate'", String.class);
+        String typeId = typeIds.isEmpty() ? "99302" : typeIds.get(0);
+        if (typeIds.isEmpty()) {
+            jdbcTemplate.update("INSERT INTO clinlims.observation_history_type (id, type_name, description,"
+                    + " lastupdated) VALUES (99302, 'requestDate', 'requestDate', now())");
+        }
+        jdbcTemplate.update(
+                "INSERT INTO clinlims.observation_history (id, sample_id, observation_history_type_id,"
+                        + " value_type, value, lastupdated) VALUES (99302, 1, ?, 'L', '2024-05-30', now())",
+                Integer.valueOf(typeId));
+        try {
+            Assert.assertEquals("2024-05-30 00:00:00.0",
+                    sampleService.getOrderedDate(sampleService.get("1")).toString());
+        } finally {
+            jdbcTemplate.update("DELETE FROM clinlims.observation_history WHERE id = 99302");
+            jdbcTemplate.update("DELETE FROM clinlims.observation_history_type WHERE id = 99302");
+        }
+    }
+
     @Test
     public void getSamplesReceivedOn_shouldReturnSamplesOnDate() throws Exception {
         int receivedSamples = sampleService.getSamplesReceivedOn("04/06/2024").size();

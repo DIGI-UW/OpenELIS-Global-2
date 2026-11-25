@@ -211,6 +211,22 @@ public class AccessionValidationReviewActionsTest extends BaseWebContextSensitiv
     }
 
     @Test
+    public void aStaleReleaseNamesWhoChangedTheResultFirstNameFirst() throws Exception {
+        jdbcTemplate.update(
+                "INSERT INTO clinlims.history (id, sys_user_id, reference_id, reference_table, timestamp, activity)"
+                        + " VALUES (nextval('clinlims.history_seq'), 1, ?, ?, NOW() + INTERVAL '1 day', 'U')",
+                Integer.valueOf(ANALYSIS_ID),
+                Integer.valueOf(org.openelisglobal.analysis.service.AnalysisServiceImpl.getTableReferenceId()));
+        String name = jdbcTemplate.queryForObject(
+                "SELECT TRIM(first_name) || ' ' || TRIM(last_name) FROM clinlims.system_user WHERE id = 1",
+                String.class);
+
+        mockMvc.perform(post("/rest/AccessionValidation/analysis/100/release").session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(rowBody("", "E", ",\"analysisLastupdated\":\"1\"")))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.modifiedBy").value(name));
+    }
+
+    @Test
     public void release_withTheCurrentToken_proceeds() throws Exception {
         long current = analysisService.get(ANALYSIS_ID).getLastupdated().getTime();
 

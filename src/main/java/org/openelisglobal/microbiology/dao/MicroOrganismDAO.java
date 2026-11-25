@@ -8,11 +8,24 @@ import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 public interface MicroOrganismDAO extends BaseDAO<MicroOrganism, String> {
     List<MicroOrganism> getActiveOrganisms();
 
+    List<String> getLabGroupNames();
+
     List<MicroOrganism> getByIds(List<String> ids);
+
+    /**
+     * Active organisms the text finds: by part of the name, by the start of the
+     * WHONET code, or by an older name or replaced code in WHONET's table. An exact
+     * code leads, then the organisms WHONET marks as common, then names that start
+     * with the text, then by name. Blank text matches every organism.
+     */
+    List<MicroOrganismMatch> searchActive(String text, int limit);
 
     Optional<MicroOrganism> findByDisplayNameIgnoreCase(String displayName);
 
     Optional<MicroOrganism> findByWhonetCodeIgnoreCase(String whonetCode);
+
+    // Empty when WHONET gives the name, current or older, to several organisms.
+    Optional<MicroOrganism> findByWhonetName(String name);
 
     Optional<MicroOrganism> findByReference(String source, String code);
 

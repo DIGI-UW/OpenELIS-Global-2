@@ -177,6 +177,25 @@ public class ComplianceStandardDAOImpl extends BaseDAOImpl<ComplianceStandard, S
 
     @Override
     @Transactional(readOnly = true)
+    public List<org.openelisglobal.compliance.valueholder.ComplianceThreshold> getActiveTestThresholds(
+            java.util.Collection<String> standardIds) throws LIMSRuntimeException {
+        if (standardIds == null || standardIds.isEmpty()) {
+            return List.of();
+        }
+        try {
+            return entityManager.createQuery("SELECT ct FROM ComplianceThreshold ct JOIN FETCH ct.group pg"
+                    + " JOIN FETCH pg.standard s JOIN FETCH ct.test t WHERE s.id IN (:ids) AND ct.isActive = true"
+                    + " ORDER BY ct.sortOrder, ct.id",
+                    org.openelisglobal.compliance.valueholder.ComplianceThreshold.class)
+                    .setParameter("ids", standardIds).getResultList();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in ComplianceStandard getActiveTestThresholds()", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> getLinkedTests(String standardId) throws LIMSRuntimeException {
         try {
             // FR-4-002: linked tests organised by parameter group. Returns one

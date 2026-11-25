@@ -133,7 +133,7 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
     public void delete(AnalyzerResults analyzerResult) {
         Long runId = analyzerResult.getRunId();
         super.delete(analyzerResult);
-        resultRunService.rowLeftStaging(runId);
+        resultRunService.rowLeftStaging(runId, analyzerResult.getSysUserId());
     }
 
     @Override

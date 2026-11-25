@@ -110,7 +110,7 @@ public class MicroIncomingAnalyzerAdapter {
             incoming.receiveReviewed(owners.get(0).getId(), sampleId, first.getTestId(), "ANALYZER", sourceKey,
                     group.stream().map(r -> String.valueOf(r.source().getRawResultValue()))
                             .collect(java.util.stream.Collectors.joining(" | ")),
-                    payload, analysisId, actor, first.getAnalyzerId());
+                    payload, analysisId, actor, first.getAnalyzerId(), first.getCompleteDate());
             for (var reviewed : group) {
                 staging.delete(reviewed.source().getId(), actor);
                 consumed.add(reviewed.source().getId());

@@ -43,6 +43,7 @@ import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.IsoDateNormalizer;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.image.service.ImageService;
@@ -223,6 +224,7 @@ public class PatientCILNSPClinical_vreduit extends PatientReport implements IRep
             }
         }
         setCollectionTime(sampleSet, currentSampleReportItems, true);
+        work.pending |= microbiologyReports().hasUnreleasedCase(currentSample.getId());
         sampleCompleteMap.put(orderKey, !work.pending);
         reportOrders.put(orderKey, describeOrder(work));
     }
@@ -272,11 +274,11 @@ public class PatientCILNSPClinical_vreduit extends PatientReport implements IRep
     private String orderDate(Timestamp received) {
         ObservationHistory requested = SpringContext.getBean(ObservationHistoryService.class)
                 .getObservationForSample(ObservationType.REQUEST_DATE, sampleService.getId(currentSample));
-        if (requested == null || GenericValidator.isBlankOrNull(requested.getValue())) {
+        java.time.LocalDate date = requested == null ? null : IsoDateNormalizer.toLocalDate(requested.getValue());
+        if (date == null) {
             return reportTime(received);
         }
-        return new SimpleDateFormat(DateUtil.getDateFormat().replace("yyyy", "yy"))
-                .format(DateUtil.convertStringDateToTruncatedTimestamp(requested.getValue()));
+        return new SimpleDateFormat(DateUtil.getDateFormat().replace("yyyy", "yy")).format(java.sql.Date.valueOf(date));
     }
 
     /**

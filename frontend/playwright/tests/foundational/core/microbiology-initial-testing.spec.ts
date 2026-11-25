@@ -1,5 +1,6 @@
 import { expect, test } from "../../../helpers/test-base";
 import { seedMicrobiologyInitialTestingCase } from "../../../helpers/seed-microbiology-data";
+import { openMicrobiologyCaseScope } from "../../../helpers/microbiology-ui";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 test.describe("Microbiology initial testing", () => {
@@ -68,9 +69,7 @@ test.describe("Microbiology initial testing", () => {
     });
     await expect(fields.nth(0)).toHaveValue("12");
     await table.getByRole("button", { name: "Cancel", exact: true }).click();
-    await page
-      .getByLabel("Testing section", { exact: true })
-      .selectOption("ADDITIONAL");
+    await openMicrobiologyCaseScope(page, "ADDITIONAL");
     await page.getByRole("button", { name: /— 0/ }).click();
     await page
       .getByRole("searchbox")
@@ -103,9 +102,7 @@ test.describe("Microbiology initial testing", () => {
         .getByRole("table", { name: "Case notes", exact: true })
         .getByText("M3 bench observation", { exact: true }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
-    await page
-      .getByLabel("Testing section", { exact: true })
-      .selectOption("ADDITIONAL");
+    await openMicrobiologyCaseScope(page, "ADDITIONAL");
     await expect(
       table.getByText("UAT Microbiology follow-up assay", { exact: true }),
     ).toBeVisible();
