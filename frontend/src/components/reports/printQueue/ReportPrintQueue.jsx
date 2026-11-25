@@ -11,7 +11,6 @@ import {
   Column,
   DataTable,
   DataTableSkeleton,
-  DatePicker,
   DatePickerInput,
   Dropdown,
   FilterableMultiSelect,
@@ -40,6 +39,7 @@ import {
   ClickableTile,
   Toggle,
 } from "@carbon/react";
+import { DatePicker } from "../../common/DatePicker";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
 import {

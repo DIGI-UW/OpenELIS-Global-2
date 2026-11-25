@@ -30,7 +30,10 @@ import LogoUploadSection from "../LogoUploadSection";
 import type { LogoUploadSectionHandle } from "../LogoUploadSection";
 import { postToOpenElisServerFormData } from "../../../../utils/Utils";
 import { removeLogo } from "../../../../utils/BrandingUtils";
-import { resolveMessagesForLocale } from "../../../../../languages";
+import {
+  loadMessagesForLocale,
+  resolveMessagesForLocale,
+} from "../../../../../languages";
 
 // ========== HELPER FUNCTIONS ==========
 
@@ -48,6 +51,12 @@ const renderWithIntl = (component, locale = "en") => {
 // ========== TEST SUITE ==========
 
 describe("LogoUploadSection", () => {
+  // Each regional bundle is a separate chunk the app downloads on demand; the
+  // regional cases below render plain English unless it is in memory first.
+  beforeAll(() =>
+    Promise.all(["en-US", "en-PG"].map((code) => loadMessagesForLocale(code))),
+  );
+
   beforeEach(() => {
     vi.clearAllMocks();
   });

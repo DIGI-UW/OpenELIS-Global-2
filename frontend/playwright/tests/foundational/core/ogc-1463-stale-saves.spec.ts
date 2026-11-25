@@ -287,7 +287,7 @@ test.describe("A page loaded before another admin's change cannot undo it (OGC-1
         waitUntil: "domcontentloaded",
       });
       const toggle = page.locator(`#enabled-${ruleId}`);
-      const toggleLabel = page.locator(`label[for="enabled-${ruleId}"]`);
+      const toggleLabel = page.locator(`#enabled-${ruleId}_label`);
       await expect(toggle).toBeVisible({ timeout: NAV_TIMEOUT });
       expect(
         (

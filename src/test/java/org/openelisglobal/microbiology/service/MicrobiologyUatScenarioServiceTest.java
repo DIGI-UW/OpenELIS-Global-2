@@ -253,6 +253,9 @@ public class MicrobiologyUatScenarioServiceTest {
 
         EntityManager entityManager = mock(EntityManager.class);
         ReflectionTestUtils.setField(service, "entityManager", entityManager);
+        org.mockito.Mockito.lenient()
+                .when(entityManager.find(org.mockito.ArgumentMatchers.eq(MicroOrganism.class), any()))
+                .thenReturn(new MicroOrganism());
         var reporting = mock(MicroPatientReportService.class);
         var cultures = mock(MicroCultureService.class);
         var details = mock(MicroCaseOrderDetailService.class);

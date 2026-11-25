@@ -18,7 +18,11 @@ public record LoadedRow<T>(CsvLoadSummary.Outcome outcome, T value, String reaso
         return new LoadedRow<>(CsvLoadSummary.Outcome.SKIPPED, null, reason);
     }
 
+    public static <T> LoadedRow<T> unchanged(String reason) {
+        return new LoadedRow<>(CsvLoadSummary.Outcome.UNCHANGED, null, reason);
+    }
+
     public boolean isSkipped() {
-        return outcome == CsvLoadSummary.Outcome.SKIPPED;
+        return outcome == CsvLoadSummary.Outcome.SKIPPED || outcome == CsvLoadSummary.Outcome.UNCHANGED;
     }
 }

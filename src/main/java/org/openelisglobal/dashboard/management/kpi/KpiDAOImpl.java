@@ -5,6 +5,7 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Query;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.Map;
 import org.hibernate.jpa.TypedParameterValue;
@@ -85,20 +86,31 @@ public class KpiDAOImpl implements KpiDAO {
     }
 
     // The TAT report's rows and receipt-to-validation hours: whole milliseconds,
-    // two decimals, none when negative.
+    // two decimals, none when negative. The hours are elapsed time between the two
+    // wall-clock values read in the JVM's zone, as the TAT report reads them, so a
+    // daylight saving change counts as the hour it adds or removes.
     private Query tatQuery(String select, LocalDate from, LocalDate to, BigDecimal targetHours) {
         return entityManager
                 .createNativeQuery("WITH tat AS (SELECT s.received_date AS received,"
                         + " COALESCE(a.test_sect_id, t.test_section_id) AS section,"
-                        + " CASE WHEN a.released_date >= s.received_date THEN round(trunc(CAST(extract(epoch FROM"
-                        + " a.released_date - s.received_date) AS numeric) * 1000) / 3600000, 2) END AS hours"
+                        + " CASE WHEN e.seconds >= 0 THEN round(trunc(e.seconds * 1000) / 3600000, 2) END AS hours"
                         + " FROM clinlims.analysis a JOIN clinlims.sample_item si ON si.id = a.sampitem_id"
                         + " JOIN clinlims.sample s ON s.id = si.samp_id LEFT JOIN clinlims.test t ON t.id = a.test_id"
+                        + " CROSS JOIN LATERAL (SELECT CAST(extract(epoch FROM (a.released_date AT TIME ZONE :zone)"
+                        + " - (s.received_date AT TIME ZONE :zone)) AS numeric) AS seconds) e"
                         + " WHERE s.received_date >= :from AND s.received_date < :to"
                         + " AND a.status_id NOT IN (SELECT st.id FROM clinlims.status_of_sample st"
                         + " WHERE st.status_type = 'ANALYSIS' AND st.name = 'Test Canceled')"
                         + " AND (si.rejected IS NULL OR NOT si.rejected)) " + select)
-                .setParameter("from", QiReportSupport.startOf(from)).setParameter("to", QiReportSupport.endOf(to))
+                .setParameter("zone", readingZone()).setParameter("from", QiReportSupport.startOf(from))
+                .setParameter("to", QiReportSupport.endOf(to))
                 .setParameter("target", new TypedParameterValue(StandardBasicTypes.BIG_DECIMAL, targetHours));
+    }
+
+    // A fixed offset has no daylight saving, so any fixed zone gives the same
+    // elapsed time; region IDs are the IANA names PostgreSQL also knows.
+    private static String readingZone() {
+        ZoneId zone = ZoneId.systemDefault();
+        return zone.getRules().isFixedOffset() ? "UTC" : zone.getId();
     }
 }

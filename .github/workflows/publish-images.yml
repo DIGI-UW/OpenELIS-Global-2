@@ -454,7 +454,7 @@ jobs:
         run: |
           set -euo pipefail
           REMOTE_RUN="$(ssh -i ~/.ssh/id_deploy -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" 'umask 077; mktemp -d /tmp/openelis-deploy.XXXXXXXXXX')"
-          [[ "$REMOTE_RUN" =~ ^/tmp/openelis-deploy\.[A-Za-z0-9]{10}$ ]]
+          [[ "$REMOTE_RUN" =~ ^/tmp/openelis-deploy\.[A-Za-z0-9]{10}$ ]] || { echo "Unexpected remote working directory" >&2; exit 1; }
           echo "REMOTE_RUN=$REMOTE_RUN" >> "$GITHUB_ENV"
           ssh -i ~/.ssh/id_deploy -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p $REMOTE_RUN/diagnostics"
           scp -i ~/.ssh/id_deploy -P "$DEPLOY_PORT" request.json deploy-bundle.tgz .github/scripts/deploy-published-testing.py .github/scripts/check-readiness.py "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_RUN/"

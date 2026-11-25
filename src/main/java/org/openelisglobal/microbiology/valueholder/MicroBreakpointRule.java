@@ -260,4 +260,38 @@ public class MicroBreakpointRule extends BaseObject<String> {
     public void setDiskContent(String diskContent) {
         this.diskContent = diskContent;
     }
+
+    /** WHONET's organism level, such as GENUS_CODE; null on other rules. */
+    @Column(name = "organism_code_type", length = 40)
+    private String organismCodeType;
+
+    @Column(name = "organism_code", length = 40)
+    private String organismCode;
+
+    @Column(name = "site_of_infection", length = 255)
+    private String siteOfInfection;
+
+    public String getOrganismCodeType() {
+        return organismCodeType;
+    }
+
+    public void setOrganismCodeType(String organismCodeType) {
+        this.organismCodeType = organismCodeType;
+    }
+
+    public String getOrganismCode() {
+        return organismCode;
+    }
+
+    public void setOrganismCode(String organismCode) {
+        this.organismCode = organismCode;
+    }
+
+    public String getSiteOfInfection() {
+        return siteOfInfection;
+    }
+
+    public void setSiteOfInfection(String siteOfInfection) {
+        this.siteOfInfection = siteOfInfection;
+    }
 }

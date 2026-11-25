@@ -107,6 +107,9 @@ test.describe("OGC-372: Vector add-order → collection density", () => {
       );
       await expect(page.locator("#trapCount-0")).toHaveValue(String(traps));
       await expect(page.locator("#trapNights-0")).toHaveValue(String(nights));
+      // A vector sample needs a test before the order can be saved (OGC-1060).
+      await page.locator("#testSearch-0").fill("Malaria");
+      await page.locator('label[for^="test-0-"]').first().click();
       await demo.evidence("372-2-trap-effort-entered");
     });
 

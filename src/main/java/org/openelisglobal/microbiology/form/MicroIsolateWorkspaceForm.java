@@ -30,8 +30,8 @@ public class MicroIsolateWorkspaceForm {
     }
 
     public static class Options {
-        public List<IdValuePair> organisms, sampleTypes, originalSpecimenTypes, organizations, referralOrganizations,
-                reasons, methods;
+        public List<IdValuePair> sampleTypes, originalSpecimenTypes, organizations, referralOrganizations, reasons,
+                methods;
         public List<Test> tests;
         public List<Source> sources;
     }

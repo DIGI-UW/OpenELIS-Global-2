@@ -16,12 +16,12 @@ import {
   TableBatchActions,
   TableBatchAction,
   TextInput,
-  DatePicker,
   DatePickerInput,
   InlineNotification,
   Tag,
   Button,
 } from "@carbon/react";
+import { DatePicker } from "../common/DatePicker";
 import { Download } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { InventoryItemAPI } from "./InventoryService";

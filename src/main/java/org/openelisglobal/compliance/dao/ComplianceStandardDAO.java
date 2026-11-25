@@ -40,4 +40,11 @@ public interface ComplianceStandardDAO extends BaseDAO<ComplianceStandard, Strin
 
     /** Get tests linked to a compliance standard. */
     List<Map<String, Object>> getLinkedTests(String standardId) throws LIMSRuntimeException;
+
+    /**
+     * OGC-768: the active thresholds that link a test to any of the standards, with
+     * their group, standard and test loaded.
+     */
+    List<org.openelisglobal.compliance.valueholder.ComplianceThreshold> getActiveTestThresholds(
+            java.util.Collection<String> standardIds) throws LIMSRuntimeException;
 }

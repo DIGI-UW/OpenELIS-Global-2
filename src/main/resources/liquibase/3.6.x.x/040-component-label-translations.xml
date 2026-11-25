@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-1610-component-label-localization" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="test_result_component" columnName="label_localization_id"/>
+            </not>
+        </preConditions>
+        <comment>A result component's label can be translated, as a test's name is.</comment>
+        <addColumn schemaName="clinlims" tableName="test_result_component">
+            <column name="label_localization_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <addForeignKeyConstraint
+            constraintName="fk_test_result_component_label_localization"
+            baseTableSchemaName="clinlims"
+            baseTableName="test_result_component"
+            baseColumnNames="label_localization_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="localization"
+            referencedColumnNames="id"/>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="test_result_component" columnName="label_localization_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-1610-component-label-localization-backfill" author="OGC">
+        <comment>Every existing result component gets an empty translation record; new ones get it when saved.</comment>
+        <sql>
+            WITH missing AS (
+                SELECT id AS component_id, nextval('clinlims.localization_seq') AS localization_id
+                FROM clinlims.test_result_component WHERE label_localization_id IS NULL),
+            created AS (
+                INSERT INTO clinlims.localization (id, description, lastupdated)
+                SELECT localization_id, 'result component label', now() FROM missing)
+            UPDATE clinlims.test_result_component c SET label_localization_id = m.localization_id
+            FROM missing m WHERE c.id = m.component_id;
+        </sql>
+    </changeSet>
+</databaseChangeLog>

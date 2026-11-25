@@ -1,6 +1,7 @@
 package org.openelisglobal.qc.service;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -9,7 +10,9 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.qaevent.service.NceSpecimenService;
+import org.openelisglobal.resultrun.service.RunQcService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,12 +24,21 @@ import org.springframework.transaction.annotation.Transactional;
  * disagree: Validation annotates its rows with it on load, and the save path
  * re-checks it before releasing anything. Keeping the decision in one place is
  * what stops the display and the enforcement from drifting apart.
+ *
+ * <p>
+ * A result stored from a run that holds its test (OGC-1200 FR-C4) is held too,
+ * and never released whatever {@code qcFailBlocksValidation} says: the run gate
+ * is not a site option.
  */
 @Service
 public class QcHoldServiceImpl implements QcHoldService {
 
     @Autowired
     private NceSpecimenService nceSpecimenService;
+
+    @Lazy
+    @Autowired
+    private RunQcService runQcService;
 
     @Override
     @Transactional(readOnly = true)
@@ -38,8 +50,10 @@ public class QcHoldServiceImpl implements QcHoldService {
         // Ids are positive sequence values, so 0 doubles as "not a number".
         Set<Integer> numeric = analysisIds.stream().map(id -> NumberUtils.toInt(id, 0)).filter(id -> id > 0)
                 .collect(Collectors.toSet());
-        return nceSpecimenService.findAnalysisIdsWithOpenQcHold(numeric).stream().map(String::valueOf)
-                .collect(Collectors.toSet());
+        Set<String> held = nceSpecimenService.findAnalysisIdsWithOpenQcHold(numeric).stream().map(String::valueOf)
+                .collect(Collectors.toCollection(HashSet::new));
+        held.addAll(runQcService.heldAnalysisIds(analysisIds));
+        return held;
     }
 
     /**
@@ -50,11 +64,11 @@ public class QcHoldServiceImpl implements QcHoldService {
     @Override
     @Transactional(readOnly = true)
     public Set<String> analysisIdsBlockedFromRelease(Collection<String> analysisIds) {
-        if (!blocksRelease() || analysisIds == null || analysisIds.isEmpty()) {
+        if (analysisIds == null || analysisIds.isEmpty()) {
             return Set.of();
         }
         try {
-            return heldAnalysisIds(analysisIds);
+            return blocksRelease() ? heldAnalysisIds(analysisIds) : runQcService.heldAnalysisIds(analysisIds);
         } catch (RuntimeException e) {
             LogEvent.logError(this.getClass().getName(), "analysisIdsBlockedFromRelease",
                     "Could not resolve QC holds; withholding release for this batch: " + e.getMessage());

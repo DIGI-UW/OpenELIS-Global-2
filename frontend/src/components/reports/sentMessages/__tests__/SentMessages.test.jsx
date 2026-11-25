@@ -24,6 +24,7 @@ const PAGE = {
       labNumber: "CPHL-26-004211",
       workflow: "clinical",
       status: "FAILED",
+      resentFromId: 40,
       channels: [
         { channel: "EMAIL", status: "FAILED", errorMessage: "Could not reach smtp.health.gov.pg on port 587", attempts: 4 },
       ],
@@ -65,19 +66,29 @@ const DETAIL = {
   ...PAGE.rows[0],
   renderedSubject: "CPHL alert: Cholera RDT positive",
   renderedMessage: "Lab number CPHL-26-004211: Cholera RDT Positive. Phone the lab.",
+  resentFromFiredAt: "2026-10-16T09:20:00+03:00",
   attempts: [
     { channel: "EMAIL", attemptedAt: "2026-10-16T09:30:05+03:00", succeeded: false, errorMessage: "Could not reach smtp.health.gov.pg on port 587" },
   ],
 };
 
 const requests = [];
+const failures = { list: 0, detail: 0 };
 const addNotification = vi.fn();
 
 vi.mock("../../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn((url, callback) => {
     requests.push(url);
     if (url.startsWith("/rest/delivery/messages/")) {
+      if (failures.detail > 0) {
+        failures.detail -= 1;
+        callback(null);
+        return;
+      }
       callback(DETAIL);
+    } else if (failures.list > 0) {
+      failures.list -= 1;
+      callback(null);
     } else {
       callback(PAGE);
     }
@@ -93,7 +104,9 @@ vi.mock("../../../../config.json", () => ({
 }));
 
 vi.mock("../../../common/PageBreadCrumb", () => ({
-  default: () => <nav data-testid="breadcrumb" />,
+  default: ({ breadcrumbs }) => (
+    <nav data-testid="breadcrumb">{breadcrumbs.map((crumb) => crumb.label).join(" / ")}</nav>
+  ),
 }));
 
 vi.mock("../../../layout/Layout", () => ({
@@ -184,6 +197,82 @@ describe("SentMessages", () => {
     expect(requests).toContain("/rest/delivery/messages/41");
     expect(screen.getByText(/Phone the lab/)).toBeInTheDocument();
     expect(screen.getByText("Open in the Report Print Queue")).toBeInTheDocument();
+  });
+
+  // OGC-1551: a resend is its own row; it says so and names the message it repeats.
+  it("marks a resend and names when the message it repeats was sent", async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getByTestId("sent-row-41")).toBeInTheDocument());
+    expect(screen.getByTestId("sent-resend-41")).toHaveTextContent("Resend");
+    expect(screen.queryByTestId("sent-resend-44")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("button", { name: /expand current row/i })[0]);
+
+    await waitFor(() => expect(screen.getByTestId("sent-resent-from-41")).toBeInTheDocument());
+    expect(screen.getByTestId("sent-resent-from-41")).toHaveTextContent(/^Resend of the message sent \S/);
+  });
+
+  // OGC-1551: the resend links back to the message it repeats.
+  it("shows the original a resend repeats, and every message again on request", async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getByTestId("sent-row-41")).toBeInTheDocument());
+    fireEvent.click(screen.getAllByRole("button", { name: /expand current row/i })[0]);
+    await waitFor(() => expect(screen.getByTestId("sent-show-original-41")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId("sent-show-original-41"));
+
+    await waitFor(() => expect(requests.some((url) => /[?&]message=40(&|$)/.test(url))).toBe(true));
+    expect(screen.getByTestId("sent-one-message")).toHaveTextContent("Showing one message.");
+    const before = requests.length;
+    fireEvent.click(screen.getByRole("button", { name: "Show all messages" }));
+    await waitFor(() => expect(requests.length).toBeGreaterThan(before));
+    expect(requests[requests.length - 1]).not.toMatch(/message=/);
+    expect(screen.queryByTestId("sent-one-message")).not.toBeInTheDocument();
+  });
+
+  it("offers a retry when the list cannot be loaded", async () => {
+    failures.list = 1;
+    renderPage();
+    await waitFor(() => expect(screen.getByTestId("sent-load-error")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+    await waitFor(() => expect(screen.getByTestId("sent-row-41")).toBeInTheDocument());
+    expect(screen.queryByTestId("sent-load-error")).not.toBeInTheDocument();
+  });
+
+  it("retries a message whose details could not be loaded", async () => {
+    failures.detail = 1;
+    renderPage();
+    await waitFor(() => expect(screen.getByTestId("sent-row-41")).toBeInTheDocument());
+    fireEvent.click(screen.getAllByRole("button", { name: /expand current row/i })[0]);
+    await waitFor(() => expect(screen.getByTestId("sent-detail-error-41")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+    await waitFor(() => expect(screen.getByText("CPHL alert: Cholera RDT positive")).toBeInTheDocument());
+    expect(screen.queryByTestId("sent-detail-error-41")).not.toBeInTheDocument();
+  });
+
+  it("loads a message's details again when its row is reopened after a failure", async () => {
+    failures.detail = 1;
+    renderPage();
+    await waitFor(() => expect(screen.getByTestId("sent-row-41")).toBeInTheDocument());
+    const toggle = () => screen.getAllByRole("button", { name: /(expand|collapse) current row/i })[0];
+    fireEvent.click(toggle());
+    await waitFor(() => expect(screen.getByTestId("sent-detail-error-41")).toBeInTheDocument());
+
+    fireEvent.click(toggle());
+    fireEvent.click(toggle());
+
+    await waitFor(() => expect(screen.getByText("CPHL alert: Cholera RDT positive")).toBeInTheDocument());
+  });
+
+  it("sits under Reports in the breadcrumb", () => {
+    renderPage();
+    expect(screen.getByTestId("breadcrumb")).toHaveTextContent(
+      "home.label / common.reports / sidenav.label.reports.sentMessages",
+    );
   });
 
   it("masks addresses and numbers", () => {

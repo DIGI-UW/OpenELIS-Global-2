@@ -29,6 +29,7 @@ import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.testalertrule.valueholder.TestAlertRule;
+import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
@@ -87,6 +88,9 @@ public class AlertOnEditedResultTest {
 
     @Mock
     private TestResultComponentService testResultComponentService;
+
+    @Mock
+    private TestResultService testResultService;
 
     @InjectMocks
     private TestAlertEvaluationServiceImpl evaluation;
