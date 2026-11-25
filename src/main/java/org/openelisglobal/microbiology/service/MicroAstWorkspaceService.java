@@ -72,15 +72,17 @@ public class MicroAstWorkspaceService {
                         }
                     }).map(p -> new MicroAstWorkspaceForm.Option(p.getId(), p.getName() + " v" + p.getVersionNumber()))
                             .toList();
-                    var assigned = assignments.getAssignments(i.getId()).stream()
-                            .map(a -> new MicroAstWorkspaceForm.Assignment(a.getId(), a.getPanelId(),
-                                    panels.get(a.getPanelId()).orElseThrow().getName(), a.getProvenance()))
-                            .toList();
+                    var assigned = assignments.getAssignments(i.getId()).stream().map(a -> {
+                        var panel = panels.get(a.getPanelId()).orElseThrow();
+                        return new MicroAstWorkspaceForm.Assignment(a.getId(), a.getPanelId(),
+                                panel.getName() + " v" + panel.getVersionNumber(), a.getProvenance());
+                    }).toList();
                     var selected = choices.getChoices(i.getId()).stream().map(
                             choice -> new MicroAstWorkspaceForm.Choice(choice.getAntibioticId(), choice.getReadingId()))
                             .toList();
                     return new MicroAstWorkspaceForm.Isolate(i.getId(), i.getIsolateLabel(), o.getDisplayName(),
-                            o.getSusceptibilityProtocol(), catalog, assigned, responses.runs(i.getId()), selected);
+                            o.getSusceptibilityProtocol(), MicroAstPanelAssignmentService.defaultPanelId(o), catalog,
+                            assigned, responses.runs(i.getId()), selected);
                 }).toList();
         form.dst = dst.evaluate(caseId);
         return form;
@@ -110,6 +112,8 @@ public class MicroAstWorkspaceService {
                 choices.select(isolate.getId(), request.antibioticId, request.readingId, request.reason, actor);
             case "acknowledge" -> ast.acknowledgeAnalyzerFlags(request.runId, request.reason, actor);
             case "qc-override" -> ast.overrideQcFailure(request.runId, request.reason, actor);
+            case "report" -> ast.setReported(request.runId, request.antibioticId, request.reported, actor);
+            case "report-reset" -> ast.resetReportDefaults(isolate.getId(), actor);
             default -> throw new IllegalArgumentException("Unknown validation action");
             }
         else
@@ -138,6 +142,8 @@ public class MicroAstWorkspaceService {
                     request.orderedAntibioticIds, actor);
             case "invalidate" -> ast.invalidateAndRepeat(request.runId, request.reason, request.analyzerCardId, actor);
             case "cancel" -> ast.cancelRun(request.runId, request.reason, actor);
+            case "report" -> ast.setReported(request.runId, request.antibioticId, request.reported, actor);
+            case "report-reset" -> ast.resetReportDefaults(isolate.getId(), actor);
             default -> throw new IllegalArgumentException("Unknown AST action");
             }
         return get(caseId, actor);

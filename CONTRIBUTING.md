@@ -26,6 +26,8 @@ https://openelis-global.org/community/get-involved/
   `specs/roadmaps/` for strategic documents). These must match the current code
   or direction; remove a document once it no longer does, since git history
   keeps the old version.
+- **Backend test patterns and best practices:** see
+  [.specify/guides/backend-testing-best-practices.md](.specify/guides/backend-testing-best-practices.md).
 
 For code of conduct expectations, see [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 

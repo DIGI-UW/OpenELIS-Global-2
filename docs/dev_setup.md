@@ -71,13 +71,15 @@ Run `up --build` to build those images from the checkout instead. That is only
 needed when a change lives inside an image rather than in the mounted WAR or
 frontend source: `Dockerfile.dev`, the frontend `Dockerfile`, frontend
 dependencies (`package.json`, `package-lock.json`) or build configuration
-(`vite.config.ts`, `index.html`, `tsconfig.json`), or Bridge and mock changes in
-`tools/<submodule>`. Without `--build`, `up` prints a warning when the frontend
-files, a Bridge or mock checkout, or `Dockerfile.dev`, `install/` or
-`tomcat/client-certificates` differ from what the published images were built
-from, and keeps running the published images. Application containers, networks,
-ports, and data volumes belong to this worktree. Docker and Maven caches are
-reused.
+(`vite.config.ts`, `module-federation.config.js`, `index.html`,
+`tsconfig.json`), or Bridge and mock changes in `tools/<submodule>`. A light
+`up --build` builds only the images the light setup runs: the certificates, the
+frontend and the webapp. Without `--build`, `up` prints a warning when the
+frontend files, a Bridge or mock checkout, or `Dockerfile.dev`, `install/`,
+`tomcat/client-certificates` or `tomcat/oe_server.xml` differ from what the
+published images were built from, and keeps running the published images.
+Application containers, networks, ports, and data volumes belong to this
+worktree. Docker and Maven caches are reused.
 
 `up` initializes an empty submodule at the commit the parent repository records.
 It never moves, resets or refuses a populated one. For each submodule at another
@@ -286,3 +288,16 @@ custom passwords are supported. Changing the variables does not re-encrypt
 existing stores: the script preserves an unreadable store and fails certificate
 setup before dependent services start. Keep the passwords that were used to
 create existing stores when upgrading.
+
+## Database access
+
+The deployment Compose files keep PostgreSQL inside the Docker network. They do
+not publish host port 15432. Use
+`docker compose exec db.openelis.org psql -U clinlims -d clinlims` on the server
+for administration, or run that command over SSH. An installation that requires
+a host connection must explicitly provide a Compose override; bind it to
+loopback and use an SSH tunnel for remote access.
+
+For source development, `scripts/dev-stack env` reports the database address.
+The development and analyzer test harnesses publish PostgreSQL only on
+`127.0.0.1`, so local database tools continue to work.

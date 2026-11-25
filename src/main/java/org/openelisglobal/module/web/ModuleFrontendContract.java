@@ -10,7 +10,7 @@ package org.openelisglobal.module.web;
  */
 public final class ModuleFrontendContract {
 
-    public static final String VERSION = "1.0.0";
+    public static final String VERSION = "1.1.0";
 
     private ModuleFrontendContract() {
     }

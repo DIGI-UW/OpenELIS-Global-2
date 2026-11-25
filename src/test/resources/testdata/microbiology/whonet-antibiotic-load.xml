@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <micro_whonet_antibiotic />
+    <micro_antibiotic id="lab-amikacin"
+        display_name="Amikacin sulfate" whonet_code="amk" notes="Lab note"
+        is_active="Y" seeded="false" resistance_role="NONE"
+        lastupdated="2026-01-01 00:00:00" last_updated="2026-01-01 00:00:00" />
+    <micro_antibiotic id="lab-uncoded-kanamycin"
+        display_name="Kanamycin" is_active="Y" seeded="false"
+        resistance_role="NONE" lastupdated="2026-01-01 00:00:00"
+        last_updated="2026-01-01 00:00:00" />
+</dataset>

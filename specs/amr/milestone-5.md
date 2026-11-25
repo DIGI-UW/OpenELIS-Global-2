@@ -11,7 +11,7 @@ identification for received isolates.
 | Case endpoint under `/rest/microbiology/cases/{caseId}` | Behavior                                                                                                       |
 | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `GET /isolates`                                         | Isolates, eager origin/history, permission flags, linked referrals and badge                                   |
-| `GET /isolates/options`                                 | Active organisms/methods, configured isolate types, sources, allowed tests and referral choices                |
+| `GET /isolates/options`                                 | Active methods, configured isolate types, sources, allowed tests and referral choices; organisms are searched  |
 | `POST /isolates`                                        | Pick from `cultureId`; optional Gram/morphology; coded significance                                            |
 | `POST /isolates/{isolateId}/identify`                   | Organism, PRELIMINARY/FINAL, catalog method, performed timestamp, optional confidence/note and current version |
 | `POST /isolates/{isolateId}/reidentify`                 | Same fields, mandatory reason and current lab-unit Validation rights                                           |
