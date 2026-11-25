@@ -15,6 +15,7 @@ import org.openelisglobal.common.services.StatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.TableIdService;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.IsoDateNormalizer;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
@@ -192,11 +193,9 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
         }
         ObservationHistory observation = SpringContext.getBean(ObservationHistoryService.class)
                 .getObservationForSample(ObservationHistoryServiceImpl.ObservationType.REQUEST_DATE, sample.getId());
-        if (observation != null && observation.getValue() != null) {
-            return DateUtil.convertStringDateToTruncatedTimestamp(observation.getValue());
-        } else { // If ordered date is not given then use received date
-            return sample.getReceivedTimestamp();
-        }
+        java.time.LocalDate requested = observation == null ? null
+                : IsoDateNormalizer.toLocalDate(observation.getValue());
+        return requested == null ? sample.getReceivedTimestamp() : Timestamp.valueOf(requested.atStartOfDay());
     }
 
     @Override
@@ -450,6 +449,18 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
     @Transactional(readOnly = true)
     public String getLargestAccessionNumberWithPrefix(String prefix) {
         return getBaseObjectDAO().getLargestAccessionNumberWithPrefix(prefix);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Sample> getSamplesWithAccessionNumberStartingWith(String prefix, int max) {
+        return getBaseObjectDAO().getSamplesWithAccessionNumberStartingWith(prefix, max);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Sample> getEnvironmentalSamplesWithAccessionNumberStartingWith(String prefix, int max) {
+        return getBaseObjectDAO().getEnvironmentalSamplesWithAccessionNumberStartingWith(prefix, max);
     }
 
     @Override

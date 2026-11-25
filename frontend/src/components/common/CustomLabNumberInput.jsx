@@ -1,7 +1,7 @@
 import React, { useState, useContext, useEffect } from "react";
 import { TextInput } from "@carbon/react";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
-import { ConfigurationContext } from "../layout/Layout";
+import { ConfigurationContext } from "../layout/contexts";
 
 const CustomLabNumberInput = (props) => {
   const { configurationProperties } = useContext(ConfigurationContext);

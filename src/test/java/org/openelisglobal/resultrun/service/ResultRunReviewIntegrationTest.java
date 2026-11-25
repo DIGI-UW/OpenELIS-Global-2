@@ -1,16 +1,19 @@
 package org.openelisglobal.resultrun.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
@@ -19,6 +22,7 @@ import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.resultrun.form.ResultRunChip;
 import org.openelisglobal.resultrun.form.ResultRunChipCounts;
+import org.openelisglobal.resultrun.form.ResultRunExceptionKind;
 import org.openelisglobal.resultrun.form.ResultRunRow;
 import org.openelisglobal.resultrun.form.ResultRunRowCategory;
 import org.openelisglobal.resultrun.form.ResultRunRowsPage;
@@ -45,6 +49,7 @@ public class ResultRunReviewIntegrationTest extends BaseWebContextSensitiveTest 
 
     private static final String UNIT = "97750";
     private static final String TEST = "97751";
+    private static final String OTHER_TEST = "97752";
     private static final String ANALYZER = "97770";
 
     @Autowired
@@ -100,8 +105,12 @@ public class ResultRunReviewIntegrationTest extends BaseWebContextSensitiveTest 
         return item.getSample().getAccessionNumber();
     }
 
+    /** An order of the patient with the test on it, so its value is acceptable. */
     private String newSampleOfPatient() {
-        return newSampleItemOfPatient().getSample().getAccessionNumber();
+        SampleItem item = newSampleItemOfPatient();
+        fixtures.createAnalysis(item, testService.get(TEST));
+        entityManager.flush();
+        return item.getSample().getAccessionNumber();
     }
 
     private SampleItem newSampleItemOfPatient() {
@@ -195,6 +204,7 @@ public class ResultRunReviewIntegrationTest extends BaseWebContextSensitiveTest 
         AnalyzerResults onPlasma = row("15");
         onPlasma.setAccessionNumber(newSampleOfPatient(plasma));
         AnalyzerResults withoutAnalysis = row("15");
+        withoutAnalysis.setAccessionNumber(newSampleItemOfPatient().getSample().getAccessionNumber());
         ResultRun run = open("m-specimen", List.of(onPlasma, withoutAnalysis));
 
         List<ResultRunRow> rows = resultRunService.getRows(run.getId(), viewer(), ResultRunChip.ALL, 1, 25)
@@ -205,21 +215,132 @@ public class ResultRunReviewIntegrationTest extends BaseWebContextSensitiveTest 
                 plasmaRow.category());
         ResultRunRow sharedRow = rows.stream().filter(r -> r.id().equals(withoutAnalysis.getId())).findFirst()
                 .orElseThrow();
-        assertEquals("15 is inside the shared range of 10 to 20", ResultRunRowCategory.NORMAL, sharedRow.category());
+        assertEquals("15 is inside the shared range of 10 to 20", "NORMAL", sharedRow.flag());
+        assertEquals("the test is not on that order", ResultRunExceptionKind.UNORDERED, sharedRow.exceptionKind());
     }
 
     @Test
-    public void everyPatientRowOfAHeldRunIsHeld() {
+    public void theRowsOfATestAFailedControlCoversAreHeldAndOnlyThose() {
+        jdbc.update("INSERT INTO clinlims.test (id, name, description, is_active, guid, domain, orderable,"
+                + " test_section_id, lastupdated) VALUES (?::numeric, 'Other test', 'Other test', 'Y', ?,"
+                + " 'CLINICAL', true, ?::numeric, NOW())", OTHER_TEST, UUID.randomUUID().toString(), UNIT);
         ResultRun run = open("m-held", List.of(row("15"), row("60"), withIssue(row("14"))));
-        run.setState(ResultRunState.HELD);
-        resultRunService.update(run);
-        entityManager.flush();
+        recordControl(run.getId(), OTHER_TEST, "FAIL");
 
+        assertEquals("a failed control of another test holds nothing here", 0,
+                resultRunService.getHeader(run.getId(), viewer()).orElseThrow().chipCounts().held());
+
+        recordControl(run.getId(), TEST, "FAIL");
         ResultRunChipCounts counts = resultRunService.getHeader(run.getId(), viewer()).orElseThrow().chipCounts();
 
         assertEquals(2, counts.held());
         assertEquals(1, counts.exceptions());
         assertEquals(0, counts.critical());
+    }
+
+    @Test
+    public void aRowOfATestTheRunDoesNotHoldIsStillAcceptedFromAHeldRun() {
+        jdbc.update("INSERT INTO clinlims.test (id, name, description, is_active, guid, domain, orderable,"
+                + " test_section_id, lastupdated) VALUES (?::numeric, 'Other test', 'Other test', 'Y', ?,"
+                + " 'CLINICAL', true, ?::numeric, NOW())", OTHER_TEST, UUID.randomUUID().toString(), UNIT);
+        SampleItem item = newSampleItemOfPatient();
+        Analysis analysis = fixtures.createAnalysis(item, testService.get(TEST));
+        AnalyzerResults staged = row("15");
+        staged.setAccessionNumber(item.getSample().getAccessionNumber());
+        ResultRun run = open("m-held-other", List.of(staged));
+        recordControl(run.getId(), OTHER_TEST, "FAIL");
+        run.setState(ResultRunState.HELD);
+        resultRunService.update(run);
+        entityManager.flush();
+
+        assertTrue("the run holds the other test only, so this value is still accepted",
+                resultRunService.stagedValueFor(staged.getId(), analysis, null).isPresent());
+    }
+
+    private void recordControl(Long runId, String testId, String verdict) {
+        jdbc.update("INSERT INTO clinlims.qc_result (id, test_id, source, result_value, run_date_time, result_status,"
+                + " sys_user_id, run_id, run_verdict, verdict_source) VALUES (?, ?::numeric, 'ASTM', 1, NOW(),"
+                + " 'PENDING', 1, ?, ?, 'COMPUTED')", UUID.randomUUID().toString(), testId, runId, verdict);
+        entityManager.flush();
+    }
+
+    /**
+     * A run row is accepted into its worklist row with the value the import
+     * resolved: the dictionary choice, while the instrument's text stays on view. A
+     * main value staged without a component names the test's primary component,
+     * which is the row the worklist shows it on.
+     */
+    @Test
+    public void aRowNamesTheChoiceItIsAcceptedAsAndTheMainValueItsPrimaryPart() {
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, display_order, is_active,"
+                + " lastupdated, is_primary) VALUES ('rvw-main', ?::numeric, 'MAIN', 'Main', 0, 'Y', NOW(), true),"
+                + " ('rvw-call', ?::numeric, 'CALL', 'Call', 1, 'Y', NOW(), false)", TEST, TEST);
+        AnalyzerResults positive = row("9101");
+        positive.setRawResultValue("POS");
+        positive.setResultType("D");
+        AnalyzerResults call = row("12");
+        call.setComponentId("rvw-call");
+        ResultRun run = open("m-entry", List.of(positive, call));
+
+        List<ResultRunRow> rows = resultRunService.getRows(run.getId(), viewer(), ResultRunChip.ALL, 1, 25)
+                .orElseThrow().rows();
+
+        ResultRunRow main = rows.stream().filter(r -> r.id().equals(positive.getId())).findFirst().orElseThrow();
+        assertEquals("what the instrument sent", "POS", main.value());
+        assertEquals("the dictionary choice the import resolved", "9101", main.stagedResult());
+        assertEquals("rvw-main", main.componentId());
+        ResultRunRow part = rows.stream().filter(r -> r.id().equals(call.getId())).findFirst().orElseThrow();
+        assertEquals("rvw-call", part.componentId());
+    }
+
+    /**
+     * A test with one part shows one worklist row that names no part, so a value of
+     * that test names none either, whether or not the import gave it the part.
+     */
+    @Test
+    public void aValueOfATestWithOnePartNamesNoPartLikeItsWorklistRow() {
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, display_order, is_active,"
+                + " lastupdated, is_primary) VALUES ('rvw-only', ?::numeric, 'ONLY', 'Only', 0, 'Y', NOW(), true)",
+                TEST);
+        AnalyzerResults named = row("15");
+        named.setComponentId("rvw-only");
+        AnalyzerResults unnamed = row("16");
+        ResultRun run = open("m-one-part", List.of(named, unnamed));
+
+        List<ResultRunRow> rows = resultRunService.getRows(run.getId(), viewer(), ResultRunChip.ALL, 1, 25)
+                .orElseThrow().rows();
+
+        assertEquals(List.of(), rows.stream().map(ResultRunRow::componentId).filter(Objects::nonNull).toList());
+    }
+
+    @Test
+    public void aValueIsNamedByItsTestAndKeepsTheAnalyzersCodeBesideIt() {
+        AnalyzerResults coded = row("15");
+        coded.setTestName("RVW-A");
+        coded.setRawTestCode("RVW-A");
+        AnalyzerResults unmapped = row("7");
+        unmapped.setTestId(null);
+        unmapped.setTestName("RVW-Z");
+        unmapped.setRawTestCode("RVW-Z");
+        unmapped.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST);
+        AnalyzerResults unordered = row("16");
+        unordered.setTestName("RVW-U");
+        unordered.setAccessionNumber(newSampleItemOfPatient().getSample().getAccessionNumber());
+        ResultRun run = open("m-names", List.of(coded, unmapped, unordered));
+
+        List<ResultRunRow> rows = resultRunService.getRows(run.getId(), viewer(), ResultRunChip.ALL, 1, 25)
+                .orElseThrow().rows();
+
+        ResultRunRow named = rows.stream().filter(r -> r.id().equals(coded.getId())).findFirst().orElseThrow();
+        assertEquals("Review test", named.testName());
+        assertEquals("RVW-A", named.code());
+        ResultRunRow code = rows.stream().filter(r -> r.id().equals(unmapped.getId())).findFirst().orElseThrow();
+        assertEquals("a code mapped to no test keeps the analyzer's name", "RVW-Z", code.testName());
+        ResultRunSelectionSummary summary = resultRunService
+                .summarizeSelection(run.getId(), viewer(), new ResultRunSelection("ALL", true, List.of(), List.of()))
+                .orElseThrow();
+        assertEquals("a skipped value is named as its row is", Set.of("RVW-Z", "Review test"),
+                Set.copyOf(summary.skipped().stream().map(ResultRunSelectionSummary.SkippedRow::testName).toList()));
     }
 
     private AnalyzerResults row(String value) {

@@ -117,6 +117,7 @@ const caseAtStage = (status, overrides = {}) => ({
 
 let servedCase;
 let tissueCatalogue;
+let stainCatalogue;
 let requestCatalogue;
 let requestStatusCatalogue;
 
@@ -265,13 +266,37 @@ const addCassetteButton = () =>
     name: messages["pathology.action.addCassette"],
   });
 
-const addSlideButton = () =>
-  screen.getByRole("button", { name: messages["pathology.action.addSlide"] });
+// The Add slide of the block it is named after.
+const addSlideTo = (designation) =>
+  screen.getByRole("button", {
+    name: intl.formatMessage(
+      { id: "pathology.action.addSlideTo" },
+      { designation },
+    ),
+  });
+
+// The control that opens and closes a block's slides, named after the block.
+const slidesToggle = (designation) =>
+  screen.getByRole("button", {
+    name: intl.formatMessage(
+      { id: "pathology.label.slidesOf" },
+      { designation },
+    ),
+  });
+
+// A block's group in the microtomy section: its header and its slides.
+const slideGroup = (designation) =>
+  slidesToggle(designation).closest(".pathology-case-view__group");
+
+const slideGroupBody = (designation) =>
+  document.getElementById(
+    slidesToggle(designation).getAttribute("aria-controls"),
+  );
 
 // Named after the row it sits in, so the label starts with the field's word.
-const parentBlockCombobox = (row) =>
+const stainCombobox = (row) =>
   within(row).getByRole("combobox", {
-    name: new RegExp("^" + messages["pathology.label.parentBlock"]),
+    name: new RegExp("^" + messages["pathology.label.stain"]),
   });
 
 const reasonField = () =>
@@ -319,6 +344,10 @@ beforeEach(() => {
     { id: "21", value: "Skin" },
     { id: "22", value: "Bone" },
   ];
+  stainCatalogue = [
+    { id: "31", value: "H&E" },
+    { id: "32", value: "PAS" },
+  ];
   requestCatalogue = [];
   requestStatusCatalogue = [
     { id: "OPENED", value: "Opened" },
@@ -328,6 +357,9 @@ beforeEach(() => {
   getFromOpenElisServer.mockImplementation((url, callback) => {
     if (url === "/rest/dictionary/category/pathology_tissue_types") {
       return callback(tissueCatalogue);
+    }
+    if (url === "/rest/dictionary/category/Pathology%20Stains") {
+      return callback(stainCatalogue);
     }
     if (url === "/rest/displayList/PATHOLOGIST_REQUESTS") {
       return callback(requestCatalogue);
@@ -1133,12 +1165,14 @@ describe("PathologyCaseView sections", () => {
   // A key taken from the position would hand the remaining row the removed
   // row's controls, and with them the wrong file shown as attached.
   it("keeps a new slide's own attachment when an earlier new slide is removed", async () => {
-    servedCase = caseAtStage("MICROTOMY", { blocks: [savedBlock("1", "A1")] });
+    servedCase = caseAtStage("MICROTOMY", {
+      blocks: [savedBlock("1", "A1", { cassetteState: "BLOCK" })],
+    });
     renderCaseView();
 
     await waitFor(() => expect(stageReadout()).not.toBeNull());
-    fireEvent.click(addSlideButton());
-    fireEvent.click(addSlideButton());
+    fireEvent.click(addSlideTo("A1"));
+    fireEvent.click(addSlideTo("A1"));
 
     const second = pendingRows("pathology-section-microtomy")[1].closest(
       ".pathology-case-view__row",
@@ -1306,140 +1340,6 @@ describe("PathologyCaseView sections", () => {
         selector: "button",
       }),
     ).toBeDisabled();
-  });
-
-  it("names the block each slide was cut from, and says when that was never recorded", async () => {
-    servedCase = caseAtStage("MICROTOMY", {
-      blocks: [savedBlock("1", "A1"), savedBlock("2", "A2", { active: false })],
-      slides: [
-        savedSlide("5", "1", "1"),
-        // A slide cut before slides named their block.
-        { id: "6", designation: "7", blockId: null, active: true },
-        savedSlide("8", "2", 2),
-      ],
-    });
-    renderCaseView();
-
-    await waitFor(() => expect(stageReadout()).not.toBeNull());
-
-    const cut = rowIn("pathology-section-microtomy", "1");
-    expect(
-      within(cut).getByText(messages["pathology.label.parentBlock"]),
-    ).toBeInTheDocument();
-    expect(within(cut).getByText("A1")).toBeInTheDocument();
-
-    const legacy = rowIn("pathology-section-microtomy", "7");
-    expect(
-      within(legacy).getByText(messages["caseView.label.notRecorded"]),
-    ).toBeInTheDocument();
-
-    const underDeactivated = rowIn("pathology-section-microtomy", "2");
-    expect(within(underDeactivated).getByText("A2")).toBeInTheDocument();
-    expect(
-      within(underDeactivated).getByText(
-        messages["caseView.badge.deactivated"],
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it("holds Add slide back until the case has a saved cassette in use, and says why", async () => {
-    servedCase = caseAtStage("MICROTOMY", {
-      blocks: [savedBlock("1", "A1", { active: false })],
-    });
-    const { unmount } = renderCaseView();
-
-    await waitFor(() => expect(stageReadout()).not.toBeNull());
-    const addSlide = () =>
-      buttonWithText(document.body, messages["pathology.action.addSlide"]);
-    expect(addSlide()).toBeDisabled();
-    expect(addSlide()).toHaveAttribute(
-      "title",
-      messages["pathology.locked.slideNeedsSavedBlock"],
-    );
-
-    unmount();
-    servedCase = caseAtStage("MICROTOMY", {
-      blocks: [savedBlock("1", "A1")],
-    });
-    renderCaseView();
-
-    await waitFor(() => expect(stageReadout()).not.toBeNull());
-    expect(addSlide()).toBeEnabled();
-    expect(addSlide()).not.toHaveAttribute("title");
-  });
-
-  it("lets a new slide name only a saved cassette in use, and posts the one chosen", async () => {
-    servedCase = caseAtStage("MICROTOMY", {
-      blocks: [savedBlock("1", "A1"), savedBlock("2", "A2", { active: false })],
-    });
-    renderCaseView();
-
-    await waitFor(() => expect(stageReadout()).not.toBeNull());
-    fireEvent.click(addCassetteButton());
-    fireEvent.click(addSlideButton());
-
-    const user = userEvent.setup();
-    const newSlideRow = pendingRows("pathology-section-microtomy")[0].closest(
-      ".pathology-case-view__row",
-    );
-    await user.click(parentBlockCombobox(newSlideRow));
-    const offered = within(newSlideRow).getAllByRole("option");
-    expect(offered.map((option) => option.textContent)).toEqual(["A1"]);
-
-    await user.click(offered[0]);
-
-    const body = await postedCase();
-    expect(body.slides).toEqual([{ blockId: "1", location: "" }]);
-  });
-
-  it("will not post a new slide that names no block, and marks the slide that needs one", async () => {
-    servedCase = caseAtStage("MICROTOMY", { blocks: [savedBlock("1", "A1")] });
-    renderCaseView();
-
-    await waitFor(() => expect(stageReadout()).not.toBeNull());
-    fireEvent.click(addSlideButton());
-    const newSlideRow = pendingRows("pathology-section-microtomy")[0].closest(
-      ".pathology-case-view__row",
-    );
-    expect(
-      within(newSlideRow).queryByText(
-        messages["pathology.locked.slideNeedsBlock"],
-      ),
-    ).toBeNull();
-
-    fireEvent.click(saveDraftButton());
-
-    expect(postToOpenElisServerFullResponse).not.toHaveBeenCalled();
-    expect(addNotification).toHaveBeenCalledWith(
-      expect.objectContaining({
-        kind: "error",
-        message: messages["pathology.locked.slideNeedsBlock"],
-      }),
-    );
-    expect(
-      within(newSlideRow).getByText(
-        messages["pathology.locked.slideNeedsBlock"],
-      ),
-    ).toBeInTheDocument();
-    expect(parentBlockCombobox(newSlideRow)).toHaveAttribute(
-      "aria-invalid",
-      "true",
-    );
-
-    const user = userEvent.setup();
-    await user.click(parentBlockCombobox(newSlideRow));
-    await user.click(within(newSlideRow).getByRole("option", { name: "A1" }));
-    expect(
-      within(newSlideRow).queryByText(
-        messages["pathology.locked.slideNeedsBlock"],
-      ),
-    ).toBeNull();
-    expect(parentBlockCombobox(newSlideRow)).not.toHaveAttribute(
-      "aria-invalid",
-    );
-
-    const body = await postedCase();
-    expect(body.slides).toEqual([{ blockId: "1", location: "" }]);
   });
 
   it("deactivates a cassette through a dialog that names it, then reads the case back", async () => {
@@ -2568,5 +2468,1028 @@ describe("Embedding section", () => {
 
     expect(section(EMBEDDING).querySelector('input[type="number"]')).toBeNull();
     expect(section(EMBEDDING).querySelector(".cds--number")).toBeNull();
+  });
+});
+
+describe("Microtomy section", () => {
+  const MICROTOMY = "pathology-section-microtomy";
+  const asBlock = (row) => ({ ...row, cassetteState: "BLOCK" });
+
+  const slideCount = (count) =>
+    intl.formatMessage({ id: "pathology.badge.slideCount" }, { count });
+
+  // The group's own header, apart from the slides under it.
+  const groupHeader = (designation) =>
+    within(
+      slideGroup(designation).querySelector(
+        ".pathology-case-view__group-header",
+      ),
+    );
+
+  const openAtMicrotomy = async (overrides = {}, configurationProperties) => {
+    servedCase = caseAtStage("MICROTOMY", overrides);
+    renderCaseView(configurationProperties);
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
+  };
+
+  it("lists each saved block in use with its tissue and the count of its slides, and says so for a block with none", async () => {
+    await openAtMicrotomy({
+      blocks: [
+        asBlock(savedBlock("1", "A1", { tissueTypeId: "21" })),
+        asBlock(savedBlock("2", "A2")),
+      ],
+      slides: [
+        savedSlide("5", "1", "1"),
+        savedSlide("6", "2", "1"),
+        savedSlide("7", "3", "1", { active: false }),
+      ],
+      tissueTypeNames: { 21: "Skin" },
+    });
+
+    expect(groupHeader("A1").getByText("Skin")).toBeInTheDocument();
+    expect(groupHeader("A1").getByText(slideCount(2))).toBeInTheDocument();
+    expect(groupHeader("A1").getByText("ACC9.A1")).toBeInTheDocument();
+    expect(
+      groupHeader("A2").getByText(
+        messages["pathology.empty.noSlidesUnderBlock"],
+      ),
+    ).toBeInTheDocument();
+    // The tissue says what it is to a screen reader, so "Not recorded" says
+    // what is missing.
+    expect(
+      groupHeader("A2").getByText(messages["caseView.label.notRecorded"]),
+    ).toHaveTextContent(
+      messages["pathology.label.tissueType"] +
+        " " +
+        messages["caseView.label.notRecorded"],
+    );
+    expect(
+      within(slideGroupBody("A1")).getAllByText(/^[12]$/, {
+        selector: ".pathology-case-view__row-designation",
+      }),
+    ).toHaveLength(2);
+    expect(
+      within(section(MICROTOMY)).getByText(
+        messages["pathology.label.blockByBlock"],
+      ),
+    ).toBeInTheDocument();
+    // The section header counts the slides of the whole case.
+    expect(
+      within(
+        section(MICROTOMY).querySelector(".cds--accordion__heading"),
+      ).getByText(slideCount(2)),
+    ).toBeInTheDocument();
+  });
+
+  it("adds a slide under the block whose Add slide was pressed, and posts its block, level and stain with no block picker", async () => {
+    await openAtMicrotomy({
+      blocks: [asBlock(savedBlock("1", "A1")), asBlock(savedBlock("2", "A2"))],
+    });
+
+    fireEvent.click(addSlideTo("A2"));
+
+    const added = pendingRows(MICROTOMY);
+    expect(added).toHaveLength(1);
+    expect(slideGroupBody("A2")).toContainElement(added[0]);
+    const row = added[0].closest(".pathology-case-view__row");
+    expect(within(row).getAllByRole("combobox")).toEqual([stainCombobox(row)]);
+
+    fireEvent.change(document.getElementById("slideLevel0"), {
+      target: { value: "2" },
+    });
+    const user = userEvent.setup();
+    await user.click(stainCombobox(row));
+    await user.click(within(row).getByRole("option", { name: "PAS" }));
+
+    const body = await postedCase();
+    expect(body.slides).toEqual([
+      { blockId: "2", level: "2", stainId: "32", location: "" },
+    ]);
+  });
+
+  it("moves focus from the Add slide pressed to the new row's level", async () => {
+    await openAtMicrotomy({
+      blocks: [asBlock(savedBlock("1", "A1"))],
+      slides: [savedSlide("5", "1", "1")],
+    });
+
+    const user = userEvent.setup();
+    await user.click(addSlideTo("A1"));
+
+    const added = pendingRows(MICROTOMY)[0].closest(
+      ".pathology-case-view__row",
+    );
+    const level = within(added).getByLabelText(
+      new RegExp("^" + messages["pathology.label.level"]),
+    );
+    await waitFor(() => expect(level).toHaveFocus());
+  });
+
+  it("leaves focus where the person is typing when a slide is added", async () => {
+    await openAtMicrotomy({
+      blocks: [asBlock(savedBlock("1", "A1"))],
+      slides: [savedSlide("5", "1", "1")],
+    });
+
+    const existingLevel = document.getElementById("slideLevel0");
+    existingLevel.focus();
+    fireEvent.click(addSlideTo("A1"));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+
+    expect(pendingRows(MICROTOMY)).toHaveLength(1);
+    expect(existingLevel).toHaveFocus();
+  });
+
+  it("holds a cassette's Add slide back until it is embedded, and says why", async () => {
+    await openAtMicrotomy({
+      blocks: [asBlock(savedBlock("1", "A1")), savedBlock("2", "A2")],
+    });
+
+    expect(addSlideTo("A1")).toBeEnabled();
+    expect(addSlideTo("A1")).not.toHaveAttribute("title");
+    expect(addSlideTo("A1")).not.toHaveAttribute("aria-describedby");
+    expect(document.getElementById("slideGroupHint-1")).toBeNull();
+    expect(addSlideTo("A2")).toBeDisabled();
+    expect(addSlideTo("A2")).toHaveAttribute(
+      "title",
+      messages["pathology.locked.embedBeforeSlides"],
+    );
+    // A disabled button takes no focus, so the reason is written out too,
+    // and the button is described by it.
+    const hint = groupHeader("A2").getByText(
+      messages["pathology.locked.embedBeforeSlides"],
+    );
+    expect(hint).toHaveAttribute("id", "slideGroupHint-2");
+    expect(addSlideTo("A2")).toHaveAttribute(
+      "aria-describedby",
+      "slideGroupHint-2",
+    );
+  });
+
+  it("offers every saved row in use once the laboratory has stopped tracking embedding", async () => {
+    await openAtMicrotomy(
+      { blocks: [savedBlock("2", "A2")] },
+      { PATHOLOGY_STAGE_EMBEDDING_ENABLED: "false" },
+    );
+
+    expect(addSlideTo("A2")).toBeEnabled();
+    fireEvent.click(addSlideTo("A2"));
+    expect(pendingRows(MICROTOMY)).toHaveLength(1);
+  });
+
+  it("holds every Add slide back on a signed-out case, and says why", async () => {
+    servedCase = caseAtStage("COMPLETED", {
+      blocks: [asBlock(savedBlock("1", "A1")), savedBlock("2", "A2")],
+    });
+    renderCaseView({ PATHOLOGY_STAGE_EMBEDDING_ENABLED: "false" });
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
+
+    ["A1", "A2"].forEach((designation) => {
+      expect(addSlideTo(designation)).toBeDisabled();
+      expect(addSlideTo(designation)).toHaveAttribute(
+        "title",
+        messages["pathology.locked.caseCompleted"],
+      );
+      const hintId = addSlideTo(designation).getAttribute("aria-describedby");
+      expect(document.getElementById(hintId)).toHaveTextContent(
+        messages["pathology.locked.caseCompleted"],
+      );
+      expect(
+        groupHeader(designation).getByText(
+          messages["pathology.locked.caseCompleted"],
+        ),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("says no cassette has been cut, and offers no Add slide, while the case has no saved cassette in use", async () => {
+    await openAtMicrotomy({
+      blocks: [savedBlock("1", "A1", { active: false })],
+    });
+
+    expect(
+      within(section(MICROTOMY)).getByText(
+        messages["pathology.empty.noCassettes"],
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(section(MICROTOMY)).queryByText(
+        messages["pathology.action.addSlide"],
+        { selector: "button" },
+      ),
+    ).toBeNull();
+  });
+
+  it("names a stain a slide holds after the laboratory has retired it, among the served ones", async () => {
+    await openAtMicrotomy({
+      blocks: [asBlock(savedBlock("1", "A1"))],
+      slides: [savedSlide("5", "1", "1", { stainId: "39" })],
+      stainNames: { 39: "Orcein" },
+    });
+
+    const row = rowIn(MICROTOMY, "1");
+    expect(stainCombobox(row)).toHaveValue("Orcein");
+    const user = userEvent.setup();
+    await user.click(stainCombobox(row));
+    expect(
+      within(row)
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["H&E", "PAS", "Orcein"]);
+  });
+
+  it("holds the stain picker back and says why when the laboratory has configured no stains", async () => {
+    stainCatalogue = [];
+    await openAtMicrotomy({
+      blocks: [asBlock(savedBlock("1", "A1"))],
+      slides: [savedSlide("5", "1", "1")],
+    });
+
+    const row = rowIn(MICROTOMY, "1");
+    expect(stainCombobox(row)).toBeDisabled();
+    expect(
+      within(row).getByText(messages["pathology.empty.noStains"]),
+    ).toBeInTheDocument();
+  });
+
+  it("caps the level at the width the server stores", async () => {
+    await openAtMicrotomy({
+      blocks: [asBlock(savedBlock("1", "A1"))],
+      slides: [savedSlide("5", "1", "1", { level: "3" })],
+    });
+
+    const level = within(rowIn(MICROTOMY, "1")).getByLabelText(
+      new RegExp("^" + messages["pathology.label.level"]),
+    );
+    expect(level).toHaveValue("3");
+    expect(level).toHaveAttribute("maxLength", "16");
+  });
+
+  it("opens a block holding slides and closes one with none, keeps the slides on the page while closed, and opens a group a slide is added to", async () => {
+    await openAtMicrotomy({
+      blocks: [asBlock(savedBlock("1", "A1")), asBlock(savedBlock("2", "A2"))],
+      slides: [savedSlide("5", "1", "1")],
+    });
+
+    expect(slidesToggle("A1")).toHaveAttribute("aria-expanded", "true");
+    expect(slideGroupBody("A1")).not.toHaveAttribute("hidden");
+    expect(slidesToggle("A2")).toHaveAttribute("aria-expanded", "false");
+    expect(slideGroupBody("A2")).toHaveAttribute("hidden");
+
+    fireEvent.click(slidesToggle("A1"));
+
+    expect(slidesToggle("A1")).toHaveAttribute("aria-expanded", "false");
+    expect(slideGroupBody("A1")).toHaveAttribute("hidden");
+    expect(queryRowIn(MICROTOMY, "1")).toBeInTheDocument();
+
+    // A slide added to a group the person closed opens it, so the new row
+    // is never typed into out of sight.
+    fireEvent.click(addSlideTo("A1"));
+    expect(slidesToggle("A1")).toHaveAttribute("aria-expanded", "true");
+    expect(slideGroupBody("A1")).not.toHaveAttribute("hidden");
+
+    fireEvent.click(addSlideTo("A2"));
+    expect(slidesToggle("A2")).toHaveAttribute("aria-expanded", "true");
+    expect(slideGroupBody("A2")).not.toHaveAttribute("hidden");
+  });
+
+  it("says a block has no slides only when nothing is listed under it", async () => {
+    await openAtMicrotomy({
+      blocks: [asBlock(savedBlock("1", "A1")), asBlock(savedBlock("2", "A2"))],
+      slides: [
+        savedSlide("5", "1", "1", { active: false }),
+        // A retired slide cut before slides named their block.
+        { id: "6", designation: "7", blockId: null, active: false },
+      ],
+    });
+
+    const noSlides = messages["pathology.empty.noSlidesUnderBlock"];
+    expect(groupHeader("A1").getByText(noSlides)).toBeInTheDocument();
+
+    fireEvent.click(showDeactivatedSwitch(MICROTOMY));
+
+    // A1 lists its retired slide, so it has had one cut.
+    expect(slideGroupBody("A1")).toContainElement(rowIn(MICROTOMY, "1"));
+    expect(groupHeader("A1").queryByText(noSlides)).toBeNull();
+    expect(groupHeader("A1").queryByText(slideCount(0))).toBeNull();
+    expect(groupHeader("A2").getByText(noSlides)).toBeInTheDocument();
+    const legacy = screen
+      .getByRole("button", {
+        name: messages["pathology.label.slidesWithoutBlock"],
+      })
+      .closest(".pathology-case-view__group");
+    expect(legacy).toContainElement(rowIn(MICROTOMY, "7"));
+    expect(
+      within(
+        legacy.querySelector(".pathology-case-view__group-header"),
+      ).queryByText(noSlides),
+    ).toBeNull();
+  });
+
+  it("keeps a retired block in sight while it still holds a slide in use, and offers it no Add slide", async () => {
+    await openAtMicrotomy({
+      blocks: [
+        asBlock(savedBlock("1", "A1")),
+        asBlock(savedBlock("2", "A2", { active: false })),
+        asBlock(savedBlock("3", "A3", { active: false })),
+      ],
+      slides: [savedSlide("5", "1", "2")],
+    });
+
+    expect(
+      groupHeader("A2").getByText(messages["caseView.badge.deactivated"]),
+    ).toBeInTheDocument();
+    expect(slideGroupBody("A2")).toContainElement(rowIn(MICROTOMY, "1"));
+    expect(
+      groupHeader("A2").queryByText(messages["pathology.action.addSlide"]),
+    ).toBeNull();
+    // A retired block with no slide in use waits for the switch.
+    expect(
+      screen.queryByRole("button", {
+        name: intl.formatMessage(
+          { id: "pathology.label.slidesOf" },
+          { designation: "A3" },
+        ),
+      }),
+    ).toBeNull();
+
+    fireEvent.click(showDeactivatedSwitch(MICROTOMY));
+    expect(slideGroup("A3")).toBeInTheDocument();
+  });
+
+  it("lists the slides no block is recorded for together, last, with no Add slide", async () => {
+    await openAtMicrotomy({
+      blocks: [asBlock(savedBlock("1", "A1"))],
+      slides: [
+        savedSlide("5", "1", "1"),
+        // A slide cut before slides named their block.
+        { id: "6", designation: "7", blockId: null, active: true },
+      ],
+    });
+
+    const legacyToggle = screen.getByRole("button", {
+      name: messages["pathology.label.slidesWithoutBlock"],
+    });
+    const legacy = legacyToggle.closest(".pathology-case-view__group");
+    const groups = section(MICROTOMY).querySelectorAll(
+      ".pathology-case-view__group",
+    );
+    expect(groups[groups.length - 1]).toBe(legacy);
+    expect(legacy).toContainElement(rowIn(MICROTOMY, "7"));
+    expect(
+      within(legacy).queryByText(messages["pathology.action.addSlide"], {
+        selector: "button",
+      }),
+    ).toBeNull();
+  });
+
+  it("shows the slides on record read-only once the laboratory has stopped tracking microtomy", async () => {
+    servedCase = caseAtStage("STAINING", {
+      // A2 is still a cassette, which would hold its Add slide back for a
+      // reason of its own on a section the bench can edit.
+      blocks: [asBlock(savedBlock("1", "A1")), savedBlock("2", "A2")],
+      slides: [savedSlide("5", "1", "1", { level: "1" })],
+    });
+    renderCaseView({ PATHOLOGY_STAGE_MICROTOMY_ENABLED: "false" });
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
+
+    const microtomy = section(MICROTOMY);
+    expect(
+      within(microtomy.querySelector(".cds--accordion__heading")).getByText(
+        messages["pathology.locked.stageDisabled"],
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(microtomy).getByText(
+        messages["pathology.banner.stageDisabledRows"],
+      ),
+    ).toBeInTheDocument();
+    expect(document.getElementById("slideLevel0")).toBeDisabled();
+    expect(document.getElementById("slideLocation0")).toBeDisabled();
+    expect(addSlideTo("A1")).toBeDisabled();
+    // The badge says why the whole section is read-only, so no block adds a
+    // reason of its own.
+    ["A1", "A2"].forEach((designation) => {
+      expect(addSlideTo(designation)).toBeDisabled();
+      expect(addSlideTo(designation)).not.toHaveAttribute("aria-describedby");
+    });
+    expect(
+      microtomy.querySelector(".pathology-case-view__group-hint"),
+    ).toBeNull();
+    expect(
+      within(microtomy).queryByText(messages["common.deactivate"], {
+        selector: "button",
+      }),
+    ).toBeNull();
+    // Still not applicable on the rail, and the slide on record still counts.
+    expect(
+      rail().getByText(messages["pathology.stage.microtomy"]).closest("li"),
+    ).toHaveTextContent(messages["caseView.badge.notApplicable"]);
+    expect(summaryValue(messages["pathology.label.slides"])).toBe("1");
+  });
+
+  it("keeps a switched-off microtomy with no slides locked, saying it is not tracked", async () => {
+    servedCase = caseAtStage("STAINING", {
+      blocks: [asBlock(savedBlock("1", "A1"))],
+    });
+    renderCaseView({ PATHOLOGY_STAGE_MICROTOMY_ENABLED: "false" });
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
+
+    expect(
+      within(section(MICROTOMY)).queryByText(
+        messages["pathology.banner.stageDisabledRows"],
+      ),
+    ).toBeNull();
+    expect(
+      section(MICROTOMY).querySelector("button.cds--accordion__heading"),
+    ).toBeDisabled();
+  });
+  // FR-7.3 to FR-7.5: a saved slide's printed label is scanned, or typed as
+  // printed, against its block, and only a match makes it Verified.
+  describe("checking a slide's label against its block", () => {
+    const stamp = { verifiedAt: "09/11/2026 10:05", verifiedBy: "Tech, Tina" };
+
+    const twoSlides = (overrides = {}) => ({
+      blocks: [asBlock(savedBlock("1", "A1"))],
+      slides: [
+        savedSlide("5", "1", "1"),
+        savedSlide("6", "2", "1", { barcode: "ACC9.A1.2" }),
+      ],
+      labelVerifications: { 5: stamp },
+      ...overrides,
+    });
+
+    const verifyName = (slide) =>
+      intl.formatMessage({ id: "pathology.action.verifyLabelOf" }, { slide });
+
+    const verifyButton = (slide) =>
+      screen.getByRole("button", { name: verifyName(slide) });
+
+    const queryVerifyButton = (slide) =>
+      screen.queryByRole("button", { name: verifyName(slide) });
+
+    const verifyBlock = (slideId) =>
+      document.getElementById("verifyLabel-" + slideId);
+
+    const confirmButton = (slideId) =>
+      buttonWithText(
+        verifyBlock(slideId),
+        messages["pathology.action.confirmLabel"],
+      );
+
+    const scanBlockField = (slideId) =>
+      document.getElementById("scanBlock-" + slideId);
+
+    const scanSlideField = (slideId) =>
+      document.getElementById("scanSlide-" + slideId);
+
+    const fillScan = (slideId, block, slide) => {
+      fireEvent.change(scanBlockField(slideId), { target: { value: block } });
+      fireEvent.change(scanSlideField(slideId), { target: { value: slide } });
+    };
+
+    const lastVerifyPost = () =>
+      postToOpenElisServerJsonResponse.mock.calls.at(-1);
+
+    const answerVerify = async (response) => {
+      const callback = lastVerifyPost()[2];
+      await act(async () => {
+        callback(response);
+      });
+    };
+
+    const tagOf = (row) =>
+      within(row).queryByText(
+        new RegExp(
+          "^(" +
+            messages["pathology.badge.verified"] +
+            "|" +
+            messages["pathology.badge.unverified"] +
+            ")$",
+        ),
+        { selector: ".cds--tag__label" },
+      );
+
+    it("tags each saved slide with a block Verified, naming who checked it and when, or Unverified, and tags no other row", async () => {
+      await openAtMicrotomy(
+        twoSlides({
+          slides: [
+            savedSlide("5", "1", "1"),
+            savedSlide("6", "2", "1"),
+            { id: "8", designation: "9", blockId: null, active: true },
+          ],
+        }),
+      );
+
+      const verified = rowIn(MICROTOMY, "1");
+      expect(tagOf(verified)).toHaveTextContent(
+        messages["pathology.badge.verified"],
+      );
+      const verifiedBy = intl.formatMessage(
+        { id: "pathology.badge.verifiedBy" },
+        { name: "Tech, Tina", date: "09/11/2026 10:05" },
+      );
+      expect(
+        verified.querySelector(".pathology-case-view__label-verification"),
+      ).toHaveAttribute("title", verifiedBy);
+      // The verifier is said to a screen reader too, not only on hover.
+      expect(within(verified).getByText(verifiedBy)).toHaveClass(
+        "cds--visually-hidden",
+      );
+      expect(tagOf(rowIn(MICROTOMY, "2"))).toHaveTextContent(
+        messages["pathology.badge.unverified"],
+      );
+      // A slide cut before slides named their block has nothing to check.
+      expect(tagOf(rowIn(MICROTOMY, "9"))).toBeNull();
+
+      fireEvent.click(addSlideTo("A1"));
+      const added = pendingRows(MICROTOMY)[0].closest(
+        ".pathology-case-view__row",
+      );
+      expect(tagOf(added)).toBeNull();
+    });
+
+    it("keeps the tag on a retired slide", async () => {
+      await openAtMicrotomy(
+        twoSlides({
+          slides: [
+            savedSlide("5", "1", "1", { active: false }),
+            savedSlide("6", "2", "1", { active: false }),
+          ],
+        }),
+      );
+
+      fireEvent.click(showDeactivatedSwitch(MICROTOMY));
+
+      expect(tagOf(rowIn(MICROTOMY, "1"))).toHaveTextContent(
+        messages["pathology.badge.verified"],
+      );
+      expect(tagOf(rowIn(MICROTOMY, "2"))).toHaveTextContent(
+        messages["pathology.badge.unverified"],
+      );
+    });
+
+    it("opens the check under an unverified slide with the block field in focus, and holds Confirm back until both fields are filled, saying why", async () => {
+      await openAtMicrotomy(twoSlides());
+
+      expect(queryVerifyButton("A1.1")).toBeNull();
+      const toggle = verifyButton("A1.2");
+      expect(toggle).toHaveTextContent(
+        messages["pathology.action.verifyLabel"],
+      );
+      expect(toggle).toHaveAttribute("aria-expanded", "false");
+      expect(toggle).toHaveAttribute("aria-controls", "verifyLabel-6");
+      expect(verifyBlock("6")).toBeNull();
+
+      const user = userEvent.setup();
+      await user.click(toggle);
+
+      expect(toggle).toHaveAttribute("aria-expanded", "true");
+      expect(rowIn(MICROTOMY, "2")).toContainElement(verifyBlock("6"));
+      await waitFor(() => expect(scanBlockField("6")).toHaveFocus());
+      expect(
+        within(verifyBlock("6")).getByText(
+          messages["pathology.label.scanVerificationHint"],
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(verifyBlock("6")).getByLabelText(
+          new RegExp("^" + messages["pathology.label.scanBlock"]),
+        ),
+      ).toBe(scanBlockField("6"));
+      expect(
+        within(verifyBlock("6")).getByLabelText(
+          new RegExp("^" + messages["pathology.label.scanSlideLabel"]),
+        ),
+      ).toBe(scanSlideField("6"));
+
+      const hold = messages["pathology.locked.scanBothFields"];
+      expect(confirmButton("6")).toBeDisabled();
+      expect(confirmButton("6")).toHaveAttribute("title", hold);
+      expect(
+        document.getElementById(
+          confirmButton("6").getAttribute("aria-describedby"),
+        ),
+      ).toHaveTextContent(hold);
+
+      fireEvent.change(scanBlockField("6"), { target: { value: "ACC9.A1" } });
+      expect(confirmButton("6")).toBeDisabled();
+      fireEvent.change(scanSlideField("6"), { target: { value: "   " } });
+      expect(confirmButton("6")).toBeDisabled();
+      fireEvent.change(scanSlideField("6"), {
+        target: { value: "ACC9.A1.2" },
+      });
+      expect(confirmButton("6")).toBeEnabled();
+      expect(confirmButton("6")).not.toHaveAttribute("title");
+      expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+    });
+
+    it("posts both scans to the slide's check, then marks it Verified, says so, and leaves the form clean without reading the case again", async () => {
+      await openAtMicrotomy(twoSlides());
+      const fetchesBefore = caseFetchCount();
+
+      fireEvent.click(verifyButton("A1.2"));
+      fillScan("6", " ACC9.A1 ", "ACC9.A1.2");
+      fireEvent.click(confirmButton("6"));
+
+      const [url, body] = lastVerifyPost();
+      expect(url).toBe("/rest/pathology/slide/6/verify-label");
+      expect(JSON.parse(body)).toEqual({
+        block: "ACC9.A1",
+        slide: "ACC9.A1.2",
+      });
+
+      await answerVerify({
+        id: 6,
+        designation: "2",
+        barcode: "ACC9.A1.2",
+        blockId: 1,
+        active: true,
+        labelVerification: {
+          verifiedAt: "09/11/2026 10:07",
+          verifiedBy: "Session, Sam",
+        },
+      });
+
+      expect(tagOf(rowIn(MICROTOMY, "2"))).toHaveTextContent(
+        messages["pathology.badge.verified"],
+      );
+      expect(
+        rowIn(MICROTOMY, "2").querySelector(
+          ".pathology-case-view__label-verification",
+        ),
+      ).toHaveAttribute(
+        "title",
+        intl.formatMessage(
+          { id: "pathology.badge.verifiedBy" },
+          { name: "Session, Sam", date: "09/11/2026 10:07" },
+        ),
+      );
+      expect(verifyBlock("6")).toBeNull();
+      expect(queryVerifyButton("A1.2")).toBeNull();
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "success",
+          message: intl.formatMessage(
+            { id: "pathology.toast.labelVerified" },
+            { slide: "A1.2" },
+          ),
+        }),
+      );
+      expect(caseFetchCount()).toBe(fetchesBefore);
+      // A check changes nothing a save posts, so it is no unsaved work.
+      expect(
+        screen.getByRole("button", {
+          name: messages["caseView.action.discard"],
+        }),
+      ).toBeDisabled();
+      // No label is left to check, so focus goes to the section's header.
+      await waitFor(() =>
+        expect(
+          section(MICROTOMY).querySelector("button.cds--accordion__heading"),
+        ).toHaveFocus(),
+      );
+    });
+
+    it("moves on from the block field with Enter and confirms from the slide field with Enter, as a scanner ends each read", async () => {
+      await openAtMicrotomy(twoSlides());
+
+      fireEvent.click(verifyButton("A1.2"));
+      fireEvent.change(scanBlockField("6"), { target: { value: "ACC9.A1" } });
+      scanBlockField("6").focus();
+      pressEnter(scanBlockField("6"));
+
+      expect(scanSlideField("6")).toHaveFocus();
+      expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+
+      fireEvent.change(scanSlideField("6"), {
+        target: { value: "ACC9.A1.2" },
+      });
+      pressEnter(scanSlideField("6"));
+
+      expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1);
+      expect(lastVerifyPost()[0]).toBe("/rest/pathology/slide/6/verify-label");
+      // A second Enter while the first check is out posts nothing more.
+      pressEnter(scanSlideField("6"));
+      expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1);
+      expect(confirmButton("6")).toBeDisabled();
+    });
+
+    it("says a label that belongs to another block does not match, naming both, and leaves the slide unverified with its scans in place", async () => {
+      await openAtMicrotomy(twoSlides());
+
+      fireEvent.click(verifyButton("A1.2"));
+      fillScan("6", "ACC9.A1", "ACC9.A2.1");
+      fireEvent.click(confirmButton("6"));
+      await answerVerify({
+        status: 409,
+        conflict: "label",
+        messageKey: "pathology.banner.labelMismatch",
+        messageArgs: { slideBarcode: "ACC9.A2.1", blockBarcode: "ACC9.A1" },
+        error: "Slide label does not match",
+      });
+
+      // Carbon's text inputs carry empty counter alerts of their own.
+      const alert = verifyBlock("6").querySelector(".cds--inline-notification");
+      expect(alert).toHaveAttribute("role", "alert");
+      expect(alert).toHaveClass("cds--inline-notification--error");
+      expect(alert).toHaveTextContent(
+        messages["pathology.banner.labelMismatchTitle"],
+      );
+      expect(alert).toHaveTextContent(
+        intl.formatMessage(
+          { id: "pathology.banner.labelMismatch" },
+          { slideBarcode: "ACC9.A2.1", blockBarcode: "ACC9.A1" },
+        ),
+      );
+      expect(tagOf(rowIn(MICROTOMY, "2"))).toHaveTextContent(
+        messages["pathology.badge.unverified"],
+      );
+      expect(scanBlockField("6")).toHaveValue("ACC9.A1");
+      expect(scanSlideField("6")).toHaveValue("ACC9.A2.1");
+      await waitFor(() => expect(scanSlideField("6")).toHaveFocus());
+      expect(addNotification).not.toHaveBeenCalled();
+    });
+
+    // A scanner types into the field that holds focus, so after a mismatch
+    // the next read must replace the old one, not run on after it.
+    it("lets the rescan after a mismatch replace what was scanned, posting only the new read", async () => {
+      await openAtMicrotomy(twoSlides());
+      const user = userEvent.setup();
+
+      fireEvent.click(verifyButton("A1.2"));
+      fillScan("6", "ACC9.A1", "ACC9.A2.1");
+      fireEvent.click(confirmButton("6"));
+      await answerVerify({
+        status: 409,
+        conflict: "label",
+        messageKey: "pathology.banner.labelMismatch",
+        messageArgs: { slideBarcode: "ACC9.A2.1", blockBarcode: "ACC9.A1" },
+      });
+      await waitFor(() => expect(scanSlideField("6")).toHaveFocus());
+
+      await user.keyboard("ACC9.A1.2{Enter}");
+
+      expect(scanSlideField("6")).toHaveValue("ACC9.A1.2");
+      expect(JSON.parse(lastVerifyPost()[1])).toEqual({
+        block: "ACC9.A1",
+        slide: "ACC9.A1.2",
+      });
+    });
+
+    // A scanner ends its read with Enter in the slide field, so focus never
+    // leaves it and no focus event selects the old value.
+    it("lets the rescan replace what was scanned when the mismatch came from Enter in the slide field", async () => {
+      await openAtMicrotomy(twoSlides());
+      const user = userEvent.setup();
+
+      fireEvent.click(verifyButton("A1.2"));
+      fillScan("6", "ACC9.A1", "");
+      scanSlideField("6").focus();
+      await user.keyboard("ACC9.A2.1{Enter}");
+      await answerVerify({
+        status: 409,
+        conflict: "label",
+        messageKey: "pathology.banner.labelMismatch",
+        messageArgs: { slideBarcode: "ACC9.A2.1", blockBarcode: "ACC9.A1" },
+      });
+      await waitFor(() => {
+        expect(scanSlideField("6")).toHaveFocus();
+        expect(scanSlideField("6").selectionEnd).toBe("ACC9.A2.1".length);
+        expect(scanSlideField("6").selectionStart).toBe(0);
+      });
+
+      await user.keyboard("ACC9.A1.2{Enter}");
+
+      expect(scanSlideField("6")).toHaveValue("ACC9.A1.2");
+      expect(JSON.parse(lastVerifyPost()[1])).toEqual({
+        block: "ACC9.A1",
+        slide: "ACC9.A1.2",
+      });
+    });
+
+    it("names the slide on its Confirm match and Cancel, so two open checks are told apart", async () => {
+      await openAtMicrotomy(twoSlides({ labelVerifications: {} }));
+
+      fireEvent.click(verifyButton("A1.1"));
+      fireEvent.click(verifyButton("A1.2"));
+
+      [
+        ["5", "A1.1"],
+        ["6", "A1.2"],
+      ].forEach(([slideId, name]) => {
+        expect(confirmButton(slideId)).toHaveTextContent(name);
+        expect(
+          buttonWithText(verifyBlock(slideId), messages["common.cancel"]),
+        ).toHaveTextContent(name);
+      });
+    });
+
+    // A check landing during the case save races the same slide.
+    it("holds Verify and Confirm match while a save is out, saying so", async () => {
+      await openAtMicrotomy(twoSlides());
+
+      fireEvent.click(verifyButton("A1.2"));
+      fillScan("6", "ACC9.A1", "ACC9.A1.2");
+      // The second slide's level, so there is something to save.
+      fireEvent.change(document.getElementById("slideLevel1"), {
+        target: { value: "4" },
+      });
+      fireEvent.click(saveDraftButton());
+      await waitFor(() =>
+        expect(postToOpenElisServerFullResponse).toHaveBeenCalled(),
+      );
+
+      const inFlight = messages["pathology.locked.requestInFlight"];
+      expect(verifyButton("A1.2")).toBeDisabled();
+      expect(verifyButton("A1.2")).toHaveAttribute("title", inFlight);
+      expect(confirmButton("6")).toBeDisabled();
+      expect(confirmButton("6")).toHaveAttribute("title", inFlight);
+      pressEnter(scanSlideField("6"));
+      expect(
+        postToOpenElisServerJsonResponse.mock.calls.filter(([url]) =>
+          String(url).includes("verify-label"),
+        ),
+      ).toHaveLength(0);
+    });
+
+    it("tells a lost race on the slide in its own words and reads a clean case again", async () => {
+      await openAtMicrotomy(twoSlides());
+      const fetchesBefore = caseFetchCount();
+
+      fireEvent.click(verifyButton("A1.2"));
+      fillScan("6", "ACC9.A1", "ACC9.A1.2");
+      fireEvent.click(confirmButton("6"));
+      await answerVerify({ status: 409, conflict: "version", error: "x" });
+
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: messages["pathology.toast.verifyFailed"],
+        }),
+      );
+      expect(caseFetchCount()).toBe(fetchesBefore + 1);
+    });
+
+    it("tells a refusal the server names in the reader's language", async () => {
+      await openAtMicrotomy(twoSlides());
+
+      fireEvent.click(verifyButton("A1.2"));
+      fillScan("6", "ACC9.A1", "ACC9.A1.2");
+      fireEvent.click(confirmButton("6"));
+      await answerVerify({
+        status: 400,
+        error: "This slide has been deactivated.",
+        messageKey: "pathology.error.slideRetired",
+        messageArgs: {},
+      });
+
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: messages["pathology.error.slideRetired"],
+        }),
+      );
+      expect(tagOf(rowIn(MICROTOMY, "2"))).toHaveTextContent(
+        messages["pathology.badge.unverified"],
+      );
+    });
+
+    it("asks for the block and the slide as printed where the laboratory has no scanner", async () => {
+      await openAtMicrotomy(twoSlides(), {
+        PATHOLOGY_SCAN_VERIFICATION_REQUIRED: " false ",
+      });
+
+      fireEvent.click(verifyButton("A1.2"));
+
+      const block = within(verifyBlock("6"));
+      expect(
+        block.getByText(messages["pathology.label.confirmVerificationHint"]),
+      ).toBeInTheDocument();
+      expect(
+        block.queryByText(messages["pathology.label.scanVerificationHint"]),
+      ).toBeNull();
+      expect(
+        block.getByLabelText(
+          new RegExp("^" + messages["pathology.label.block"]),
+        ),
+      ).toBe(scanBlockField("6"));
+      expect(
+        block.getByLabelText(
+          new RegExp("^" + messages["pathology.label.slide"]),
+        ),
+      ).toBe(scanSlideField("6"));
+      expect(
+        block.queryByLabelText(
+          new RegExp("^" + messages["pathology.label.scanBlock"]),
+        ),
+      ).toBeNull();
+    });
+
+    it("closes the check on Cancel, forgets what was scanned, and gives focus back to Verify", async () => {
+      await openAtMicrotomy(twoSlides());
+
+      fireEvent.click(verifyButton("A1.2"));
+      fillScan("6", "ACC9.A1", "ACC9.A1.2");
+      fireEvent.click(
+        buttonWithText(verifyBlock("6"), messages["common.cancel"]),
+      );
+
+      expect(verifyBlock("6")).toBeNull();
+      expect(verifyButton("A1.2")).toHaveAttribute("aria-expanded", "false");
+      await waitFor(() => expect(verifyButton("A1.2")).toHaveFocus());
+      fireEvent.click(verifyButton("A1.2"));
+      expect(scanBlockField("6")).toHaveValue("");
+      expect(scanSlideField("6")).toHaveValue("");
+    });
+
+    it("offers no check on a signed-out case", async () => {
+      servedCase = caseAtStage("COMPLETED", twoSlides());
+      renderCaseView();
+      await waitFor(() => expect(stageReadout()).not.toBeNull());
+
+      expect(tagOf(rowIn(MICROTOMY, "2"))).toHaveTextContent(
+        messages["pathology.badge.unverified"],
+      );
+      expect(queryVerifyButton("A1.2")).toBeNull();
+    });
+
+    it("offers no check on a section shown only for reading", async () => {
+      servedCase = caseAtStage("STAINING", twoSlides());
+      renderCaseView({ PATHOLOGY_STAGE_MICROTOMY_ENABLED: "false" });
+      await waitFor(() => expect(stageReadout()).not.toBeNull());
+
+      expect(tagOf(rowIn(MICROTOMY, "2"))).toHaveTextContent(
+        messages["pathology.badge.unverified"],
+      );
+      expect(queryVerifyButton("A1.2")).toBeNull();
+    });
+
+    it("offers no check on an unsaved, a blockless or a retired slide", async () => {
+      await openAtMicrotomy(
+        twoSlides({
+          slides: [
+            savedSlide("6", "2", "1", { active: false }),
+            { id: "8", designation: "9", blockId: null, active: true },
+          ],
+          labelVerifications: {},
+        }),
+      );
+
+      fireEvent.click(showDeactivatedSwitch(MICROTOMY));
+      fireEvent.click(addSlideTo("A1"));
+
+      expect(rowIn(MICROTOMY, "2")).toBeInTheDocument();
+      expect(rowIn(MICROTOMY, "9")).toBeInTheDocument();
+      expect(pendingRows(MICROTOMY)).toHaveLength(1);
+      expect(
+        within(section(MICROTOMY)).queryByText(
+          messages["pathology.action.verifyLabel"],
+          { selector: "button" },
+        ),
+      ).toBeNull();
+    });
+
+    it("opens the section at microtomy on a warning naming every unchecked slide", async () => {
+      await openAtMicrotomy(
+        twoSlides({
+          slides: [
+            savedSlide("5", "1", "1"),
+            savedSlide("6", "2", "1"),
+            savedSlide("7", "3", "1"),
+          ],
+        }),
+      );
+
+      const title = intl.formatMessage(
+        { id: "pathology.banner.slidesUnverified" },
+        { count: 2 },
+      );
+      const banner = within(section(MICROTOMY))
+        .getByText(title)
+        .closest(".cds--inline-notification");
+      expect(banner).toHaveClass("cds--inline-notification--warning");
+      expect(banner).toHaveTextContent(
+        intl.formatMessage(
+          { id: "pathology.banner.slidesUnverifiedDetail" },
+          { designations: "A1.2, A1.3" },
+        ),
+      );
+    });
+
+    it("shows no unchecked-label warning on a case past microtomy", async () => {
+      servedCase = caseAtStage("STAINING", twoSlides());
+      renderCaseView();
+      await waitFor(() => expect(stageReadout()).not.toBeNull());
+
+      expect(
+        within(section(MICROTOMY)).queryByText(
+          intl.formatMessage(
+            { id: "pathology.banner.slidesUnverified" },
+            { count: 1 },
+          ),
+        ),
+      ).toBeNull();
+    });
   });
 });

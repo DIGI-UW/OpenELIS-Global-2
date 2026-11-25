@@ -87,7 +87,21 @@ const caseAtStage = (status, overrides = {}) => ({
       location: "",
     },
   ],
-  slides: [],
+  slides: [
+    {
+      id: 5,
+      designation: "1",
+      barcode: "ACC9.A1.1",
+      blockId: 1,
+      active: true,
+      location: "",
+    },
+  ],
+  // The slide's label has been checked against its block, as microtomy
+  // requires before the case is sent on.
+  labelVerifications: {
+    5: { verifiedAt: "02/11/2026 10:05", verifiedBy: "Tech, Tina" },
+  },
   reports: [],
   requests: [],
   techniques: [],
@@ -339,6 +353,87 @@ describe("PathologyCaseView stage transitions", () => {
       "title",
       messages["pathology.locked.embeddingNoCassettes"],
     );
+  });
+
+  it("holds microtomy back until a slide is saved, and lets one saved slide send the case on", async () => {
+    servedCase = caseAtStage("MICROTOMY", {
+      slides: [
+        // A retired slide is on record but is not work in hand.
+        {
+          id: 6,
+          designation: "2",
+          blockId: 1,
+          active: false,
+          location: "",
+        },
+      ],
+    });
+    const withNone = renderCaseView();
+    await loaded();
+
+    const reason = messages["pathology.locked.microtomyIncomplete"];
+    let primary = primaryButton("pathology.action.sendForStaining");
+    expect(primary).toBeDisabled();
+    expect(primary).toHaveAttribute("title", reason);
+    expect(describedBy(primary)).toHaveTextContent(reason);
+    withNone.unmount();
+
+    servedCase = caseAtStage("MICROTOMY");
+    renderCaseView();
+    await loaded();
+
+    primary = primaryButton("pathology.action.sendForStaining");
+    expect(primary).toBeEnabled();
+    expect(primary).not.toHaveAttribute("title");
+  });
+
+  // FR-7.5: a slide whose label was never checked against its block holds
+  // the case at microtomy, named, as the server holds it.
+  it("holds microtomy back while a slide's label is unchecked, naming it, and lets the case on once the read covers it", async () => {
+    servedCase = caseAtStage("MICROTOMY", {
+      slides: [
+        ...caseAtStage("MICROTOMY").slides,
+        {
+          id: 6,
+          designation: "2",
+          barcode: "ACC9.A1.2",
+          blockId: 1,
+          active: true,
+          location: "",
+        },
+      ],
+    });
+    const unchecked = renderCaseView();
+    await loaded();
+
+    const reason = intl.formatMessage(
+      { id: "pathology.locked.slidesUnverified" },
+      {
+        outstanding: intl.formatMessage(
+          { id: "pathology.badge.outstanding" },
+          { designations: "A1.2" },
+        ),
+      },
+    );
+    let primary = primaryButton("pathology.action.sendForStaining");
+    expect(primary).toBeDisabled();
+    expect(primary).toHaveAttribute("title", reason);
+    expect(describedBy(primary)).toHaveTextContent(reason);
+    unchecked.unmount();
+
+    servedCase = {
+      ...servedCase,
+      labelVerifications: {
+        ...servedCase.labelVerifications,
+        6: { verifiedAt: "02/11/2026 10:06", verifiedBy: "Tech, Tina" },
+      },
+    };
+    renderCaseView();
+    await loaded();
+
+    primary = primaryButton("pathology.action.sendForStaining");
+    expect(primary).toBeEnabled();
+    expect(primary).not.toHaveAttribute("title");
   });
 
   it("posts the stage the page shows to the advance endpoint, then says where the case went and reads it back", async () => {
@@ -1290,6 +1385,8 @@ describe("Embed and Deactivate: refusals and the signed-out lock", () => {
 
   it("leaves Embed and Deactivate to their usual rules before sign-out", async () => {
     servedCase = caseAtStage("EMBEDDING", {
+      // The cassette's Deactivate alone, so the query finds one button.
+      slides: [],
       blocks: [
         {
           id: 1,

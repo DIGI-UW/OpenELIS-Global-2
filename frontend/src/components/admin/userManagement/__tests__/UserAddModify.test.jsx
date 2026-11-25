@@ -5,8 +5,11 @@ import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter, Route } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { resolveMessagesForLocale } from "../../../../languages";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  loadMessagesForLocale,
+  resolveMessagesForLocale,
+} from "../../../../languages";
 import messages from "../../../../languages/en.json";
 import {
   getFromOpenElisServer,
@@ -76,7 +79,12 @@ const user = (loginName, selectedTestSectionLabUnits = {}) => ({
 
 const rowSelect = (key) => document.getElementById(`select-${key}`);
 
+const REGIONAL_ENGLISH = ["en", "en-US", "en-GB", "en-PG", "en-LK"];
+
 describe("UserAddModify", () => {
+  // Each regional bundle is a separate chunk the app downloads on demand.
+  beforeAll(() => Promise.all(REGIONAL_ENGLISH.map(loadMessagesForLocale)));
+
   let assign;
   let addNotification;
 
@@ -144,15 +152,24 @@ describe("UserAddModify", () => {
     });
   });
 
-  it.each(["en", "en-US", "en-GB", "en-PG", "en-LK"])(
+  it.each(REGIONAL_ENGLISH)(
     "explains unfiltered CSV access in %s without stale administrator-only guidance",
     async (locale) => {
       renderAt("/MasterListsPage/userEdit", createQueryClient(), locale);
-      expect(
-        await screen.findByText(
-          /CSV exports without a lab unit filter require the Reports role for All Lab Units or the Global Administrator role/,
-        ),
-      ).toBeInTheDocument();
+      // Expected text comes from the locale's own bundle so Transifex wording
+      // changes don't break the test; what matters is that the current key is
+      // rendered rather than a stale one. The instructions are sibling text
+      // nodes separated by <br>s, so match on content rather than an element.
+      const expected =
+        resolveMessagesForLocale(locale).messages[
+          "systemuserrole.instruction.labUnitRoles"
+        ];
+      expect(expected).toBeTruthy();
+      await waitFor(() =>
+        expect(document.body).toHaveTextContent(expected, {
+          normalizeWhitespace: true,
+        }),
+      );
       expect(
         screen.queryByText(
           /CSV export only Availbale for Global Administrators/,

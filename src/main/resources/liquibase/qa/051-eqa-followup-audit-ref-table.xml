@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <!-- OGC-1665: filling the target of earlier provider follow-ups writes a history
+         row. AuditTrailServiceImpl.saveHistory throws (rolling back the write) when a
+         table has no reference_tables row. -->
+    <changeSet author="openelisglobal" id="OGC-1665-register-eqa-followup-audit-ref-table">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.reference_tables WHERE LOWER(name) = 'eqa_participant_followup'</sqlCheck>
+        </preConditions>
+        <comment>Register eqa_participant_followup for audit history</comment>
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq" />
+            <column name="name" value="eqa_participant_followup" />
+            <column name="keep_history" value="Y" />
+            <column name="is_hl7_encoded" value="N" />
+            <column name="lastupdated" valueDate="now()" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>LOWER(name) = 'eqa_participant_followup'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

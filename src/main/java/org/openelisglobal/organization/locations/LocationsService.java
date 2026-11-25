@@ -15,6 +15,7 @@ import org.openelisglobal.organization.locations.LocationsApi.Page;
 import org.openelisglobal.organization.locations.LocationsApi.Query;
 import org.openelisglobal.organization.locations.LocationsApi.SaveRequest;
 import org.openelisglobal.organization.locations.LocationsApi.SaveResult;
+import org.openelisglobal.organization.locations.LocationsApi.ThisLaboratory;
 import org.openelisglobal.organization.locations.LocationsApi.Usage;
 import org.openelisglobal.organization.locations.LocationsApi.UsageDetail;
 import org.openelisglobal.organization.locations.LocationsApi.Ward;
@@ -32,6 +33,9 @@ public interface LocationsService {
     Page list(Query query);
 
     Detail get(String id);
+
+    /** This laboratory's own facility organization, or null before it exists. */
+    ThisLaboratory thisLaboratory();
 
     SaveResult save(SaveRequest request, String sysUserId);
 

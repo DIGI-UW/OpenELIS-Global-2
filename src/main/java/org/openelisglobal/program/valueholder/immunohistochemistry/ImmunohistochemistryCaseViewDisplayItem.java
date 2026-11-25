@@ -1,10 +1,12 @@
 package org.openelisglobal.program.valueholder.immunohistochemistry;
 
 import java.util.List;
+import java.util.Map;
 import org.hl7.fhir.r4.model.Questionnaire;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
+import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.LabelVerificationView;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 
 public class ImmunohistochemistryCaseViewDisplayItem extends ImmunohistochemistryDisplayItem {
@@ -23,6 +25,10 @@ public class ImmunohistochemistryCaseViewDisplayItem extends Immunohistochemistr
     // refered from pathology.These are Read Only
     private List<PathologyBlock> blocks;
     private List<PathologySlide> slides;
+    // the referred case's stains by dictionary id, retired entries included
+    private Map<String, String> stainNames;
+    // who checked each referred slide's label and when, by slide id
+    private Map<Integer, LabelVerificationView> labelVerifications;
     private List<IdValuePair> techniques;
     private List<IdValuePair> requests;
     private List<IdValuePair> conclusions;
@@ -126,6 +132,14 @@ public class ImmunohistochemistryCaseViewDisplayItem extends Immunohistochemistr
         this.slides = slides;
     }
 
+    public Map<String, String> getStainNames() {
+        return stainNames;
+    }
+
+    public void setStainNames(Map<String, String> stainNames) {
+        this.stainNames = stainNames;
+    }
+
     public List<IdValuePair> getTechniques() {
         return techniques;
     }
@@ -180,5 +194,13 @@ public class ImmunohistochemistryCaseViewDisplayItem extends Immunohistochemistr
 
     public void setReffered(Boolean reffered) {
         this.reffered = reffered;
+    }
+
+    public Map<Integer, LabelVerificationView> getLabelVerifications() {
+        return labelVerifications;
+    }
+
+    public void setLabelVerifications(Map<Integer, LabelVerificationView> labelVerifications) {
+        this.labelVerifications = labelVerifications;
     }
 }

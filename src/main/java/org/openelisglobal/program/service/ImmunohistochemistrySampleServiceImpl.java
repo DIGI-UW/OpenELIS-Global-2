@@ -120,21 +120,30 @@ public class ImmunohistochemistrySampleServiceImpl
         }
     }
 
+    /**
+     * A referral from a pathology case reports only the tests it added to the
+     * case's order; the case's own tests wait for the pathologist's sign-out. The
+     * order is finished only once every test on it is reported.
+     */
     private void validateImmunohistochemistrySample(ImmunohistochemistrySample immunohistochemistrySample,
             ImmunohistochemistrySampleForm form) {
         immunohistochemistrySample.setStatus(ImmunohistochemistryStatus.COMPLETED);
         Sample sample = immunohistochemistrySample.getSample();
         Patient patient = sampleService.getPatient(sample);
         ResultsUpdateDataSet actionDataSet = new ResultsUpdateDataSet(form.getSystemUserId());
+        boolean referral = immunohistochemistrySample.getPathologySample() != null;
 
         ResultsLoadUtility resultsUtility = SpringContext.getBean(ResultsLoadUtility.class);
         List<TestResultItem> testResultItems = resultsUtility.getGroupedTestsForSample(sample);
         for (TestResultItem testResultItem : testResultItems) {
             if (!testResultItem.getIsGroupSeparator()) {
+                Analysis analysis = analysisService.get(testResultItem.getAnalysisId());
+                if (referral && !ProgramCaseAnalyses.isImmunohistochemistryReferral(analysis)) {
+                    continue;
+                }
                 if (ResultType.isTextOnlyVariant(testResultItem.getResultType())) {
                     testResultItem.setResultValue(MessageUtil.getMessage("result.immunochemistry.seereport"));
                 }
-                Analysis analysis = analysisService.get(testResultItem.getAnalysisId());
                 ResultSaveBean bean = ResultSaveBeanAdapter.fromTestResultItem(testResultItem);
                 ResultSaveService resultSaveService = new ResultSaveService(analysis, form.getSystemUserId());
                 List<Result> results = resultSaveService.createResultsFromTestResultItem(bean, new ArrayList<>());
@@ -190,7 +199,13 @@ public class ImmunohistochemistrySampleServiceImpl
 
         logbookResultsPersistService.persistDataSet(actionDataSet, ResultUpdateRegister.getRegisteredUpdaters(),
                 form.getSystemUserId());
-        sample.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(OrderStatus.Finished));
+        IStatusService statusService = SpringContext.getBean(IStatusService.class);
+        if (ProgramCaseAnalyses.allFinished(analysisService.getAnalysesBySampleId(sample.getId()), statusService)) {
+            Sample storedOrder = sampleService.get(sample.getId());
+            storedOrder.setStatusId(statusService.getStatusID(OrderStatus.Finished));
+            storedOrder.setSysUserId(form.getSystemUserId());
+            sampleService.update(storedOrder);
+        }
     }
 
     @Override
