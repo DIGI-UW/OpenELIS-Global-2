@@ -2,6 +2,7 @@ import { test, expect } from "../../../helpers/test-base";
 import type { Page } from "@playwright/test";
 import { Sidenav } from "../../../fixtures/sidenav";
 import { seedMicrobiologyWorklistCase } from "../../../helpers/seed-microbiology-data";
+import { openMicrobiologyCaseScope } from "../../../helpers/microbiology-ui";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 const openCaseSection = async (page: Page, name: string, section: string) => {
@@ -12,9 +13,7 @@ const openCaseSection = async (page: Page, name: string, section: string) => {
     amendment: "AMENDMENT",
     isolates: "ISOLATES",
   };
-  await page
-    .getByLabel("Testing section", { exact: true })
-    .selectOption(scopes[section]);
+  await openMicrobiologyCaseScope(page, scopes[section]);
   await expect
     .poll(() => new URL(page.url()).searchParams.get("scope"))
     .toBe(scopes[section]);
@@ -196,6 +195,12 @@ test.describe("microbiology worklist and critical communication", () => {
       .getByLabel("Recipient", { exact: true })
       .fill("Provider on call");
     await criticalCommunication
+      .getByLabel("Call outcome")
+      .selectOption({ label: "Unable to reach" });
+    await expect(
+      criticalCommunication.getByLabel("Follow-up needed"),
+    ).toBeChecked();
+    await criticalCommunication
       .getByLabel("Message")
       .fill("Positive blood culture called to provider");
     await criticalCommunication
@@ -225,10 +230,17 @@ test.describe("microbiology worklist and critical communication", () => {
       "Critical communication",
       "critical-communication",
     );
-    await page.getByRole("button", { name: "Acknowledge" }).click();
+    await expect(page.getByRole("button", { name: "Acknowledge" })).toHaveCount(
+      0,
+    );
+    await page.getByRole("button", { name: "Resolve follow-up" }).click();
+    await page
+      .getByLabel("Resolution note")
+      .fill("Reached the ward on the second call");
+    await page.getByRole("button", { name: "Resolve follow-up" }).click();
     await expect(
       page.getByTestId("microbiology-critical-status"),
-    ).toContainText("Acknowledged", { timeout: LONG_TIMEOUT });
+    ).toContainText("Closed", { timeout: LONG_TIMEOUT });
     await openCaseSection(page, "Isolates", "isolates");
     await expect(
       page.getByRole("heading", { name: "Isolates", exact: true }),

@@ -92,6 +92,7 @@ describe("Create patient runs the possible-match check (OGC-1424, FR-B6a)", () =
   });
 
   it("with no similar patient on record, the new patient is created with the order", async () => {
+    const consoleError = vi.spyOn(console, "error");
     serverGet.mockReturnValue({ matches: [] });
     enterNewPatient();
 
@@ -100,6 +101,11 @@ describe("Create patient runs the possible-match check (OGC-1424, FR-B6a)", () =
     expect(
       await screen.findByTestId("order-new-patient-confirmed"),
     ).toHaveTextContent("The new patient is created when the order is saved.");
+    const propWarnings = consoleError.mock.calls
+      .map((args) => args.map(String).join(" "))
+      .filter((text) => text.includes("Failed") && text.includes("subtitle"));
+    consoleError.mockRestore();
+    expect(propWarnings).toEqual([]);
     expect(serverGet).toHaveBeenCalledWith(
       "/rest/possible-matches/patient?firstName=Morea&lastName=Kila&birthDate=02%2F03%2F1985",
     );

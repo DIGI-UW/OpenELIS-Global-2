@@ -22,6 +22,7 @@ import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.resultrun.form.ResultRunChip;
 import org.openelisglobal.resultrun.form.ResultRunChipCounts;
+import org.openelisglobal.resultrun.form.ResultRunExceptionKind;
 import org.openelisglobal.resultrun.form.ResultRunRow;
 import org.openelisglobal.resultrun.form.ResultRunRowCategory;
 import org.openelisglobal.resultrun.form.ResultRunRowsPage;
@@ -104,8 +105,12 @@ public class ResultRunReviewIntegrationTest extends BaseWebContextSensitiveTest 
         return item.getSample().getAccessionNumber();
     }
 
+    /** An order of the patient with the test on it, so its value is acceptable. */
     private String newSampleOfPatient() {
-        return newSampleItemOfPatient().getSample().getAccessionNumber();
+        SampleItem item = newSampleItemOfPatient();
+        fixtures.createAnalysis(item, testService.get(TEST));
+        entityManager.flush();
+        return item.getSample().getAccessionNumber();
     }
 
     private SampleItem newSampleItemOfPatient() {
@@ -199,6 +204,7 @@ public class ResultRunReviewIntegrationTest extends BaseWebContextSensitiveTest 
         AnalyzerResults onPlasma = row("15");
         onPlasma.setAccessionNumber(newSampleOfPatient(plasma));
         AnalyzerResults withoutAnalysis = row("15");
+        withoutAnalysis.setAccessionNumber(newSampleItemOfPatient().getSample().getAccessionNumber());
         ResultRun run = open("m-specimen", List.of(onPlasma, withoutAnalysis));
 
         List<ResultRunRow> rows = resultRunService.getRows(run.getId(), viewer(), ResultRunChip.ALL, 1, 25)
@@ -209,7 +215,8 @@ public class ResultRunReviewIntegrationTest extends BaseWebContextSensitiveTest 
                 plasmaRow.category());
         ResultRunRow sharedRow = rows.stream().filter(r -> r.id().equals(withoutAnalysis.getId())).findFirst()
                 .orElseThrow();
-        assertEquals("15 is inside the shared range of 10 to 20", ResultRunRowCategory.NORMAL, sharedRow.category());
+        assertEquals("15 is inside the shared range of 10 to 20", "NORMAL", sharedRow.flag());
+        assertEquals("the test is not on that order", ResultRunExceptionKind.UNORDERED, sharedRow.exceptionKind());
     }
 
     @Test
@@ -304,6 +311,36 @@ public class ResultRunReviewIntegrationTest extends BaseWebContextSensitiveTest 
                 .orElseThrow().rows();
 
         assertEquals(List.of(), rows.stream().map(ResultRunRow::componentId).filter(Objects::nonNull).toList());
+    }
+
+    @Test
+    public void aValueIsNamedByItsTestAndKeepsTheAnalyzersCodeBesideIt() {
+        AnalyzerResults coded = row("15");
+        coded.setTestName("RVW-A");
+        coded.setRawTestCode("RVW-A");
+        AnalyzerResults unmapped = row("7");
+        unmapped.setTestId(null);
+        unmapped.setTestName("RVW-Z");
+        unmapped.setRawTestCode("RVW-Z");
+        unmapped.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST);
+        AnalyzerResults unordered = row("16");
+        unordered.setTestName("RVW-U");
+        unordered.setAccessionNumber(newSampleItemOfPatient().getSample().getAccessionNumber());
+        ResultRun run = open("m-names", List.of(coded, unmapped, unordered));
+
+        List<ResultRunRow> rows = resultRunService.getRows(run.getId(), viewer(), ResultRunChip.ALL, 1, 25)
+                .orElseThrow().rows();
+
+        ResultRunRow named = rows.stream().filter(r -> r.id().equals(coded.getId())).findFirst().orElseThrow();
+        assertEquals("Review test", named.testName());
+        assertEquals("RVW-A", named.code());
+        ResultRunRow code = rows.stream().filter(r -> r.id().equals(unmapped.getId())).findFirst().orElseThrow();
+        assertEquals("a code mapped to no test keeps the analyzer's name", "RVW-Z", code.testName());
+        ResultRunSelectionSummary summary = resultRunService
+                .summarizeSelection(run.getId(), viewer(), new ResultRunSelection("ALL", true, List.of(), List.of()))
+                .orElseThrow();
+        assertEquals("a skipped value is named as its row is", Set.of("RVW-Z", "Review test"),
+                Set.copyOf(summary.skipped().stream().map(ResultRunSelectionSummary.SkippedRow::testName).toList()));
     }
 
     private AnalyzerResults row(String value) {

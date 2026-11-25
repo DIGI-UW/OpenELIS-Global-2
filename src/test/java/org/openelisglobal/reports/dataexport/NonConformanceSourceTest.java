@@ -17,6 +17,7 @@ import org.openelisglobal.reports.dataexport.dao.NonConformanceExportDAO.Rejecti
 import org.openelisglobal.reports.dataexport.form.ExportFilter;
 import org.openelisglobal.reports.dataexport.form.ExportSnapshot;
 import org.openelisglobal.reports.dataexport.form.ReportSourceConfig;
+import org.openelisglobal.reports.dataexport.service.ExportLocations;
 import org.openelisglobal.reports.dataexport.service.NonConformanceSource;
 import org.openelisglobal.reports.dataexport.service.ReportingCsvWriter;
 
@@ -24,7 +25,7 @@ public class NonConformanceSourceTest {
     @Test
     public void csvRetainsDatesBasisAndIndependentEqualOccurrences() throws Exception {
         var dao = mock(NonConformanceExportDAO.class);
-        var source = new NonConformanceSource(dao, new ReportingCsvWriter());
+        var source = new NonConformanceSource(dao, new ReportingCsvWriter(), mock(ExportLocations.class));
         List<String> ids = List.of("ncOccurrenceId", "ncAccessionNumber", "rejectionDate", "ncDateBasis", "ncEventDate",
                 "ncRecordedDate", "rejectionReason");
         var fields = ids.stream()
@@ -43,7 +44,7 @@ public class NonConformanceSourceTest {
                         Date.valueOf("2026-05-05"), "OPEN"),
                 new EventRow(3, 12, "20", "PUBLIC-NC", "Haemolysed", "Reception", "Demo", null,
                         Date.valueOf("2026-05-05"), "OPEN")));
-        when(dao.rejections(request)).thenReturn(Stream.of(new RejectionRow("1", "20", "PUBLIC-NC", "Haemolysed",
+        when(dao.rejections(request, false)).thenReturn(Stream.of(new RejectionRow("1", "20", "PUBLIC-NC", "Haemolysed",
                 Timestamp.from(Instant.parse("2026-05-06T06:30:00Z")))));
         var output = new StringWriter();
         assertEquals(4, source.write(output, request));

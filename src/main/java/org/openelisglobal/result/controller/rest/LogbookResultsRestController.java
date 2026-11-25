@@ -40,6 +40,7 @@ import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.eqa.service.EQACycleSubmissionService;
 import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.microbiology.service.MicroCaseLockedException;
 import org.openelisglobal.notifications.dao.NotificationDAO;
 import org.openelisglobal.notifications.entity.Notification;
 import org.openelisglobal.patient.service.PatientService;
@@ -525,8 +526,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             if (waiting.isPresent()) {
                 Map<String, Object> refusal = new HashMap<>();
                 refusal.put("error",
-                        MessageUtil.getMessage(waiting.get().held() ? "run.refusal.held" : "run.refusal.waiting",
-                                new String[] { waiting.get().label() }));
+                        MessageUtil.getMessage(waiting.get().refusalKey(), new String[] { waiting.get().label() }));
                 refusal.put("waitingRun", waiting.get());
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(refusal);
             }
@@ -536,8 +536,8 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                 .map(TestResultItem::getAnalysisId).filter(Objects::nonNull).toList());
         if (!holding.isEmpty()) {
             Map<String, Object> refusal = new HashMap<>();
-            WaitingRun held = resultRunService.heldRun(holding.values().iterator().next());
-            refusal.put("error", MessageUtil.getMessage("run.refusal.held", new String[] { held.label() }));
+            WaitingRun held = resultRunService.heldRun(holding.values().iterator().next(), null);
+            refusal.put("error", MessageUtil.getMessage(held.refusalKey(), new String[] { held.label() }));
             refusal.put("waitingRun", held);
             return ResponseEntity.status(HttpStatus.CONFLICT).body(refusal);
         }
@@ -557,9 +557,11 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                 statusRuleSet, request);
         ResultUtil.createAnalysisOnlyUpdates(actionDataSet, request);
         ResultUtil.holdOpenWhileRequiredComponentsBlank(actionDataSet);
-        runQcService.detachFromDecidedRuns(java.util.stream.Stream
+        List<Result> savedResults = java.util.stream.Stream
                 .concat(actionDataSet.getNewResults().stream(), actionDataSet.getModifiedResults().stream())
-                .map(resultSet -> resultSet.result).toList());
+                .map(resultSet -> resultSet.result).toList();
+        updaters.add(resultRunService.recordIntoWorkplanRuns(savedResults, getSysUserId(request)));
+        runQcService.detachFromDecidedRuns(savedResults);
 
         try {
             List<Analysis> reflexAnalysises = logbookPersistService.persistDataSet(actionDataSet, updaters,
@@ -663,6 +665,9 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             failure.put("error", MessageUtil.getMessage(errorMsg));
             return ResponseEntity.status(e.getCause() instanceof StaleObjectStateException ? HttpStatus.CONFLICT
                     : HttpStatus.INTERNAL_SERVER_ERROR).body(failure);
+        } catch (MicroCaseLockedException e) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(Map.of("error", MessageUtil.getMessage("result.refusal." + e.getMessage())));
         }
 
         for (IResultUpdate updater : updaters) {

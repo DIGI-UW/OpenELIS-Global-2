@@ -33,7 +33,10 @@ export const AlertDialog = () => {
             <ToastNotification
               key={notificationBody.id ?? index}
               title={notificationBody.title}
-              timeout={notificationTimeout(notificationBody.kind)}
+              timeout={notificationTimeout(
+                notificationBody.kind,
+                notificationBody.timeout,
+              )}
               onClose={(event) => {
                 // Remove notification from array when it closes automatically
                 removeNotification(notificationBody.id);

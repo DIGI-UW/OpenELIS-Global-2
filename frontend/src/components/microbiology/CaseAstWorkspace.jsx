@@ -1,10 +1,12 @@
 import ReagentLotPicker, { formatReagentLotConflict } from "./ReagentLotPicker";
 import ReagentUsageHistory from "./ReagentUsageHistory";
+import CaseAstRunQc from "./CaseAstRunQc";
 import { labTimestamp } from "./MicrobiologyTime";
 import ContainerLabelButton from "./ContainerLabelButton";
 import React, { useContext, useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
 import MacroTextArea from "../common/textMacro/MacroTextArea";
+import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { hasRole, Roles } from "../utils/Utils";
 import {
@@ -150,16 +152,24 @@ export default function CaseAstWorkspace({
   }, [detail.id, data, service, canListAnalyzers]);
   const canEnter = !readOnly && detail.canWrite && data?.canEnter;
   const canValidate = !readOnly && detail.canValidate && data?.canValidate;
+  const actionLabel = (action, run) =>
+    action === "acknowledge" &&
+    run?.intrinsicContradiction &&
+    !run?.analyzerExpertFlags
+      ? "confirmIdentification"
+      : action;
   const open = (action, isolate, run, reading, antibioticId) => {
     setError(false);
     setSelectedLots({});
     setDraft({
       action,
+      label: actionLabel(action, run),
       isolateId: isolate?.id,
       runId: run?.id,
       readingId: reading?.id,
       antibioticId: antibioticId || reading?.antibioticId,
-      panelId: isolate?.assignments?.[0]?.panelId || "",
+      panelId:
+        isolate?.defaultPanelId || isolate?.assignments?.[0]?.panelId || "",
       breakpointStandardId: data.defaultStandard?.configured
         ? data.defaultStandard.available
           ? data.defaultStandard.standardId
@@ -212,7 +222,7 @@ export default function CaseAstWorkspace({
     setBusy(true);
     setError(false);
     try {
-      const { adjustPanel, ...request } = draft;
+      const { adjustPanel, label, panelId, ...request } = draft;
       if (draft.action === "resolve") {
         const { antibioticId, evidenceFingerprint, interpretation, reason } =
           draft;
@@ -229,6 +239,13 @@ export default function CaseAstWorkspace({
             detail.id,
             {
               ...request,
+              clinicalContext:
+                draft.clinicalContext === "NOT_STATED"
+                  ? ""
+                  : draft.clinicalContext,
+              ...(["start", "assign"].includes(draft.action)
+                ? { panelId }
+                : {}),
               lotSelections: Object.values(selectedLots),
               rawValue:
                 draft.action === "reading" ? Number(draft.rawValue) : null,
@@ -254,6 +271,18 @@ export default function CaseAstWorkspace({
       setBusy(false);
     }
   };
+  const reportAction = async (body) => {
+    setBusy(true);
+    setError(false);
+    try {
+      setData(await service.astAction(detail.id, body, !canEnter));
+      onChanged?.();
+    } catch (failure) {
+      setError(failure.response?.message || failure.response?.error || true);
+    } finally {
+      setBusy(false);
+    }
+  };
   const button = (action, isolate, run, reading, antibioticId) => (
     <Button
       key={action}
@@ -261,15 +290,13 @@ export default function CaseAstWorkspace({
       kind="ghost"
       onClick={() => open(action, isolate, run, reading, antibioticId)}
     >
-      {t(`action.${action}`)}
+      {t(`action.${actionLabel(action, run)}`)}
     </Button>
   );
   const activeIsolate = data?.isolates?.find((i) => i.id === draft?.isolateId);
   const panelChanged =
     draft?.action === "start" &&
-    (draft.adjustPanel ||
-      activeIsolate?.assignments?.find((a) => a.panelId === draft.panelId)
-        ?.provenance !== "ORGANISM_DEFAULT");
+    (draft.adjustPanel || draft.panelId !== activeIsolate?.defaultPanelId);
   const needsReason = draft && (reasons.includes(draft.action) || panelChanged);
   const invalid =
     draft &&
@@ -280,7 +307,9 @@ export default function CaseAstWorkspace({
           !Number.isFinite(Number(draft.rawValue)) ||
           Number(draft.rawValue) < 0)) ||
       (draft.action === "start" &&
-        (!draft.panelId || !draft.breakpointStandardId)) ||
+        (!draft.panelId ||
+          !draft.breakpointStandardId ||
+          !draft.clinicalContext)) ||
       (draft.action === "assign" && !draft.panelId) ||
       (draft.action === "invalidate" &&
         draft.analyzerInstrumentId &&
@@ -294,7 +323,7 @@ export default function CaseAstWorkspace({
   return (
     <Stack gap={5}>
       <h3>{t("ast")}</h3>
-      {error && (
+      {error && !draft && (
         <InlineNotification kind="error" title={errorMessage} hideCloseButton />
       )}
       {data?.defaultStandard?.configured && !data.defaultStandard.available && (
@@ -342,12 +371,15 @@ export default function CaseAstWorkspace({
                   open
                 >
                   <Stack gap={4}>
+                    {run.panelLabel && (
+                      <p>
+                        {t("panel")}: {run.panelLabel}
+                      </p>
+                    )}
                     <p>
                       {t("clinicalContext")}:{" "}
                       {t(
-                        run.clinicalContext === "NON_MENINGITIS"
-                          ? "clinicalContext.nonMeningitis"
-                          : "clinicalContext.unspecified",
+                        `clinicalContext.${run.clinicalContext || "notStated"}`,
                       )}
                     </p>
                     <ContainerLabelButton
@@ -374,6 +406,18 @@ export default function CaseAstWorkspace({
                         </p>
                       </Stack>
                     )}
+                    <CaseAstRunQc
+                      caseId={detail.id}
+                      runId={run.id}
+                      service={service}
+                      reloadKey={data}
+                      onRecorded={() =>
+                        service
+                          .getAstWorkspace(detail.id)
+                          .then(setData)
+                          .catch(() => setError(true))
+                      }
+                    />
                     {run.status === "QC_FAILED" && (
                       <InlineNotification
                         kind="error"
@@ -401,6 +445,15 @@ export default function CaseAstWorkspace({
                         hideCloseButton
                       />
                     )}
+                    {run.intrinsicContradiction &&
+                      !run.analyzerFlagsAcknowledgedAt && (
+                        <InlineNotification
+                          kind="warning"
+                          lowContrast
+                          title={t("intrinsicContradiction")}
+                          hideCloseButton
+                        />
+                      )}
                     <TableContainer>
                       <Table
                         size="sm"
@@ -413,6 +466,7 @@ export default function CaseAstWorkspace({
                               "raw",
                               "interpretation",
                               "selected",
+                              "reportTick",
                               "actions",
                             ].map((key) => (
                               <TableHeader key={key}>{t(key)}</TableHeader>
@@ -429,6 +483,11 @@ export default function CaseAstWorkspace({
                               reading &&
                               isolate.choices.some(
                                 (c) => c.readingId === reading.id,
+                              );
+                            const showTick =
+                              selected ||
+                              !isolate.choices.some(
+                                (c) => c.antibioticId === agent.antibioticId,
                               );
                             const editable = ![
                               "REVIEWED",
@@ -467,11 +526,33 @@ export default function CaseAstWorkspace({
                                           )}
                                         </p>
                                       )}
-                                      {reading.overrideInterpretation && (
-                                        <Tag type="purple">{t("manual")}</Tag>
+                                      {reading.overrideRuleId ? (
+                                        <>
+                                          <Tag type="teal">
+                                            {t("expertRule")}
+                                          </Tag>
+                                          <p>
+                                            {intl.formatMessage(
+                                              {
+                                                id: "microbiology.m6.expertRuleLine",
+                                              },
+                                              {
+                                                organism: isolate.organism,
+                                                antibiotic:
+                                                  agent.antibioticName,
+                                              },
+                                            )}
+                                          </p>
+                                        </>
+                                      ) : (
+                                        reading.overrideInterpretation && (
+                                          <Tag type="purple">{t("manual")}</Tag>
+                                        )
                                       )}
                                       <br />
-                                      {t("breakpoint")}: {run.breakpointVersion}{" "}
+                                      {t("breakpoint")}:{" "}
+                                      {run.breakpointAuthority}{" "}
+                                      {run.breakpointVersion}{" "}
                                       {reading.matchedBy &&
                                         t(`match.${reading.matchedBy}`)}
                                     </>
@@ -484,6 +565,62 @@ export default function CaseAstWorkspace({
                                     <Tag type="green">{t("selected")}</Tag>
                                   ) : (
                                     t("none")
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {showTick && (
+                                    <>
+                                      <Checkbox
+                                        id={`report-${run.id}-${agent.antibioticId}`}
+                                        labelText={intl.formatMessage(
+                                          { id: "microbiology.m6.reportAgent" },
+                                          { agent: agent.antibioticName },
+                                        )}
+                                        aria-label={intl.formatMessage(
+                                          { id: "microbiology.m6.reportAgent" },
+                                          { agent: agent.antibioticName },
+                                        )}
+                                        hideLabel
+                                        checked={!!agent.reported}
+                                        disabled={
+                                          !(canEnter || canValidate) ||
+                                          busy ||
+                                          [
+                                            "INVALIDATED",
+                                            "CANCELLED",
+                                            "RERUN_REQUIRED",
+                                          ].includes(run.status)
+                                        }
+                                        onChange={(_, { checked }) =>
+                                          reportAction({
+                                            action: "report",
+                                            isolateId: isolate.id,
+                                            runId: run.id,
+                                            antibioticId: agent.antibioticId,
+                                            reported: checked,
+                                          })
+                                        }
+                                      />
+                                      {agent.reportManual ? (
+                                        <p>{t("reportReason.manual")}</p>
+                                      ) : (
+                                        agent.reportBehavior !== "ALWAYS" && (
+                                          <p>
+                                            {t(
+                                              `reportReason.${agent.reportBehavior}`,
+                                            )}
+                                          </p>
+                                        )
+                                      )}
+                                    </>
+                                  )}
+                                  {agent.ruleNote && (
+                                    <>
+                                      <Tag size="sm" type="teal">
+                                        {t("fromRule")}
+                                      </Tag>
+                                      <p>{agent.ruleNote}</p>
+                                    </>
                                   )}
                                 </TableCell>
                                 <TableCell>
@@ -539,7 +676,8 @@ export default function CaseAstWorkspace({
                         run.status === "QC_FAILED" &&
                         button("qc-override", isolate, run)}
                       {canValidate &&
-                        run.analyzerExpertFlags &&
+                        (run.analyzerExpertFlags ||
+                          run.intrinsicContradiction) &&
                         !run.analyzerFlagsAcknowledgedAt &&
                         button("acknowledge", isolate, run)}
                     </div>
@@ -585,6 +723,26 @@ export default function CaseAstWorkspace({
                 </AccordionItem>
               ))}
             </Accordion>
+            {(canEnter || canValidate) &&
+              isolate.runs.some((run) =>
+                run.orderedAntibiotics.some((agent) => agent.reportManual),
+              ) && (
+                <div>
+                  <Button
+                    size="sm"
+                    kind="ghost"
+                    disabled={busy}
+                    onClick={() =>
+                      reportAction({
+                        action: "report-reset",
+                        isolateId: isolate.id,
+                      })
+                    }
+                  >
+                    {t("action.report-reset")}
+                  </Button>
+                </div>
+              )}
           </Stack>
         </Tile>
       ))}
@@ -601,8 +759,7 @@ export default function CaseAstWorkspace({
               {drug.evidence.map((item) => (
                 <p key={`${item.source}-${item.sourceId}`}>
                   {t(`source.${item.source}`)}:{" "}
-                  {t(`interpretation.${item.interpretation}`)} ·{" "}
-                  {t(item.validated ? "validated" : "pending")}
+                  {t(`interpretation.${item.interpretation}`)}
                 </p>
               ))}
               {drug.resolutionReason && (
@@ -636,9 +793,13 @@ export default function CaseAstWorkspace({
       {draft && (
         <Modal
           open
-          modalHeading={t(`action.${draft.action}`)}
-          primaryButtonText={t("save")}
-          secondaryButtonText={t("cancel")}
+          modalHeading={t(`action.${draft.label || draft.action}`)}
+          primaryButtonText={t(
+            draft.action === "cancel" ? "action.cancel" : "save",
+          )}
+          secondaryButtonText={t(
+            draft.action === "cancel" ? "keepRun" : "cancel",
+          )}
           primaryButtonDisabled={
             busy ||
             invalid ||
@@ -723,20 +884,35 @@ export default function CaseAstWorkspace({
                 )}
                 <Select
                   id="ast-clinical-context"
-                  labelText={t("clinicalContext")}
-                  helperText={t("clinicalContext.help")}
+                  {...requiredProps()}
+                  labelText={
+                    <>
+                      {t("clinicalContext")}
+                      <RequiredMarker />
+                    </>
+                  }
+                  helperText={t("clinicalContext.choiceHelp")}
                   value={draft.clinicalContext}
                   onChange={(event) =>
                     setDraft({ ...draft, clinicalContext: event.target.value })
                   }
                 >
+                  <SelectItem value="" text={t("choose")} />
                   <SelectItem
-                    value=""
-                    text={t("clinicalContext.unspecified")}
+                    value="MENINGITIS"
+                    text={t("clinicalContext.MENINGITIS")}
+                  />
+                  <SelectItem
+                    value="ENDOCARDITIS"
+                    text={t("clinicalContext.ENDOCARDITIS")}
                   />
                   <SelectItem
                     value="NON_MENINGITIS"
-                    text={t("clinicalContext.nonMeningitis")}
+                    text={t("clinicalContext.neither")}
+                  />
+                  <SelectItem
+                    value="NOT_STATED"
+                    text={t("clinicalContext.notStated")}
                   />
                 </Select>
                 <ReagentLotPicker
@@ -756,7 +932,13 @@ export default function CaseAstWorkspace({
             {["start", "assign"].includes(draft.action) && (
               <Select
                 id="ast-panel"
-                labelText={t("panel")}
+                {...requiredProps()}
+                labelText={
+                  <>
+                    {t("panel")}
+                    <RequiredMarker />
+                  </>
+                }
                 value={draft.panelId}
                 onChange={(e) =>
                   setDraft({ ...draft, panelId: e.target.value })
@@ -886,7 +1068,13 @@ export default function CaseAstWorkspace({
             {draft.action === "start" && (
               <Select
                 id="ast-standard"
-                labelText={t("breakpoint")}
+                {...requiredProps()}
+                labelText={
+                  <>
+                    {t("breakpoint")}
+                    <RequiredMarker />
+                  </>
+                }
                 value={draft.breakpointStandardId}
                 onChange={(e) =>
                   setDraft({ ...draft, breakpointStandardId: e.target.value })

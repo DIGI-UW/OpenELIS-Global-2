@@ -1,6 +1,7 @@
 package org.openelisglobal.microbiology.service;
 
 import java.util.List;
+import java.util.Locale;
 import org.openelisglobal.alert.service.AlertService;
 import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.alert.valueholder.AlertSeverity;
@@ -14,6 +15,7 @@ import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
 import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication;
+import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunicationOutcome;
 import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunicationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunicationTargetType;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
@@ -60,19 +62,18 @@ public class MicroCriticalCommunicationServiceImpl implements MicroCriticalCommu
 
     @Override
     @Transactional
-    public MicroCriticalCommunication logCommunication(String caseId, String recipient, String message,
-            boolean followUpNeeded, String performedBy) {
-        return logCommunication(caseId, MicroCriticalCommunicationTargetType.CASE, caseId, recipient, null, "PHONE",
-                message, followUpNeeded, performedBy);
-    }
-
-    @Override
-    @Transactional
     public MicroCriticalCommunication logCommunication(String caseId, MicroCriticalCommunicationTargetType targetType,
-            String targetId, String recipient, String recipientContact, String communicationMethod, String message,
-            boolean followUpNeeded, String performedBy) {
+            String targetId, String recipient, String recipientContact, String communicationMethod, String outcome,
+            String message, boolean followUpNeeded, String performedBy) {
         MicroCaseServiceImpl.requireText(caseId, "caseId");
         MicroCaseServiceImpl.requireText(communicationMethod, "communicationMethod");
+        MicroCaseServiceImpl.requireText(outcome, "outcome");
+        MicroCriticalCommunicationOutcome resolvedOutcome;
+        try {
+            resolvedOutcome = MicroCriticalCommunicationOutcome.valueOf(outcome.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("outcome is invalid");
+        }
         MicroCaseServiceImpl.requireText(message, "message");
         MicroCase microCase = caseDAO.get(caseId)
                 .orElseThrow(() -> new IllegalArgumentException("Microbiology case not found"));
@@ -98,6 +99,7 @@ public class MicroCriticalCommunicationServiceImpl implements MicroCriticalCommu
         communication.setRecipient(recipient);
         communication.setRecipientContact(recipientContact);
         communication.setCommunicationMethod(communicationMethod.trim().toUpperCase());
+        communication.setOutcome(resolvedOutcome.name());
         communication.setMessage(message);
         communication.setCommunicatedAt(MicroCaseServiceImpl.now());
         communication.setCommunicatedBy(performedBy);
@@ -106,28 +108,13 @@ public class MicroCriticalCommunicationServiceImpl implements MicroCriticalCommu
         communicationDAO.insert(communication);
         recordActivity(caseId, MicroCaseActivityType.CRITICAL_COMMUNICATION_LOGGED, performedBy,
                 "Critical communication logged", "{\"communicationId\":\"" + communication.getId() + "\"}");
-        Alert alert = projectToAlertsDashboard(communication);
-        if (alert != null && alert.getId() != null) {
-            communication.setAlertId(alert.getId());
-            communicationDAO.update(communication);
+        if (followUpNeeded) {
+            Alert alert = projectToAlertsDashboard(communication);
+            if (alert != null && alert.getId() != null) {
+                communication.setAlertId(alert.getId());
+                communicationDAO.update(communication);
+            }
         }
-        return communication;
-    }
-
-    @Override
-    @Transactional
-    public MicroCriticalCommunication acknowledge(String communicationId, String performedBy) {
-        MicroCaseServiceImpl.requireText(communicationId, "communicationId");
-        MicroCriticalCommunication communication = communicationDAO.get(communicationId)
-                .orElseThrow(() -> new IllegalArgumentException("Critical communication not found"));
-        if (MicroCriticalCommunicationStatus.CLOSED.name().equals(communication.getAcknowledgementStatus())) {
-            throw new IllegalStateException("Closed critical communication cannot be acknowledged");
-        }
-        if (MicroCriticalCommunicationStatus.ACKNOWLEDGED.name().equals(communication.getAcknowledgementStatus())) {
-            return communication;
-        }
-        acknowledgeRecord(communication, performedBy);
-        acknowledgeProjectedAlert(communication);
         return communication;
     }
 
@@ -138,11 +125,11 @@ public class MicroCriticalCommunicationServiceImpl implements MicroCriticalCommu
         MicroCaseServiceImpl.requireText(resolutionNote, "resolutionNote");
         MicroCriticalCommunication communication = communicationDAO.get(communicationId)
                 .orElseThrow(() -> new IllegalArgumentException("Critical communication not found"));
-        if (MicroCriticalCommunicationStatus.OPEN.name().equals(communication.getAcknowledgementStatus())) {
-            throw new IllegalStateException("Critical communication must be acknowledged before it can be closed");
-        }
         if (MicroCriticalCommunicationStatus.CLOSED.name().equals(communication.getAcknowledgementStatus())) {
             return communication;
+        }
+        if (!Boolean.TRUE.equals(communication.getFollowUpNeeded())) {
+            throw new IllegalStateException("Only a critical communication that needs follow-up can be resolved");
         }
         closeRecord(communication, resolutionNote, performedBy);
         resolveProjectedAlert(communication, resolutionNote, performedBy);
@@ -205,24 +192,6 @@ public class MicroCriticalCommunicationServiceImpl implements MicroCriticalCommu
                         + communication.getTargetId() + "\"}");
     }
 
-    private void acknowledgeProjectedAlert(MicroCriticalCommunication communication) {
-        Integer userId;
-        try {
-            userId = Integer.valueOf(communication.getAcknowledgedBy());
-        } catch (NumberFormatException e) {
-            logger.warn(
-                    "Could not sync Alerts Dashboard projection for critical communication {}: "
-                            + "acknowledgedBy '{}' is not a numeric system user id",
-                    communication.getId(), communication.getAcknowledgedBy());
-            return;
-        }
-        for (Alert alert : projectedAlerts(communication)) {
-            if (alert.getStatus() == AlertStatus.OPEN) {
-                alertService.acknowledgeAlert(alert.getId(), userId);
-            }
-        }
-    }
-
     private void resolveProjectedAlert(MicroCriticalCommunication communication, String resolutionNote,
             String performedBy) {
         Integer userId;
@@ -234,7 +203,7 @@ public class MicroCriticalCommunicationServiceImpl implements MicroCriticalCommu
             return;
         }
         for (Alert alert : projectedAlerts(communication)) {
-            if (alert.getStatus() == AlertStatus.ACKNOWLEDGED) {
+            if (alert.getStatus() == AlertStatus.OPEN || alert.getStatus() == AlertStatus.ACKNOWLEDGED) {
                 alertService.resolveAlert(alert.getId(), userId, resolutionNote);
             }
         }

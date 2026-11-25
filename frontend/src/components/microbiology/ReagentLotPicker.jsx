@@ -9,7 +9,6 @@ import {
   Tag,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
-import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
 
 export const getReagentSelectionKey = (requirement) =>
   `${requirement.analysisId}:${requirement.linkId}`;
@@ -78,10 +77,7 @@ const ReagentLotPicker = ({
   }
 
   const unavailableReasonLabel = (reason) =>
-    intl.formatMessage({
-      id: `microbiology.reagentLots.reason.${reason}`,
-      defaultMessage: formatMicrobiologyEnum(reason, intl),
-    });
+    intl.formatMessage({ id: `microbiology.reagentLots.reason.${reason}` });
 
   const scanLot = () => {
     const normalized = scanValue.trim().toLowerCase();
@@ -213,10 +209,6 @@ const ReagentLotPicker = ({
                 <Tag type="cool-gray">
                   {intl.formatMessage({
                     id: `microbiology.reagentLots.role.${requirement.usageType}`,
-                    defaultMessage: formatMicrobiologyEnum(
-                      requirement.usageType,
-                      intl,
-                    ),
                   })}
                 </Tag>
               ) : null}
@@ -280,10 +272,6 @@ const ReagentLotPicker = ({
                       <Tag type={lot.qcStatus === "PASSED" ? "green" : "gray"}>
                         {intl.formatMessage({
                           id: `microbiology.reagentLots.qc.${lot.qcStatus}`,
-                          defaultMessage: `QC ${formatMicrobiologyEnum(
-                            lot.qcStatus,
-                            intl,
-                          ).toLowerCase()}`,
                         })}
                       </Tag>
                       {lot.fefoRecommended ? (

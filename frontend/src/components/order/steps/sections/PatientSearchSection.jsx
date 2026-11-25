@@ -291,9 +291,9 @@ const PatientSearchSection = ({
                   lowContrast
                   hideCloseButton
                   title=""
-                  subtitle={
-                    <FormattedMessage id="order.entry.patient.willBeCreated" />
-                  }
+                  subtitle={intl.formatMessage({
+                    id: "order.entry.patient.willBeCreated",
+                  })}
                   data-testid="order-new-patient-confirmed"
                 />
               )}
