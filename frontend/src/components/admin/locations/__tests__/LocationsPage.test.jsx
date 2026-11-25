@@ -37,6 +37,11 @@ vi.mock("../OrganizationsView", () => ({
         <button onClick={() => notify("A saved.", "success", null, "record-1")}>
           savedA
         </button>
+        <button
+          onClick={() => notify("A refused again", "error", null, "record-1")}
+        >
+          failA2
+        </button>
       </>
     );
   },
@@ -104,6 +109,21 @@ describe("LocationsPage messages (OGC-1420 4)", () => {
     expect(texts.join("|")).toContain("A saved.");
     expect(texts.join("|")).toContain("B refused");
     expect(texts.join("|")).not.toContain("A refused");
+  });
+
+  it("replaces a form's earlier error with its newer one, and keeps other forms' errors", () => {
+    renderPage();
+    fireEvent.click(screen.getByText("failA"));
+    fireEvent.click(screen.getByText("failB"));
+    fireEvent.click(screen.getByText("failA2"));
+
+    const texts = [...document.querySelectorAll(".locationsToast")].map(
+      (toast) => toast.textContent,
+    );
+    expect(texts.join("|")).toContain("A refused again");
+    expect(texts.join("|")).toContain("B refused");
+    expect(texts.join("|")).not.toContain("A refused|");
+    expect(texts.filter((t) => t.includes("A refused"))).toHaveLength(1);
   });
 
   it("opens the record of an old link whether it says ID= or id=", () => {

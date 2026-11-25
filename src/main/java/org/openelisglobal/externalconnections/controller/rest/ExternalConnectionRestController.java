@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.jasypt.util.text.TextEncryptor;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
@@ -21,6 +22,7 @@ import org.openelisglobal.externalconnections.valueholder.ExternalConnection;
 import org.openelisglobal.externalconnections.valueholder.ExternalConnection.AuthType;
 import org.openelisglobal.externalconnections.valueholder.ExternalConnection.ProgrammedConnection;
 import org.openelisglobal.externalconnections.valueholder.ExternalConnectionAuthenticationData;
+import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -40,6 +42,8 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasRole('ADMIN')")
 public class ExternalConnectionRestController extends BaseController {
 
+    static final int MAX_COLUMN_LENGTH = 255;
+
     private static final String[] ALLOWED_FIELDS = new String[] { "externalConnection.id", "externalConnection.active",
             "externalConnection.programmedConnection", "externalConnection.activeAuthenticationType",
             "externalConnection.uri", "externalConnection.nameLocalization.localizedValue",
@@ -48,6 +52,9 @@ public class ExternalConnectionRestController extends BaseController {
 
     @Autowired
     private ExternalConnectionService externalConnectionService;
+
+    @Autowired
+    private TextEncryptor textEncryptor;
 
     @Autowired
     private ExternalConnectionAuthenticationDataService externalConnectionAuthenticationDataService;
@@ -120,6 +127,30 @@ public class ExternalConnectionRestController extends BaseController {
         return shown;
     }
 
+    /**
+     * The address, user name and stored (encrypted) password each fit in 255
+     * characters. A longer value used to fail when the transaction committed, after
+     * this controller had returned, and the form only showed "Internal Server
+     * Error".
+     */
+    private String tooLongField(ExternalConnection connection, BasicAuthenticationData basic) {
+        if (connection.getUri() != null && connection.getUri().toString().length() > MAX_COLUMN_LENGTH) {
+            return MessageUtil.getMessage("externalconnections.error.uriTooLong", String.valueOf(MAX_COLUMN_LENGTH));
+        }
+        if (basic == null) {
+            return null;
+        }
+        if (basic.getUsername() != null && basic.getUsername().length() > MAX_COLUMN_LENGTH) {
+            return MessageUtil.getMessage("externalconnections.error.usernameTooLong",
+                    String.valueOf(MAX_COLUMN_LENGTH));
+        }
+        String password = basic.getPassword();
+        if (password != null && !password.isEmpty() && textEncryptor.encrypt(password).length() > MAX_COLUMN_LENGTH) {
+            return MessageUtil.getMessage("externalconnections.error.passwordTooLong");
+        }
+        return null;
+    }
+
     private static boolean hasPassword(BasicAuthenticationData stored) {
         return stored != null && stored.getPassword() != null && !stored.getPassword().isEmpty();
     }
@@ -130,14 +161,18 @@ public class ExternalConnectionRestController extends BaseController {
 
         ExternalConnection formConnection = form.getExternalConnection();
         if (formConnection == null) {
-            return ResponseEntity.badRequest().body("External connection data is required.");
+            return ResponseEntity.badRequest().body(Map.of("message", "External connection data is required."));
         }
 
         String sysUserId = getSysUserId(request);
         boolean isNew = formConnection.getId() == null || formConnection.getId() == 0;
         if (isNew && CHANNEL_TYPES.contains(formConnection.getProgrammedConnection())) {
-            return ResponseEntity.badRequest()
-                    .body("Email, SMS and WhatsApp are set up on the Notifications > Channels page.");
+            return ResponseEntity.badRequest().body(
+                    Map.of("message", "Email, SMS and WhatsApp are set up on the Notifications > Channels page."));
+        }
+        String tooLong = tooLongField(formConnection, form.getBasicAuthenticationData());
+        if (tooLong != null) {
+            return ResponseEntity.badRequest().body(Map.of("message", tooLong));
         }
 
         try {
@@ -198,14 +233,14 @@ public class ExternalConnectionRestController extends BaseController {
         } catch (LIMSRuntimeException e) {
             LogEvent.logError(e);
             if (e.getCause() instanceof org.hibernate.StaleObjectStateException) {
-                return ResponseEntity.status(HttpStatus.CONFLICT)
-                        .body("Another transaction has updated this record. Please refresh and try again.");
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message",
+                        "Another transaction has updated this record. Please refresh and try again."));
             }
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Failed to save external connection: " + e.getMessage());
+                    .body(Map.of("message", "Failed to save external connection: " + e.getMessage()));
         }
 
-        return ResponseEntity.ok("External connection saved successfully.");
+        return ResponseEntity.ok(Map.of("message", "External connection saved successfully."));
     }
 
     @Override

@@ -2,7 +2,6 @@ import {
   Button,
   Column,
   DataTable,
-  DatePicker,
   DatePickerInput,
   Dropdown,
   Grid,
@@ -18,6 +17,7 @@ import {
   TextInput,
   Tile,
 } from "@carbon/react";
+import { DatePicker } from "../common/DatePicker";
 import { DocumentPdf, Download } from "@carbon/icons-react";
 import { useContext, useEffect, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";

@@ -132,6 +132,12 @@ interface ExpandedPanelProps {
   domain: ResultsDomain;
   editable: boolean;
   editing: boolean;
+  /**
+   * OGC-1200: the row is resulted from a run (its value waits there, or the
+   * run's failed control holds it), so nothing is saved from the worklist and
+   * no referral or rejection is offered.
+   */
+  inRun?: boolean;
   /** the worklist's lab unit — scopes OGC-1025 control capture. */
   testSectionId?: string;
   /** analyzerId as loaded from the server — drives the provenance tag (FR-B2). */
@@ -209,6 +215,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   domain,
   editable,
   editing,
+  inRun = false,
   testSectionId,
   loadedAnalyzerId,
   methods,
@@ -368,6 +375,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
                 row={row}
                 editable={editable}
                 onValueChange={onValueChange}
+                scope="panel"
               />
               {row.unitsOfMeasure && <span>{row.unitsOfMeasure}</span>}
               <FlagChip flag={flag} />
@@ -601,7 +609,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           >
             <FormattedMessage id="label.results.nce.report" />
           </Button>
-          {allowResultRejection && (
+          {allowResultRejection && !inRun && (
             <Button
               kind="ghost"
               size="sm"
@@ -616,34 +624,38 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           {/* A referred test cannot be referred again: the save has no way to
               amend an existing referral, so a second click would raise a rival
               one. The referral is edited or cancelled from Referred Out. */}
-          <Button
-            kind="ghost"
-            size="sm"
-            disabled={row.referredOut}
-            onClick={() =>
-              onReferralDraftChange(
-                referralDraft
-                  ? null
-                  : emptyReferralDraft(
-                      todayForReferral(
-                        configurationProperties?.DEFAULT_DATE_LOCALE,
-                      ),
-                    ),
-              )
-            }
-            data-testid={`referral-toggle-${rowKey}`}
-          >
-            {row.referredOut ? (
-              <FormattedMessage id="label.results.referredOut" />
-            ) : referralDraft ? (
-              <FormattedMessage id="label.results.referral.editing" />
-            ) : (
-              <FormattedMessage id="label.results.referral.refer" />
-            )}
-          </Button>
-          <span className="unifiedFieldHint">
-            <FormattedMessage id="label.results.saveHint" />
-          </span>
+          {!inRun && (
+            <>
+              <Button
+                kind="ghost"
+                size="sm"
+                disabled={row.referredOut}
+                onClick={() =>
+                  onReferralDraftChange(
+                    referralDraft
+                      ? null
+                      : emptyReferralDraft(
+                          todayForReferral(
+                            configurationProperties?.DEFAULT_DATE_LOCALE,
+                          ),
+                        ),
+                  )
+                }
+                data-testid={`referral-toggle-${rowKey}`}
+              >
+                {row.referredOut ? (
+                  <FormattedMessage id="label.results.referredOut" />
+                ) : referralDraft ? (
+                  <FormattedMessage id="label.results.referral.editing" />
+                ) : (
+                  <FormattedMessage id="label.results.referral.refer" />
+                )}
+              </Button>
+              <span className="unifiedFieldHint">
+                <FormattedMessage id="label.results.saveHint" />
+              </span>
+            </>
+          )}
         </div>
 
         {allowResultRejection && rejectReasons.length > 0 && rejectDraft && (

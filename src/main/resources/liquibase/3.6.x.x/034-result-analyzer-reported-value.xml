@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+ <changeSet id="034-result-analyzer-reported-value" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <not>
+    <columnExists schemaName="clinlims" tableName="result" columnName="analyzer_reported_value"/>
+   </not>
+  </preConditions>
+  <comment>OGC-1200 FR-E10a: a result accepted from a run keeps the value the analyzer reported beside the value accepted, so an edit before accepting never overwrites the analyzer's reading.</comment>
+  <addColumn schemaName="clinlims" tableName="result">
+   <column name="analyzer_reported_value" type="VARCHAR(255)"/>
+  </addColumn>
+ </changeSet>
+</databaseChangeLog>

@@ -512,8 +512,9 @@ export const postToOpenElisServerJsonResponse = <
             statusText: response.statusText,
           }));
       }
-      // For successful responses, parse JSON normally
-      return response.json();
+      // A 2xx with no body (201 or 204 from .build()) is a success, not a
+      // network error: it answers an empty object.
+      return response.text().then((raw) => (raw ? JSON.parse(raw) : {}));
     })
     .then((json) => {
       callback(json as T, extraParams);
@@ -694,15 +695,20 @@ export const putToOpenElisServerJsonResponse = <TExtra = unknown>(
   })
     .then(handleSessionError)
     .then((response) => {
+      // An empty body, on a refusal or on a 2xx, is parsed as an empty object
+      // so the HTTP status reaches the caller instead of a parse error.
+      const parsed = response
+        .text()
+        .then((raw) => (raw ? JSON.parse(raw) : {}));
       if (!response.ok) {
-        return response.json().then((errorJson) => ({
+        return parsed.then((errorJson) => ({
           ...errorJson,
           status: response.status,
           statusCode: response.status,
           statusText: response.statusText,
         }));
       }
-      return response.json();
+      return parsed;
     })
     .then((json) => {
       callback(json, extraParams);

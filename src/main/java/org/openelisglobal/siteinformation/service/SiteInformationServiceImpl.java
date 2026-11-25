@@ -424,4 +424,14 @@ public class SiteInformationServiceImpl extends AuditableBaseObjectServiceImpl<S
         }
         return updatedSiteInfomration;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean changedSince(String id, Long loadedVersion) {
+        if (loadedVersion == null || id == null) {
+            return false;
+        }
+        return getBaseObjectDAO().get(id).map(SiteInformation::getLastupdated)
+                .map(stored -> stored.getTime() != loadedVersion.longValue()).orElse(false);
+    }
 }

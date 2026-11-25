@@ -128,6 +128,8 @@ public class SentMessageDTO {
     private String workflow;
     private String status;
     private Long resentFromId;
+    /** When the message this one repeats was sent, so a reader can find it. */
+    private String resentFromFiredAt;
     private Long reportVersionId;
     private String reportFormat;
     private List<ChannelDTO> channels = new ArrayList<>();
@@ -253,6 +255,14 @@ public class SentMessageDTO {
 
     public void setResentFromId(Long resentFromId) {
         this.resentFromId = resentFromId;
+    }
+
+    public String getResentFromFiredAt() {
+        return resentFromFiredAt;
+    }
+
+    public void setResentFromFiredAt(String resentFromFiredAt) {
+        this.resentFromFiredAt = resentFromFiredAt;
     }
 
     public Long getReportVersionId() {

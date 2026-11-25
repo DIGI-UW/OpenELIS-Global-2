@@ -477,4 +477,55 @@ public class ComplianceEvaluationServiceImplTest {
         a.setRevision(revision);
         return a;
     }
+
+    @Test
+    public void theReportListsEveryValidatedResultAndJudgesOnlyWhatAStandardCovers() {
+        standard.setRegulationNumber("PP-1");
+        org.openelisglobal.test.valueholder.Test turbidity = new org.openelisglobal.test.valueholder.Test();
+        turbidity.setId("6");
+        turbidity.setDescription("Turbidity");
+        analysis.getTest().setDescription("Free chlorine");
+        Analysis chlorine = analysis;
+        chlorine.setStatusId("6");
+        Analysis turbidityAnalysis = analysisWithStatus("6");
+        turbidityAnalysis.setTest(turbidity);
+        Analysis pending = analysisWithStatus("15");
+        sampleItem.setSortOrder("1");
+        when(statusService.matches(org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.eq(AnalysisStatus.Finalized)))
+                .thenAnswer(invocation -> "6".equals(invocation.getArgument(0)));
+        when(sampleComplianceStandardDAO.getAllForSample("1")).thenReturn(List.of(link));
+        when(sampleItemService.getSampleItemsBySampleId("1")).thenReturn(List.of(sampleItem));
+        when(analysisService.getAnalysesBySampleItem(sampleItem))
+                .thenReturn(List.of(chlorine, turbidityAnalysis, pending));
+        ComplianceThreshold limit = rangeThreshold("0.2", "5");
+        limit.setUnits("mg/L");
+        when(complianceThresholdService.getThresholdsByTestAndStandard("5", "10")).thenReturn(List.of(limit));
+        when(complianceThresholdService.getThresholdsByTestAndStandard("6", "10")).thenReturn(List.of());
+        when(resultService.getResultsByAnalysis(chlorine)).thenReturn(List.of(resultWithValue("0.1")));
+        when(resultService.getResultsByAnalysis(turbidityAnalysis)).thenReturn(List.of(resultWithValue("3")));
+
+        List<EnvironmentalReportRow> rows = service.reportRows(sample);
+
+        assertEquals("the result still waiting for validation is left out", 2, rows.size());
+        assertEquals(new EnvironmentalReportRow("1", null, "Free chlorine", "0.1", "mg/L", null, "0.2 - 5 mg/L",
+                ComplianceStatus.NON_COMPLIANT), rows.get(0));
+        assertEquals("no standard covers it: listed with an empty guideline",
+                new EnvironmentalReportRow("1", null, "Turbidity", "3", null, null, null, null), rows.get(1));
+    }
+
+    @Test
+    public void withoutAStandardTheReportStillListsEveryValidatedResult() {
+        analysis.getTest().setDescription("Free chlorine");
+        analysis.setStatusId("6");
+        when(statusService.matches(org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.eq(AnalysisStatus.Finalized))).thenReturn(true);
+        when(sampleComplianceStandardDAO.getAllForSample("1")).thenReturn(List.of());
+        when(sampleItemService.getSampleItemsBySampleId("1")).thenReturn(List.of(sampleItem));
+        when(analysisService.getAnalysesBySampleItem(sampleItem)).thenReturn(List.of(analysis));
+        when(resultService.getResultsByAnalysis(analysis)).thenReturn(List.of(resultWithValue("0.4")));
+
+        assertEquals(List.of(new EnvironmentalReportRow(null, null, "Free chlorine", "0.4", null, null, null, null)),
+                service.reportRows(sample));
+    }
 }

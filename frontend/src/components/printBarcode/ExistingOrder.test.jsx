@@ -10,7 +10,7 @@ vi.mock("../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
 }));
 
-vi.mock("../layout/Layout", async () => {
+vi.mock("../layout/contexts", async () => {
   const { createContext } = await import("react");
   return {
     NotificationContext: createContext({
@@ -23,7 +23,7 @@ vi.mock("../layout/Layout", async () => {
 });
 
 import { getFromOpenElisServer } from "../utils/Utils";
-import { ConfigurationContext } from "../layout/Layout";
+import { ConfigurationContext } from "../layout/contexts";
 import ExistingOrder from "./ExistingOrder";
 
 const LAB = "DEV01260000000000050";

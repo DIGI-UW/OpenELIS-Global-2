@@ -26,6 +26,7 @@ import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.program.controller.cytology.CytologySampleForm;
 import org.openelisglobal.program.dao.cytology.CytologySampleDAO;
 import org.openelisglobal.program.service.ClinicalAttachmentService;
+import org.openelisglobal.program.service.ProgramCaseAnalyses;
 import org.openelisglobal.program.valueholder.cytology.CytologySample;
 import org.openelisglobal.program.valueholder.cytology.CytologySample.CytologyStatus;
 import org.openelisglobal.result.action.util.ResultSet;
@@ -248,6 +249,12 @@ public class CytologySampleServiceImpl extends AuditableBaseObjectServiceImpl<Cy
 
         logbookResultsPersistService.persistDataSet(actionDataSet, ResultUpdateRegister.getRegisteredUpdaters(),
                 form.getSystemUserId());
-        sample.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(OrderStatus.Finished));
+        IStatusService statusService = SpringContext.getBean(IStatusService.class);
+        if (ProgramCaseAnalyses.allFinished(analysisService.getAnalysesBySampleId(sample.getId()), statusService)) {
+            Sample storedOrder = sampleService.get(sample.getId());
+            storedOrder.setStatusId(statusService.getStatusID(OrderStatus.Finished));
+            storedOrder.setSysUserId(form.getSystemUserId());
+            sampleService.update(storedOrder);
+        }
     }
 }

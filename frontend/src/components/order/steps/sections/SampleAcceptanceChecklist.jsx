@@ -24,6 +24,7 @@ import {
 } from "../../api/sampleAcceptanceApi";
 import InlineNceForm from "../../../nonconform/common/InlineNceForm";
 import ResampleDialog from "./ResampleDialog";
+import useSiteDateFormat from "../../../common/useSiteDateFormat";
 import RejectDialog from "./RejectDialog";
 import "./SampleAcceptanceChecklist.css";
 
@@ -84,6 +85,7 @@ const SampleAcceptanceChecklist = ({
   rejected = false,
 }) => {
   const intl = useIntl();
+  const siteDate = useSiteDateFormat();
   const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
@@ -464,13 +466,13 @@ const SampleAcceptanceChecklist = ({
               id="sampleAcceptance.qa.context.collected"
               defaultMessage="Collected"
             />{" "}
-            <strong>{collectedAt || "—"}</strong>
+            <strong>{siteDate.formatIsoDateTime(collectedAt) || "—"}</strong>
             {" · "}
             <FormattedMessage
               id="sampleAcceptance.qa.context.received"
               defaultMessage="Received"
             />{" "}
-            <strong>{receivedAt || "—"}</strong>
+            <strong>{siteDate.formatIsoDateTime(receivedAt) || "—"}</strong>
           </div>
         )}
         {transitMinutes !== null && (
