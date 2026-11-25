@@ -144,12 +144,15 @@ const tatQuery = (from, to) =>
  */
 export const useTatRollup = () => {
   const current = useServerData(
-    tatQuery(isoDaysFromToday(-TAT_WINDOW_DAYS), toLocalIsoDate(labNow())),
+    tatQuery(
+      isoDaysFromToday(-(TAT_WINDOW_DAYS - 1)),
+      toLocalIsoDate(labNow()),
+    ),
   );
   const prior = useServerData(
     tatQuery(
-      isoDaysFromToday(-(2 * TAT_WINDOW_DAYS + 1)),
-      isoDaysFromToday(-(TAT_WINDOW_DAYS + 1)),
+      isoDaysFromToday(-(2 * TAT_WINDOW_DAYS - 1)),
+      isoDaysFromToday(-TAT_WINDOW_DAYS),
     ),
   );
   const loading = current.isLoading || prior.isLoading;

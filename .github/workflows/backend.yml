@@ -59,10 +59,19 @@ jobs:
       contents: read
 
   # Gate the expensive Maven build behind a path filter. On pull_request,
-  # skip backend-verify entirely when no backend-relevant files changed.
+  # skip the backend tests entirely when no backend-relevant files changed.
   # On push to develop, release, and workflow_dispatch the filter step is skipped
-  # and the `|| 'true'` fallback forces a full build so the JaCoCo badge
-  # and Pages publish steps always run on merge.
+  # and the `|| 'true'` fallback always runs the backend tests.
+  #
+  # The tests run as deterministic shards, planned by
+  # .github/scripts/backend_test_shards.py from .github/ci/backend-test-shards.json,
+  # on every event. Its "mode" decides what gates the run: "required" makes the
+  # shards the gate and runs the single full run only when a pull request
+  # carries the ci:full-backend label; "shadow" keeps the single full run as the
+  # gate and runs the shards beside it for comparison; "off" keeps the single
+  # full run only. In "shadow" and "required" the @IsolatedDatabase classes run
+  # in their own job. On develop pushes the Coverage job merges the shards'
+  # JaCoCo data and publishes the badge.
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
@@ -71,9 +80,14 @@ jobs:
       pull-requests: read
     outputs:
       backend: ${{ steps.stack.outputs.deferred == 'true' && 'false' || steps.filter.outputs.backend || 'true' }}
+      full: ${{ steps.plan.outputs.full }}
+      full_scope: ${{ steps.plan.outputs.full_scope }}
+      isolated: ${{ steps.plan.outputs.isolated }}
+      shards: ${{ steps.plan.outputs.shards }}
+      shards_required: ${{ steps.plan.outputs.shards_required }}
+      matrix: ${{ steps.plan.outputs.matrix }}
     steps:
       - name: Checkout
-        if: github.event_name == 'pull_request'
         uses: actions/checkout@v7
       # GitHub runs every pull request in a stack as if it targeted the stack's
       # base, so a 20-PR stack would run Build + Test 20 times per push. The top
@@ -120,18 +134,51 @@ jobs:
               - 'src/**'
               - 'pom.xml'
               - 'dataexport/**'
+              - 'module-contracts/**'
+              - 'module-test/**'
               - 'fhir/**'
               - 'Dockerfile'
               - 'build.docker-compose.yml'
               - 'docker-compose.yml'
               - '.github/ci/ci.analyzer-harness.yml'
+              - '.github/ci/backend-test-shards.json'
+              - '.github/actions/backend-maven-setup/**'
               - '.github/workflows/backend.yml'
+              - '.github/scripts/backend_test_*.py'
               - '.github/scripts/publish-checkpoints*.cjs'
+      - name: Plan the backend tests
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          FULL_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'ci:full-backend') }}
+        run: |
+          full=true; scope=all; isolated=false; shards=false; required=false; matrix='["none"]'
+          mode=$(python3 .github/scripts/backend_test_shards.py mode)
+          if [[ "$mode" != "off" ]]; then
+            python3 .github/scripts/backend_test_shards.py check
+            matrix=$(python3 .github/scripts/backend_test_shards.py matrix)
+            scope=shared; isolated=true; shards=true
+          fi
+          if [[ "$mode" == "required" ]]; then
+            required=true
+            if [[ "$FULL_LABEL" != "true" ]]; then
+              full=false
+            fi
+          fi
+          echo "$EVENT, shard mode $mode: single full run=$full ($scope), isolated job=$isolated, shards=$shards (required=$required)"
+          {
+            echo "full=$full"
+            echo "full_scope=$scope"
+            echo "isolated=$isolated"
+            echo "shards=$shards"
+            echo "shards_required=$required"
+            echo "matrix=$matrix"
+          } >> "$GITHUB_OUTPUT"
 
   backend-verify:
     name: Build + Test
     needs: changes
-    if: needs.changes.outputs.backend == 'true'
+    if: needs.changes.outputs.backend == 'true' && needs.changes.outputs.full == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout OpenELIS-Global2
@@ -140,29 +187,17 @@ jobs:
           repository: ${{github.repository}}
           submodules: recursive
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: "21"
-      # Must follow checkout: hashFiles reads the workspace, so a key computed
-      # before it hashes nothing and the cache never rotates.
-      - name: Cache local Maven repository
-        uses: actions/cache@v6
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+      - name: Set up Maven and build local dependencies
+        uses: ./.github/actions/backend-maven-setup
 
-      - name: Initialize and build submodules
-        run: |
-          cd dataexport
-          mvn clean install
-          cd ..
+      - name: Leave the isolated-database classes to their own job
+        if: needs.changes.outputs.full_scope == 'shared'
+        run: python3 .github/scripts/backend_test_shards.py excludes-isolated --output "$RUNNER_TEMP/isolated-excludes.txt"
 
       - name: Build main project
-        run: mvn clean install -Dspotless.check.skip=true
+        env:
+          EXCLUDES: ${{ needs.changes.outputs.full_scope == 'shared' && format('{0}/isolated-excludes.txt', runner.temp) || '' }}
+        run: mvn clean install -Dspotless.check.skip=true ${EXCLUDES:+-Dsurefire.excludesFile=$EXCLUDES}
 
       - name: Preserve backend and existing-data upgrade diagnostics
         if: always()
@@ -171,6 +206,213 @@ jobs:
           name: backend-test-reports
           path: target/surefire-reports/
           if-no-files-found: warn
+
+      - name: Generate JaCoCo Badge
+        if: github.event_name == 'push'
+        uses: cicirello/jacoco-badge-generator@v2
+        with:
+          jacoco-csv-file: target/site/jacoco/jacoco.csv
+          badges-directory: target/html/badges
+
+      - name: Fix permissions
+        if: github.event_name == 'push'
+        run: |
+          sudo chown -R "$(whoami)":"$(whoami)" target/html
+          sudo chmod -R 755 target/html  # Read-write for owner, read for others
+
+      - name: Check coverage report exists
+        if: github.event_name == 'push'
+        run: ls -lah target/html || echo "Coverage report not found!"
+
+      - name: Publish coverage report to GitHub Pages
+        if: github.event_name == 'push'
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: target/html/
+
+  # The @IsolatedDatabase classes each start their own PostgreSQL and share no
+  # state, so they run several JVMs at a time, apart from the shared database.
+  backend-isolated:
+    name: Build + Test (isolated databases)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' && needs.changes.outputs.isolated == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout OpenELIS-Global2
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Set up Maven and build local dependencies
+        uses: ./.github/actions/backend-maven-setup
+
+      - name: Run the isolated-database classes
+        run: |
+          python3 .github/scripts/backend_test_shards.py includes --shard isolated --output "$RUNNER_TEMP/includes.txt"
+          forks=$(python3 .github/scripts/backend_test_shards.py forks)
+          mvn -B test -Dspotless.check.skip=true -Dsurefire.includesFile="$RUNNER_TEMP/includes.txt" -DforkCount="$forks"
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: backend-test-reports-isolated
+          path: target/surefire-reports/
+          if-no-files-found: warn
+
+      - name: Upload coverage data
+        if: always() && github.event_name == 'push'
+        uses: actions/upload-artifact@v6
+        with:
+          name: backend-jacoco-isolated
+          path: target/jacoco.exec
+          if-no-files-found: warn
+
+  # Each shard is a contiguous alphabetical range of the shared-database
+  # classes, run in today's order on a fresh database. In shadow mode a shard
+  # failure is reported but does not fail its job, so contributors read the
+  # single full run as the verdict.
+  backend-shard:
+    name: Backend shard ${{ matrix.shard }}
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' && needs.changes.outputs.shards == 'true'
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ needs.changes.outputs.shards_required != 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(needs.changes.outputs.matrix) }}
+    steps:
+      - name: Checkout OpenELIS-Global2
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Set up Maven and build local dependencies
+        uses: ./.github/actions/backend-maven-setup
+
+      - name: Run shard ${{ matrix.shard }}
+        run: |
+          python3 .github/scripts/backend_test_shards.py includes --shard "${{ matrix.shard }}" --output "$RUNNER_TEMP/includes.txt"
+          mvn -B test -Dspotless.check.skip=true -Dsurefire.includesFile="$RUNNER_TEMP/includes.txt"
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: backend-test-reports-shard-${{ matrix.shard }}
+          path: target/surefire-reports/
+          if-no-files-found: warn
+
+      - name: Upload coverage data
+        if: always() && github.event_name == 'push'
+        uses: actions/upload-artifact@v6
+        with:
+          name: backend-jacoco-shard-${{ matrix.shard }}
+          path: target/jacoco.exec
+          if-no-files-found: warn
+
+  # One summary for all shards: totals, failures, skipped tests with reasons,
+  # and a check that every planned class ran exactly once. In shadow mode it
+  # also lists every test whose outcome differs from the single full run.
+  backend-shard-report:
+    name: Backend shard report
+    needs: [changes, backend-verify, backend-isolated, backend-shard]
+    if: always() && needs.changes.outputs.backend == 'true' && needs.changes.outputs.shards == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout OpenELIS-Global2
+        uses: actions/checkout@v7
+
+      - name: Download shard reports
+        uses: actions/download-artifact@v7
+        with:
+          pattern: backend-test-reports-*
+          path: reports
+
+      - name: Download the single full run's reports
+        if: needs.changes.outputs.full == 'true'
+        uses: actions/download-artifact@v7
+        with:
+          name: backend-test-reports
+          path: reports/baseline
+
+      - name: Summarize
+        env:
+          MATRIX: ${{ needs.changes.outputs.matrix }}
+          REQUIRED: ${{ needs.changes.outputs.shards_required }}
+          FULL: ${{ needs.changes.outputs.full }}
+        run: |
+          args=(--summary "$GITHUB_STEP_SUMMARY" --shard "isolated=reports/backend-test-reports-isolated")
+          for shard in $(jq -r '.[]' <<< "$MATRIX"); do
+            args+=(--shard "$shard=reports/backend-test-reports-shard-$shard")
+          done
+          if [[ "$FULL" == "true" ]]; then args+=(--baseline reports/baseline); fi
+          if [[ "$REQUIRED" == "true" ]]; then args+=(--strict); fi
+          python3 .github/scripts/backend_test_report.py "${args[@]}"
+
+  # Develop pushes publish the coverage badge from the shards' merged JaCoCo
+  # data, as the single run did before. Nothing waits for this job.
+  backend-coverage:
+    name: Coverage
+    needs: [changes, backend-isolated, backend-shard]
+    if: always() && github.event_name == 'push' && needs.changes.outputs.shards == 'true' && needs.backend-shard.result == 'success' && needs.backend-isolated.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout OpenELIS-Global2
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Set up Maven and build local dependencies
+        uses: ./.github/actions/backend-maven-setup
+
+      - name: Download coverage data
+        uses: actions/download-artifact@v7
+        with:
+          pattern: backend-jacoco-*
+          path: coverage
+
+      - name: Merge the coverage data and build the report
+        run: |
+          mvn -B compile -Dspotless.check.skip=true
+          mvn -B dependency:get -Dartifact=org.jacoco:org.jacoco.cli:0.8.12:jar:nodeps -Dtransitive=false
+          java -jar ~/.m2/repository/org/jacoco/org.jacoco.cli/0.8.12/org.jacoco.cli-0.8.12-nodeps.jar merge coverage/*/jacoco.exec --destfile target/jacoco.exec
+          mvn -B jacoco:report
+
+      - name: Generate JaCoCo Badge
+        uses: cicirello/jacoco-badge-generator@v2
+        with:
+          jacoco-csv-file: target/site/jacoco/jacoco.csv
+          badges-directory: target/html/badges
+
+      - name: Fix permissions
+        run: |
+          sudo chown -R "$(whoami)":"$(whoami)" target/html
+          sudo chmod -R 755 target/html  # Read-write for owner, read for others
+
+      - name: Publish coverage report to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: target/html/
+
+  # The WAR, the dependency scan and the SBOM, without waiting for the tests.
+  backend-package:
+    name: Package + Scan
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout OpenELIS-Global2
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Set up Maven and build local dependencies
+        uses: ./.github/actions/backend-maven-setup
+
+      - name: Package the WAR
+        run: mvn -B clean package -Dspotless.check.skip=true -DskipTests -Dmaven.test.skip=true
 
       - name: Scan repository dependencies for vulnerabilities
         uses: aquasecurity/trivy-action@v0.36.0
@@ -203,29 +445,6 @@ jobs:
             trivy-results.txt
             sbom.spdx.json
 
-      - name: Generate JaCoCo Badge
-        if: github.event_name == 'push'
-        uses: cicirello/jacoco-badge-generator@v2
-        with:
-          jacoco-csv-file: target/site/jacoco/jacoco.csv
-          badges-directory: target/html/badges
-
-      - name: Fix permissions
-        if: github.event_name == 'push'
-        run: |
-          sudo chown -R "$(whoami)":"$(whoami)" target/html
-          sudo chmod -R 755 target/html  # Read-write for owner, read for others
-
-      - name: Check coverage report exists
-        if: github.event_name == 'push'
-        run: ls -lah target/html || echo "Coverage report not found!"
-
-      - name: Publish coverage report to GitHub Pages
-        if: github.event_name == 'push'
-        uses: JamesIves/github-pages-deploy-action@v4
-        with:
-          folder: target/html/
-
   backend-checkpoint:
     name: 01 Checkpoint - Backend
     if: always()
@@ -236,6 +455,10 @@ jobs:
         deployment-contract,
         analyzer-components,
         backend-verify,
+        backend-isolated,
+        backend-shard,
+        backend-shard-report,
+        backend-package,
       ]
     runs-on: ubuntu-latest
     steps:
@@ -246,19 +469,37 @@ jobs:
           CONTRACT_RESULT: ${{ needs.deployment-contract.result }}
           ANALYZER_RESULT: ${{ needs.analyzer-components.result }}
           BACKEND_REQUIRED: ${{ needs.changes.outputs.backend }}
+          FULL_REQUIRED: ${{ needs.changes.outputs.full }}
+          ISOLATED_REQUIRED: ${{ needs.changes.outputs.isolated }}
+          SHARDS_REQUIRED: ${{ needs.changes.outputs.shards_required }}
           BACKEND_RESULT: ${{ needs.backend-verify.result }}
+          ISOLATED_RESULT: ${{ needs.backend-isolated.result }}
+          SHARD_RESULT: ${{ needs.backend-shard.result }}
+          REPORT_RESULT: ${{ needs.backend-shard-report.result }}
+          PACKAGE_RESULT: ${{ needs.backend-package.result }}
         run: |
           if [[ "$CHANGES_RESULT" != "success" ]]; then
-            echo "Change detection failed: $CHANGES_RESULT"
+            echo "Change detection failed: $CHANGES_RESULT. Read the Detect Changes log; the test planner names any test class that starts its own container without @IsolatedDatabase."
             exit 1
           fi
           if [[ "$FORMATTING_RESULT" != "success" || "$CONTRACT_RESULT" != "success" || "$ANALYZER_RESULT" != "success" ]]; then
             echo "Required validation failed: formatting=$FORMATTING_RESULT, deployment-contract=$CONTRACT_RESULT, analyzer-components=$ANALYZER_RESULT"
             exit 1
           fi
-          if [[ "$BACKEND_RESULT" == "success" ]] || [[ "$BACKEND_REQUIRED" == "false" && "$BACKEND_RESULT" == "skipped" ]]; then
-            echo "Backend checkpoint passed (formatting=$FORMATTING_RESULT, deployment-contract=$CONTRACT_RESULT, verify=$BACKEND_RESULT)."
-          else
-            echo "Backend verification failed: $BACKEND_RESULT"
+          if [[ "$BACKEND_REQUIRED" != "true" ]]; then
+            echo "Backend checkpoint passed without backend tests (no backend changes, or a stacked PR below the top)."
+            exit 0
+          fi
+          failed=()
+          [[ "$PACKAGE_RESULT" == "success" ]] || failed+=("package=$PACKAGE_RESULT")
+          [[ "$FULL_REQUIRED" != "true" || "$BACKEND_RESULT" == "success" ]] || failed+=("single full run=$BACKEND_RESULT")
+          [[ "$ISOLATED_REQUIRED" != "true" || "$ISOLATED_RESULT" == "success" ]] || failed+=("isolated databases=$ISOLATED_RESULT")
+          if [[ "$SHARDS_REQUIRED" == "true" ]]; then
+            [[ "$SHARD_RESULT" == "success" ]] || failed+=("shards=$SHARD_RESULT")
+            [[ "$REPORT_RESULT" == "success" ]] || failed+=("shard report=$REPORT_RESULT")
+          fi
+          if (( ${#failed[@]} )); then
+            echo "Backend verification failed: ${failed[*]}"
             exit 1
           fi
+          echo "Backend checkpoint passed (single full run=$BACKEND_RESULT, isolated=$ISOLATED_RESULT, shards=$SHARD_RESULT, required=$SHARDS_REQUIRED, package=$PACKAGE_RESULT)."

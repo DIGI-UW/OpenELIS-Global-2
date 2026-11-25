@@ -76,6 +76,15 @@ public class Result extends EnumValueItemImpl {
      */
     private java.sql.Timestamp validatedDate;
 
+    /** OGC-1200 FR-A2: the run this result was produced in, when it has one. */
+    private Long runId;
+
+    /**
+     * OGC-1200 FR-E10a: the value the analyzer reported, kept beside the accepted
+     * value when a run row is accepted, whether or not the technician changed it.
+     */
+    private String analyzerReportedValue;
+
     public Result() {
         super();
         analysis = new ValueHolder();
@@ -302,6 +311,14 @@ public class Result extends EnumValueItemImpl {
         return validatedDate;
     }
 
+    public Long getRunId() {
+        return runId;
+    }
+
+    public void setRunId(Long runId) {
+        this.runId = runId;
+    }
+
     public void setValidatedDate(java.sql.Timestamp validatedDate) {
         this.validatedDate = validatedDate;
     }
@@ -319,5 +336,13 @@ public class Result extends EnumValueItemImpl {
     @Override
     public int hashCode() {
         return Objects.hash(id);
+    }
+
+    public String getAnalyzerReportedValue() {
+        return analyzerReportedValue;
+    }
+
+    public void setAnalyzerReportedValue(String analyzerReportedValue) {
+        this.analyzerReportedValue = analyzerReportedValue;
     }
 }

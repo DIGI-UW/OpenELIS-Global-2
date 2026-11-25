@@ -104,6 +104,17 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     public static final String IMPORT_ISSUE_RUN_FAILED = "run_failed";
     /** A control that reports an answer, for a test and level with no QC target. */
     public static final String IMPORT_ISSUE_QC_LOT_MISSING = "qc_lot_missing";
+    /**
+     * Shown, never stored: a control for this row's test failed in its run, so the
+     * value is held there (OGC-1200 FR-C4).
+     */
+    public static final String IMPORT_ISSUE_RUN_QC_FAILED = "run_qc_failed";
+    /**
+     * Shown, never stored: the row's test requires a control on every run and its
+     * run has none, under a Hold policy, so the value is held there (OGC-1200
+     * FR-H1, FR-C7).
+     */
+    public static final String IMPORT_ISSUE_RUN_QC_MISSING = "run_qc_missing";
     public static final String IMPORT_ISSUE_QC_VALUE_UNSUPPORTED = "qc_value_unsupported";
     public static final String IMPORT_ISSUE_QC_TARGET_MISSING = "qc_target_missing";
     /**
@@ -168,6 +179,10 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
 
     @Column(name = "source_connection_id", length = 255)
     private String sourceConnectionId;
+
+    /** OGC-1200: the run of the message this value arrived in. */
+    @Column(name = "run_id")
+    private Long runId;
 
     @Column(name = "source_profile_id", length = 128)
     private String sourceProfileId;
@@ -299,6 +314,14 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
 
     public void setInstrumentNote(String instrumentNote) {
         this.instrumentNote = instrumentNote;
+    }
+
+    public Long getRunId() {
+        return runId;
+    }
+
+    public void setRunId(Long runId) {
+        this.runId = runId;
     }
 
     public String getSourceMessageId() {

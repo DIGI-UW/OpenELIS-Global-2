@@ -9,5 +9,8 @@ public interface MicroAstInterpretationService {
 
     MicroAstInterpretation interpret(MicroBreakpointRule rule, MicroAstMethod method, BigDecimal rawValue);
 
+    MicroAstInterpretation interpret(MicroBreakpointRule rule, MicroAstMethod method, BigDecimal rawValue,
+            String authority);
+
     void validateOverride(MicroAstInterpretation overrideInterpretation, String overrideReason);
 }

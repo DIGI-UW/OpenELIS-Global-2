@@ -11,4 +11,11 @@
         lastupdated="2026-01-01 00:00:00" />
     <project id="9099" name="Site survey" is_active="Y"
         lastupdated="2026-01-01 00:00:00" />
+    <system_user id="990901" login_name="study-export-admin"
+        first_name="Study" last_name="Export Admin" is_employee="Y"
+        is_active="Y" />
+    <system_role id="990901" name="Global Administrator"
+        description="Admin fixture" display_key="role.admin" />
+    <system_user_role system_user_id="990901"
+        role_id="990901" />
 </dataset>

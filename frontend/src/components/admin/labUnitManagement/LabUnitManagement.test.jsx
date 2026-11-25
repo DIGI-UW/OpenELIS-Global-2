@@ -61,6 +61,33 @@ vi.mock("../../utils/Utils", async (importOriginal) => {
             },
           ],
         });
+      } else if (endpoint === "/rest/lab-units-management/10/tests") {
+        callback([
+          {
+            id: "30",
+            name: "Configured Gram stain",
+            active: true,
+            orderable: true,
+          },
+          {
+            id: "31",
+            name: "Inactive Gram stain",
+            active: false,
+            orderable: true,
+          },
+          {
+            id: "32",
+            name: "Non-orderable Gram stain",
+            active: true,
+            orderable: false,
+          },
+          {
+            id: "33",
+            name: "Unspecified orderability",
+            active: true,
+            orderable: null,
+          },
+        ]);
       } else if (endpoint.includes("/deactivation-impact")) {
         callback({
           success: true,
@@ -83,6 +110,10 @@ vi.mock("../../utils/Utils", async (importOriginal) => {
 
 beforeEach(() => {
   postToOpenElisServerJsonResponse.mockClear();
+  putToOpenElisServerFullResponse.mockReset();
+  putToOpenElisServerFullResponse.mockImplementation((url, body, callback) =>
+    callback({ status: 200 }),
+  );
 });
 
 const mockIntl = {
@@ -221,7 +252,9 @@ describe("LabUnitManagement deactivation flow (OGC-189 M3)", () => {
     fireEvent.click(await screen.findByText("Edit"));
     // Carbon renders the Toggle as a button with role="switch"; clicking the
     // label text does not fire onToggle.
-    const toggle = await screen.findByRole("switch");
+    const toggle = await screen.findByRole("switch", {
+      name: messages["label.labUnit.active"],
+    });
     fireEvent.click(toggle);
   };
 
@@ -330,6 +363,7 @@ describe("LabUnitManagement deactivation into another unit (OGC-1459)", () => {
               isActive: true,
               sortOrder: 1,
               testCount: 4,
+              lastupdated: "1791800000000",
             },
             {
               id: "11",
@@ -363,7 +397,11 @@ describe("LabUnitManagement deactivation into another unit (OGC-1459)", () => {
   const openReassign = async () => {
     renderPage();
     fireEvent.click((await screen.findAllByText("Edit"))[0]);
-    fireEvent.click(await screen.findByRole("switch"));
+    fireEvent.click(
+      await screen.findByRole("switch", {
+        name: messages["label.labUnit.active"],
+      }),
+    );
     await screen.findByText("This lab unit currently holds:");
     fireEvent.click(screen.getByLabelText(/Reassign the tests/));
   };
@@ -540,4 +578,65 @@ describe("LabUnitManagement deactivation into another unit (OGC-1459)", () => {
     ).toBeInTheDocument();
     expect(screen.queryByTestId("lab-unit-stale-save")).toBeNull();
   });
+
+  test("a refused save shows the server's reason", async () => {
+    putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb({
+        status: 422,
+        json: () =>
+          Promise.resolve({
+            success: false,
+            message: "Select an active, orderable test in this lab unit",
+          }),
+      }),
+    );
+    renderPage("/MasterListsPage/LabUnitManagement/10/basic-info");
+    const description = await waitFor(() => {
+      const el = document.getElementById("lu-description");
+      expect(el).not.toBeNull();
+      return el;
+    });
+    fireEvent.change(description, { target: { value: "Changed here" } });
+    fireEvent.click(screen.getByText("Save"));
+
+    expect(
+      await screen.findByText(
+        /Select an active, orderable test in this lab unit/,
+      ),
+    ).toBeInTheDocument();
+  });
+});
+
+test("saves the lab's tracked-media requirement and configured Gram stain test", async () => {
+  renderPage();
+  fireEvent.click(await screen.findByText("Edit"));
+  fireEvent.click(
+    await screen.findByRole("switch", {
+      name: messages["microbiology.culture.requireTrackedMedia"],
+    }),
+  );
+  fireEvent.click(
+    screen.getByRole("combobox", {
+      name: messages["microbiology.culture.gramTest"],
+    }),
+  );
+  expect(
+    screen.queryByRole("option", { name: "Inactive Gram stain" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("option", { name: "Non-orderable Gram stain" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("option", { name: "Unspecified orderability" }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(await screen.findByText("Configured Gram stain"));
+  fireEvent.click(screen.getByText("Save"));
+  expect(putToOpenElisServerFullResponse).toHaveBeenCalled();
+  expect(JSON.parse(putToOpenElisServerFullResponse.mock.calls[0][1])).toEqual(
+    expect.objectContaining({
+      requireTrackedMedia: true,
+      gramStainTestId: "30",
+      isActive: true,
+    }),
+  );
 });

@@ -9,14 +9,20 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
+import org.junit.function.ThrowingRunnable;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
+import org.openelisglobal.program.controller.pathology.PathologySampleForm.PathologySlideForm;
 import org.openelisglobal.program.service.PathologySampleService;
+import org.openelisglobal.program.service.PathologySampleService.LabelVerification;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
+import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -25,9 +31,9 @@ import org.springframework.beans.factory.annotation.Autowired;
  * what the save stored, so each test states only the rule it pins.
  *
  * <p>
- * Audit entries survive the fixture reload, so they are cleared before and
- * after each test; otherwise a count asserted in one test would include the
- * entries another test wrote.
+ * Audit entries and stage events survive the fixture reload, so they are
+ * cleared before and after each test; otherwise a count asserted in one test
+ * would include the entries another test wrote.
  */
 abstract class PathologyCaseTestSupport extends BaseWebContextSensitiveTest {
 
@@ -38,6 +44,9 @@ abstract class PathologyCaseTestSupport extends BaseWebContextSensitiveTest {
      * and no tissue type.
      */
     protected static final int LEGACY_BLOCK_ID = 101;
+
+    /** The slide the fixture seeds, in use and with no block recorded. */
+    protected static final int LEGACY_SLIDE_ID = 201;
 
     /**
      * technician1, the fixture's own user, so audit attribution names a real one.
@@ -91,13 +100,13 @@ abstract class PathologyCaseTestSupport extends BaseWebContextSensitiveTest {
 
     /**
      * What the case view posts: every collection on every save, so a form that
-     * changes one still carries the others, and no decalcification flag unless a
-     * test sets one. An empty list means the client added nothing, not that the
-     * case should lose what it holds.
+     * changes one still carries the others, the stored macroscopic description, and
+     * no decalcification flag unless a test sets one. An empty list means the
+     * client added nothing, not that the case should lose what it holds.
      */
     protected PathologySampleForm caseViewForm() {
         PathologySampleForm form = new PathologySampleForm();
-        form.setStatus(pathologySampleService.get(CASE_ID).getStatus());
+        form.setGrossExam(pathologySampleService.get(CASE_ID).getGrossExam());
         form.setSystemUserId(TECHNICIAN_ID);
         form.setBlocks(new ArrayList<>());
         form.setSlides(new ArrayList<>());
@@ -115,6 +124,26 @@ abstract class PathologyCaseTestSupport extends BaseWebContextSensitiveTest {
         block.setLocation(location);
         block.setTissueTypeId(tissueTypeId);
         return block;
+    }
+
+    protected PathologySampleForm flagged(boolean decalcificationRequired) {
+        PathologySampleForm form = caseViewForm();
+        form.setDecalcificationRequired(decalcificationRequired);
+        return form;
+    }
+
+    protected boolean storedFlag() {
+        return jdbcTemplate.queryForObject(
+                "SELECT decalcification_required FROM clinlims.pathology_sample WHERE id = ?", Boolean.class, CASE_ID);
+    }
+
+    /** See {@link PathologyCaseRows#storeAt}. */
+    protected void storeAt(PathologyStatus stage) {
+        PathologyCaseRows.storeAt(jdbcTemplate, CASE_ID, stage);
+    }
+
+    protected String storedStage() {
+        return PathologyCaseRows.storedStage(jdbcTemplate, CASE_ID);
     }
 
     private String referenceTableId(String name) {
@@ -154,6 +183,93 @@ abstract class PathologyCaseTestSupport extends BaseWebContextSensitiveTest {
         return null;
     }
 
+    protected int idOfBlockDesignated(String designation) {
+        Map<String, Object> block = blockDesignated(designation);
+        Assert.assertNotNull("no block on the case is designated " + designation, block);
+        return ((Number) block.get("id")).intValue();
+    }
+
+    /**
+     * Stores a row as a block by SQL, for a test whose subject is a slide cut from
+     * it rather than the embedding. It skips the service, so no embedding audit row
+     * is written and the case's stage is not checked.
+     */
+    protected void storeAsBlock(int blockId) {
+        jdbcTemplate.update("UPDATE clinlims.pathology_block SET cassette_state = 'BLOCK' WHERE id = ?", blockId);
+    }
+
+    /**
+     * A cassette A1 cut at grossing and stored as a block, so slides are cut from
+     * it.
+     */
+    protected int cutEmbeddedBlock() {
+        saveBlocks(postedBlock(null, "Bench A"));
+        int blockId = idOfBlockDesignated("A1");
+        storeAsBlock(blockId);
+        return blockId;
+    }
+
+    /**
+     * Checks a slide's label with the barcodes stored on it and its block, as a
+     * scanner would read them.
+     */
+    protected LabelVerification verifyStoredLabel(int slideId) {
+        Map<String, Object> slide = slideRow(slideId);
+        Assert.assertNotNull("no slide on the case has id " + slideId, slide);
+        String blockBarcode = (String) blockRow(((Number) slide.get("block_id")).intValue()).get("barcode");
+        return pathologySampleService
+                .verifySlideLabel(slideId, blockBarcode, (String) slide.get("barcode"), TECHNICIAN_ID)
+                .orElseThrow(() -> new AssertionError("no slide carries id " + slideId));
+    }
+
+    /** The call is refused with the message id the screen translates. */
+    protected LocalizedValidationException assertRefusedWith(String errorCode, ThrowingRunnable call) {
+        LocalizedValidationException refusal = Assert.assertThrows(LocalizedValidationException.class, call);
+        Assert.assertEquals("the refusal carries the message the screen translates", errorCode, refusal.getErrorCode());
+        return refusal;
+    }
+
+    protected void saveSlides(PathologySlideForm... slides) {
+        PathologySampleForm form = caseViewForm();
+        form.setSlides(Arrays.asList(slides));
+        save(form);
+    }
+
+    protected PathologySlideForm postedSlide(Integer blockId) {
+        PathologySlideForm slide = new PathologySlideForm();
+        slide.setBlockId(blockId);
+        slide.setLocation("Slide Storage 1");
+        return slide;
+    }
+
+    protected List<Map<String, Object>> slidesOnCase() {
+        return jdbcTemplate.queryForList("SELECT id, block_id, designation, barcode, location, level, stain_id, active"
+                + " FROM clinlims.pathology_slide WHERE pathology_sample_id = ? ORDER BY id", CASE_ID);
+    }
+
+    protected List<Map<String, Object>> slidesCutFrom(int blockId) {
+        return jdbcTemplate.queryForList("SELECT id, block_id, designation, barcode, location, level, stain_id, active"
+                + " FROM clinlims.pathology_slide WHERE block_id = ? ORDER BY id", blockId);
+    }
+
+    protected Map<String, Object> slideRow(int slideId) {
+        for (Map<String, Object> slide : slidesOnCase()) {
+            if (Integer.valueOf(slideId).equals(slide.get("id"))) {
+                return slide;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The slide entries a test's setup left, such as the creation entry of a slide
+     * it cut, so the test counts only the entries its own action writes.
+     */
+    protected void clearSlideAudit() {
+        jdbcTemplate.update("DELETE FROM clinlims.history WHERE reference_table = ?",
+                Integer.parseInt(slideReferenceTableId));
+    }
+
     protected List<History> caseAudit() {
         return historyService.getHistoryByRefIdAndRefTableId(String.valueOf(CASE_ID),
                 referenceTableId("PATHOLOGY_SAMPLE"));
@@ -168,10 +284,10 @@ abstract class PathologyCaseTestSupport extends BaseWebContextSensitiveTest {
         return new String(history.getChanges(), StandardCharsets.UTF_8);
     }
 
-    /** Every audit entry on a block or slide, and the case's own. */
+    /** Every audit entry on a block or slide, the case's own, and its moves. */
     private void clearPathologyAudit() {
         jdbcTemplate.update("DELETE FROM clinlims.history WHERE reference_table IN (?, ?)",
                 Integer.parseInt(blockReferenceTableId), Integer.parseInt(slideReferenceTableId));
-        clearCaseAudit();
+        PathologyCaseRows.clearStageHistory(jdbcTemplate, CASE_ID);
     }
 }

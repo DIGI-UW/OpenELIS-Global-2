@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { vi } from "vitest";
 import { IntlProvider } from "react-intl";
+import { ConfigurationContext } from "../../../layout/Layout";
 import messages from "../../../../languages/en.json";
 
 const { getFromOpenElisServer } = vi.hoisted(() => ({
@@ -474,5 +475,252 @@ describe("culture set assignments", () => {
       sampleTypeRequestId: "",
       clientKey: "",
     });
+  });
+});
+
+describe("SampleTestSection sample notes", () => {
+  it("shows each sample card's own note under its tests", async () => {
+    mockPanelServer();
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <SampleTestSection
+          samples={[
+            { index: 0, sampleTypeId: "ST1", tests: [], panels: [] },
+            { index: 1, sampleTypeId: "ST1", tests: [], panels: [] },
+          ]}
+          setSamples={vi.fn()}
+          orderData={{}}
+          setOrderData={vi.fn()}
+          isReadOnly={false}
+          workflowType="clinical"
+          renderSampleNote={(sampleIndex) => (
+            <span>Note for sample {sampleIndex + 1}</span>
+          )}
+        />
+      </IntlProvider>,
+    );
+
+    const cards = document.querySelectorAll(".sample-card");
+    await waitFor(() =>
+      expect(cards[0]).toHaveTextContent("Note for sample 1"),
+    );
+    expect(cards[1]).toHaveTextContent("Note for sample 2");
+    expect(cards[0]).not.toHaveTextContent("Note for sample 2");
+  });
+});
+
+describe("SampleTestSection microbiology tag", () => {
+  it("tags only the tests that open a microbiology case", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.startsWith("/rest/user-sample-types")) {
+        cb([{ id: "ST1", value: "Sputum" }]);
+      } else if (url.startsWith("/rest/sample-type-tests")) {
+        cb({
+          tests: [
+            { id: "T1", name: "Culture", opensMicrobiologyCase: true },
+            { id: "T2", name: "Glucose", opensMicrobiologyCase: false },
+          ],
+          panels: [],
+        });
+      }
+    });
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <SampleTestSection
+          samples={[{ index: 0, sampleTypeId: "ST1", tests: [], panels: [] }]}
+          setSamples={vi.fn()}
+          orderData={{}}
+          setOrderData={vi.fn()}
+          isReadOnly={false}
+          workflowType="clinical"
+        />
+      </IntlProvider>,
+    );
+
+    await waitFor(() =>
+      expect(document.getElementById("test-0-T1")).toBeTruthy(),
+    );
+    const culture = document.getElementById("test-0-T1");
+    const glucose = document.getElementById("test-0-T2");
+    expect(culture.closest(".cds--checkbox-wrapper")).toHaveTextContent(
+      "Microbiology case",
+    );
+    expect(glucose.closest(".cds--checkbox-wrapper")).not.toHaveTextContent(
+      "Microbiology case",
+    );
+  });
+});
+
+// OGC-1657 — the environmental manifest's Collected and Received at Lab were
+// native datetime-local inputs: shown in the browser's format, and blank when a
+// sample had a date without a time (the lot Collection Date fills only the date).
+describe("SampleTestSection — environmental manifest dates (OGC-1657)", () => {
+  const manifestSample = {
+    ...sample,
+    collectionDate: "2026-03-05",
+    collectionTime: "",
+    receivedDate: "2026-03-06",
+    receivedTime: "14:20",
+  };
+
+  const renderManifest = (setSamples, dateLocale) =>
+    render(
+      <ConfigurationContext.Provider
+        value={{ configurationProperties: { DEFAULT_DATE_LOCALE: dateLocale } }}
+      >
+        <IntlProvider locale="en" messages={messages}>
+          <SampleTestSection
+            samples={[manifestSample]}
+            setSamples={setSamples}
+            orderData={{}}
+            setOrderData={vi.fn()}
+            isReadOnly={false}
+            workflowType="environmental"
+          />
+        </IntlProvider>
+      </ConfigurationContext.Provider>,
+    );
+
+  beforeEach(() => {
+    getFromOpenElisServer.mockReset();
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === "/rest/environmental-sample-types") {
+        callback([{ id: "5", value: "Water" }]);
+      }
+      if (url === "/rest/vector/dictionary/sample-containers") callback([]);
+    });
+  });
+
+  test.each([
+    ["fr-FR", "05/03/2026", "06/03/2026", "dd/mm/yyyy"],
+    ["en-US", "03/05/2026", "03/06/2026", "mm/dd/yyyy"],
+  ])(
+    "%s: a date without a time shows in the site format, beside its time",
+    (dateLocale, collected, received, placeholder) => {
+      renderManifest(vi.fn(), dateLocale);
+
+      expect(screen.getByLabelText("Collection Date").value).toBe(collected);
+      expect(screen.getByLabelText("Collection Date")).toHaveAttribute(
+        "placeholder",
+        placeholder,
+      );
+      expect(screen.getByLabelText("Collection Time").value).toBe("");
+      expect(screen.getByLabelText("Received Date").value).toBe(received);
+      expect(screen.getByLabelText("Received Time").value).toBe("14:20");
+    },
+  );
+
+  test("a collection date typed day first is stored as that day, the time apart", () => {
+    const setSamples = vi.fn();
+    renderManifest(setSamples, "fr-FR");
+
+    fireEvent.input(screen.getByLabelText("Collection Date"), {
+      target: { value: "04/03/2026" },
+    });
+    expect(setSamples).toHaveBeenLastCalledWith([
+      expect.objectContaining({ collectionDate: "2026-03-04" }),
+    ]);
+
+    fireEvent.change(screen.getByLabelText("Collection Time"), {
+      target: { value: "09:15" },
+    });
+    expect(setSamples).toHaveBeenLastCalledWith([
+      expect.objectContaining({
+        collectionDate: "2026-03-05",
+        collectionTime: "09:15",
+      }),
+    ]);
+  });
+
+  test("a received date typed day first is stored as that day", () => {
+    const setSamples = vi.fn();
+    renderManifest(setSamples, "fr-FR");
+
+    fireEvent.input(screen.getByLabelText("Received Date"), {
+      target: { value: "07/03/2026" },
+    });
+
+    expect(setSamples).toHaveBeenLastCalledWith([
+      expect.objectContaining({
+        receivedDate: "2026-03-07",
+        receivedTime: "14:20",
+      }),
+    ]);
+  });
+
+  test("an order reloaded with no collection date is not marked as edited", () => {
+    const setSamples = vi.fn();
+    const view = renderManifest(setSamples, "fr-FR");
+    view.rerender(
+      <ConfigurationContext.Provider
+        value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "fr-FR" } }}
+      >
+        <IntlProvider locale="en" messages={messages}>
+          <SampleTestSection
+            samples={[
+              { ...manifestSample, collectionDate: "", receivedDate: "" },
+            ]}
+            setSamples={setSamples}
+            orderData={{}}
+            setOrderData={vi.fn()}
+            isReadOnly={false}
+            workflowType="environmental"
+          />
+        </IntlProvider>
+      </ConfigurationContext.Provider>,
+    );
+
+    expect(screen.getByLabelText("Collection Date").value).toBe("");
+    expect(setSamples).not.toHaveBeenCalled();
+  });
+
+  test("a time that is no time is marked, a time on the clock is not", () => {
+    const view = renderManifest(vi.fn(), "fr-FR");
+    expect(
+      screen.queryByText("Enter the time as hh:mm, from 00:00 to 23:59."),
+    ).toBeNull();
+
+    view.rerender(
+      <ConfigurationContext.Provider
+        value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "fr-FR" } }}
+      >
+        <IntlProvider locale="en" messages={messages}>
+          <SampleTestSection
+            samples={[
+              {
+                ...manifestSample,
+                collectionTime: "1430",
+                receivedTime: "25:99",
+              },
+            ]}
+            setSamples={vi.fn()}
+            orderData={{}}
+            setOrderData={vi.fn()}
+            isReadOnly={false}
+            workflowType="environmental"
+          />
+        </IntlProvider>
+      </ConfigurationContext.Provider>,
+    );
+
+    expect(
+      screen.getAllByText("Enter the time as hh:mm, from 00:00 to 23:59."),
+    ).toHaveLength(2);
+  });
+
+  test("a future collection date is refused with a message", () => {
+    const setSamples = vi.fn();
+    renderManifest(setSamples, "fr-FR");
+
+    fireEvent.input(screen.getByLabelText("Collection Date"), {
+      target: { value: "05/03/2099" },
+    });
+
+    expect(
+      screen.getByText("The date cannot be in the future."),
+    ).toBeInTheDocument();
+    expect(setSamples).not.toHaveBeenCalledWith([
+      expect.objectContaining({ collectionDate: "2099-03-05" }),
+    ]);
   });
 });

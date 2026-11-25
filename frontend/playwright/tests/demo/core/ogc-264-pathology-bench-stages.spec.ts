@@ -117,28 +117,23 @@ test.describe("OGC-264: Pathology Dashboard bench stages", () => {
 
       await expect(
         page.getByRole("heading", {
-          name: "Result Entry Configuration",
+          name: "Result & Validation Configuration",
           exact: true,
         }),
       ).toBeVisible({ timeout: NAV_TIMEOUT });
 
-      // Widen the table to its largest page so the scene does not depend on
-      // how many configuration rows this deployment happens to hold.
-      const pagination = page.locator(".cds--pagination");
-      await expect(pagination).toBeVisible({ timeout: UI_TIMEOUT });
-      await pagination.getByLabel("Items per page").selectOption("50");
-
-      const decalcificationSwitch = page.getByRole("cell", {
+      const pathology = page.getByTestId("settings-group-pathology");
+      const decalcificationSwitch = pathology.getByRole("switch", {
         name: "Pathology stage: Decalcification",
         exact: true,
       });
       await expect(decalcificationSwitch).toBeVisible({ timeout: UI_TIMEOUT });
 
-      // The switches sit further down a long configuration table, so bring
-      // them into the frame before the camera and the screenshot record it.
+      // The switches sit further down the page, so bring them into the frame
+      // before the camera and the screenshot record it.
       await decalcificationSwitch.scrollIntoViewIfNeeded();
       await expect(
-        page.getByRole("cell", {
+        pathology.getByRole("switch", {
           name: "Pathology stage: Under Pathologist Review",
           exact: true,
         }),

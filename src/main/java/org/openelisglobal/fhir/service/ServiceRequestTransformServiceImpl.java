@@ -32,6 +32,7 @@ import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.TableIdService;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.IsoDateNormalizer;
 import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
@@ -354,12 +355,12 @@ public class ServiceRequestTransformServiceImpl implements ServiceRequestTransfo
     private DateTimeType authoredOnFor(Sample sample) {
         String requestDate = observationHistoryService.getValueForSample(ObservationType.REQUEST_DATE, sample.getId());
         if (!GenericValidator.isBlankOrNull(requestDate)) {
-            try {
-                return new DateTimeType(DateUtil.convertStringDateToSqlDate(requestDate), TemporalPrecisionEnum.DAY);
-            } catch (RuntimeException e) {
-                LogEvent.logWarn(this.getClass().getSimpleName(), "authoredOnFor",
-                        "unreadable request date '" + requestDate + "' on sample " + sample.getId());
+            java.time.LocalDate requested = IsoDateNormalizer.toLocalDate(requestDate);
+            if (requested != null) {
+                return new DateTimeType(java.sql.Date.valueOf(requested), TemporalPrecisionEnum.DAY);
             }
+            LogEvent.logWarn(this.getClass().getSimpleName(), "authoredOnFor",
+                    "unreadable request date '" + requestDate + "' on sample " + sample.getId());
         }
         Date entered = sample.getEnteredDate() != null ? sample.getEnteredDate()
                 : sample.getReceivedTimestamp() != null ? sample.getReceivedTimestamp() : sample.getLastupdated();

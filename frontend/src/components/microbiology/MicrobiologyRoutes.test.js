@@ -20,7 +20,7 @@ describe("MicrobiologyRoutes", () => {
         pageSize: 50,
       }),
     ).toBe(
-      "/Microbiology/worklist?stage=AST_IN_PROGRESS&urgency=HIGH&due=AST_REVIEW&q=blood+culture&sort=newest&page=3&pageSize=50",
+      "/Microbiology/worklist?grain=cultures&stage=AST_IN_PROGRESS&urgency=HIGH&due=AST_REVIEW&q=blood+culture&sort=newest&page=3&pageSize=50",
     );
   });
 
@@ -87,6 +87,7 @@ describe("MicrobiologyRoutes", () => {
     ).toEqual({
       grain: "cultures",
       status: "",
+      labUnitIds: [],
       from: "",
       to: "",
       specimen: [],
@@ -109,12 +110,14 @@ describe("MicrobiologyRoutes", () => {
     ).toMatchObject({
       grain: "ast",
       status: "",
+      labUnitIds: [],
     });
     expect(
       parseMicrobiologyWorklistSearch("?grain=cultures&status=results-in"),
     ).toMatchObject({
       grain: "cultures",
       status: "",
+      labUnitIds: [],
       from: "",
       to: "",
       specimen: [],
@@ -130,12 +133,15 @@ describe("MicrobiologyRoutes", () => {
         urgency: "HIGH",
         section: "isolates",
       }),
-    ).toBe("/Microbiology/cases/case%20%2F%201?urgency=HIGH&section=isolates");
+    ).toBe(
+      "/Microbiology/cases/case%20%2F%201?grain=cultures&urgency=HIGH&section=isolates",
+    );
     expect(
       parseMicrobiologyCaseSearch("?urgency=HIGH&section=isolates"),
     ).toEqual({
       grain: "cultures",
       status: "",
+      labUnitIds: [],
       from: "",
       to: "",
       specimen: [],
@@ -213,7 +219,7 @@ describe("MicrobiologyRoutes", () => {
 
   it("keeps the amendment workflow addressable in the case URL", () => {
     expect(getMicrobiologyCaseUrl("case-1", { section: "amendment" })).toBe(
-      "/Microbiology/cases/case-1?section=amendment",
+      "/Microbiology/cases/case-1?grain=cultures&section=amendment",
     );
     expect(parseMicrobiologyCaseSearch("?section=amendment").section).toBe(
       "amendment",
@@ -229,7 +235,7 @@ describe("MicrobiologyRoutes", () => {
     });
 
     expect(url).toBe(
-      "/Microbiology/cases/case-1?section=critical-communication&action=log-critical&targetType=ISOLATE&targetId=isolate-1",
+      "/Microbiology/cases/case-1?grain=cultures&section=critical-communication&action=log-critical&targetType=ISOLATE&targetId=isolate-1",
     );
     expect(parseMicrobiologyCaseSearch(url.split("?")[1])).toMatchObject({
       section: "critical-communication",
@@ -246,7 +252,7 @@ describe("MicrobiologyRoutes", () => {
         action: "report-nce",
       }),
     ).toBe(
-      "/Microbiology/cases/case-1?section=nonconformance&action=report-nce",
+      "/Microbiology/cases/case-1?grain=cultures&section=nonconformance&action=report-nce",
     );
     expect(
       parseMicrobiologyCaseSearch("?section=nonconformance&action=mark-lost"),
@@ -264,7 +270,9 @@ describe("MicrobiologyRoutes", () => {
         section: "setup",
         action: "mark-positive",
       }),
-    ).toBe("/Microbiology/cases/case-1?section=setup&action=mark-positive");
+    ).toBe(
+      "/Microbiology/cases/case-1?grain=cultures&section=setup&action=mark-positive",
+    );
     expect(
       parseMicrobiologyCaseSearch("?section=setup&action=mark-no-growth"),
     ).toMatchObject({
@@ -282,7 +290,7 @@ describe("MicrobiologyRoutes", () => {
     });
 
     expect(url).toBe(
-      "/Microbiology/cases/case-1?q=UATMICRO001&sort=newest&section=setup&action=start-inoculation",
+      "/Microbiology/cases/case-1?grain=cultures&q=UATMICRO001&sort=newest&section=setup&action=start-inoculation",
     );
     expect(parseMicrobiologyCaseSearch(url.split("?")[1])).toMatchObject({
       q: "UATMICRO001",

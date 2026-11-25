@@ -136,7 +136,7 @@ public class SampleTestingTurnaroundIntegrationTest extends BaseWebContextSensit
         reading(blood, options.get("1"), "12");
         reading(urine, options.get("2"), "7");
         assertEquals(
-                "Specimen ID,Collection to Received (min),Blood Test,Blood Test — Received to Validated (min),Urine Test,Urine Test — Received to Validated (min)\r\n"
+                "Specimen ID,Collection to Received (min),Test Localization 1,Test Localization 1 — Received to Validated (min),Test Localization 2,Test Localization 2 — Received to Validated (min)\r\n"
                         + "1,60,12,60,7,120\r\n",
                 csv("SPREADSHEET",
                         List.of("specimenId", "collectionToReceivedMinutes", "test:1",
@@ -155,7 +155,7 @@ public class SampleTestingTurnaroundIntegrationTest extends BaseWebContextSensit
         reading(repeated, options.get("1"), "12");
         reading(urine, options.get("2"), "7");
         assertEquals(
-                "Specimen ID,Blood Test,Blood Test — Order to Result (min),Blood Test — Received to Validated (min),Blood Test — Resulted to Validated (min),Urine Test,Urine Test — Received to Validated (min)\r\n"
+                "Specimen ID,Test Localization 1,Test Localization 1 — Order to Result (min),Test Localization 1 — Received to Validated (min),Test Localization 1 — Resulted to Validated (min),Test Localization 2,Test Localization 2 — Received to Validated (min)\r\n"
                         + "1,12,690,60,30,,\r\n1,12,840,240,60,,\r\n1,,,,,7,120\r\n",
                 csv("SPREADSHEET",
                         List.of("specimenId", "test:1", "test:1:orderToResultMinutes",
@@ -178,7 +178,7 @@ public class SampleTestingTurnaroundIntegrationTest extends BaseWebContextSensit
         var repeated = repeat(first, "11:00:00", "10:00:00");
         reading(repeated, options.get("1"), "13");
         assertEquals(
-                "Specimen ID,Blood Test — Order to Result (min),Blood Test — Received to Validated (min),Blood Test — Resulted to Validated (min)\r\n"
+                "Specimen ID,Test Localization 1 — Order to Result (min),Test Localization 1 — Received to Validated (min),Test Localization 1 — Resulted to Validated (min)\r\n"
                         + "1,,,\r\n1,,,\r\n1,660,-60,-60\r\n",
                 csv("SPREADSHEET", List.of("specimenId", "test:1:orderToResultMinutes",
                         "test:1:receivedToValidatedMinutes", "test:1:resultedToValidatedMinutes"), 3));
@@ -241,7 +241,7 @@ public class SampleTestingTurnaroundIntegrationTest extends BaseWebContextSensit
         components.saveComponentsForTest("1", configured, TEST_SYS_USER_ID);
         String id = "component:" + component.getId();
         assertEquals(
-                "Blood Test — Renamed secondary,Blood Test — Renamed secondary — Received to Validated (min)\r\n6,60\r\n8,240\r\n",
+                "Test Localization 1 — Renamed secondary,Test Localization 1 — Renamed secondary — Received to Validated (min)\r\n6,60\r\n8,240\r\n",
                 csv("SPREADSHEET", List.of(id, id + ":receivedToValidatedMinutes"), 2));
     }
 

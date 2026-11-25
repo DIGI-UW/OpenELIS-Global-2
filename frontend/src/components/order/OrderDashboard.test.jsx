@@ -6,6 +6,7 @@ import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { vi } from "vitest";
 import messages from "../../languages/en.json";
+import { ConfigurationContext as SiteConfigurationContext } from "../layout/contexts";
 
 const {
   push,
@@ -32,6 +33,7 @@ vi.mock("./OrderContext", () => ({
   useOrderContext: () => ({ loadOrder, resetOrder: vi.fn() }),
 }));
 vi.mock("../layout/Layout", () => ({
+  ConfigurationContext: React.createContext({}),
   NotificationContext: React.createContext({
     notificationVisible: false,
     setNotificationVisible: vi.fn(),
@@ -438,6 +440,34 @@ describe("referred orders", () => {
     );
     expect(
       screen.getByRole("option", { name: "Routinier" }),
+    ).toBeInTheDocument();
+  });
+});
+
+// OGC-1657 walk: Last Updated read "2026-11-18 13:38:44.439" on every site.
+describe("the Last Updated column", () => {
+  it("shows the time in the site's date format", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.startsWith("/rest/order/dashboard")) {
+        callback({
+          orders: [{ ...ORDERS[0], lastUpdated: "2026-03-05 13:38:44.439" }],
+          paging: { currentPage: 1, totalPages: 1 },
+        });
+      }
+    });
+    render(
+      <SiteConfigurationContext.Provider
+        value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "fr-FR" } }}
+      >
+        <IntlProvider locale="en" messages={messages}>
+          <OrderDashboard />
+        </IntlProvider>
+      </SiteConfigurationContext.Provider>,
+    );
+
+    await listed("LAB-ENTERED");
+    expect(
+      within(rowOf("LAB-ENTERED")).getByText("05/03/2026 13:38"),
     ).toBeInTheDocument();
   });
 });

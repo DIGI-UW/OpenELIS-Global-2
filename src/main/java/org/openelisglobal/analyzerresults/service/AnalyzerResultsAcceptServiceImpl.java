@@ -4,6 +4,7 @@ import java.sql.Date;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -43,6 +44,7 @@ import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultEntryAcknowledgement;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.openelisglobal.resultrun.service.RunQcService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
@@ -64,6 +66,7 @@ import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.Errors;
@@ -79,6 +82,8 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     private AnalyzerResultsService analyzerResultsService;
     @Autowired
     private AnalyzerResultPlacementService placementService;
+    @Autowired
+    private org.openelisglobal.microbiology.service.MicroIncomingAnalyzerAdapter microbiology;
     @Autowired
     private ResultEntryAcknowledgementService acknowledgementService;
     @Autowired
@@ -113,6 +118,9 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     private IStatusService statusService;
     @Autowired
     private ResultLimitService resultLimitService;
+    @Lazy
+    @Autowired
+    private RunQcService runQcService;
 
     // ---------------------------------------------------------------
     // Public entry point
@@ -120,27 +128,28 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
 
     @Override
     @Transactional
-    public void acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId) {
-        acceptAndPersist(allResults, sysUserId, List.of());
+    public List<Result> acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId) {
+        return acceptAndPersist(allResults, sysUserId, List.of());
     }
 
     @Override
     @Transactional
-    public void acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId, List<ResultEntryAlert> alerts) {
+    public List<Result> acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId,
+            List<ResultEntryAlert> alerts) {
         List<AnalyzerResultItem> actionableResults = extractActionableResult(allResults);
         retainResolvableResults(actionableResults);
         applyRedirects(actionableResults, sysUserId);
         keepGroupingsOnOneOrder(actionableResults);
 
         if (actionableResults.isEmpty()) {
-            return;
+            return List.of();
         }
 
         // A result whose specimen ID matches several analyses has no placement
         // until the reviewer chooses one; its row stays staged, the rest proceed.
         holdRowsAwaitingPlacement(actionableResults, sysUserId);
         if (actionableResults.isEmpty()) {
-            return;
+            return List.of();
         }
 
         // OGC-1145 FR-8 — never first-match a specimen: any accepted grouping
@@ -149,8 +158,14 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         // chooser; everything else in the batch proceeds normally.
         holdGroupsAwaitingSpecimen(actionableResults, sysUserId);
         if (actionableResults.isEmpty()) {
-            return;
+            return List.of();
         }
+
+        // Only the explicit review action transfers staged observations to a case.
+        var routed = microbiology.acceptReviewed(actionableResults, sysUserId);
+        actionableResults.removeIf(item -> routed.contains(item.getId()));
+        if (actionableResults.isEmpty())
+            return List.of();
 
         List<AnalyzerResults> deletableAnalyzerResults = getRemovableAnalyzerResults(actionableResults);
 
@@ -175,8 +190,31 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                     "Analyzer review would remove " + expectedResults + " observations but persist " + builtResults);
         }
 
-        analyzerResultsService.persistAnalyzerResults(deletableAnalyzerResults, sampleGroupList, sysUserId);
+        List<Result> recorded = analyzerResultsService.persistAnalyzerResults(deletableAnalyzerResults, sampleGroupList,
+                sysUserId);
         recordAcknowledgements(alerts, sampleGroupList, sysUserId);
+        return recorded;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, String> stillInReview(List<AnalyzerResultItem> allResults) {
+        List<AnalyzerResultItem> actedOn = allResults.stream()
+                .filter(item -> item.getIsAccepted() || item.getIsRejected() || item.getIsDeleted()).toList();
+        Map<String, AnalyzerResults> staged = new HashMap<>();
+        actedOn.stream().map(AnalyzerResultItem::getAnalyzerId).filter(Objects::nonNull).distinct()
+                .flatMap(analyzerId -> analyzerResultsService.getResultsbyAnalyzer(analyzerId).stream())
+                .forEach(row -> staged.put(row.getId(), row));
+        Map<String, String> reasons = new LinkedHashMap<>();
+        for (AnalyzerResultItem item : actedOn) {
+            AnalyzerResults row = item.getAnalyzerId() == null
+                    ? analyzerResultsService.getMatch("id", item.getId()).orElse(null)
+                    : staged.get(item.getId());
+            if (row != null && !row.isReadOnly()) {
+                reasons.put(item.getId(), Objects.toString(row.getImportIssueReason(), ""));
+            }
+        }
+        return reasons;
     }
 
     /** Each acknowledged value names the analysis and result it was saved as. */
@@ -212,6 +250,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
      * Never use client-supplied review flags to remove a server-held observation.
      */
     private void retainResolvableResults(List<AnalyzerResultItem> actionableResults) {
+        Map<Long, Set<String>> heldTestsByRun = new HashMap<>();
         actionableResults.removeIf(item -> {
             AnalyzerResults staged = analyzerResultsService.get(item.getId());
             if (staged == null) {
@@ -236,6 +275,10 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             }
             if (staged.isReadOnly() || !GenericValidator.isBlankOrNull(staged.getImportIssueReason())
                     || GenericValidator.isBlankOrNull(staged.getTestId())) {
+                return true;
+            }
+            if (item.getIsAccepted() && staged.getRunId() != null && heldTestsByRun
+                    .computeIfAbsent(staged.getRunId(), runQcService::heldTestIds).contains(staged.getTestId())) {
                 return true;
             }
             restoreStagedIdentity(item, staged);
@@ -280,7 +323,9 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         item.setComponentId(staged.getComponentId());
         item.setIsControl(staged.getIsControl());
         item.setAnalyzerId(staged.getAnalyzerId());
+        item.setRunId(staged.getRunId());
         item.setCompleteDate(staged.getCompleteDateForDisplay());
+        item.setCompletedAt(staged.getCompleteDate());
         item.setTestResultType(staged.getResultType());
         item.setTestName(staged.getTestName());
         item.setReportingDecimalPlaces(reportingDecimalPlacesFor(staged));
@@ -331,12 +376,28 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
      * several analyses match its specimen ID and the reviewer chose none of them,
      * or the instrument's patient is not the order's patient and the reviewer gave
      * no note saying why. The staged row keeps its place in review, flagged
-     * {@code awaiting_placement}.
+     * {@code awaiting_placement}. The choice and the note are made on a test's main
+     * result and hold for its parts, which have no controls of their own.
      */
     private void holdRowsAwaitingPlacement(List<AnalyzerResultItem> actionableResults, String sysUserId) {
+        Map<DecisionKey, String> chosenByTest = new HashMap<>();
+        Set<DecisionKey> explainedTests = new HashSet<>();
+        for (AnalyzerResultItem item : actionableResults) {
+            if (!GenericValidator.isBlankOrNull(item.getChosenAnalysisId())) {
+                chosenByTest.putIfAbsent(DecisionKey.of(item), item.getChosenAnalysisId());
+            }
+            if (!GenericValidator.isBlankOrNull(item.getNote())) {
+                explainedTests.add(DecisionKey.of(item));
+            }
+        }
+        for (AnalyzerResultItem item : actionableResults) {
+            if (GenericValidator.isBlankOrNull(item.getChosenAnalysisId())) {
+                item.setChosenAnalysisId(chosenByTest.get(DecisionKey.of(item)));
+            }
+        }
         List<AnalyzerResultItem> held = actionableResults.stream()
                 .filter(item -> !item.getIsControl() && !GenericValidator.isBlankOrNull(item.getTestId()))
-                .filter(item -> awaitsPlacement(item)).toList();
+                .filter(item -> awaitsPlacement(item, explainedTests.contains(DecisionKey.of(item)))).toList();
         holdForPlacement(actionableResults, held, sysUserId);
     }
 
@@ -394,12 +455,12 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         holdForPlacement(actionableResults, held, sysUserId);
     }
 
-    private boolean awaitsPlacement(AnalyzerResultItem item) {
+    private boolean awaitsPlacement(AnalyzerResultItem item, boolean explained) {
         AnalyzerResultPlacement placed = placementOf(item);
         boolean unchosen = placed.state() == AnalyzerResultPlacement.State.MULTI_TUBE
                 && !isCandidate(placed, item.getChosenAnalysisId());
         boolean unexplainedPatient = placed.patient().status() == AnalyzerResultPlacement.PatientStatus.MISMATCH
-                && GenericValidator.isBlankOrNull(item.getNote());
+                && !explained;
         return unchosen || unexplainedPatient;
     }
 
@@ -1125,6 +1186,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         if (result == null) {
             result = createNewResult(resultItem, patient, sysUserId);
         }
+        result.setRunId(resultItem.getRunId());
 
         return result;
     }
@@ -1176,7 +1238,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             analysis.setStatusId(statusId);
             analysis.setAnalysisType(resultItem.getManual() ? IActionConstants.ANALYSIS_TYPE_MANUAL
                     : IActionConstants.ANALYSIS_TYPE_AUTO);
-            analysis.setCompletedDateForDisplay(resultItem.getCompleteDate());
+            analysis.setCompletedDate(resultItem.getCompletedAt());
             analysis.setTest(test);
             analysis.setTestSection(test.getTestSection());
             analysis.setIsReportable(test.getIsReportable());

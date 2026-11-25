@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { createMemoryHistory } from "history";
 import { BrowserRouter, Router, useLocation } from "react-router-dom";
 import { IntlProvider } from "react-intl";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   activateAnalyzer,
@@ -24,7 +24,10 @@ import {
   updateAnalyzer,
 } from "../../../services/analyzerService";
 import messages from "../../../languages/en.json";
-import { languageMessages } from "../../../languages";
+import {
+  loadMessagesForLocale,
+  resolveMessagesForLocale,
+} from "../../../languages";
 import AnalyzerSetup from "./AnalyzerSetup";
 
 vi.mock("../../../services/analyzerService", () => ({
@@ -210,7 +213,10 @@ const renderSetupWithHistory = (
   const history = createMemoryHistory({ initialEntries: [initialEntry] });
   render(
     <Router history={history}>
-      <IntlProvider locale={locale} messages={languageMessages[locale]}>
+      <IntlProvider
+        locale={locale}
+        messages={resolveMessagesForLocale(locale).messages}
+      >
         <SetupHarness onClose={onClose} />
       </IntlProvider>
     </Router>,
@@ -218,7 +224,13 @@ const renderSetupWithHistory = (
   return history;
 };
 
+const REGIONAL_ENGLISH = ["en-US", "en-GB", "en-PG", "en-LK"];
+
 describe("AnalyzerSetup Instrument step", () => {
+  // Each regional bundle is a separate chunk the app downloads on demand; the
+  // regional cases below render plain English unless it is in memory first.
+  beforeAll(() => Promise.all(REGIONAL_ENGLISH.map(loadMessagesForLocale)));
+
   beforeEach(() => {
     vi.clearAllMocks();
     window.history.replaceState({}, "", "/analyzers?setup=instrument");

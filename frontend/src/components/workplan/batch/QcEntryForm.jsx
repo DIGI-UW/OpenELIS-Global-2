@@ -18,6 +18,7 @@ import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 import {
   displayDateToIso,
   isoToDisplayDate,
+  isCurrentMinute,
   toLocalDateTime,
 } from "./batchWorkplanUtils";
 
@@ -25,9 +26,20 @@ import {
  * Inline QC entry on a batch tile (OGC-427 FR-QCE-001..003). It records a
  * bench control run through the existing bench QC capture endpoint, so the
  * run lands in the same QC history, Levey-Jennings chart and violation path
- * as any other bench run; the workplan evaluates nothing itself.
+ * as any other bench run; the workplan evaluates nothing itself. While the
+ * batch's run is open (OGC-1200 FR-B2), the control is recorded on that run
+ * through the run's own endpoint, so its verdict covers the batch's test there.
+ * The QC time defaults to now; left as it is, or set to the current minute, the
+ * control is stamped by the server when it is saved, so a per-run control
+ * always follows the release before it whatever the browser's clock says.
  */
-export default function QcEntryForm({ batchId, lots, onSaved, onCancel }) {
+export default function QcEntryForm({
+  batchId,
+  runId,
+  lots,
+  onSaved,
+  onCancel,
+}) {
   const intl = useIntl();
   const { configurationProperties = {} } =
     useContext(ConfigurationContext) || {};
@@ -38,6 +50,7 @@ export default function QcEntryForm({ batchId, lots, onSaved, onCancel }) {
     isoToDisplayDate(labNow(), dateLocale),
   );
   const [time, setTime] = useState(() => format(labNow(), "HH:mm"));
+  const [timeEdited, setTimeEdited] = useState(false);
   const [value, setValue] = useState("");
   const [outcome, setOutcome] = useState("");
   const [notes, setNotes] = useState("");
@@ -58,7 +71,7 @@ export default function QcEntryForm({ batchId, lots, onSaved, onCancel }) {
     setBusy(true);
     setError(null);
     postToOpenElisServerJsonResponse(
-      "/rest/qc/results",
+      runId ? `/rest/result-runs/${runId}/controls` : "/rest/qc/results",
       JSON.stringify({
         source: "MANUAL",
         qualitativeOutcome: outcome,
@@ -66,14 +79,21 @@ export default function QcEntryForm({ batchId, lots, onSaved, onCancel }) {
         controlLotId: lot.controlLotId,
         testId: lot.testId,
         testSectionId: lot.testSectionId,
-        runDateTime,
+        runDateTime:
+          !timeEdited || isCurrentMinute(date, time, dateLocale, labNow())
+            ? null
+            : runDateTime,
         notes: notes.trim() || null,
       }),
       (response) => {
         setBusy(false);
-        // Only a body carrying the saved run's id is a save; a transport
-        // failure also reaches this callback, with a falsy status.
-        if (!response || !response.id) {
+        // Only a body carrying the saved control's id, or the run's QC block
+        // once the control is on the run, is a save; a transport failure also
+        // reaches this callback, with a falsy status.
+        if (
+          !response ||
+          !(runId ? Array.isArray(response.tests) : response.id)
+        ) {
           setError(
             response?.message ||
               intl.formatMessage({ id: "workplan.batch.qc.entry.failed" }),
@@ -132,7 +152,10 @@ export default function QcEntryForm({ batchId, lots, onSaved, onCancel }) {
               ? "workplan.batch.qc.entry.future"
               : "workplan.batch.qc.entry.dateRequired",
           })}
-          onChange={setDate}
+          onChange={(next) => {
+            setTimeEdited(true);
+            setDate(next);
+          }}
         />
         <TextInput
           id={`${prefix}-time`}
@@ -144,7 +167,11 @@ export default function QcEntryForm({ batchId, lots, onSaved, onCancel }) {
           invalidText={intl.formatMessage({
             id: "workplan.batch.qc.entry.timeInvalid",
           })}
-          onChange={(event) => setTime(event.target.value)}
+          onChange={(event) => {
+            const next = event.target.value;
+            setTimeEdited(true);
+            setTime(next);
+          }}
         />
         <TextInput
           id={`${prefix}-value`}

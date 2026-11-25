@@ -3,7 +3,6 @@ import {
   Form,
   Stack,
   Dropdown,
-  DatePicker,
   DatePickerInput,
   Checkbox,
   FormGroup,
@@ -23,6 +22,7 @@ import {
   Tag,
   SkeletonText,
 } from "@carbon/react";
+import { DatePicker } from "../common/DatePicker";
 import { DocumentPdf, DocumentBlank, TableSplit } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { ReportsAPI, InventoryTagAPI } from "./InventoryService";
