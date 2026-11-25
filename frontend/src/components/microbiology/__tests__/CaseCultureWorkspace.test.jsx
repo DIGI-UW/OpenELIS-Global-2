@@ -1,11 +1,20 @@
 import React from "react";
 import { vi } from "vitest";
+vi.mock("../../common/textMacro/TextMacroService", () => ({
+  getTextMacros: vi.fn(() => Promise.resolve([])),
+}));
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import { IntlProvider, createIntl } from "react-intl";
 import messages from "../../../languages/en.json";
 import { labTimeZone } from "../MicrobiologyTime";
 import CaseCultureWorkspace from "../CaseCultureWorkspace";
+import { getTextMacros } from "../../common/textMacro/TextMacroService";
+import {
+  expandedPhrase,
+  offerOnePhrasePerContext,
+  typePhraseCode,
+} from "./phraseFields";
 const sources = [
   {
     sampleItemId: "s1",
@@ -82,8 +91,10 @@ const show = (service, extra = {}) =>
       />
     </IntlProvider>,
   );
-const change = (label, value) =>
-  fireEvent.change(screen.getByLabelText(label), { target: { value } });
+const change = (label, value, options) =>
+  fireEvent.change(screen.getByLabelText(label, options), {
+    target: { value },
+  });
 it("prefills medium links and requires a lot for tracked media", async () => {
   const service = api([]);
   show(service);
@@ -93,14 +104,18 @@ it("prefills medium links and requires a lot for tracked media", async () => {
   expect(screen.getByRole("combobox", { name: "Medium" })).toHaveValue(
     "Blood agar · Lot tracked",
   );
-  expect(screen.getByLabelText("Incubation duration")).toHaveValue(48);
-  expect(screen.getByLabelText("Atmosphere")).toHaveValue("air");
+  expect(
+    screen.getByLabelText("Incubation duration", { exact: false }),
+  ).toHaveValue(48);
+  expect(screen.getByLabelText("Atmosphere", { exact: false })).toHaveValue(
+    "air",
+  );
   expect(screen.getByLabelText("Lot not tracked")).toBeDisabled();
-  change("Bottle or plate identifier", "P-NEW");
+  change(/^Bottle or plate identifier/, "P-NEW");
   expect(
     screen.getByRole("button", { name: "Save", exact: true }),
   ).toBeDisabled();
-  change("Medium lot", "20");
+  change(/^Medium lot/, "20");
   fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
   await waitFor(() =>
     expect(service.inoculateCulture).toHaveBeenCalledWith(
@@ -114,6 +129,34 @@ it("prefills medium links and requires a lot for tracked media", async () => {
       }),
     ),
   );
+});
+it("marks the fields an inoculation needs and leaves temperature, check interval and loop volume unmarked", async () => {
+  show(api([]));
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Inoculate culture" }),
+  );
+  const dialog = await screen.findByRole("dialog");
+  const required = [
+    "culture-sourceSampleItemId",
+    "culture-containerIdentifier",
+    "culture-mediumItemId",
+    "culture-lotId",
+    "culture-atmosphereId",
+    "culture-duration",
+    "culture-durationUnit",
+    "culture-inoculatedAt",
+  ];
+  expect(
+    Array.from(dialog.querySelectorAll(".requiredlabel"), (marker) =>
+      marker.closest("label").getAttribute("for"),
+    ),
+  ).toEqual(required);
+  expect(
+    Array.from(
+      dialog.querySelectorAll('[aria-required="true"]'),
+      (field) => field.id,
+    ),
+  ).toEqual(required);
 });
 it("renders parent children and separate read logs", async () => {
   const parent = {
@@ -198,6 +241,34 @@ it("an unconfirmed instrument proposal leaves the row incubating", async () => {
       outcome: "NO_GROWTH",
       proposalId: "proposal1",
     }),
+  );
+});
+it("expands a culture-reading phrase into the reading note and saves it", async () => {
+  offerOnePhrasePerContext();
+  const service = api();
+  show(service);
+  fireEvent.click(await screen.findByRole("button", { name: "Add reading" }));
+  change("Reading", "growth");
+  const field = screen.getByLabelText("Note");
+  await typePhraseCode(field);
+
+  expect(field).toHaveValue("Seen Phrase for MICROBIOLOGY_CULTURE_READING ");
+  expect(getTextMacros).toHaveBeenCalledWith(
+    "MICROBIOLOGY_CULTURE_READING",
+    expect.any(AbortSignal),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
+  await waitFor(() =>
+    expect(service.cultureAction).toHaveBeenCalledWith(
+      "c1",
+      "r1",
+      "reading",
+      expect.objectContaining({
+        note: expect.stringMatching(
+          expandedPhrase("MICROBIOLOGY_CULTURE_READING"),
+        ),
+      }),
+    ),
   );
 });
 it("a failed reading save retains its input and shows validation feedback", async () => {
@@ -306,10 +377,14 @@ test("changing media applies source-specific incubation defaults before generic 
     }),
   );
   expect(
-    screen.getByLabelText(messages["microbiology.culture.duration"]),
+    screen.getByLabelText(messages["microbiology.culture.duration"], {
+      exact: false,
+    }),
   ).toHaveValue(56);
   expect(
-    screen.getByLabelText(messages["microbiology.culture.durationUnit"]),
+    screen.getByLabelText(messages["microbiology.culture.durationUnit"], {
+      exact: false,
+    }),
   ).toHaveValue("DAYS");
   expect(
     screen.getByLabelText(messages["microbiology.culture.checkIntervalHours"]),
@@ -341,14 +416,20 @@ test("changing the source refreshes its media-link incubation defaults", async (
     await screen.findByRole("button", { name: "Inoculate culture" }),
   );
   fireEvent.change(
-    screen.getByLabelText(messages["microbiology.culture.sourceSampleItemId"]),
+    screen.getByLabelText(messages["microbiology.culture.sourceSampleItemId"], {
+      exact: false,
+    }),
     { target: { value: "s2" } },
   );
   expect(
-    screen.getByLabelText(messages["microbiology.culture.duration"]),
+    screen.getByLabelText(messages["microbiology.culture.duration"], {
+      exact: false,
+    }),
   ).toHaveValue(7);
   expect(
-    screen.getByLabelText(messages["microbiology.culture.durationUnit"]),
+    screen.getByLabelText(messages["microbiology.culture.durationUnit"], {
+      exact: false,
+    }),
   ).toHaveValue("DAYS");
 });
 
@@ -419,13 +500,19 @@ test.each([{}, { atmosphereId: "air", temperature: 37 }])(
     );
     for (const key of ["duration", "checkIntervalHours", "loopVolume"])
       expect(
-        screen.getByLabelText(messages[`microbiology.culture.${key}`]),
+        screen.getByLabelText(messages[`microbiology.culture.${key}`], {
+          exact: false,
+        }),
       ).toHaveValue(null);
     expect(
-      screen.getByLabelText(messages["microbiology.culture.durationUnit"]),
+      screen.getByLabelText(messages["microbiology.culture.durationUnit"], {
+        exact: false,
+      }),
     ).toHaveValue("");
     expect(
-      screen.getByLabelText(messages["microbiology.culture.atmosphereId"]),
+      screen.getByLabelText(messages["microbiology.culture.atmosphereId"], {
+        exact: false,
+      }),
     ).toHaveValue(environment.atmosphereId || "");
     expect(
       screen.getByLabelText(messages["microbiology.culture.temperature"]),
@@ -451,11 +538,13 @@ test("changing source preserves an explicitly tracked lot on the same optional m
     await screen.findByRole("button", { name: "Inoculate culture" }),
   );
   fireEvent.click(screen.getByLabelText("Lot not tracked"));
-  change("Medium lot", "20");
-  change(messages["microbiology.culture.sourceSampleItemId"], "s2");
+  change(/^Medium lot/, "20");
+  change(/^Source sample or aliquot/, "s2");
   expect(screen.getByLabelText("Lot not tracked")).not.toBeChecked();
-  expect(screen.getByLabelText("Medium lot")).toHaveValue("20");
-  change("Bottle or plate identifier", "P-TRACKED");
+  expect(screen.getByLabelText("Medium lot", { exact: false })).toHaveValue(
+    "20",
+  );
+  change(/^Bottle or plate identifier/, "P-TRACKED");
   fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
   await waitFor(() =>
     expect(service.inoculateCulture).toHaveBeenCalledWith(
@@ -468,6 +557,59 @@ test("changing source preserves an explicitly tracked lot on the same optional m
       }),
     ),
   );
+});
+
+test("ticking lot not tracked clears the chosen lot", async () => {
+  const service = api([]);
+  service.getCultureOptions.mockResolvedValue({
+    ...options,
+    media: [{ ...options.media[0], trackLots: false }],
+  });
+  show(service);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Inoculate culture" }),
+  );
+  fireEvent.click(screen.getByLabelText("Lot not tracked"));
+  change("Medium lot", "20", { exact: false });
+  fireEvent.click(screen.getByLabelText("Lot not tracked"));
+  change("Bottle or plate identifier", "P-UNTRACKED", { exact: false });
+  fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
+  await waitFor(() =>
+    expect(service.inoculateCulture).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({ notTracked: true, lotId: null }),
+    ),
+  );
+});
+
+test("changing to a source without a medium link drops the previous source's defaults", async () => {
+  const service = api([]);
+  service.getCultureOptions.mockResolvedValue({
+    ...options,
+    sources: [
+      ...sources,
+      { sampleItemId: "s2", sampleTypeId: "type2", label: "SPEC-2" },
+    ],
+  });
+  show(service);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Inoculate culture" }),
+  );
+  const marked = (key) =>
+    screen.getByLabelText(messages[`microbiology.culture.${key}`], {
+      exact: false,
+    });
+  expect(marked("duration")).toHaveValue(48);
+  change(messages["microbiology.culture.sourceSampleItemId"], "s2", {
+    exact: false,
+  });
+  for (const key of ["duration", "checkIntervalHours", "loopVolume"])
+    expect(marked(key)).toHaveValue(null);
+  expect(marked("durationUnit")).toHaveValue("");
+  expect(marked("atmosphereId")).toHaveValue("air");
+  expect(
+    screen.getByLabelText(messages["microbiology.culture.temperature"]),
+  ).toHaveValue(35);
 });
 
 it("preserves received-isolate provenance while allowing a real subculture", async () => {
@@ -623,9 +765,13 @@ it("opens and consumes the routed primary inoculation action", async () => {
   });
   await screen.findByRole("dialog");
   expect(
-    screen.getByLabelText(messages["microbiology.culture.sourceSampleItemId"]),
+    screen.getByLabelText(messages["microbiology.culture.sourceSampleItemId"], {
+      exact: false,
+    }),
   ).toBeInTheDocument();
-  expect(screen.queryByLabelText("Parent culture")).not.toBeInTheDocument();
+  expect(
+    screen.queryByLabelText("Parent culture", { exact: false }),
+  ).not.toBeInTheDocument();
   expect(consumed).toHaveBeenCalledTimes(1);
 });
 it("routed subculture requires an eligible parent and preserves its specimen", async () => {
@@ -656,7 +802,10 @@ it("routed subculture requires an eligible parent and preserves its specimen", a
     entryAction: "add-subculture",
     onEntryActionConsumed: consumed,
   });
-  const parent = await screen.findByLabelText("Parent culture");
+  const parent = await screen.findByLabelText("Parent culture", {
+    exact: false,
+  });
+  expect(parent).toHaveAttribute("aria-required", "true");
   expect(
     screen.queryByRole("option", { name: "CONCLUDED" }),
   ).not.toBeInTheDocument();
@@ -665,13 +814,17 @@ it("routed subculture requires an eligible parent and preserves its specimen", a
   ).toBeDisabled();
   fireEvent.change(parent, { target: { value: "r2" } });
   expect(
-    screen.getByLabelText(messages["microbiology.culture.sourceSampleItemId"]),
+    screen.getByLabelText(messages["microbiology.culture.sourceSampleItemId"], {
+      exact: false,
+    }),
   ).toHaveValue("s2");
   expect(
-    screen.getByLabelText(messages["microbiology.culture.sourceSampleItemId"]),
+    screen.getByLabelText(messages["microbiology.culture.sourceSampleItemId"], {
+      exact: false,
+    }),
   ).toBeDisabled();
-  change("Bottle or plate identifier", "SUB-2");
-  change("Medium lot", "20");
+  change(/^Bottle or plate identifier/, "SUB-2");
+  change(/^Medium lot/, "20");
   fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
   await waitFor(() =>
     expect(service.inoculateCulture).toHaveBeenCalledWith(
@@ -680,4 +833,50 @@ it("routed subculture requires an eligible parent and preserves its specimen", a
     ),
   );
   expect(consumed).toHaveBeenCalledTimes(1);
+});
+it("moves keyboard focus into the culture dialog and back to its trigger when it closes", async () => {
+  show(api([]));
+  const trigger = await screen.findByRole("button", {
+    name: "Inoculate culture",
+  });
+  trigger.focus();
+  fireEvent.click(trigger);
+  const dialog = screen.getByRole("dialog");
+  expect(
+    within(dialog).getByLabelText("Source sample or aliquot", { exact: false }),
+  ).toHaveFocus();
+  fireEvent.keyDown(dialog, { key: "Escape" });
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: "Inoculate culture" }),
+    ).toHaveFocus(),
+  );
+});
+
+it("keeps Save off while the browser is offline", async () => {
+  const onLine = vi
+    .spyOn(window.navigator, "onLine", "get")
+    .mockReturnValue(false);
+  try {
+    show(api([]));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Inoculate culture" }),
+    );
+    change(/^Bottle or plate identifier/, "P-OFFLINE");
+    change(/^Medium lot/, "20");
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByText(
+        "Working offline; refresh when network returns.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: "Save", exact: true }),
+    ).toBeDisabled();
+  } finally {
+    onLine.mockRestore();
+  }
 });

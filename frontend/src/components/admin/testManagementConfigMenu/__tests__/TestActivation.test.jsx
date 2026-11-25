@@ -110,6 +110,268 @@ describe("TestActivation", () => {
     });
   });
 
+  const threeSampleTypes = () => ({
+    activeTestList: [
+      ...activation().activeTestList,
+      {
+        sampleType: { id: "2", value: "Urine" },
+        activeTests: [{ id: "20", value: "Protein" }],
+        inactiveTests: [{ id: "21", value: "Ketones" }],
+      },
+      {
+        sampleType: { id: "5", value: "Swab" },
+        activeTests: [],
+        inactiveTests: [{ id: "50", value: "COVID PCR" }],
+      },
+    ],
+    inactiveTestList: [
+      {
+        sampleType: { id: "3", value: "Stool" },
+        activeTests: [],
+        inactiveTests: [{ id: "30", value: "Occult blood" }],
+      },
+    ],
+  });
+
+  it("lists active and inactive sample types without a React key warning", async () => {
+    const consoleError = vi.spyOn(console, "error");
+    onServer = threeSampleTypes();
+
+    renderScreen();
+
+    await waitFor(() => expect(glucose()).toBeInTheDocument());
+    expect(document.getElementById("2-21")).not.toBeChecked();
+    expect(document.getElementById("3-30")).toBeInTheDocument();
+    fireEvent.click(document.getElementById("2-21"));
+    await waitFor(() => expect(document.getElementById("2-21")).toBeChecked());
+    fireEvent.click(submitButtons()[0]);
+    expect(
+      await screen.findByText("The following tests will be activated:"),
+    ).toBeInTheDocument();
+    const keyWarnings = consoleError.mock.calls
+      .map((args) => args.map(String).join(" "))
+      .filter((text) => text.includes('unique "key"'));
+    consoleError.mockRestore();
+    expect(keyWarnings).toEqual([]);
+  });
+
+  it("names only the sample types that were inactive as about to be activated", async () => {
+    onServer = threeSampleTypes();
+    renderScreen();
+    await waitFor(() => expect(glucose()).toBeInTheDocument());
+
+    fireEvent.click(document.getElementById("2-21"));
+    fireEvent.click(document.getElementById("3-30"));
+    await waitFor(() => expect(document.getElementById("3-30")).toBeChecked());
+    fireEvent.click(submitButtons()[0]);
+
+    const toActivate = await screen.findByTestId(
+      "test-activation-sample-types-to-activate",
+    );
+    expect(toActivate).toHaveTextContent("Stool");
+    expect(toActivate).not.toHaveTextContent("Urine");
+  });
+
+  const headings = {
+    testsOn: "The following tests will be activated:",
+    typesOn: "The following sample types will be activated:",
+    testsOff: "The following tests will be deactivated:",
+    typesOff:
+      "The following sample types will be deactivated because they have no tests:",
+  };
+
+  const shownHeadings = () =>
+    Object.keys(headings).filter((key) => screen.queryByText(headings[key]));
+
+  it("heads only the lists that have entries when one more test of an active type is turned on", async () => {
+    onServer = threeSampleTypes();
+    renderScreen();
+    await waitFor(() => expect(glucose()).toBeInTheDocument());
+
+    fireEvent.click(document.getElementById("2-21"));
+    await waitFor(() => expect(document.getElementById("2-21")).toBeChecked());
+    fireEvent.click(submitButtons()[0]);
+
+    await screen.findByText(headings.testsOn);
+    expect(shownHeadings()).toEqual(["testsOn"]);
+    expect(
+      screen.queryByTestId("test-activation-sample-types-to-activate"),
+    ).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["a test of an active type", "2-21"],
+    ["a test of an inactive type", "3-30"],
+    ["the only test of an active type with none on", "5-50"],
+  ])(
+    "leaves nothing to submit once %s is turned on and off again",
+    async (_, checkboxId) => {
+      onServer = threeSampleTypes();
+      renderScreen();
+      await waitFor(() => expect(glucose()).toBeInTheDocument());
+
+      fireEvent.click(document.getElementById(checkboxId));
+      await waitFor(() =>
+        submitButtons().forEach((button) => expect(button).toBeEnabled()),
+      );
+      fireEvent.click(document.getElementById(checkboxId));
+
+      await waitFor(() =>
+        submitButtons().forEach((button) => expect(button).toBeDisabled()),
+      );
+      expect(document.getElementById(checkboxId)).not.toBeChecked();
+    },
+  );
+
+  it("names only the later change after an earlier one was undone", async () => {
+    onServer = threeSampleTypes();
+    renderScreen();
+    await waitFor(() => expect(glucose()).toBeInTheDocument());
+
+    fireEvent.click(document.getElementById("3-30"));
+    await waitFor(() => expect(document.getElementById("3-30")).toBeChecked());
+    fireEvent.click(document.getElementById("3-30"));
+    await waitFor(() =>
+      submitButtons().forEach((button) => expect(button).toBeDisabled()),
+    );
+    fireEvent.click(document.getElementById("2-21"));
+    await waitFor(() => expect(document.getElementById("2-21")).toBeChecked());
+    fireEvent.click(submitButtons()[0]);
+
+    await screen.findByText(headings.testsOn);
+    expect(shownHeadings()).toEqual(["testsOn"]);
+    expect(screen.getByRole("dialog")).not.toHaveTextContent("Occult blood");
+  });
+
+  it.each([
+    ["an active type with none on", "5-50", "COVID PCR"],
+    ["an inactive type", "3-30", "Occult blood"],
+  ])(
+    "names and sends only the change that stands after a test of %s was turned on and off around it",
+    async (_, undoneId, undoneName) => {
+      onServer = threeSampleTypes();
+      renderScreen();
+      await waitFor(() => expect(glucose()).toBeInTheDocument());
+
+      fireEvent.click(document.getElementById(undoneId));
+      await waitFor(() =>
+        expect(document.getElementById(undoneId)).toBeChecked(),
+      );
+      fireEvent.click(document.getElementById("2-21"));
+      await waitFor(() =>
+        expect(document.getElementById("2-21")).toBeChecked(),
+      );
+      fireEvent.click(document.getElementById(undoneId));
+      await waitFor(() =>
+        expect(document.getElementById(undoneId)).not.toBeChecked(),
+      );
+      fireEvent.click(submitButtons()[0]);
+
+      await screen.findByText(headings.testsOn);
+      expect(shownHeadings()).toEqual(["testsOn"]);
+      expect(screen.getByRole("dialog")).toHaveTextContent("Ketones");
+      expect(screen.getByRole("dialog")).not.toHaveTextContent(undoneName);
+
+      postToOpenElisServerJsonResponse.mockImplementation(
+        (url, payload, callback) => callback(true),
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Accept" }));
+      const [, payload] = postToOpenElisServerJsonResponse.mock.calls[0];
+      const sent = JSON.parse(JSON.parse(payload).jsonChangeList);
+      const ids = (key) => JSON.parse(sent[key]).map((item) => String(item.id));
+      expect(ids("activateTest")).toEqual(["21"]);
+      expect(ids("deactivateTest")).toEqual([]);
+      expect(ids("deactivateSample")).toEqual([]);
+      expect(ids("activateSample")).not.toContain("3");
+    },
+  );
+
+  const sharedTest = () => ({
+    activeTestList: [
+      ...activation().activeTestList,
+      {
+        sampleType: { id: "6", value: "Plasma" },
+        activeTests: [
+          { id: "10", value: "Glucose" },
+          { id: "60", value: "Creatinine" },
+        ],
+        inactiveTests: [],
+      },
+    ],
+    inactiveTestList: [],
+  });
+
+  const accept = async () => {
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (url, payload, callback) => callback(true),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Accept" }));
+    const [, payload] = postToOpenElisServerJsonResponse.mock.calls[0];
+    const sent = JSON.parse(JSON.parse(payload).jsonChangeList);
+    return (key) => JSON.parse(sent[key]).map((item) => String(item.id));
+  };
+
+  it("turns off a test listed under two sample types when it is unchecked under one", async () => {
+    onServer = sharedTest();
+    await turnGlucoseOff();
+    expect(document.getElementById("6-10")).toBeChecked();
+    fireEvent.click(submitButtons()[0]);
+
+    await screen.findByText(headings.testsOff);
+    expect(shownHeadings()).toEqual(["testsOff"]);
+    expect(screen.getByRole("dialog")).toHaveTextContent("Glucose");
+    const sent = await accept();
+    expect(sent("deactivateTest")).toEqual(["10"]);
+  });
+
+  it("lists and sends a test unchecked under two sample types once", async () => {
+    const consoleError = vi.spyOn(console, "error");
+    onServer = sharedTest();
+    await turnGlucoseOff();
+    fireEvent.click(document.getElementById("6-10"));
+    await waitFor(() =>
+      expect(document.getElementById("6-10")).not.toBeChecked(),
+    );
+    fireEvent.click(submitButtons()[0]);
+
+    await screen.findByText(headings.testsOff);
+    expect(
+      screen.getByRole("dialog").textContent.match(/Glucose/g),
+    ).toHaveLength(1);
+    const keyWarnings = consoleError.mock.calls
+      .map((args) => args.map(String).join(" "))
+      .filter((text) => text.includes("same key"));
+    consoleError.mockRestore();
+    expect(keyWarnings).toEqual([]);
+    const sent = await accept();
+    expect(sent("deactivateTest")).toEqual(["10"]);
+  });
+
+  it("keeps the changes when Back returns from the confirmation", async () => {
+    await turnGlucoseOff();
+    fireEvent.click(submitButtons()[0]);
+    await screen.findByText(headings.testsOff);
+
+    await userEvent.click(screen.getByRole("button", { name: "Back" }));
+
+    await waitFor(() =>
+      expect(document.querySelector(".cds--modal.is-visible")).toBeNull(),
+    );
+    expect(glucose()).not.toBeChecked();
+    submitButtons().forEach((button) => expect(button).toBeEnabled());
+    fireEvent.click(submitButtons()[0]);
+    const sent = await accept();
+    expect(sent("deactivateTest")).toEqual(["10"]);
+  });
+
+  it("heads only the deactivated tests when a test is turned off and its type keeps others", async () => {
+    await turnGlucoseOff();
+    fireEvent.click(submitButtons()[0]);
+
+    await screen.findByText(headings.testsOff);
+    expect(shownHeadings()).toEqual(["testsOff"]);
+  });
+
   it("shows each active test as turned on", async () => {
     renderScreen();
 

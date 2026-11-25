@@ -32,6 +32,10 @@ public class PagingBean implements Serializable {
     @Pattern(regexp = "^[0-9]*$", groups = { Default.class, Paging.class })
     private String currentPage;
 
+    /** The rows across every page, for lists that report a total. */
+    @Pattern(regexp = "^[0-9]*$", groups = { Default.class, Paging.class })
+    private String totalResults;
+
     // for display
     private List<IdValuePair> searchTermToPage;
 
@@ -49,6 +53,14 @@ public class PagingBean implements Serializable {
 
     public String getTotalPages() {
         return totalPages;
+    }
+
+    public String getTotalResults() {
+        return totalResults;
+    }
+
+    public void setTotalResults(String totalResults) {
+        this.totalResults = totalResults;
     }
 
     public void setSearchTermToPage(List<IdValuePair> searchTermToPage) {

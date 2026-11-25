@@ -336,6 +336,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     }
 
     private NoteBook createNoteBookFromForm(NoteBook noteBook, NoteBookForm form) {
+        NotebookAttachmentService.validate(form.getFiles(), noteBook.getFiles());
 
         if (!GenericValidator.isBlankOrNull(form.getTitle())) {
             noteBook.setTitle(form.getTitle());

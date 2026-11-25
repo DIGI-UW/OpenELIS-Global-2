@@ -308,13 +308,13 @@ public class PatientResultTreeService {
 
         TestDisplay testDisplay = new TestDisplay();
         testDisplay.setTestName(test.getLocalizedName());
-        testDisplay.setComponent(component == null ? null : component.getLabel());
+        testDisplay.setComponent(component == null ? null : component.getLocalizedLabel());
         testDisplay.setComponentId(componentId);
         testDisplay.setSampleType(group.sampleType.getLocalizedName());
         testDisplay.setSampleTypeId(group.sampleType.getId());
-        testDisplay.setDisplay(
-                component == null || GenericValidator.isBlankOrNull(component.getLabel()) ? test.getLocalizedName()
-                        : test.getLocalizedName() + COMPONENT_SEPARATOR + component.getLabel());
+        testDisplay.setDisplay(component == null || GenericValidator.isBlankOrNull(component.getLocalizedLabel())
+                ? test.getLocalizedName()
+                : test.getLocalizedName() + COMPONENT_SEPARATOR + component.getLocalizedLabel());
         testDisplay.setConceptUuid(test.getId());
         testDisplay.setDatatype(configuredType);
         testDisplay.setUnits(unitOfMeasure(test, component));

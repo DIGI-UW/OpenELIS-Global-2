@@ -60,6 +60,8 @@
             column="is_active" />
         <property name="isNormal" type="java.lang.Boolean"
             column="is_normal" />
+        <property name="isCritical" type="java.lang.Boolean"
+            column="is_critical" />
         <property name="significance" type="java.lang.String">
             <column name="SIGNIFICANCE" length="20" />
         </property>

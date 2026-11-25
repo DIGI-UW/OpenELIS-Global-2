@@ -25,7 +25,18 @@ const KNOWN_ERRORS = [
   "retestNoteRequired",
   "rejectionDisabled",
   "qcHold",
+  "alreadySigned",
+  "levelAlreadySigned",
+  "roleRequired",
+  "validationRightsRequired",
+  "earlierLevelsUnsigned",
+  "resultChanged",
+  "signatureMismatch",
+  "signatureUnknown",
 ];
+
+/** Codes whose message moved to a new key when its meaning widened. */
+const MESSAGE_OF_ERROR = { qcHold: "qcHeld" };
 
 export const NOTE_CONTEXT_RETEST = "VALIDATION";
 
@@ -93,6 +104,16 @@ export function displayResult(row) {
     );
     return match ? match.value : (row.result ?? "");
   }
+  if (["M", "C"].includes(row.resultType) && row.multiSelectResultValues) {
+    return Object.values(JSON.parse(row.multiSelectResultValues))
+      .flatMap((group) => String(group).split(","))
+      .map(
+        (id) =>
+          (row.dictionaryResults || []).find((entry) => String(entry.id) === id)
+            ?.value ?? id,
+      )
+      .join(", ");
+  }
   return row.displayResult ?? row.result ?? "";
 }
 
@@ -144,5 +165,5 @@ export function actionPayload(
 export function errorMessageKey(response) {
   const code = response && response.error;
   const known = KNOWN_ERRORS.includes(code) ? code : "generic";
-  return `label.validation.review.error.${known}`;
+  return `label.validation.review.error.${MESSAGE_OF_ERROR[known] ?? known}`;
 }

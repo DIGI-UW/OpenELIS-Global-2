@@ -191,13 +191,123 @@ export function filterTriaged(triaged, filter) {
   );
 }
 
-/** OGC-1029 (FR-B2) — the rows "Release all clear" may touch: the Clear lane only. */
+/**
+ * OGC-1364 v2: where a row stands in its sequential review. A row without the
+ * policy needs one review.
+ */
+export function reviewStateOf(row) {
+  const levels = Math.max(Number(row?.reviewLevels) || 1, 1);
+  const level = Math.min(Math.max(Number(row?.reviewLevel) || 1, 1), levels);
+  return {
+    levels,
+    level,
+    finalLevel: level >= levels,
+    roleName: row?.reviewRoleName || "",
+    blockedReason: row?.reviewBlockedReason || null,
+    signOffs: row?.signOffs || [],
+    superseded: row?.supersededSignOffs || [],
+  };
+}
+
+/**
+ * OGC-1029 (FR-B2) — the rows "Release all clear" may touch: the Clear lane
+ * only, at their last review level and signable by this user (OGC-1364 v2).
+ */
 export function clearRows(triaged) {
   return (triaged || [])
-    .filter(
-      (item) => item.lane === LANE_CLEAR && !item.row.selfValidationBlocked,
-    )
+    .filter((item) => {
+      const review = reviewStateOf(item.row);
+      return (
+        item.lane === LANE_CLEAR &&
+        !item.row.selfValidationBlocked &&
+        review.finalLevel &&
+        !review.blockedReason
+      );
+    })
     .map((item) => item.row);
+}
+
+/**
+ * OGC-1364 v2: a row whose next level someone else must sign. Only rows the
+ * server marked for sequential sign-off (the policy is on) can wait for others.
+ */
+export function waitingForOthers(row) {
+  if (!row || row.sequentialSignOff !== true) {
+    return false;
+  }
+  return Boolean(row.reviewBlockedReason) || row.selfValidationBlocked === true;
+}
+
+/** The queue scoped to what this person can sign, unless the rest is asked for. */
+export function scopeToSignable(triaged, showWaiting) {
+  const items = triaged || [];
+  return showWaiting
+    ? items
+    : items.filter((item) => !waitingForOthers(item.row));
+}
+
+/**
+ * OGC-1364 v2: the rows "Sign level k for all clear" may touch: the Clear lane
+ * at a level before their last, signable by this person.
+ */
+export function earlierLevelClearRows(triaged) {
+  return (triaged || [])
+    .filter((item) => {
+      const review = reviewStateOf(item.row);
+      return (
+        item.lane === LANE_CLEAR &&
+        item.row.sequentialSignOff === true &&
+        !review.finalLevel &&
+        !waitingForOthers(item.row)
+      );
+    })
+    .map((item) => item.row);
+}
+
+/** The level a bulk signature signs when every row is at the same one, else null. */
+export function nextLevelOf(rows) {
+  const levels = new Set((rows || []).map((row) => reviewStateOf(row).level));
+  return levels.size === 1 ? [...levels][0] : null;
+}
+
+/** The message after "Sign level k for all clear": signed, partly, or nothing. */
+const SIGN_CLEAR_ERRORS = {
+  bulkReleaseDisabled: "label.validation.bulk.error.signDisabled",
+  sequentialSignOffOff: "label.validation.bulk.error.sequentialSignOffOff",
+  signatureMismatch: "label.validation.review.error.signatureMismatch",
+  signatureUnknown: "label.validation.review.error.signatureUnknown",
+  noRows: "label.validation.bulk.error.nothingSigned",
+};
+
+export function signClearMessages(response) {
+  if (!response || response.error || !Array.isArray(response.signed)) {
+    return {
+      id:
+        SIGN_CLEAR_ERRORS[response?.error] ||
+        "label.validation.bulk.error.signGeneric",
+      values: {},
+    };
+  }
+  const signed = response.signed.length;
+  const skippedRows = Array.isArray(response.skipped) ? response.skipped : [];
+  const skipped = skippedRows.length;
+  if (signed === 0) {
+    const allStale =
+      skipped > 0 && skippedRows.every((row) => row && row.reason === "stale");
+    return {
+      id: allStale
+        ? "label.validation.bulk.error.stale"
+        : "label.validation.bulk.error.nothingSigned",
+      values: {},
+    };
+  }
+  if (skipped > 0) {
+    return {
+      id: "label.validation.bulk.signedPartial",
+      values: { signed, skipped },
+    };
+  }
+  return { id: "label.validation.bulk.signed", values: { count: signed } };
 }
 
 /**
@@ -225,6 +335,36 @@ export function bulkReleaseRequest(results, params, rows) {
       noteContext: row.noteContext || "VALIDATION",
     })),
   };
+}
+
+/**
+ * OGC-1608 — the messages a successful bulk release shows: what was released
+ * (and skipped), and the tests that were only validated in part because another
+ * of their components is still to be resulted or validated.
+ */
+export function bulkSuccessMessages(response) {
+  const released = response?.released?.length || 0;
+  const skipped = response?.skipped?.length || 0;
+  const accepted = response?.accepted?.length || 0;
+  const messages = [];
+  if (skipped > 0) {
+    messages.push({
+      id: "label.validation.bulk.partial",
+      values: { released, skipped },
+    });
+  } else if (released > 0) {
+    messages.push({
+      id: "label.validation.bulk.success",
+      values: { count: released },
+    });
+  }
+  if (accepted > 0) {
+    messages.push({
+      id: "label.validation.bulk.accepted",
+      values: { count: accepted },
+    });
+  }
+  return messages;
 }
 
 /** i18n key describing why a bulk release did nothing (or failed). */

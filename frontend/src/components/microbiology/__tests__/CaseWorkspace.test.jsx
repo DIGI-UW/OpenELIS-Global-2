@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, act, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
@@ -137,15 +137,83 @@ describe("MVP microbiology case workspace", () => {
       "/Microbiology/worklist?page=3&labUnitId=10",
     );
     await screen.findByText("No cases match these filters.");
+    expect(
+      [...screen.getByLabelText("Status").options].map((o) => o.text),
+    ).toEqual([
+      "All case statuses",
+      "In progress",
+      "Partial",
+      "Final",
+      "Amended",
+      "Referred",
+      "Referral returned",
+      "Amendment open",
+    ]);
     fireEvent.change(screen.getByLabelText("Status"), {
-      target: { value: "CANCELLED" },
+      target: { value: "PARTIAL" },
     });
     await waitFor(() =>
       expect(service.searchCases).toHaveBeenLastCalledWith(
-        "labUnitId=10&status=CANCELLED",
+        "labUnitId=10&caseStatus=PARTIAL",
       ),
     );
-    expect(history.location.search).toBe("?labUnitId=10&status=CANCELLED");
+    expect(history.location.search).toBe("?labUnitId=10&caseStatus=PARTIAL");
+  });
+  test("each case shows its status, tags and STAT under the lab number", async () => {
+    const service = {
+      searchCases: vi.fn().mockResolvedValue({
+        rows: [
+          {
+            ...row,
+            caseStatus: "PARTIAL",
+            statusTags: ["REFERRED"],
+            stat: true,
+          },
+        ],
+        page: 1,
+        pageSize: 20,
+        total: 1,
+        labUnits: [],
+      }),
+    };
+    renderPage(<CaseWorklist service={service} />);
+    const cell = (await screen.findByRole("link", { name: "M2-001" })).closest(
+      "td",
+    );
+    expect(cell).toHaveTextContent("Partial");
+    expect(cell).toHaveTextContent("Referred");
+    expect(cell).toHaveTextContent("STAT");
+    expect(screen.queryByText("Active")).not.toBeInTheDocument();
+    expect(
+      screen.getAllByRole("columnheader").map((h) => h.textContent),
+    ).not.toContain("Status");
+  });
+  test("the header shows one status with the current step under it and STAT beside the case number", async () => {
+    const service = {
+      getCase: vi.fn().mockResolvedValue({
+        ...shell,
+        caseStatus: "FINAL",
+        statusTags: ["AMENDMENT_OPEN"],
+        stat: true,
+        stage: "AMENDED",
+        finalReleaseState: "AMENDMENT_IN_PROGRESS",
+      }),
+    };
+    renderPage(<CaseViewShell service={service} caseId="case-1" />);
+    const heading = await screen.findByRole("heading", {
+      level: 1,
+      name: /Case M2-001/,
+    });
+    expect(heading).toHaveTextContent("STAT");
+    const status = within(
+      screen.getByText("Status", { selector: "p.cds--label" }).parentElement,
+    );
+    expect(status.getByText("Final")).toBeVisible();
+    expect(status.getByText("Amendment open")).toBeVisible();
+    expect(status.getByText("Amendments")).toBeVisible();
+    expect(screen.queryByText("Active")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Work stage/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Release state/)).not.toBeInTheDocument();
   });
   test("shows patient, collected and pending samples and related links", async () => {
     const service = { getCase: vi.fn().mockResolvedValue(shell) };
@@ -365,6 +433,24 @@ describe("case actions", () => {
     });
   });
 
+  test.each([
+    "Log critical notification",
+    "Report NCE",
+    "Open amendment",
+    "Mark lost",
+  ])("%s adds a history entry, so Back returns to the case", async (name) => {
+    const history = caseActions({
+      canAmend: true,
+      finalReleaseState: "FINAL_RELEASED",
+    });
+    const items = await openCaseActions();
+    const entries = history.length;
+    fireEvent.click(items.find((item) => item.textContent.startsWith(name)));
+    expect(history.length).toBe(entries + 1);
+    act(() => history.goBack());
+    expect(history.location.search).toBe("");
+  });
+
   test("Mark lost opens the nonconformity section in lost mode", async () => {
     const history = caseActions();
     const items = await openCaseActions();
@@ -394,5 +480,258 @@ describe("case actions", () => {
     expect(
       screen.queryByRole("button", { name: "Case actions" }),
     ).not.toBeInTheDocument();
+  });
+});
+test("lets keyboard users focus and scroll the samples table", async () => {
+  const service = { getCase: vi.fn().mockResolvedValue(shell) };
+  renderPage(<CaseViewShell service={service} caseId="case-1" />);
+  expect(
+    await screen.findByRole("table", { name: messages["common.samples"] }),
+  ).toHaveAttribute("tabindex", "0");
+});
+
+const barService = (
+  readiness = { blockers: [], finalReleaseReady: true, pendingIncomingIds: [] },
+) => ({
+  getCase: vi.fn().mockResolvedValue({
+    ...shell,
+    caseStatus: "PARTIAL",
+    statusTags: [],
+    stat: true,
+    canValidate: true,
+  }),
+  getReadiness: vi.fn().mockResolvedValue(readiness),
+  getReport: vi.fn().mockResolvedValue({ validatedResults: 3 }),
+  getReportVersions: vi.fn().mockResolvedValue([{ id: "v1" }]),
+  releaseReport: vi.fn().mockResolvedValue({}),
+});
+
+describe("case bar", () => {
+  test("section links replace the history entry instead of adding one", async () => {
+    const history = renderPage(
+      <CaseViewShell service={barService()} caseId="case-1" />,
+      "/Microbiology/cases/case-1",
+    );
+    const bar = await screen.findByRole("region", { name: "Case summary" });
+    const entries = history.length;
+    fireEvent.click(within(bar).getByRole("button", { name: "Culture" }));
+    fireEvent.click(within(bar).getByRole("button", { name: "AST / DST" }));
+    expect(history.length).toBe(entries);
+    expect(new URLSearchParams(history.location.search).get("scope")).toBe(
+      "AST",
+    );
+  });
+
+  test.each(["?scope=CULTURE", "?grain=cultures"])(
+    "marks the open section in the section links from %s",
+    async (search) => {
+      renderPage(
+        <CaseViewShell service={barService()} caseId="case-1" />,
+        `/Microbiology/cases/case-1${search}`,
+      );
+      const nav = await screen.findByRole("navigation", {
+        name: "Jump to section",
+      });
+      expect(
+        within(nav).getByRole("button", { name: "Culture" }),
+      ).toHaveAttribute("aria-current", "true");
+      expect(
+        within(nav).getByRole("button", { name: "AST / DST" }),
+      ).not.toHaveAttribute("aria-current");
+    },
+  );
+
+  test("keeps the way back to the worklist on the case bar", async () => {
+    renderPage(
+      <CaseViewShell service={barService()} caseId="case-1" />,
+      "/Microbiology/cases/case-1?grain=cultures&labUnitIds=10",
+    );
+    const bar = await screen.findByRole("region", { name: "Case summary" });
+    expect(
+      within(bar).getByRole("link", { name: "Microbiology worklist" }),
+    ).toHaveAttribute(
+      "href",
+      "/Microbiology/worklist?grain=cultures&labUnitIds=10",
+    );
+  });
+
+  test("case info starts collapsed unless the link asks for it", async () => {
+    renderPage(
+      <CaseViewShell service={barService()} caseId="case-1" />,
+      "/Microbiology/cases/case-1",
+    );
+    expect(
+      await screen.findByRole("button", { name: "Case info" }),
+    ).toHaveAttribute("aria-expanded", "false");
+  });
+
+  test("a case info link opens case info", async () => {
+    renderPage(
+      <CaseViewShell service={barService()} caseId="case-1" />,
+      "/Microbiology/cases/case-1?section=case-info",
+    );
+    expect(
+      await screen.findByRole("button", { name: "Case info" }),
+    ).toHaveAttribute("aria-expanded", "true");
+  });
+
+  test("keeps the case actions on the case bar", async () => {
+    renderPage(
+      <CaseViewShell service={barService()} caseId="case-1" />,
+      "/Microbiology/cases/case-1",
+    );
+    const bar = await screen.findByRole("region", { name: "Case summary" });
+    expect(
+      within(bar).getByRole("button", { name: "Case actions" }),
+    ).toBeInTheDocument();
+  });
+
+  test("names the case, its status and STAT, and opens a section from its links", async () => {
+    const history = renderPage(
+      <CaseViewShell service={barService()} caseId="case-1" />,
+      "/Microbiology/cases/case-1",
+    );
+    const bar = await screen.findByRole("region", { name: "Case summary" });
+    expect(bar).toHaveTextContent("M2-001");
+    expect(bar).toHaveTextContent("Test Patient");
+    expect(bar).toHaveTextContent("Partial");
+    expect(bar).toHaveTextContent("STAT");
+    fireEvent.click(
+      within(bar).getByRole("button", { name: "Report and release" }),
+    );
+    expect(new URLSearchParams(history.location.search).get("scope")).toBe(
+      "REPORT",
+    );
+  });
+
+  test("partial release waits for a validated result", async () => {
+    const service = barService();
+    service.getReport.mockResolvedValue({ validatedResults: 0 });
+    renderPage(<CaseViewShell service={service} caseId="case-1" />);
+    const bar = await screen.findByRole("region", { name: "Case summary" });
+    await waitFor(() => expect(service.getReport).toHaveBeenCalled());
+    expect(
+      await within(bar).findByRole("button", {
+        name: "Release partial report",
+      }),
+    ).toBeDisabled();
+  });
+
+  test("the confirmation counts a single result in the singular", async () => {
+    const service = barService();
+    service.getReport.mockResolvedValue({ validatedResults: 1 });
+    renderPage(<CaseViewShell service={service} caseId="case-1" />);
+    const bar = await screen.findByRole("region", { name: "Case summary" });
+    fireEvent.click(
+      await within(bar).findByRole("button", { name: "Release final report" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Release final report?",
+    });
+    expect(
+      await within(dialog).findByText(
+        "The case will be locked. 1 result will be released as report version 2. Any later change needs an amendment.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  test("says how many items keep final release blocked", async () => {
+    renderPage(
+      <CaseViewShell
+        service={barService({
+          blockers: ["ISOLATE_REQUIRED", "PROGRAM_REQUIRED"],
+          finalReleaseReady: false,
+          pendingIncomingIds: [],
+        })}
+        caseId="case-1"
+      />,
+    );
+    const bar = await screen.findByRole("region", { name: "Case summary" });
+    expect(
+      await within(bar).findByRole("button", {
+        name: "Release final report (2 missing)",
+      }),
+    ).toBeDisabled();
+  });
+
+  test("the release confirmation opens outside the sticky case bar", async () => {
+    renderPage(<CaseViewShell service={barService()} caseId="case-1" />);
+    const bar = await screen.findByRole("region", { name: "Case summary" });
+    fireEvent.click(
+      await within(bar).findByRole("button", { name: "Release final report" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Release final report?",
+    });
+    expect(bar).not.toContainElement(dialog);
+  });
+
+  test("final release asks for confirmation and says what will happen", async () => {
+    const service = barService();
+    renderPage(<CaseViewShell service={service} caseId="case-1" />);
+    const bar = await screen.findByRole("region", { name: "Case summary" });
+    fireEvent.click(
+      await within(bar).findByRole("button", { name: "Release final report" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Release final report?",
+    });
+    expect(
+      await within(dialog).findByText(
+        "The case will be locked. 3 results will be released as report version 2. Any later change needs an amendment.",
+      ),
+    ).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(service.releaseReport).not.toHaveBeenCalled();
+    fireEvent.click(
+      within(bar).getByRole("button", { name: "Release final report" }),
+    );
+    const again = await screen.findByRole("dialog", {
+      name: "Release final report?",
+    });
+    fireEvent.click(
+      await within(again).findByRole("button", { name: "Release final" }),
+    );
+    await waitFor(() =>
+      expect(service.releaseReport).toHaveBeenCalledWith("case-1", "final", []),
+    );
+    await waitFor(() => expect(service.getCase).toHaveBeenCalledTimes(2));
+  });
+
+  test("partial release stays one click", async () => {
+    const service = barService();
+    renderPage(<CaseViewShell service={service} caseId="case-1" />);
+    const bar = await screen.findByRole("region", { name: "Case summary" });
+    fireEvent.click(
+      await within(bar).findByRole("button", {
+        name: "Release partial report",
+      }),
+    );
+    await waitFor(() =>
+      expect(service.releaseReport).toHaveBeenCalledWith(
+        "case-1",
+        "preliminary",
+        [],
+      ),
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  test("release stays available while the case refreshes", async () => {
+    const service = barService();
+    renderPage(<CaseViewShell service={service} caseId="case-1" />);
+    const bar = await screen.findByRole("region", { name: "Case summary" });
+    const partial = await within(bar).findByRole("button", {
+      name: "Release partial report",
+    });
+    await waitFor(() => expect(partial).toBeEnabled());
+    const loaded = await service.getCase.mock.results[0].value;
+    service.getCase.mockResolvedValue({ ...loaded });
+    service.getReadiness.mockReturnValue(new Promise(() => {}));
+    fireEvent.click(partial);
+    await waitFor(() => expect(service.getReadiness).toHaveBeenCalledTimes(2));
+    expect(
+      within(bar).getByRole("button", { name: "Release partial report" }),
+    ).toBeEnabled();
   });
 });

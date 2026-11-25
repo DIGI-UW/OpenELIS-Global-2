@@ -54,6 +54,8 @@ public class AnalyzerResultItem implements Serializable {
     private AnalyzerResultPlacement placement;
     private String deliveryReceiptId;
     private Long runId;
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private Long heldRunId;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { AnalyzerResultsForm.AnalyzerResuts.class })
     private String result;
@@ -95,6 +97,7 @@ public class AnalyzerResultItem implements Serializable {
 
     @ValidDate(groups = { AnalyzerResultsForm.AnalyzerResuts.class })
     private String completeDate;
+    private Timestamp completedAt;
 
     private boolean isPositive = false;
     private String duplicateAnalyzerResultId;
@@ -247,6 +250,18 @@ public class AnalyzerResultItem implements Serializable {
     @JsonIgnore
     public void setRunId(Long runId) {
         this.runId = runId;
+    }
+
+    /**
+     * OGC-1200 FR-C4: the run that holds this value because a control for its test
+     * failed there; shown, never read from a request.
+     */
+    public Long getHeldRunId() {
+        return heldRunId;
+    }
+
+    public void setHeldRunId(Long heldRunId) {
+        this.heldRunId = heldRunId;
     }
 
     /**
@@ -413,6 +428,16 @@ public class AnalyzerResultItem implements Serializable {
 
     public String getCompleteDate() {
         return completeDate;
+    }
+
+    @JsonIgnore
+    public Timestamp getCompletedAt() {
+        return completedAt;
+    }
+
+    @JsonIgnore
+    public void setCompletedAt(Timestamp completedAt) {
+        this.completedAt = completedAt;
     }
 
     public void setPositive(boolean isPositive) {

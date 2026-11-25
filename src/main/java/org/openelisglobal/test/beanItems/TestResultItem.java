@@ -30,6 +30,7 @@ import org.openelisglobal.analysis.valueholder.ResultFile;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.common.util.IsoDateNormalizer;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.util.YesNoBooleanDeserializer;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
@@ -442,12 +443,6 @@ public class TestResultItem implements ResultItem, Serializable {
 
     /** The scheme the Analyst picker reads its eligible-analyst list from. */
     private String eqaSchemeId;
-
-    /**
-     * The row's scheme is in-house, so the order is blinded and result entry must
-     * not mark it as EQA.
-     */
-    private boolean eqaInHouse = false;
 
     /** The analyst chosen at result entry; round-trips back on save. */
     private String eqaAnalystId;
@@ -1285,14 +1280,6 @@ public class TestResultItem implements ResultItem, Serializable {
         this.eqaSchemeId = eqaSchemeId;
     }
 
-    public boolean getEqaInHouse() {
-        return eqaInHouse;
-    }
-
-    public void setEqaInHouse(boolean eqaInHouse) {
-        this.eqaInHouse = eqaInHouse;
-    }
-
     public String getEqaAnalystId() {
         return eqaAnalystId;
     }
@@ -1337,8 +1324,9 @@ public class TestResultItem implements ResultItem, Serializable {
         return nextVisitDate;
     }
 
+    /** Stored as an ISO date (OGC-1669); shown in the site's date format. */
     public void setNextVisitDate(String nextVisitDate) {
-        this.nextVisitDate = nextVisitDate;
+        this.nextVisitDate = IsoDateNormalizer.toDisplayFormat(nextVisitDate);
     }
 
     public String getForceTechApproval() {

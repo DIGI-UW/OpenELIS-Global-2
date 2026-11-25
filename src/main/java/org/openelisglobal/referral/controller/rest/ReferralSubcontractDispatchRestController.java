@@ -39,17 +39,18 @@ public class ReferralSubcontractDispatchRestController {
     @PostMapping("/{referralId}/dispatch-subcontract")
     public ResponseEntity<Map<String, Object>> dispatchReferral(@PathVariable String referralId,
             @RequestBody(required = false) DispatchRequest body, HttpServletRequest request) {
-        if (body == null || GenericValidator.isBlankOrNull(body.handoffDatetime)) {
-            return ResponseEntity.badRequest().body(Map.of("error", "handoffDatetime is required"));
-        }
         Timestamp handoff;
-        try {
-            handoff = DateUtil.convertStringDateToTimestamp(body.handoffDatetime);
-            if (handoff == null) {
+        if (body == null || GenericValidator.isBlankOrNull(body.handoffDatetime)) {
+            handoff = new Timestamp(System.currentTimeMillis());
+        } else {
+            try {
+                handoff = DateUtil.convertStringDateToTimestamp(body.handoffDatetime);
+                if (handoff == null) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "handoffDatetime could not be parsed"));
+                }
+            } catch (RuntimeException e) {
                 return ResponseEntity.badRequest().body(Map.of("error", "handoffDatetime could not be parsed"));
             }
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", "handoffDatetime could not be parsed"));
         }
         String actorUserId = ControllerUtills.getSysUserId(request);
         if (GenericValidator.isBlankOrNull(actorUserId)) {
@@ -57,7 +58,7 @@ public class ReferralSubcontractDispatchRestController {
         }
         Referral referral;
         try {
-            referralService.dispatchReferral(referralId, handoff, actorUserId, body.notes);
+            referralService.dispatchReferral(referralId, handoff, actorUserId, body == null ? null : body.notes);
             referral = referralService.getReferralById(referralId);
         } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -65,7 +66,7 @@ public class ReferralSubcontractDispatchRestController {
         ReferralSubcontract subcontract = referral.getSubcontract();
         Map<String, Object> resp = new HashMap<>();
         resp.put("referralId", referral.getId());
-        resp.put("subcontractId", subcontract.getId());
+        resp.put("subcontractId", subcontract == null ? null : subcontract.getId());
         resp.put("referralStatus", referral.getStatus().name());
         return ResponseEntity.ok(resp);
     }

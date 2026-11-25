@@ -157,6 +157,32 @@ public class EQALabPerformanceIntegrationTest extends EQASpineTestBase {
         assertTrue("coverage needs a verdict, so an unscored cycle contributes no row", coverage().isEmpty());
     }
 
+    @Test
+    public void theOpenEqaNceCountKeepsAnOpenNceOlderThanTheWindowAndSkipsClosedAndNonEqaOnes() {
+        int countBefore = labPerformanceService.countOpenEqaNces();
+        int kpiBefore = (Integer) kpis().get("eqaNceOpenCount");
+        insertNce(98811, "EQA_UNACCEPTABLE", "Pending", LocalDate.now().minusMonths(13));
+        insertNce(98812, "EQA_FOLLOWUP_ESCALATION", "In Progress", LocalDate.now().minusDays(3));
+        insertNce(98813, "EQA_UNACCEPTABLE", "Closed", LocalDate.now().minusDays(3));
+        insertNce(98814, "QC_BENCH_CONTROL", "Pending", LocalDate.now().minusDays(3));
+
+        assertEquals(countBefore + 2, labPerformanceService.countOpenEqaNces());
+        assertEquals("the twelve-month KPI leaves the older one out", kpiBefore + 1, kpis().get("eqaNceOpenCount"));
+    }
+
+    @Override
+    protected void cleanEqaTables() {
+        jdbc.update("DELETE FROM clinlims.nc_event WHERE id BETWEEN 98811 AND 98814");
+        super.cleanEqaTables();
+    }
+
+    private void insertNce(int id, String triggerSource, String status, LocalDate reported) {
+        jdbc.update(
+                "INSERT INTO clinlims.nc_event (id, nce_number, trigger_source_type, status, report_date)"
+                        + " VALUES (?, ?, ?, ?, ?)",
+                id, "NCE-PERF-" + id, triggerSource, status, java.sql.Date.valueOf(reported));
+    }
+
     @SuppressWarnings("unchecked")
     private Map<String, Object> kpis() {
         return (Map<String, Object>) labPerformanceService.getLabPerformance().get("kpis");

@@ -3,6 +3,7 @@ import { createIntl } from "react-intl";
 import messages from "../../languages/en.json";
 import {
   describeUnmetRequirements,
+  fieldOrderRequirements,
   hasRequesterOrRequestor,
   unmetRequirements,
 } from "./saveRequirements";
@@ -61,5 +62,89 @@ describe("requesting organisation or requestor", () => {
         requestorFirstName: null,
       }),
     ).toBe(false);
+  });
+});
+
+describe("environmental and vector order requirements (OGC-1060)", () => {
+  const order = (samples, overrides = {}) =>
+    fieldOrderRequirements({
+      labNumber: "ENV-1",
+      hasSite: true,
+      siteLabelId: "order.save.requirement.collectionSite",
+      sampleOrderItems: { requestorLastName: "Sari" },
+      samples,
+      ...overrides,
+    });
+
+  it("names the missing test when the site and the sample type are there", () => {
+    expect(
+      describeUnmetRequirements(intl, order([{ sampleTypeId: "54" }])),
+    ).toBe("Add at least one test or panel on every sample before saving.");
+  });
+
+  it("is met when every sample with a type has a test or a panel", () => {
+    const requirements = order([
+      { sampleTypeId: "54", tests: [{ id: "1" }] },
+      { sampleTypeId: "55", panels: [{ id: "9" }] },
+      { sampleTypeId: "" },
+    ]);
+    expect(unmetRequirements(requirements)).toEqual([]);
+  });
+
+  it("asks for a sample type and a test when no sample has a type", () => {
+    expect(describeUnmetRequirements(intl, order([{ sampleTypeId: "" }]))).toBe(
+      "Add at least one sample type and at least one test or panel on every sample before saving.",
+    );
+  });
+
+  it("names the site the lane uses", () => {
+    expect(
+      describeUnmetRequirements(
+        intl,
+        order([{ sampleTypeId: "54", tests: [{ id: "1" }] }], {
+          hasSite: false,
+          siteLabelId: "order.save.requirement.samplingSite",
+        }),
+      ),
+    ).toBe("Add a sampling site before saving.");
+  });
+});
+
+// OGC-1657 review: a sample time such as "1430" or "25:99" saved as a dropped
+// receipt date or the next day, so Save waits for times that read as times.
+describe("environmental and vector sample times", () => {
+  const withTimes = (collectionTime, receivedTime) =>
+    fieldOrderRequirements({
+      labNumber: "ENV-1",
+      hasSite: true,
+      siteLabelId: "order.save.requirement.samplingSite",
+      sampleOrderItems: { requestorLastName: "Sari" },
+      samples: [
+        {
+          sampleTypeId: "54",
+          tests: [{ id: "1" }],
+          collectionTime,
+          receivedTime,
+        },
+      ],
+    });
+
+  it.each([
+    ["09:15", "14:20"],
+    ["9:15", ""],
+    ["", ""],
+    [undefined, undefined],
+  ])("saves with collected %j and received %j", (collected, received) => {
+    expect(unmetRequirements(withTimes(collected, received))).toEqual([]);
+  });
+
+  it.each([
+    ["1430", ""],
+    ["", "25:99"],
+    ["09:15", "14:2x"],
+  ])("waits with collected %j and received %j", (collected, received) => {
+    expect(
+      describeUnmetRequirements(intl, withTimes(collected, received)),
+    ).toBe("Add collection and received times as hh:mm before saving.");
   });
 });

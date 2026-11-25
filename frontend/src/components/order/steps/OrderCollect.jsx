@@ -34,6 +34,9 @@ import {
   consentApplies,
 } from "./prepareSamplesChecklist";
 import { samplesFromPendingRequests } from "./pendingRequestSamples";
+import { sampleTimesValid } from "../dateUtils";
+import { proposeContainers } from "../api/containerProposalApi";
+import { applyProposals, proposalSignature } from "./containerProposals";
 import { orderSavedMessage } from "../orderSavedMessage";
 
 /**
@@ -139,6 +142,79 @@ const OrderCollect = () => {
     };
   }, [workflowType]);
 
+  const [containerMessage, setContainerMessage] = useState("");
+  const [proposalFailed, setProposalFailed] = useState(false);
+  const proposalAnswered = useRef(false);
+  const proposalSamples = useRef(samples);
+  useEffect(() => {
+    proposalSamples.current = samples;
+  });
+  const proposalKey =
+    workflowType === "clinical" ? proposalSignature(samples) : "[]";
+  useEffect(() => {
+    if (proposalKey === "[]") {
+      return undefined;
+    }
+    let active = true;
+    proposeContainers(JSON.parse(proposalKey))
+      .then((views) => {
+        if (
+          !active ||
+          proposalSignature(proposalSamples.current) !== proposalKey
+        ) {
+          return;
+        }
+        const outcome = applyProposals(proposalSamples.current, views);
+        if (outcome.changed) {
+          seedSamples(outcome.samples);
+        }
+        if (
+          proposalAnswered.current &&
+          (outcome.added.length > 0 ||
+            outcome.joined.length > 0 ||
+            outcome.removed.length > 0)
+        ) {
+          setContainerMessage(
+            [
+              ...outcome.added.map((entry) =>
+                intl.formatMessage(
+                  { id: "collect.containers.added" },
+                  {
+                    count: entry.count,
+                    container: entry.name,
+                    tests: entry.testNames.join(", "),
+                  },
+                ),
+              ),
+              ...outcome.joined.map((entry) =>
+                intl.formatMessage(
+                  { id: "collect.containers.joined" },
+                  {
+                    container: entry.name,
+                    tests: entry.testNames.join(", "),
+                  },
+                ),
+              ),
+              ...outcome.removed.map((entry) =>
+                intl.formatMessage(
+                  { id: "collect.containers.removed" },
+                  { count: entry.count, container: entry.name },
+                ),
+              ),
+            ].join(" "),
+          );
+        }
+        proposalAnswered.current = true;
+        setProposalFailed(false);
+      })
+      .catch(() => {
+        if (active) setProposalFailed(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [proposalKey]);
+
   // Load pending sample type requests when orderId is available
   useEffect(() => {
     const loadPendingRequests = async () => {
@@ -177,7 +253,10 @@ const OrderCollect = () => {
   // Published under the Property enum's name, the way REQUESTER_REQUIRED is.
   const consentRequired = consentApplies(configurationProperties, orderData);
   const consentSatisfied = !consentRequired || consentData.consentGiven;
-  const canSave = samples?.length > 0 && samples.some((s) => s.sampleTypeId);
+  const canSave =
+    samples?.length > 0 &&
+    samples.some((s) => s.sampleTypeId) &&
+    samples.every(sampleTimesValid);
   const toContinue = prepareSamplesToContinue({
     samples,
     labNumber,
@@ -382,6 +461,32 @@ const OrderCollect = () => {
             orderId={orderId}
             labNumber={labNumber}
             samples={samples}
+          />
+        )}
+
+        {proposalFailed && (
+          <InlineNotification
+            kind="warning"
+            data-testid="container-proposal-failed"
+            title={intl.formatMessage({
+              id: "collect.containers.failed.title",
+            })}
+            subtitle={intl.formatMessage({
+              id: "collect.containers.failed",
+            })}
+            hideCloseButton
+            lowContrast
+          />
+        )}
+
+        {containerMessage && (
+          <InlineNotification
+            kind="info"
+            data-testid="container-proposal-message"
+            title={intl.formatMessage({ id: "collect.containers.title" })}
+            subtitle={containerMessage}
+            onClose={() => setContainerMessage("")}
+            lowContrast
           />
         )}
 

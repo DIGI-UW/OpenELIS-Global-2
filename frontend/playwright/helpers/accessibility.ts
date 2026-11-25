@@ -1,7 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect } from "@playwright/test";
 import { writeFile } from "fs/promises";
-import type { Page, TestInfo } from "@playwright/test";
+import type { Locator, Page, TestInfo } from "@playwright/test";
+import { LONG_TIMEOUT } from "./timeouts";
 
 const WCAG_21_AA_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 
@@ -77,4 +78,21 @@ export async function expectNoWcag21AaViolations(
     targets: nodes.map((node) => node.target),
   }));
   expect(summary, JSON.stringify(summary, null, 2)).toEqual([]);
+}
+
+export async function tabTo(page: Page, target: Locator, maxTabs = 150) {
+  await expect(target).toHaveCount(1);
+  await expect(target).toBeVisible({ timeout: LONG_TIMEOUT });
+  for (let index = 0; index < maxTabs; index += 1) {
+    await page.keyboard.press("Tab");
+    if (
+      await target.evaluate((element) => element === document.activeElement)
+    ) {
+      await expect(target).toBeFocused();
+      return;
+    }
+  }
+  throw new Error(
+    `Keyboard focus did not reach ${await target.evaluate((element) => element.outerHTML.slice(0, 300))}`,
+  );
 }

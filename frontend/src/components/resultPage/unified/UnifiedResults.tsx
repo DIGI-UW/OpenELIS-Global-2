@@ -8,9 +8,9 @@ import React, {
 } from "react";
 import {
   ActionableNotification,
+  InlineNotification,
   Button,
   Column,
-  DatePicker,
   DatePickerInput,
   Grid,
   Heading,
@@ -27,6 +27,7 @@ import {
   TableRow,
   Tag,
 } from "@carbon/react";
+import { DatePicker } from "../../common/DatePicker";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   displayDateToIso,
@@ -90,12 +91,14 @@ import Avatar from "./Avatar";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import EQABadge from "../../eqa/EQABadge";
 import config from "../../../config.json";
 import SearchPatientForm from "../../patient/SearchPatientForm";
 import SearchableSelect from "../../common/SearchableSelect";
 import { PatientRecord } from "../../patient/types";
 import "./unified-results.scss";
 import RunsChip from "./runs/RunsChip";
+import { clearMethodChoices } from "./methodChoices";
 import WaitingTag, { WaitingRun } from "./runs/WaitingTag";
 import { displayRange, rangeNotAppliedKey } from "../../common/rangeNotApplied";
 
@@ -197,12 +200,76 @@ interface SaveResponse {
  * nothing else: no breadcrumb, heading or toolbar, and the address is left
  * alone. {@code includeFinished} also lists finalized results.
  */
+/**
+ * OGC-1200 FR-E10: a run row opened for acceptance. The worklist shows only the
+ * pending row it names, prefilled with the analyzer's value, and saving it
+ * accepts the value from the run.
+ */
+export interface RunEntry {
+  runId: number;
+  /**
+   * The staged analyzer value being accepted; absent for a workplan batch's row,
+   * which has no analyzer value and records into its run when saved (FR-D5).
+   */
+  runRowId?: string | null;
+  testId?: string | null;
+  componentId?: string | null;
+  /** The value the row is prefilled with: for a dictionary test, the choice's id. */
+  value?: string | null;
+  /** What the instrument sent, shown once the value is edited. */
+  reported?: string | null;
+  units?: string | null;
+  /** The run's instrument, recorded on the result like any analyzer value. */
+  analyzerId?: string | null;
+  onAccepted?: () => void;
+}
+
+export const isRunEntryRow = (
+  row: {
+    testId?: unknown;
+    testResultComponentId?: string;
+    resultValue?: string;
+    multiSelectResultValues?: string;
+  },
+  entry: RunEntry,
+): boolean =>
+  String(row.testId ?? "") === String(entry.testId ?? "") &&
+  (row.testResultComponentId || null) === (entry.componentId || null) &&
+  !row.resultValue &&
+  (!row.multiSelectResultValues || row.multiSelectResultValues === "{}");
+
+/**
+ * OGC-1200 FR-D5: a row batched in a workplan run is entered here and records
+ * into its run, so only a held batch, or a value waiting in an analyzer run,
+ * keeps the row from being entered.
+ */
+export const isBatchedRun = (run?: WaitingRun | null): boolean =>
+  run?.source === "WORKPLAN";
+
+export const blocksEntry = (run?: WaitingRun | null): boolean =>
+  Boolean(run) && (!isBatchedRun(run) || Boolean(run?.held));
+
+/** FR-E10: the unit check, made only when both sides name a unit. */
+export const unitsDiffer = (
+  analyzerUnits?: string | null,
+  testUnits?: unknown,
+): boolean =>
+  Boolean(analyzerUnits && analyzerUnits.trim()) &&
+  typeof testUnits === "string" &&
+  Boolean(testUnits.trim()) &&
+  analyzerUnits!.trim().toLowerCase() !== testUnits.trim().toLowerCase();
+
 export interface UnifiedResultsProps {
   accessionNumber?: string;
+  /**
+   * Shown inside another page (a run, a notebook, a case), which shows the
+   * notifications, so an embedded worklist does not show them a second time.
+   */
   embedded?: boolean;
   includeFinished?: boolean;
   /** Opens a run on /Results (OGC-1200); absent where runs are not offered. */
   onOpenRun?: (runId: number) => void;
+  runEntry?: RunEntry;
 }
 
 const UnifiedResults: React.FC<UnifiedResultsProps> = ({
@@ -210,8 +277,11 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
   embedded = false,
   includeFinished = false,
   onOpenRun,
+  runEntry,
 }) => {
   const intl = useIntl();
+  const runEntryRef = useRef<RunEntry | undefined>(runEntry);
+  runEntryRef.current = runEntry;
   const syncUrl = (urlState: URLSearchParams) => {
     if (!embedded) {
       replaceResultsUrl(urlState);
@@ -230,6 +300,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
   );
   const [showPatientSearch, setShowPatientSearch] = useState<boolean>(false);
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [showHeld, setShowHeld] = useState(true);
   const [rows, setRows] = useState<WorklistRow[]>([]);
   const [rowStates, setRowStates] = useState<Record<string, RowEditState>>({});
   const [staleInfo, setStaleInfo] = useState<
@@ -250,6 +321,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
   const worklistUrl = useRef<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [loadError, setLoadError] = useState<boolean>(false);
+  const [loadedOnce, setLoadedOnce] = useState<boolean>(false);
   // ---- R2 (OGC-1021) panel state ----
   const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
   const [methods, setMethods] = useState<IdValue[]>([]);
@@ -334,6 +406,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
   }, [labUnits, selectedLabUnit]);
 
   useEffect(() => {
+    clearMethodChoices();
     getFromOpenElisServer("/rest/results-entry/lab-units", (list: LabUnit[]) =>
       setLabUnits(list || []),
     );
@@ -365,6 +438,14 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
     );
   }, []);
 
+  const mountedRef = useRef(true);
+  useEffect(
+    () => () => {
+      mountedRef.current = false;
+    },
+    [],
+  );
+
   const rowsRef = useRef<WorklistRow[]>(rows);
   rowsRef.current = rows;
   const rowStatesRef = useRef(rowStates);
@@ -389,7 +470,19 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
         return;
       }
       setLoadError(false);
+      setLoadedOnce(true);
       let loaded = (results?.testResult || []).filter((r) => r.analysisId);
+      const entry = runEntryRef.current;
+      if (entry) {
+        loaded = loaded
+          .filter((row) => isRunEntryRow(row, entry))
+          .slice(0, 1)
+          .map((row) => ({
+            ...row,
+            resultValue: entry.value ?? row.resultValue,
+            analyzerId: entry.analyzerId || row.analyzerId,
+          }));
+      }
       const unsaved: Record<string, WorklistRow> = {};
       if (keepUnsaved) {
         for (const row of rowsRef.current) {
@@ -429,11 +522,15 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
               row.multiSelectResultValues &&
               row.multiSelectResultValues !== "{}",
             ),
-          Boolean(row.waitingRun),
+          blocksEntry(row.waitingRun),
+          Boolean(row.waitingRun?.held),
         );
         if (unsaved[worklistRowKey(row)]) {
           states[worklistRowKey(row)] =
             rowStatesRef.current[worklistRowKey(row)];
+        }
+        if (entry) {
+          states[worklistRowKey(row)] = "DIRTY";
         }
       }
       setRowStates(states);
@@ -451,7 +548,9 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
         setRejectDrafts({});
         setInterpretationDrafts({});
         setNceOpenKey(null);
-        setExpandedRowKey(null);
+        setExpandedRowKey(
+          entry && loaded.length ? worklistRowKey(loaded[0]) : null,
+        );
         setStaleInfo({});
         setEditingAnalysisId(null);
       }
@@ -513,8 +612,13 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
       params.set("doRange", "false");
       params.set("finished", includeFinished ? "true" : "false");
       worklistUrl.current = "/rest/LogbookResults?" + params.toString();
-      getFromOpenElisServer(worklistUrl.current, (results?: WorklistResponse) =>
-        applyLoadedRows(results, savedRowKey),
+      getFromOpenElisServer(
+        worklistUrl.current,
+        (results?: WorklistResponse) => {
+          if (mountedRef.current) {
+            applyLoadedRows(results, savedRowKey);
+          }
+        },
       );
       // FRS: the selected Lab Unit (and filters) are the page's primary
       // state — keep them in the URL so refresh and share links reproduce
@@ -646,12 +750,17 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
     return counts;
   }, [rows]);
 
+  const heldCount = useMemo(
+    () => rows.filter((row) => row.waitingRun?.held).length,
+    [rows],
+  );
   const filteredRows = useMemo(
     () =>
-      statusFilter === "ALL"
+      (statusFilter === "ALL"
         ? rows
-        : rows.filter((row) => row.analysisStatusId === statusFilter),
-    [rows, statusFilter],
+        : rows.filter((row) => row.analysisStatusId === statusFilter)
+      ).filter((row) => showHeld || !row.waitingRun?.held),
+    [rows, statusFilter, showHeld],
   );
 
   const pagedRows = filteredRows;
@@ -700,7 +809,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
   const handleFieldChange = useCallback(
     (
       target: WorklistRow,
-      field: "testMethod" | "analyzerId",
+      field: "testMethod" | "analyzerId" | "eqaAnalystId",
       value: string,
     ) => {
       const key = worklistRowKey(target);
@@ -943,6 +1052,22 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
         setNotificationVisible(true);
         return;
       }
+      if (
+        response &&
+        response.status === 409 &&
+        runEntryRef.current &&
+        !response.analysisLastupdated
+      ) {
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title" }),
+          message:
+            serverMessage(response) ||
+            intl.formatMessage({ id: "run.entry.notInRun" }),
+          kind: NotificationKinds.error,
+        });
+        setNotificationVisible(true);
+        return;
+      }
       if (response && response.status === 409) {
         // FR-O2: the stale editor loses — nothing merged, refresh offered.
         setStaleInfo((current) => ({
@@ -1170,9 +1295,14 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
       if (interpretation && interpretation.trim()) {
         item.interpretation = interpretation.trim();
       }
+      const entry = runEntryRef.current;
       postToOpenElisServerJsonResponse(
         `/rest/results-entry/analysis/${row.analysisId}/result`,
-        JSON.stringify({ testResult: item }),
+        JSON.stringify(
+          entry?.runRowId
+            ? { testResult: item, runRowId: entry.runRowId }
+            : { testResult: item },
+        ),
         (response: SaveResponse | undefined) => {
           const refusal = acknowledgementRefusal(response);
           if (refusal) {
@@ -1219,6 +1349,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
               delete next[key];
               return next;
             });
+            entry?.onAccepted?.();
           }
         },
       );
@@ -1299,6 +1430,22 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
   const beforeSign = useCallback(
     (row: WorklistRow) =>
       new Promise<void>((resolve, reject) => {
+        if (
+          row.eqaPerAnalyst &&
+          !row.eqaAnalystId &&
+          (row.resultValue || row.multiSelectResultValues)
+        ) {
+          addNotification({
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: intl.formatMessage({
+              id: "eqa.result.analystRequired",
+            }),
+            kind: NotificationKinds.error,
+          });
+          setNotificationVisible(true);
+          reject();
+          return;
+        }
         const key = worklistRowKey(row);
         const alerts = owedAlerts(row).filter(
           (alert) => !isConfirmed(key, alert),
@@ -1316,7 +1463,13 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
           customCriticalMessage: configurationProperties?.customCriticalMessage,
         });
       }),
-    [owedAlerts, configurationProperties],
+    [
+      owedAlerts,
+      configurationProperties,
+      addNotification,
+      intl,
+      setNotificationVisible,
+    ],
   );
 
   const handleSave = useCallback(
@@ -1380,7 +1533,10 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
           <Avatar name={row.patientName} id={row.patientId as string} />
         )}
         <div>
-          <div className="unifiedAccession">{accession}</div>
+          <div className="unifiedAccession">
+            {accession}
+            {Boolean(row.eqaSample) && <EQABadge priority={row.eqaPriority} />}
+          </div>
           {subline && <div className="unifiedSubjectSub">{subline}</div>}
           {/* the old Results page's non-conformity indicator, reproduced
               under the sample/patient identity — analysis-level, shared by
@@ -1416,7 +1572,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
 
   return (
     <>
-      <AlertDialog />
+      {!embedded && <AlertDialog />}
       {!embedded && <PageBreadCrumb breadcrumbs={breadcrumbs} />}
       {loading && (
         <Loading
@@ -1613,30 +1769,43 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
         )}
 
         {/* Status filter chips with counts */}
-        <Column lg={16} md={8} sm={4} className="unifiedResultsChips">
-          {!embedded && onOpenRun && (
-            <RunsChip testSectionId={selectedLabUnit} onOpenRun={onOpenRun} />
-          )}
-          <Tag
-            type={statusFilter === "ALL" ? "blue" : "gray"}
-            onClick={() => setStatusFilter("ALL")}
-            className="unifiedResultsChip"
-          >
-            <FormattedMessage id="label.results.status.all" /> ({rows.length})
-          </Tag>
-          {statusOptions
-            .filter((status) => statusCounts[status.id])
-            .map((status) => (
+        {!runEntry && (
+          <Column lg={16} md={8} sm={4} className="unifiedResultsChips">
+            {!embedded && onOpenRun && (
+              <RunsChip testSectionId={selectedLabUnit} onOpenRun={onOpenRun} />
+            )}
+            <Tag
+              type={statusFilter === "ALL" ? "blue" : "gray"}
+              onClick={() => setStatusFilter("ALL")}
+              className="unifiedResultsChip"
+            >
+              <FormattedMessage id="label.results.status.all" /> ({rows.length})
+            </Tag>
+            {statusOptions
+              .filter((status) => statusCounts[status.id])
+              .map((status) => (
+                <Tag
+                  key={status.id}
+                  type={statusFilter === status.id ? "blue" : "gray"}
+                  onClick={() => setStatusFilter(status.id)}
+                  className="unifiedResultsChip"
+                >
+                  {status.value} ({statusCounts[status.id]})
+                </Tag>
+              ))}
+            {(heldCount > 0 || !showHeld) && (
               <Tag
-                key={status.id}
-                type={statusFilter === status.id ? "blue" : "gray"}
-                onClick={() => setStatusFilter(status.id)}
+                type={showHeld ? "blue" : "gray"}
+                onClick={() => setShowHeld((shown) => !shown)}
                 className="unifiedResultsChip"
+                data-testid="held-chip"
+                aria-pressed={showHeld}
               >
-                {status.value} ({statusCounts[status.id]})
+                <FormattedMessage id="run.filter.held" /> ({heldCount})
               </Tag>
-            ))}
-        </Column>
+            )}
+          </Column>
+        )}
 
         {loadError && (
           <Column lg={16} md={8} sm={4}>
@@ -1664,7 +1833,23 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
           </Column>
         )}
 
-        <Column lg={16} md={8} sm={4}>
+        {runEntry && loadedOnce && !loading && !loadError && !rows.length && (
+          <Column lg={16} md={8} sm={4}>
+            <InlineNotification
+              kind="info"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({ id: "run.entry.noPendingRow" })}
+            />
+          </Column>
+        )}
+
+        <Column
+          lg={16}
+          md={8}
+          sm={4}
+          style={runEntry && !rows.length ? { display: "none" } : undefined}
+        >
           {arrows.show && <ServerPageArrows {...arrows} />}
           <TableContainer>
             {/* The expanded panel renders a second table (History) inside this
@@ -1766,12 +1951,14 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                               <FormattedMessage id="label.results.referredOut" />
                             </Tag>
                           )}
-                          {state === "WAITING" && row.waitingRun && (
-                            <WaitingTag
-                              run={row.waitingRun}
-                              onOpenRun={onOpenRun}
-                            />
-                          )}
+                          {row.waitingRun &&
+                            (state === "WAITING" ||
+                              isBatchedRun(row.waitingRun)) && (
+                              <WaitingTag
+                                run={row.waitingRun}
+                                onOpenRun={onOpenRun}
+                              />
+                            )}
                         </TableCell>
                         <TableCell className="unifiedResultsSmallCell">
                           {methods.find((m) => m.id === row.testMethod)
@@ -1816,6 +2003,47 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                               }
                             />
                           </span>
+                          {runEntry?.runRowId &&
+                            showSave(state) &&
+                            (row.resultValue === runEntry.value ? (
+                              <Tag
+                                type="teal"
+                                size="sm"
+                                data-testid="run-entry-analyzer-reported"
+                              >
+                                <FormattedMessage id="run.entry.analyzerReported" />
+                              </Tag>
+                            ) : (
+                              <Tag
+                                type="warm-gray"
+                                size="sm"
+                                data-testid="run-entry-edited"
+                              >
+                                <FormattedMessage
+                                  id="run.entry.edited"
+                                  values={{
+                                    value: runEntry.reported || runEntry.value,
+                                  }}
+                                />
+                              </Tag>
+                            ))}
+                          {runEntry?.runRowId &&
+                            showSave(state) &&
+                            unitsDiffer(runEntry.units, row.unitsOfMeasure) && (
+                              <Tag
+                                type="red"
+                                size="sm"
+                                data-testid="run-entry-units-differ"
+                              >
+                                <FormattedMessage
+                                  id="run.entry.unitsDiffer"
+                                  values={{
+                                    analyzer: runEntry.units,
+                                    test: row.unitsOfMeasure,
+                                  }}
+                                />
+                              </Tag>
+                            )}
                         </TableCell>
                         <TableCell>
                           {statusName(row.analysisStatusId) ? (
@@ -1850,7 +2078,9 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                                   : SignatureMeaning.AUTHORED
                               }
                               context={`${intl.formatMessage({
-                                id: "label.results.save",
+                                id: runEntry
+                                  ? "run.action.accept"
+                                  : "label.results.save",
                               })} ${row.accessionNumber} - ${row.testName}`}
                               recordType="RESULT"
                               recordId={row.analysisId}
@@ -1858,7 +2088,13 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                               onSign={() => handleSave(row)}
                               size="sm"
                             >
-                              <FormattedMessage id="label.results.save" />
+                              <FormattedMessage
+                                id={
+                                  runEntry
+                                    ? "run.action.accept"
+                                    : "label.results.save"
+                                }
+                              />
                             </ESignatureButton>
                           )}
                         </TableCell>
@@ -1871,6 +2107,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                               domain={domain}
                               editable={isRowEditable(state)}
                               editing={isModifyingSavedResult(state)}
+                              inRun={state === "WAITING"}
                               testSectionId={selectedLabUnit || undefined}
                               loadedAnalyzerId={loadedAnalyzers[key]}
                               methods={methods}
@@ -1972,7 +2209,9 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                                           : SignatureMeaning.AUTHORED
                                       }
                                       context={`${intl.formatMessage({
-                                        id: "label.results.save",
+                                        id: runEntry
+                                          ? "run.action.accept"
+                                          : "label.results.save",
                                       })} ${row.accessionNumber} - ${row.testName}`}
                                       recordType="RESULT"
                                       recordId={row.analysisId}
@@ -1980,7 +2219,13 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                                       onSign={() => handleSave(row)}
                                       size="sm"
                                     >
-                                      <FormattedMessage id="label.results.save" />
+                                      <FormattedMessage
+                                        id={
+                                          runEntry
+                                            ? "run.action.accept"
+                                            : "label.results.save"
+                                        }
+                                      />
                                     </ESignatureButton>
                                   )}
                                 </>
@@ -2038,15 +2283,17 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
               </TableBody>
             </Table>
           </TableContainer>
-          <Pagination
-            {...serverPaginationProps({
-              paging,
-              rowsOnPage: filteredRows.length,
-              pageSize: serverPageSize,
-              onPageRequest: loadWorklistPage,
-              intl,
-            })}
-          />
+          {!runEntry && (
+            <Pagination
+              {...serverPaginationProps({
+                paging,
+                rowsOnPage: filteredRows.length,
+                pageSize: serverPageSize,
+                onPageRequest: loadWorklistPage,
+                intl,
+              })}
+            />
+          )}
         </Column>
       </Grid>
       <ResultAlertModal
