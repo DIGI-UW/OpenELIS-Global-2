@@ -28,8 +28,13 @@ import {
 } from "../../../utils/Utils";
 import { FlagChip } from "../flags";
 import PageBreadCrumb from "../../../common/PageBreadCrumb";
+import { AlertDialog } from "../../../common/CustomNotification";
 import RunsChip from "./RunsChip";
 import RunQcBlock, { RunQc } from "./RunQcBlock";
+import RunExceptions, {
+  RunExceptionKind,
+  RunExceptionRecord,
+} from "./RunExceptions";
 import UnifiedResults from "../UnifiedResults";
 import useSiteDateFormat from "../../../common/useSiteDateFormat";
 import { formatRunTime, runSourceKey, runStateKey } from "./runFormat";
@@ -64,6 +69,7 @@ export interface RunHeader {
   rawAvailable: boolean;
   chipCounts?: RunChipCounts;
   qc?: RunQc | null;
+  exceptions?: RunExceptionRecord[] | null;
 }
 
 interface RunRow {
@@ -82,6 +88,10 @@ interface RunRow {
   testId?: string | null;
   componentId?: string | null;
   stagedResult?: string | null;
+  exceptionKind?: RunExceptionKind | null;
+  code?: string | null;
+  holdCause?: "QC_FAILED" | "QC_MISSING" | null;
+  missingControl?: boolean;
 }
 
 interface RunRowsPage {
@@ -310,6 +320,13 @@ const RunView: React.FC<RunViewProps> = ({
         </Tag>
       );
     }
+    if (row.exceptionKind) {
+      return (
+        <Tag size="sm" type="purple">
+          <FormattedMessage id={`run.exception.${row.exceptionKind}`} />
+        </Tag>
+      );
+    }
     if (row.importIssueReason) {
       return (
         <Tag size="sm" type="red">
@@ -320,14 +337,31 @@ const RunView: React.FC<RunViewProps> = ({
     if (row.category === "HELD") {
       return (
         <Tag size="sm" type="red" renderIcon={WarningFilled}>
-          <FormattedMessage id="run.row.held" />
+          <FormattedMessage
+            id={
+              row.holdCause === "QC_MISSING"
+                ? "run.row.heldQcMissing"
+                : "run.row.held"
+            }
+          />
         </Tag>
       );
     }
     return (
-      <Tag size="sm" type="green">
-        <FormattedMessage id="run.row.ready" />
-      </Tag>
+      <>
+        <Tag size="sm" type="green">
+          <FormattedMessage id="run.row.ready" />
+        </Tag>
+        {row.missingControl && (
+          <Tag
+            size="sm"
+            type="warm-gray"
+            data-testid={`run-row-no-control-${row.id}`}
+          >
+            <FormattedMessage id="run.row.noControl" />
+          </Tag>
+        )}
+      </>
     );
   };
 
@@ -341,13 +375,17 @@ const RunView: React.FC<RunViewProps> = ({
       ? "run.entry.control"
       : row.duplicate
         ? "run.entry.duplicate"
-        : row.importIssueReason
-          ? "run.entry.importIssue"
-          : row.category === "HELD"
-            ? "run.entry.testHeld"
-            : header?.state !== "OPEN" && header?.state !== "HELD"
-              ? "run.entry.closed"
-              : null;
+        : row.exceptionKind
+          ? "run.entry.exception"
+          : row.importIssueReason
+            ? "run.entry.importIssue"
+            : row.category === "HELD"
+              ? row.holdCause === "QC_MISSING"
+                ? "run.entry.testHeldMissing"
+                : "run.entry.testHeld"
+              : header?.state !== "OPEN" && header?.state !== "HELD"
+                ? "run.entry.closed"
+                : null;
     return (
       <div className="runRowEntry" data-testid={`run-row-entry-${row.id}`}>
         <p className="runRowProvenance" data-testid="run-row-provenance">
@@ -404,6 +442,7 @@ const RunView: React.FC<RunViewProps> = ({
 
   return (
     <>
+      <AlertDialog />
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Grid fullWidth className="unifiedResultsPage runView">
         <Column lg={16} md={8} sm={4}>
@@ -464,6 +503,7 @@ const RunView: React.FC<RunViewProps> = ({
             <RunQcBlock
               runId={header.id}
               qc={header.qc}
+              active={header.state === "OPEN" || header.state === "HELD"}
               onOpenRun={onOpenRun}
               onRecorded={(qc) => {
                 setHeader((current) =>
@@ -554,6 +594,15 @@ const RunView: React.FC<RunViewProps> = ({
                 </pre>
               )}
             </Tile>
+          </Column>
+        )}
+        {header?.exceptions && header.exceptions.length > 0 && (
+          <Column lg={16} md={8} sm={4}>
+            <RunExceptions
+              runId={header.id}
+              exceptions={header.exceptions}
+              onResolved={accepted}
+            />
           </Column>
         )}
         {header && (
@@ -741,6 +790,17 @@ const RunView: React.FC<RunViewProps> = ({
                         <TableCell>
                           {row.testName || "—"}
                           {row.part ? ` — ${row.part}` : ""}
+                          {row.code && row.code !== row.testName && (
+                            <div
+                              className="unifiedFieldHint"
+                              data-testid={`run-row-code-${row.id}`}
+                            >
+                              <FormattedMessage
+                                id="run.row.analyzerCode"
+                                values={{ code: row.code }}
+                              />
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>{row.value || "—"}</TableCell>
                         <TableCell>{row.units || "—"}</TableCell>

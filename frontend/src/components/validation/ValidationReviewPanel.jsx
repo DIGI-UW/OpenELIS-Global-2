@@ -21,6 +21,7 @@ import {
 } from "../utils/Utils";
 import ReferenceSection from "../resultPage/unified/ReferenceSection";
 import HistorySection from "../resultPage/unified/HistorySection";
+import RunQcProvenance from "../resultPage/unified/runs/RunQcProvenance";
 import CriticalBanner from "../resultPage/unified/CriticalBanner";
 import ResultAlertModal, {
   acknowledgementRefusal,
@@ -343,7 +344,8 @@ const ValidationReviewPanel = ({
   const qcAckBlocksRelease = Boolean(qcAck?.required && !qcAck?.satisfied);
   const qcHoldBlocksRelease =
     row.qcHold === true &&
-    configurationProperties?.QC_FAIL_BLOCKS_VALIDATION === "true";
+    (row.qcHoldBlocksRelease === true ||
+      configurationProperties?.QC_FAIL_BLOCKS_VALIDATION === "true");
   const selfValidationBlocked = row.selfValidationBlocked === true;
   const review = reviewStateOf(row);
   const reviewBlocked = Boolean(review.blockedReason) && !selfValidationBlocked;
@@ -994,13 +996,15 @@ const ValidationReviewPanel = ({
         <ReferenceSection
           sectionId="qc"
           title={<FormattedMessage id="label.validation.review.qcSection" />}
-          summary={
-            qcStatus
-              ? intl.formatMessage({
-                  id: `label.validation.review.qc.${qcStatus}`,
-                })
-              : ""
-          }
+          summary={[
+            qcStatus &&
+              intl.formatMessage({
+                id: `label.validation.review.qc.${qcStatus}`,
+              }),
+            row.runQc?.runLabel,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
           open={sectionOpen("qc")}
           onToggle={toggleSection("qc")}
         >
@@ -1011,9 +1015,13 @@ const ValidationReviewPanel = ({
               })}
             </Tag>
           )}
-          <div className="unifiedFieldHint">
-            <FormattedMessage id="label.validation.review.reagents.followUp" />
-          </div>
+          {row.runQc ? (
+            <RunQcProvenance runQc={row.runQc} />
+          ) : (
+            <div className="unifiedFieldHint">
+              <FormattedMessage id="label.validation.review.reagents.followUp" />
+            </div>
+          )}
         </ReferenceSection>
 
         <OrderInfoSection
