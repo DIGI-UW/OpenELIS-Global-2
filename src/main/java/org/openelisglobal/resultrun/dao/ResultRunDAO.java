@@ -35,6 +35,20 @@ public interface ResultRunDAO extends BaseDAO<ResultRun, Long> {
      */
     List<String> getBatchAnalysisIdsAwaiting(Long runId, String cancelledStatusId, String testId);
 
+    /**
+     * The open and held runs of one of the analyses (FR-B3), as analysis id, run
+     * id, test id.
+     */
+    List<Object[]> getActiveRunsOfOne(Collection<String> analysisIds);
+
+    /**
+     * The open or held run of one a control recorded on the analysis's row opened.
+     */
+    Optional<ResultRun> findOpenRunOfOne(String analysisId);
+
+    /** The run each of the results was recorded in, by result id. */
+    java.util.Map<String, Long> getRunIdsOfResults(Collection<String> resultIds);
+
     /** How many analyses have a value recorded in the run. */
     int countResultedAnalyses(Long runId);
 

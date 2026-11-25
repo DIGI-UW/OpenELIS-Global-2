@@ -304,7 +304,12 @@ const RunView: React.FC<RunViewProps> = ({
    * A workplan batch's rows have no analyzer value to act on in bulk; each is
    * entered from its own Results Entry panel (FR-D5).
    */
-  const selectable = header?.source !== "WORKPLAN";
+  // A workplan batch's run (FR-B2) and a run of one (FR-B3) hold the analyses
+  // they were planned for, not staged analyzer values: no bulk selection, no
+  // staged value to prefill, and the run's lot rather than its method.
+  const planned =
+    header?.source === "WORKPLAN" || header?.source === "RESULT_ENTRY";
+  const selectable = !planned;
   const pageAllSelected =
     pageRows.length > 0 && pageRows.every((row) => isSelected(selection, row));
   const togglePage = () =>
@@ -421,7 +426,15 @@ const RunView: React.FC<RunViewProps> = ({
     return (
       <div className="runRowEntry" data-testid={`run-row-entry-${row.id}`}>
         <p className="runRowProvenance" data-testid="run-row-provenance">
-          {header?.source === "WORKPLAN" ? (
+          {header?.source === "RESULT_ENTRY" ? (
+            <FormattedMessage
+              id="run.entry.provenanceOfOne"
+              values={{
+                run: header.label ?? "",
+                test: row.testName || "—",
+              }}
+            />
+          ) : header?.source === "WORKPLAN" ? (
             <FormattedMessage
               id="run.entry.provenanceBatch"
               values={{
@@ -449,9 +462,7 @@ const RunView: React.FC<RunViewProps> = ({
             <FormattedMessage id="run.entry.noLot" />
           )}
         </p>
-        {notAccepted ||
-        !row.accessionNumber ||
-        (!row.value && header?.source !== "WORKPLAN") ? (
+        {notAccepted || !row.accessionNumber || (!row.value && !planned) ? (
           <InlineNotification
             kind="info"
             lowContrast
@@ -467,7 +478,7 @@ const RunView: React.FC<RunViewProps> = ({
             accessionNumber={row.accessionNumber}
             runEntry={{
               runId,
-              runRowId: header?.source === "WORKPLAN" ? null : row.id,
+              runRowId: planned ? null : row.id,
               testId: row.testId,
               componentId: row.componentId,
               value: row.stagedResult || row.value,
@@ -577,10 +588,8 @@ const RunView: React.FC<RunViewProps> = ({
                   intl.formatMessage({ id: runSourceKey(header.source) }),
                 )}
                 {setting("label.results.analyzer", header.analyzerName)}
-                {header.source !== "WORKPLAN" &&
-                  setting("label.results.method", header.method)}
-                {header.source === "WORKPLAN" &&
-                  setting("run.label.reagentLot", header.reagentLot)}
+                {!planned && setting("label.results.method", header.method)}
+                {planned && setting("run.label.reagentLot", header.reagentLot)}
                 {header.batchWorkplanId &&
                   setting(
                     "run.label.batch",
@@ -649,7 +658,7 @@ const RunView: React.FC<RunViewProps> = ({
                   </Button>
                 )}
                 {header.analyzerId &&
-                  header.source !== "WORKPLAN" &&
+                  !planned &&
                   ["OPEN", "HELD"].includes(header.state) && (
                     <Link
                       href={`/AnalyzerResults?id=${encodeURIComponent(header.analyzerId)}`}

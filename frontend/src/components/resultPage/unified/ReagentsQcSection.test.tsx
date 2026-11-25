@@ -359,6 +359,107 @@ describe("ReagentsQcSection (R5/R6)", () => {
     expect(screen.queryByText(/Control result recorded/)).toBeNull();
   });
 
+  it("OGC-1200: a control on a row with no stored result opens its run of one and the section shows the run", () => {
+    respondWith({
+      "/rest/results-entry/test/13/reagents": [],
+      "/rest/result-runs/248": {
+        id: 248,
+        label: "RUN-248",
+        source: "RESULT_ENTRY",
+        state: "HELD",
+        reagentLot: null,
+        qc: {
+          overall: "HELD",
+          tests: [
+            { testId: "13", testName: "HIV", verdict: "FAIL", controls: [] },
+          ],
+        },
+      },
+    });
+    postMock.mockImplementation(
+      (_url: string, _body: string, cb: (r: unknown) => void) => {
+        if (typeof cb === "function") {
+          cb({ id: "qc-1", runId: 248 });
+        }
+      },
+    );
+    wrap(
+      <ReagentsQcSection
+        testId="13"
+        analysisId="441"
+        testSectionId="36"
+        resultType="D"
+        editable
+        open
+        onToggle={() => {}}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Control line"), {
+      target: { value: "INVALID" },
+    });
+    fireEvent.change(screen.getByLabelText("Kit lot"), {
+      target: { value: "UAT kit" },
+    });
+    fireEvent.click(screen.getByTestId("qc-record"));
+
+    expect(postMock.mock.calls[0][0]).toBe(
+      "/rest/result-runs/of-analysis/441/controls",
+    );
+    const summary = screen.getByTestId("row-run-summary");
+    expect(summary).toHaveTextContent("In RUN-248, Manual entry.");
+    expect(summary).toHaveTextContent("Held");
+    expect(screen.queryByTestId("qc-record")).not.toBeInTheDocument();
+  });
+
+  it("OGC-1200: a row in a run shows the run read-only, with no use or control to record", () => {
+    respondWith({
+      "/rest/results-entry/test/13/reagents": LINKS,
+      "/rest/result-runs/247": {
+        id: 247,
+        label: "RUN-247",
+        source: "RESULT_ENTRY",
+        state: "COMPLETE",
+        reagentLot: "LOT-2026-0421",
+        qc: {
+          overall: "NOT_REQUIRED",
+          tests: [
+            {
+              testId: "13",
+              testName: "HIV",
+              verdict: "NOT_REQUIRED",
+              controls: [],
+            },
+          ],
+        },
+      },
+    });
+    wrap(
+      <ReagentsQcSection
+        testId="13"
+        analysisId="441"
+        testSectionId="36"
+        resultType="N"
+        runId={247}
+        hasSavedResult
+        editable={false}
+        open
+        onToggle={() => {}}
+      />,
+    );
+
+    const summary = screen.getByTestId("row-run-summary");
+    expect(summary).toHaveTextContent("Recorded in RUN-247, Manual entry.");
+    expect(screen.getByTestId("row-run-lot")).toHaveTextContent(
+      "Reagent lot LOT-2026-0421.",
+    );
+    expect(screen.getByTestId("row-run-link")).toHaveAttribute(
+      "href",
+      "/Results?run=247",
+    );
+    expect(screen.queryByTestId("qc-record")).not.toBeInTheDocument();
+    expect(screen.queryByText("Record use")).not.toBeInTheDocument();
+  });
+
   it("a passing control confirms without the reporting-blocked warning", () => {
     respondWith({ "/rest/results-entry/test/13/reagents": [] });
     postMock.mockImplementation(

@@ -433,6 +433,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         List<IResultUpdate> updaters = new ArrayList<>(ResultUpdateRegister.getRegisteredUpdaters());
         if (workplanRuns != null) {
             updaters.add(workplanRuns);
+            updaters.add(resultRunService.recordRunsOfOne(getSysUserId(request)));
         }
         updaters.add(acknowledgementService.acknowledgementRecorder(alerts,
                 runValue.isPresent() ? ResultEntryAcknowledgement.SOURCE_ANALYZER_REVIEW

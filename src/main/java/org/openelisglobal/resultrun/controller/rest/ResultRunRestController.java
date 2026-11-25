@@ -167,6 +167,23 @@ public class ResultRunRestController extends BaseRestController {
         return ResponseEntity.ok(runQcService.qcBlock(id));
     }
 
+    /**
+     * A control recorded on a row in no run (FR-B3, FR-D7): it opens the row's run
+     * of one and is recorded on it. Answers with the stored control, which names
+     * the run.
+     */
+    @PostMapping(value = "/of-analysis/{analysisId}/controls", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> recordRowControl(HttpServletRequest request, @PathVariable String analysisId,
+            @RequestBody BenchQCCaptureForm capture) {
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED).body(
+                    resultRunService.recordRowControl(analysisId, capture, viewer(request), getSysUserId(request)));
+        } catch (IllegalArgumentException e) {
+            String message = e.getMessage() == null ? "Invalid control result" : e.getMessage();
+            return ResponseEntity.badRequest().body(Map.of("message", message));
+        }
+    }
+
     /** The reagent lots a workplan run may record (FR-E3). */
     @GetMapping(value = "/{id}/lot-options", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<RunLotOptions> lotOptions(HttpServletRequest request, @PathVariable Long id) {

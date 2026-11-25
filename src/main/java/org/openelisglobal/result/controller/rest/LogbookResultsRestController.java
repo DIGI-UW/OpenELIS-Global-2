@@ -561,6 +561,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                 .concat(actionDataSet.getNewResults().stream(), actionDataSet.getModifiedResults().stream())
                 .map(resultSet -> resultSet.result).toList();
         updaters.add(resultRunService.recordIntoWorkplanRuns(savedResults, getSysUserId(request)));
+        updaters.add(resultRunService.recordRunsOfOne(getSysUserId(request)));
         runQcService.detachFromDecidedRuns(savedResults);
 
         try {

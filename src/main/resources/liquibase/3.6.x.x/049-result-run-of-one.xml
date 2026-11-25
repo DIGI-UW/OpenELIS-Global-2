@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+ <changeSet id="OGC-1200-result-run-of-one" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <not>
+    <columnExists schemaName="clinlims" tableName="result_run" columnName="analysis_id"/>
+   </not>
+  </preConditions>
+  <comment>OGC-1200 FR-B3: a result saved on a row in no run is a run of one, and a control recorded on that row before the save opens it. The run names its one analysis.</comment>
+  <addColumn schemaName="clinlims" tableName="result_run">
+   <column name="analysis_id" type="numeric(10)"/>
+  </addColumn>
+  <createIndex schemaName="clinlims" tableName="result_run" indexName="result_run_analysis_idx">
+   <column name="analysis_id"/>
+  </createIndex>
+  <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="result_run" baseColumnNames="analysis_id"
+   constraintName="result_run_analysis_fk" referencedTableSchemaName="clinlims" referencedTableName="analysis"
+   referencedColumnNames="id" onDelete="SET NULL"/>
+ </changeSet>
+</databaseChangeLog>
