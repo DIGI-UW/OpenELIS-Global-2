@@ -339,8 +339,8 @@ public class SamplePatientEntryEOrderQuestionnaireAdoptionTest {
         QuestionnaireResponse qr = new QuestionnaireResponse();
         qr.setId(expectedUuid.toString());
 
-        when(questionnaireStorageService.getQuestionnaireResponseForServiceRequest("sr-pref-1", localPatientUuid.toString()))
-                .thenReturn(Optional.of(qr));
+        when(questionnaireStorageService.getQuestionnaireResponseForServiceRequest("sr-pref-1",
+                localPatientUuid.toString())).thenReturn(Optional.of(qr));
 
         UUID resolved = samplePatientService.resolveAdoptedQuestionnaireResponseUuid(updateData);
         assertEquals(expectedUuid, resolved);
@@ -402,8 +402,8 @@ public class SamplePatientEntryEOrderQuestionnaireAdoptionTest {
         when(questionnaireStorageService.getQuestionnaireResponseForServiceRequest("sr-retry-1",
                 localPatientUuid.toString())).thenReturn(Optional.empty());
         // Fallback retry with task.for remote patient finds the response
-        when(questionnaireStorageService.getQuestionnaireResponseForServiceRequest("sr-retry-1",
-                "remote-task-pat-456")).thenReturn(Optional.of(importedQr));
+        when(questionnaireStorageService.getQuestionnaireResponseForServiceRequest("sr-retry-1", "remote-task-pat-456"))
+                .thenReturn(Optional.of(importedQr));
 
         samplePatientService.resolveAndPrefillQuestionnaireResponse(orderItem, task, eOrder);
 
@@ -439,8 +439,8 @@ public class SamplePatientEntryEOrderQuestionnaireAdoptionTest {
         when(questionnaireStorageService.getQuestionnaireResponseForServiceRequest("sr-retry-2",
                 localPatientUuid.toString())).thenReturn(Optional.empty());
         // task.for patient lookup succeeds
-        when(questionnaireStorageService.getQuestionnaireResponseForServiceRequest("sr-retry-2",
-                "remote-task-pat-789")).thenReturn(Optional.of(qr));
+        when(questionnaireStorageService.getQuestionnaireResponseForServiceRequest("sr-retry-2", "remote-task-pat-789"))
+                .thenReturn(Optional.of(qr));
 
         UUID resolved = samplePatientService.resolveAdoptedQuestionnaireResponseUuid(updateData);
         assertEquals(expectedUuid, resolved);

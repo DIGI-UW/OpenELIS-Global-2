@@ -86,7 +86,8 @@ public class SamplePatientEntryRestControllerEOrderPrefillTest {
             }
             return mock(clazz);
         });
-        previousFactory = (AutowireCapableBeanFactory) ReflectionTestUtils.getField(org.openelisglobal.spring.util.SpringContext.class, "factory");
+        previousFactory = (AutowireCapableBeanFactory) ReflectionTestUtils
+                .getField(org.openelisglobal.spring.util.SpringContext.class, "factory");
         ReflectionTestUtils.setField(org.openelisglobal.spring.util.SpringContext.class, "factory", beanFactory);
 
         MessageSource messageSource = mock(MessageSource.class);

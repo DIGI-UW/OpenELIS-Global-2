@@ -1687,8 +1687,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             for (Reference basedOn : task.getBasedOn()) {
                 if (basedOn.hasReferenceElement()) {
                     String serviceRequestId = basedOn.getReferenceElement().getIdPart();
-                    Optional<QuestionnaireResponse> found = findQuestionnaireResponseForServiceRequest(
-                            serviceRequestId, candidatePatientIds);
+                    Optional<QuestionnaireResponse> found = findQuestionnaireResponseForServiceRequest(serviceRequestId,
+                            candidatePatientIds);
                     if (found.isPresent()) {
                         importedQr = found.get();
                         break;
@@ -1738,18 +1738,17 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             for (Reference basedOn : task.getBasedOn()) {
                 if (basedOn.hasReferenceElement()) {
                     String serviceRequestId = basedOn.getReferenceElement().getIdPart();
-                    Optional<QuestionnaireResponse> found = findQuestionnaireResponseForServiceRequest(
-                            serviceRequestId, candidatePatientIds);
+                    Optional<QuestionnaireResponse> found = findQuestionnaireResponseForServiceRequest(serviceRequestId,
+                            candidatePatientIds);
                     if (found.isPresent() && hasMeaningfulId(found.get())) {
-                        return QuestionnaireStorageServiceImpl
-                                .toStorageUuid(found.get().getIdElement().getIdPart());
+                        return QuestionnaireStorageServiceImpl.toStorageUuid(found.get().getIdElement().getIdPart());
                     }
                 }
             }
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getName(), "resolveAdoptedQuestionnaireResponseUuid",
-                    "Failed to resolve adopted questionnaire response for electronic order: " + eOrder.getId()
-                            + " - " + e.getMessage());
+                    "Failed to resolve adopted questionnaire response for electronic order: " + eOrder.getId() + " - "
+                            + e.getMessage());
         }
         return null;
     }
@@ -1768,8 +1767,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         return candidateIds;
     }
 
-    private Optional<QuestionnaireResponse> findQuestionnaireResponseForServiceRequest(
-            String serviceRequestId, List<String> candidatePatientIds) {
+    private Optional<QuestionnaireResponse> findQuestionnaireResponseForServiceRequest(String serviceRequestId,
+            List<String> candidatePatientIds) {
         if (candidatePatientIds.isEmpty()) {
             return questionnaireStorageService.getQuestionnaireResponseForServiceRequest(serviceRequestId, null);
         }
