@@ -1,14 +1,19 @@
 package org.openelisglobal.notification.controller.rest;
 
 import jakarta.validation.Valid;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.controller.BaseController;
+import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.notification.form.TestNotificationConfigForm;
 import org.openelisglobal.notification.service.NotificationPayloadTemplateService;
 import org.openelisglobal.notification.service.NotificationPayloadTemplateServiceImpl.DisallowedFieldException;
 import org.openelisglobal.notification.service.TestNotificationConfigService;
+import org.openelisglobal.notification.valueholder.NotificationConfigOption;
+import org.openelisglobal.notification.valueholder.NotificationPayloadTemplate;
 import org.openelisglobal.notification.valueholder.NotificationPayloadTemplate.NotificationPayloadType;
 import org.openelisglobal.notification.valueholder.TestNotificationConfig;
 import org.openelisglobal.test.service.TestService;
@@ -84,6 +89,10 @@ public class TestNotificationConfigRestController extends BaseController {
             // return displayNotificationConfig(form.getConfig().getTest().getId());
             throw new RuntimeException("Validation errors occurred");
         }
+        if (hasSubjectWithoutMessage(form.getConfig())) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", MessageUtil.getMessage("testnotification.template.messageRequired")));
+        }
         String sysUserId = this.getSysUserId(request);
         try {
             testNotificationConfigService.saveStatusAndMessages(form.getConfig(), sysUserId);
@@ -98,6 +107,24 @@ public class TestNotificationConfigRestController extends BaseController {
         // redirectAttributes.addFlashAttribute(FWD_SUCCESS, true);
         // return findForward(FWD_SUCCESS_INSERT, form);
         return ResponseEntity.ok(form);
+    }
+
+    /**
+     * A template is kept only with a message, so a subject without one used to be
+     * dropped after a successful save.
+     */
+    private static boolean hasSubjectWithoutMessage(TestNotificationConfig config) {
+        if (config == null) {
+            return false;
+        }
+        List<NotificationPayloadTemplate> templates = new ArrayList<>();
+        templates.add(config.getDefaultPayloadTemplate());
+        for (NotificationConfigOption option : config.getOptions()) {
+            templates.add(option.getPayloadTemplate());
+        }
+        return templates.stream().filter(Objects::nonNull)
+                .anyMatch(t -> !GenericValidator.isBlankOrNull(t.getSubjectTemplate())
+                        && GenericValidator.isBlankOrNull(t.getMessageTemplate()));
     }
 
     @Override

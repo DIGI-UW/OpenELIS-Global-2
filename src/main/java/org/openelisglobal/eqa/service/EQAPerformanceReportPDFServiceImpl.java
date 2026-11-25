@@ -204,6 +204,7 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
         Map<String, String> analysts = analystNames(results);
         Map<Long, String> targets = revealedTargets(results);
         Map<Long, String> nceNumbers = nceNumbers(results);
+        Map<Long, String> sampleCodes = participantSampleCodes(results);
 
         List<Row> rows = new ArrayList<>();
         for (EQAParticipantResult result : results) {
@@ -212,17 +213,15 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
             String analyteKey = key(result.getAnalyteId());
             String analystKey = key(result.getAssignedAnalystId());
             rows.add(new Row(result.getRound() == null ? null : result.getRound().getRoundNumber(),
-                    sections.get(result.getId()), analytes.getOrDefault(analyteKey, analyteKey),
-                    result.getResultValue(), targets.get(result.getId()), result.getResultUnit(), result.getZScore(),
-                    result.getPerformanceStatus(), nceNumbers.get(result.getId()),
-                    analysts.getOrDefault(analystKey, analystKey),
+                    sampleCodes.get(result.getId()), sections.get(result.getId()),
+                    analytes.getOrDefault(analyteKey, analyteKey), result.getResultValue(), targets.get(result.getId()),
+                    result.getResultUnit(), result.getZScore(), result.getPerformanceStatus(),
+                    nceNumbers.get(result.getId()), analysts.getOrDefault(analystKey, analystKey),
                     result.getSubmittedAt() == null ? null : formatDay(result.getSubmittedAt()),
                     result.getScoreReceivedAt() == null ? null : formatDay(result.getScoreReceivedAt()),
                     result.getSubmissionStatus() == EQASubmissionStatus.MISSED_DEADLINE));
         }
-        rows.sort(Comparator.comparing(Row::round, Comparator.nullsLast(Comparator.naturalOrder()))
-                .thenComparing(Row::section, Comparator.nullsLast(Comparator.naturalOrder()))
-                .thenComparing(Row::analyte, Comparator.nullsLast(Comparator.naturalOrder())));
+        rows.sort(SCORING_ORDER);
         return rows;
     }
 
@@ -238,42 +237,56 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
         // qualitative one is numeric-typed there and so lives only on the panel
         // sample that sealed it.
         Map<Long, String> sealedTargets = providerScoringService.sealedTargetsByResult(cycle.getId());
+        List<EQAResult> results = providerScoringService.reportedResultsFor(cycle.getId(), organizationId);
+        Map<Long, String> sampleCodes = panelSampleCodes(
+                results.stream().map(EQAResult::getPanelSampleId).filter(Objects::nonNull).distinct().toList());
         List<Row> rows = new ArrayList<>();
-        for (EQAResult result : providerScoringService.reportedResultsFor(cycle.getId(), organizationId)) {
+        for (EQAResult result : results) {
             Test test = testOf(result.getTestId());
-            rows.add(new Row(roundNumberOf(result), sectionOf(test), analyteLabelOf(test, result.getTestId()),
-                    reportedOf(result), targetOf(result, sealedTargets), null, result.getZScore(),
-                    result.getPerformanceStatus(), null, null,
-                    result.getSubmissionDate() == null ? null : formatDay(result.getSubmissionDate()), null,
+            rows.add(new Row(roundNumberOf(result), sampleCodes.get(result.getPanelSampleId()), sectionOf(test),
+                    analyteLabelOf(test, result.getTestId()), reportedOf(result),
+                    EQAResultTarget.of(result, sealedTargets), null, result.getZScore(), result.getPerformanceStatus(),
+                    null, null, result.getSubmissionDate() == null ? null : formatDay(result.getSubmissionDate()), null,
                     Boolean.TRUE.equals(result.getIsLateSubmission())));
         }
-        rows.sort(Comparator.comparing(Row::round, Comparator.nullsLast(Comparator.naturalOrder()))
-                .thenComparing(Row::section, Comparator.nullsLast(Comparator.naturalOrder()))
-                .thenComparing(Row::analyte, Comparator.nullsLast(Comparator.naturalOrder())));
+        rows.sort(SCORING_ORDER);
         return rows;
     }
 
     /**
-     * A numeric target is copied onto the result when it is scored, so that is the
-     * value it was actually judged against. The sealed target is consulted only for
-     * a qualitative answer, whose target is a word that {@code target_value} —
-     * numeric — cannot hold. The sealed targets are keyed by result, so each of two
-     * samples of one analyte shows its own.
+     * The panel sample each result answers: the code the provider gave it, or for
+     * this lab's own panel the sample it was drawn from.
      */
-    private static String targetOf(EQAResult result, Map<Long, String> sealedTargets) {
-        if (result.getResultText() != null) {
-            return sealedTargets.get(result.getId());
+    private Map<Long, String> participantSampleCodes(List<EQAParticipantResult> results) {
+        Map<Long, String> panelCodes = panelSampleCodes(results.stream().map(EQAParticipantResult::getPanelSampleId)
+                .filter(Objects::nonNull).distinct().toList());
+        Map<Long, String> codes = new HashMap<>();
+        for (EQAParticipantResult result : results) {
+            String code = GenericValidator.isBlankOrNull(result.getProviderSampleCode())
+                    ? panelCodes.get(result.getPanelSampleId())
+                    : result.getProviderSampleCode();
+            if (code != null) {
+                codes.put(result.getId(), code);
+            }
         }
-        return number(result.getTargetValue());
+        return codes;
+    }
+
+    private Map<Long, String> panelSampleCodes(List<Long> panelSampleIds) {
+        Map<Long, String> codes = new HashMap<>();
+        if (panelSampleIds.isEmpty()) {
+            return codes;
+        }
+        for (EQAPanelSample sample : panelSampleDAO.get(panelSampleIds)) {
+            codes.put(sample.getId(), sample.getSampleCode());
+        }
+        return codes;
     }
 
     /** Numeric results carry the value; a qualitative one carries its text. */
     private static String reportedOf(EQAResult result) {
-        return result.getResultText() != null ? result.getResultText() : number(result.getResultValue());
-    }
-
-    private static String number(BigDecimal value) {
-        return value == null ? null : value.stripTrailingZeros().toPlainString();
+        return result.getResultText() != null ? result.getResultText()
+                : EQAResultTarget.number(result.getResultValue());
     }
 
     private Integer roundNumberOf(EQAResult result) {
@@ -327,14 +340,12 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
         // cycle at once, so one date covers every row on the page.
         metaCell(meta, MessageUtil.getMessage("eqa.report.scoredOn"),
                 cycle.getActualEndDate() == null ? DASH : cycle.getActualEndDate().toString());
-        metaCell(meta, MessageUtil.getMessage("eqa.report.laboratory"), siteName());
-        metaCell(meta, MessageUtil.getMessage("eqa.report.generated"), formatDate(new Date()));
-        if (participant != null) {
-            // Whose results these are. On the provider's copy the Laboratory cell
-            // above names the provider, so without this line the two would be
-            // indistinguishable.
+        if (participant == null) {
+            metaCell(meta, MessageUtil.getMessage("eqa.report.laboratory"), siteName());
+        } else {
             metaCell(meta, MessageUtil.getMessage("eqa.report.participant"), participant);
         }
+        metaCell(meta, MessageUtil.getMessage("eqa.report.generated"), formatDate(new Date()));
         // The block is four columns and each fact adds two cells, so an odd number
         // of facts leaves the last row short — and iText renders only complete
         // rows, dropping it silently. That already cost the cycle-level report its
@@ -416,21 +427,22 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
         }
         document.add(paragraph(MessageUtil.getMessage("eqa.report.table.title"), SECTION_FONT, 14f));
 
-        // Eleven columns are tight on a landscape page: the difference column is kept
-        // narrow (its content is "-8 (-8%)") and its room comes off the analyte,
-        // which already wraps on a long name either way. Widening it instead
-        // wrapped the reported value and its unit onto a second line, which is the
-        // fault the section column was moved out of the table to avoid.
-        float[] widths = includeLabColumns
-                ? new float[] { 0.7f, 1.5f, 1.5f, 1.3f, 1f, 0.95f, 1.4f, 1.4f, 1.35f, 1.1f, 1.1f }
-                : new float[] { 0.7f, 1.9f, 1.6f, 1.4f, 1.1f, 1.1f, 1.5f, 1.2f };
+        // Twelve columns are tight on a landscape page, so the lab copy's widths are
+        // points of the 770pt table. The difference column is kept narrow (its
+        // content is "-8 (-8%)"); the reported value keeps room for its unit, which
+        // otherwise wraps onto a second line, the fault the section column was moved
+        // out of the table to avoid. The sample column's room comes off the analyst,
+        // Z-score and target columns, whose contents are short.
+        float[] widths = includeLabColumns ? new float[] { 40f, 48f, 88f, 88f, 66f, 58f, 44f, 70f, 84f, 58f, 63f, 63f }
+                : new float[] { 0.7f, 1.2f, 1.8f, 1.6f, 1.4f, 1.1f, 1.1f, 1.5f, 1.2f };
         int columns = widths.length;
         PdfPTable table = new PdfPTable(widths);
         table.setWidthPercentage(100);
         table.setHeaderRows(1);
         List<String> headers = new ArrayList<>(List.of(MessageUtil.getMessage("eqa.report.table.round"),
-                MessageUtil.getMessage("eqa.report.table.analyte"), MessageUtil.getMessage("eqa.report.table.reported"),
-                MessageUtil.getMessage("eqa.report.table.target"), MessageUtil.getMessage("eqa.report.table.delta"),
+                MessageUtil.getMessage("eqa.report.table.sample"), MessageUtil.getMessage("eqa.report.table.analyte"),
+                MessageUtil.getMessage("eqa.report.table.reported"), MessageUtil.getMessage("eqa.report.table.target"),
+                MessageUtil.getMessage("eqa.report.table.delta"),
                 MessageUtil
                         .getMessage(hasPeerGroup ? "eqa.report.table.zscore" : "eqa.report.table.zscore.noPeerGroup"),
                 MessageUtil.getMessage("eqa.report.table.performance")));
@@ -457,8 +469,9 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
                 banner.setPadding(4f);
                 table.addCell(banner);
             }
-            List<String> cells = new ArrayList<>(List.of(row.roundLabel(), row.analyteLabel(), row.reportedLabel(),
-                    row.targetLabel(), row.deltaLabel(), row.zLabel(), row.performanceLabel()));
+            List<String> cells = new ArrayList<>(List.of(row.roundLabel(), row.sample() == null ? "" : row.sample(),
+                    row.analyteLabel(), row.reportedLabel(), row.targetLabel(), row.deltaLabel(), row.zLabel(),
+                    row.performanceLabel()));
             if (includeLabColumns) {
                 cells.add(dash(row.nceNumber()));
                 cells.add(dash(row.analyst()));
@@ -611,17 +624,24 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
     }
 
     /**
-     * The assigned value each in-house result was scored against, keyed by result
-     * id. Only panels that have actually been unblinded contribute: a sealed target
-     * is the whole point of a blinded panel, and this report is served under the
-     * EQA read permission, not the unblind one. External PT keeps its targets at
-     * the provider, so those rows have none either way.
+     * The assigned value each result was scored against, keyed by result id. For
+     * this lab's own panel only panels that have actually been unblinded
+     * contribute: a sealed target is the whole point of a blinded panel, and this
+     * report is served under the EQA read permission, not the unblind one. An
+     * external provider's result has no panel sample here, and shows the target the
+     * provider returned with its score, already given to the laboratory.
      */
     private Map<Long, String> revealedTargets(List<EQAParticipantResult> results) {
+        Map<Long, String> targets = new HashMap<>();
+        for (EQAParticipantResult result : results) {
+            if (result.getPanelSampleId() == null && !GenericValidator.isBlankOrNull(result.getProviderTarget())) {
+                targets.put(result.getId(), result.getProviderTarget());
+            }
+        }
         List<Long> panelSampleIds = results.stream().map(EQAParticipantResult::getPanelSampleId)
                 .filter(Objects::nonNull).distinct().toList();
         if (panelSampleIds.isEmpty()) {
-            return Map.of();
+            return targets;
         }
         Map<Long, EQAPanelSample> samples = new HashMap<>();
         for (EQAPanelSample sample : panelSampleDAO.get(panelSampleIds)) {
@@ -630,7 +650,6 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
             }
         }
 
-        Map<Long, String> targets = new HashMap<>();
         for (EQAParticipantResult result : results) {
             EQAPanelSample sample = samples.get(result.getPanelSampleId());
             if (sample != null && !GenericValidator.isBlankOrNull(sample.getTargetValue())) {
@@ -695,9 +714,21 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
                 : MessageUtil.getMessage("eqa.schemeType." + schemeType.name().toLowerCase(Locale.ROOT));
     }
 
-    private record Row(Integer round, String section, String analyte, String reported, String target, String unit,
-            BigDecimal zScore, EQAPerformanceStatus performance, String nceNumber, String analyst, String submittedAt,
-            String scoredAt, boolean late) {
+    /**
+     * Section first, so each section's banner heads one block, then analyte, the
+     * panel sample in natural order with a result naming no sample last, and round
+     * (OGC-1666): the rows of one analyte tested on several samples read in sample
+     * order instead of as identical lines.
+     */
+    private static final Comparator<Row> SCORING_ORDER = Comparator
+            .comparing(Row::section, Comparator.nullsLast(Comparator.<String>naturalOrder()))
+            .thenComparing(Row::analyte, Comparator.nullsLast(Comparator.<String>naturalOrder()))
+            .thenComparing(Row::sample, EQASampleCodeOrder.ORDER)
+            .thenComparing(Row::round, Comparator.nullsLast(Comparator.<Integer>naturalOrder()));
+
+    private record Row(Integer round, String sample, String section, String analyte, String reported, String target,
+            String unit, BigDecimal zScore, EQAPerformanceStatus performance, String nceNumber, String analyst,
+            String submittedAt, String scoredAt, boolean late) {
 
         String reportedLabel() {
             return dash(withUnit(reported, unit));

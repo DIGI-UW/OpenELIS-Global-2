@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
+import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -95,6 +96,42 @@ public class PathologyControllerCaseTest extends PathologyControllerTestSupport 
                         "SELECT count(*) FROM clinlims.pathology_stage_event"
                                 + " WHERE pathology_sample_id = ? AND run_reference IS NOT NULL",
                         Integer.class, CASE_ID));
+    }
+
+    /** A slide's level fits its column. */
+    @Test
+    public void aLevelLongerThanTheColumn_answers400WithTheMessageId() throws Exception {
+        MockHttpServletResponse response = postAsTechnician(CASE_VIEW,
+                "{\"grossExam\":\"Normal tissues observed\",\"blocks\":[],\"reports\":[],\"slides\":[{\"id\":"
+                        + LEGACY_SLIDE_ID + ",\"level\":\"" + StringUtils.repeat("L", 17) + "\"}]}");
+
+        assertEquals("a level longer than its column is refused", HttpStatus.BAD_REQUEST.value(), response.getStatus());
+        assertEquals("with the message the screen translates", "pathology.error.levelTooLong",
+                bodyOf(response).get("messageKey"));
+        assertEquals("and the slide keeps no level", Integer.valueOf(0),
+                jdbcTemplate.queryForObject(
+                        "SELECT count(*) FROM clinlims.pathology_slide WHERE id = ? AND level IS NOT NULL",
+                        Integer.class, LEGACY_SLIDE_ID));
+    }
+
+    /**
+     * A slide is cut from an embedded block where Embedding is tracked; the refusal
+     * names the cassette so the screen can say which one to embed.
+     */
+    @Test
+    public void aSaveCuttingASlideFromACassette_answers400WithTheMessageId() throws Exception {
+        MockHttpServletResponse response = postAsTechnician(CASE_VIEW,
+                "{\"grossExam\":\"Normal tissues observed\",\"blocks\":[],\"reports\":[],\"slides\":[{\"blockId\":"
+                        + LEGACY_BLOCK_ID + "}]}");
+
+        assertEquals("a slide from a cassette nobody embedded is refused", HttpStatus.BAD_REQUEST.value(),
+                response.getStatus());
+        assertEquals("with the message the screen translates", "pathology.error.slideFromCassette",
+                bodyOf(response).get("messageKey"));
+        assertEquals("naming the cassette by its legacy number", Map.of("designation", "11"),
+                bodyOf(response).get("messageArgs"));
+        assertEquals("and no slide is cut from it", Integer.valueOf(0), jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM clinlims.pathology_slide WHERE block_id = ?", Integer.class, LEGACY_BLOCK_ID));
     }
 
     /** What the case view posts, with the fields a test adds. */

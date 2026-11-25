@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.r4.model.BaseDateTimeType;
 import org.hl7.fhir.r4.model.Bundle;
@@ -513,12 +514,15 @@ public class ShipmentFhirImportService {
 
     @Scheduled(initialDelay = 30 * 1000, fixedRateString = "${org.openelisglobal.remote.poll.frequency:120000}")
     public void reconcileDeliveredShipments() {
-        if (!statusBackflowEnabled()) {
+        if (!statusBackflowEnabled() || StringUtils.isBlank(fhirConfig.getLocalFhirStorePath())) {
             return;
         }
         List<ShippingBox> inFlight = new ArrayList<>();
         inFlight.addAll(shippingBoxDAO.findByState(BoxState.SENT));
         inFlight.addAll(shippingBoxDAO.findByState(BoxState.IN_TRANSIT));
+        if (inFlight.isEmpty()) {
+            return;
+        }
 
         int delivered = 0;
         IGenericClient ownStore = fhirUtil.getLocalFhirClient();

@@ -18,6 +18,7 @@ import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
 import org.openelisglobal.program.service.PathologyCaseRuleException;
 import org.openelisglobal.program.service.PathologyDisplayService;
+import org.openelisglobal.program.service.PathologySampleService;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -40,8 +41,6 @@ import org.springframework.beans.factory.annotation.Autowired;
  * test class in the same Surefire fork.
  */
 public class PathologySampleGrossingTest extends PathologyCaseTestSupport {
-
-    private static final String TISSUE_TYPE_CATEGORY = "pathology_tissue_types";
 
     /** Ids of this class's own dictionary rows, outside the ranges fixtures use. */
     private static final int OWN_CATEGORY = 9500;
@@ -70,7 +69,7 @@ public class PathologySampleGrossingTest extends PathologyCaseTestSupport {
                 RETIRED_TISSUE, FIXATIVE);
         removeTissueEntries();
         if (insertedTheCategory) {
-            jdbcTemplate.update("DELETE FROM clinlims.dictionary_category WHERE id = ?", OWN_CATEGORY);
+            DictionaryRows.removeCategory(jdbcTemplate, OWN_CATEGORY);
         }
     }
 
@@ -162,7 +161,8 @@ public class PathologySampleGrossingTest extends PathologyCaseTestSupport {
                 () -> saveBlocks(postedBlock(LEGACY_BLOCK_ID, "Bench Z", "9999")));
 
         assertTrue("the refusal names the id and the category it is not an entry of: " + refused.getMessage(),
-                refused.getMessage().contains("9999") && refused.getMessage().contains(TISSUE_TYPE_CATEGORY));
+                refused.getMessage().contains("9999")
+                        && refused.getMessage().contains(PathologySampleService.TISSUE_TYPE_CATEGORY));
         Map<String, Object> block = blockRow(LEGACY_BLOCK_ID);
         assertNull("the block holds no tissue type it was never given", block.get("tissue_type_id"));
         assertEquals("and a refused save moves nothing else on the row either", "Lab 1", block.get("location"));
@@ -299,29 +299,19 @@ public class PathologySampleGrossingTest extends PathologyCaseTestSupport {
      * and removed afterwards only if this class added it.
      */
     private void seedTissueEntries() {
-        insertedTheCategory = jdbcTemplate.update("INSERT INTO clinlims.dictionary_category (id, description,"
-                + " local_abbrev, name, lastupdated) SELECT ?, 'Pathology - Tissue Types', 'PathTissue', ?, now()"
-                + " WHERE NOT EXISTS (SELECT 1 FROM clinlims.dictionary_category WHERE name = ?)", OWN_CATEGORY,
-                TISSUE_TYPE_CATEGORY, TISSUE_TYPE_CATEGORY) == 1;
-        int categoryId = jdbcTemplate.queryForObject("SELECT id FROM clinlims.dictionary_category WHERE name = ?",
-                Integer.class, TISSUE_TYPE_CATEGORY);
-        insertTissueEntry(SKIN, "Skin", "Y", categoryId);
-        insertTissueEntry(RETIRED_TISSUE, "Retired tissue", "N", categoryId);
-        jdbcTemplate.update("INSERT INTO clinlims.dictionary_category (id, description, local_abbrev, name,"
-                + " lastupdated) VALUES (?, 'Pathology test fixatives', 'PathFix', 'pathology_test_fixatives', now())",
-                OTHER_CATEGORY);
-        insertTissueEntry(FIXATIVE, "Formalin", "Y", OTHER_CATEGORY);
-    }
-
-    private void insertTissueEntry(int id, String name, String isActive, int categoryId) {
-        jdbcTemplate.update(
-                "INSERT INTO clinlims.dictionary (id, is_active, dict_entry, local_abbrev,"
-                        + " dictionary_category_id, sort_order, lastupdated) VALUES (?, ?, ?, ?, ?, ?, now())",
-                id, isActive, name, "PT" + id, categoryId, id);
+        insertedTheCategory = DictionaryRows.insertCategory(jdbcTemplate, OWN_CATEGORY,
+                PathologySampleService.TISSUE_TYPE_CATEGORY, "Pathology - Tissue Types", "PathTissue");
+        int categoryId = DictionaryRows.idOfCategory(jdbcTemplate, PathologySampleService.TISSUE_TYPE_CATEGORY);
+        DictionaryRows.insertEntry(jdbcTemplate, SKIN, categoryId, "Skin", "PT" + SKIN, true);
+        DictionaryRows.insertEntry(jdbcTemplate, RETIRED_TISSUE, categoryId, "Retired tissue", "PT" + RETIRED_TISSUE,
+                false);
+        DictionaryRows.insertCategory(jdbcTemplate, OTHER_CATEGORY, "pathology_test_fixatives",
+                "Pathology test fixatives", "PathFix");
+        DictionaryRows.insertEntry(jdbcTemplate, FIXATIVE, OTHER_CATEGORY, "Formalin", "PT" + FIXATIVE, true);
     }
 
     private void removeTissueEntries() {
-        jdbcTemplate.update("DELETE FROM clinlims.dictionary WHERE id IN (?, ?, ?)", SKIN, RETIRED_TISSUE, FIXATIVE);
-        jdbcTemplate.update("DELETE FROM clinlims.dictionary_category WHERE id = ?", OTHER_CATEGORY);
+        DictionaryRows.removeEntries(jdbcTemplate, SKIN, RETIRED_TISSUE, FIXATIVE);
+        DictionaryRows.removeCategory(jdbcTemplate, OTHER_CATEGORY);
     }
 }

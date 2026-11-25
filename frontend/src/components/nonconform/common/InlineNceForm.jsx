@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useContext } from "react";
-import { format } from "date-fns";
+import { format, parse } from "date-fns";
 import { labNow } from "../../utils/labClock";
 import {
   Button,
-  DatePicker,
   DatePickerInput,
   Select,
   SelectItem,
@@ -12,6 +11,7 @@ import {
   Tag,
   Tile,
 } from "@carbon/react";
+import { DatePicker } from "../../common/DatePicker";
 import { Warning, CheckmarkFilled } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -26,6 +26,7 @@ import NceFileAttachment from "./NceFileAttachment";
 import "./InlineNceForm.css";
 import { RequiredMarker, requiredProps } from "../../common/RequiredMarker";
 import SearchableSelect from "../../common/SearchableSelect";
+import useSiteDateFormat from "../../common/useSiteDateFormat";
 
 const SEVERITIES = [
   {
@@ -72,6 +73,7 @@ const InlineNceForm = ({
   initialDescription,
 }) => {
   const intl = useIntl();
+  const siteDate = useSiteDateFormat();
   const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
@@ -355,21 +357,27 @@ const InlineNceForm = ({
           onChange={(e) => handleFormChange("reporterName", e.target.value)}
         />
         <DatePicker
+          dateFormat={siteDate.dateFormat}
+          parseDate={siteDate.parseDate}
           id="inline-nce-date-picker"
           datePickerType="single"
-          dateFormat="m/d/Y"
-          value={nceForm.dateOfEvent}
-          maxDate={today}
+          invalid={!!errors.dateOfEvent}
+          value={
+            nceForm.dateOfEvent
+              ? parse(nceForm.dateOfEvent, "MM/dd/yyyy", labNow())
+              : ""
+          }
+          maxDate={labNow().setHours(23, 59, 59, 999)}
           onChange={(dates) => {
-            if (dates && dates[0]) {
-              const formatted = format(new Date(dates[0]), "MM/dd/yyyy");
-              handleFormChange("dateOfEvent", formatted);
-            }
+            handleFormChange(
+              "dateOfEvent",
+              dates && dates[0] ? format(new Date(dates[0]), "MM/dd/yyyy") : "",
+            );
           }}
         >
           <DatePickerInput
             id="inline-nce-date"
-            placeholder="mm/dd/yyyy"
+            placeholder={siteDate.placeholder}
             {...requiredProps()}
             labelText={
               <>
@@ -380,7 +388,6 @@ const InlineNceForm = ({
                 <RequiredMarker />
               </>
             }
-            invalid={!!errors.dateOfEvent}
             invalidText={errors.dateOfEvent}
           />
         </DatePicker>

@@ -9,14 +9,8 @@ import org.junit.Test;
 import org.openelisglobal.accreditation.dto.EqaCoverageView;
 
 /**
- * OGC-686 — accredited scope vs. live EQA cover, against a real DB.
- *
- * <p>
- * The question is ISO 15189 §7.7's: is every test the lab claims as accredited
- * taking part in external quality assessment? The load-bearing cases are the
- * ones a naive join gets wrong — a test covered only through an enrolled
- * <em>panel</em> is covered, and a test whose EQA enrollment has been
- * deactivated is not.
+ * OGC-686: ISO 15189:2022 §7.3.7.3 coverage. A test covered only through an
+ * enrolled panel counts; one whose EQA enrollment is deactivated does not.
  */
 public class EqaCoverageIntegrationTest extends AccreditationIntegrationTestBase {
 

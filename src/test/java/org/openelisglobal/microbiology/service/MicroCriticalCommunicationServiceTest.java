@@ -1,14 +1,12 @@
 package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.List;
 import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
@@ -85,7 +83,8 @@ public class MicroCriticalCommunicationServiceTest {
         when(observations.getRawValueForSample(
                 org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType.ENV_CONTACT_PHONE,
                 "order")).thenReturn("555-0100");
-        var communication = service.logCommunication("case-1", "Ward physician", "Critical water result", false, "1");
+        var communication = service.logCommunication("case-1", MicroCriticalCommunicationTargetType.CASE, "case-1",
+                "Ward physician", null, "PHONE", "CONFIRMED", "Critical water result", false, "1");
         assertEquals("Water authority requester", communication.getRecipient());
         assertEquals("555-0100", communication.getRecipientContact());
         verify(communicationDAO).insert(communication);
@@ -97,8 +96,9 @@ public class MicroCriticalCommunicationServiceTest {
         microCase.setId("case-1");
         when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
 
-        MicroCriticalCommunication communication = service.logCommunication("case-1", "Provider on call",
-                "Positive blood culture called", true, "1");
+        MicroCriticalCommunication communication = service.logCommunication("case-1",
+                MicroCriticalCommunicationTargetType.CASE, "case-1", "Provider on call", null, "PHONE",
+                "UNABLE_TO_REACH", "Positive blood culture called", true, "1");
 
         assertEquals("case-1", communication.getCaseId());
         assertEquals("Provider on call", communication.getRecipient());
@@ -115,63 +115,13 @@ public class MicroCriticalCommunicationServiceTest {
         microCase.setId("case-1");
         when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
 
-        MicroCriticalCommunication communication = service.logCommunication("case-1", "Provider on call",
-                "Positive blood culture called", true, "1");
+        MicroCriticalCommunication communication = service.logCommunication("case-1",
+                MicroCriticalCommunicationTargetType.CASE, "case-1", "Provider on call", null, "PHONE",
+                "UNABLE_TO_REACH", "Positive blood culture called", true, "1");
 
         verify(alertService).createAlert(eq(AlertType.MICROBIOLOGY_CRITICAL), eq("MicrobiologyCriticalCommunication"),
                 eq(communication.getId()), eq(AlertSeverity.CRITICAL), eq("Positive blood culture called"),
                 any(String.class));
-    }
-
-    @Test
-    public void acknowledgeSetsAckStateWithoutChangingMessage() {
-        MicroCriticalCommunication communication = new MicroCriticalCommunication();
-        communication.setId("comm-1");
-        communication.setMessage("Positive blood culture called");
-        communication.setAcknowledgementStatus(MicroCriticalCommunicationStatus.OPEN.name());
-        when(communicationDAO.get("comm-1")).thenReturn(Optional.of(communication));
-
-        MicroCriticalCommunication acknowledged = service.acknowledge("comm-1", "2");
-
-        assertEquals(MicroCriticalCommunicationStatus.ACKNOWLEDGED.name(), acknowledged.getAcknowledgementStatus());
-        assertEquals("Positive blood culture called", acknowledged.getMessage());
-        assertNotNull(acknowledged.getAcknowledgedAt());
-        verify(communicationDAO).update(acknowledged);
-    }
-
-    @Test
-    public void acknowledgeKeepsTheProjectedAlertInStep() {
-        MicroCriticalCommunication communication = new MicroCriticalCommunication();
-        communication.setId("comm-1");
-        communication.setMessage("Positive blood culture called");
-        communication.setAcknowledgementStatus(MicroCriticalCommunicationStatus.OPEN.name());
-        when(communicationDAO.get("comm-1")).thenReturn(Optional.of(communication));
-        Alert openAlert = new Alert();
-        openAlert.setId(42L);
-        openAlert.setStatus(AlertStatus.OPEN);
-        when(alertService.getAlertsByEntityRef("MicrobiologyCriticalCommunication", "comm-1"))
-                .thenReturn(List.of(openAlert));
-
-        service.acknowledge("comm-1", "2");
-
-        verify(alertService).acknowledgeAlert(42L, 2);
-    }
-
-    @Test
-    public void acknowledgeSkipsAlreadyAcknowledgedProjectedAlerts() {
-        MicroCriticalCommunication communication = new MicroCriticalCommunication();
-        communication.setId("comm-1");
-        communication.setAcknowledgementStatus(MicroCriticalCommunicationStatus.OPEN.name());
-        when(communicationDAO.get("comm-1")).thenReturn(Optional.of(communication));
-        Alert alreadyAcknowledged = new Alert();
-        alreadyAcknowledged.setId(99L);
-        alreadyAcknowledged.setStatus(AlertStatus.ACKNOWLEDGED);
-        when(alertService.getAlertsByEntityRef("MicrobiologyCriticalCommunication", "comm-1"))
-                .thenReturn(List.of(alreadyAcknowledged));
-
-        service.acknowledge("comm-1", "2");
-
-        verify(alertService, never()).acknowledgeAlert(any(Long.class), any(Integer.class));
     }
 
     @Test
@@ -187,7 +137,7 @@ public class MicroCriticalCommunicationServiceTest {
 
         MicroCriticalCommunication communication = service.logCommunication("case-1",
                 MicroCriticalCommunicationTargetType.ISOLATE, "iso-1", "Provider on call", "555-0100", "PHONE",
-                "Positive culture called", true, "1");
+                "CONFIRMED", "Positive culture called", true, "1");
 
         assertEquals(MicroCriticalCommunicationTargetType.ISOLATE.name(), communication.getTargetType());
         assertEquals("iso-1", communication.getTargetId());
@@ -195,10 +145,11 @@ public class MicroCriticalCommunicationServiceTest {
     }
 
     @Test
-    public void closeRequiresAcknowledgementAndResolvesTheProjection() {
+    public void closeResolvesTheAcknowledgedProjection() {
         MicroCriticalCommunication communication = new MicroCriticalCommunication();
         communication.setId("comm-1");
         communication.setAcknowledgementStatus(MicroCriticalCommunicationStatus.ACKNOWLEDGED.name());
+        communication.setFollowUpNeeded(true);
         communication.setAlertId(42L);
         when(communicationDAO.get("comm-1")).thenReturn(Optional.of(communication));
         Alert acknowledgedAlert = new Alert();

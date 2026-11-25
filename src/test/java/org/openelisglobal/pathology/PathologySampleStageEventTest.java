@@ -469,6 +469,96 @@ public class PathologySampleStageEventTest extends PathologyCaseTestSupport {
         assertEquals("and the case stays at embedding", "EMBEDDING", storedStage());
     }
 
+    /**
+     * Microtomy is finished once at least one slide is cut and in use; a block may
+     * be held with no slide, so none is asked of every block.
+     */
+    @Test
+    public void advancingFromMicrotomyWithNoSlide_isRefused() {
+        storeAt(PathologyStatus.MICROTOMY);
+        jdbcTemplate.update("DELETE FROM clinlims.pathology_slide WHERE id = ?", LEGACY_SLIDE_ID);
+
+        assertRefusedWith("pathology.error.microtomyIncomplete",
+                () -> pathologySampleService.advance(CASE_ID, PathologyStatus.MICROTOMY, TECHNICIAN_ID));
+        assertEquals("the case stays at microtomy", "MICROTOMY", storedStage());
+        assertEquals("and no entry is written", 0, stageEvents().size());
+    }
+
+    /** A retired slide is not a slide to stain. */
+    @Test
+    public void advancingFromMicrotomyWithOnlyARetiredSlide_isRefused() {
+        storeAt(PathologyStatus.MICROTOMY);
+        pathologySampleService.deactivateSlide(LEGACY_SLIDE_ID, "section folded", TECHNICIAN_ID);
+
+        assertRefusedWith("pathology.error.microtomyIncomplete",
+                () -> pathologySampleService.advance(CASE_ID, PathologyStatus.MICROTOMY, TECHNICIAN_ID));
+        assertEquals("the case stays at microtomy", "MICROTOMY", storedStage());
+    }
+
+    @Test
+    public void advancingFromMicrotomyWithOneVerifiedSlideInUse_sendsItOn() {
+        storeAt(PathologyStatus.MICROTOMY);
+        jdbcTemplate.update("DELETE FROM clinlims.pathology_slide WHERE id = ?", LEGACY_SLIDE_ID);
+        int blockId = cutEmbeddedBlock();
+        Map<String, Object> slide = cutSlideFrom(blockId);
+        assertTrue("setup: the slide's label is verified",
+                verifyStoredLabel(((Number) slide.get("id")).intValue()).match());
+
+        pathologySampleService.advance(CASE_ID, PathologyStatus.MICROTOMY, TECHNICIAN_ID);
+
+        assertEquals("one verified slide cut from the block is enough to send the case to staining", "STAINING",
+                storedStage());
+    }
+
+    /**
+     * Every slide in use leaves Microtomy with its label checked against its block
+     * (FR-7.5); the refusal names the ones still to check, block first.
+     */
+    @Test
+    public void advancingFromMicrotomyWithAnUnverifiedSlide_isRefusedNamingIt() {
+        storeAt(PathologyStatus.MICROTOMY);
+        jdbcTemplate.update("DELETE FROM clinlims.pathology_slide WHERE id = ?", LEGACY_SLIDE_ID);
+        int blockId = cutEmbeddedBlock();
+        Map<String, Object> first = cutSlideFrom(blockId);
+        cutSlideFrom(blockId);
+        assertTrue("setup: the slide's label is verified",
+                verifyStoredLabel(((Number) first.get("id")).intValue()).match());
+
+        LocalizedValidationException refusal = assertRefusedWith("pathology.error.slidesUnverified",
+                () -> pathologySampleService.advance(CASE_ID, PathologyStatus.MICROTOMY, TECHNICIAN_ID));
+
+        assertEquals("the refusal names the slide still to verify as its label does", Map.of("designations", "A1.2"),
+                refusal.getParams());
+        assertEquals("the case stays at microtomy", "MICROTOMY", storedStage());
+        assertEquals("and no entry is written", 0, stageEvents().size());
+    }
+
+    /** The check is asked for with or without a scanner. */
+    @Test
+    public void advancingFromMicrotomyWithoutAScanner_stillNeedsTheLabelsConfirmed() {
+        ConfigurationProperties.getInstance().setPropertyValue(Property.PATHOLOGY_SCAN_VERIFICATION_REQUIRED, "false");
+        storeAt(PathologyStatus.MICROTOMY);
+        jdbcTemplate.update("DELETE FROM clinlims.pathology_slide WHERE id = ?", LEGACY_SLIDE_ID);
+        cutSlideFrom(cutEmbeddedBlock());
+
+        assertRefusedWith("pathology.error.slidesUnverified",
+                () -> pathologySampleService.advance(CASE_ID, PathologyStatus.MICROTOMY, TECHNICIAN_ID));
+        assertEquals("MICROTOMY", storedStage());
+    }
+
+    /**
+     * A slide with no block on record has no block to be checked against, so it
+     * does not hold the case at Microtomy.
+     */
+    @Test
+    public void aSlideWithNoBlockOnRecord_doesNotHoldTheCaseAtMicrotomy() {
+        storeAt(PathologyStatus.MICROTOMY);
+
+        pathologySampleService.advance(CASE_ID, PathologyStatus.MICROTOMY, TECHNICIAN_ID);
+
+        assertEquals("the fixture's blockless slide is the only one, and the case moves on", "STAINING", storedStage());
+    }
+
     /** From the pathologist's queue the bench has nothing to send the case to. */
     @Test
     public void advancingBeyondTheBench_isRefused() {
@@ -779,9 +869,11 @@ public class PathologySampleStageEventTest extends PathologyCaseTestSupport {
         return audit.get(0);
     }
 
-    private LocalizedValidationException assertRefusedWith(String errorCode, org.junit.function.ThrowingRunnable call) {
-        LocalizedValidationException refusal = assertThrows(LocalizedValidationException.class, call);
-        assertEquals("the refusal carries the message the screen translates", errorCode, refusal.getErrorCode());
-        return refusal;
+    /** The newest slide cut from the block, as stored. */
+    private Map<String, Object> cutSlideFrom(int blockId) {
+        saveSlides(postedSlide(blockId));
+        List<Map<String, Object>> slides = slidesCutFrom(blockId);
+        return slides.get(slides.size() - 1);
     }
+
 }
