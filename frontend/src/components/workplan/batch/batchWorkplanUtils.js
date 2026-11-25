@@ -103,6 +103,16 @@ export const toLocalDateTime = (displayDate, time, dateLocale) => {
   return `${isoDate}T${time}:00`;
 };
 
+/**
+ * Whether a display date and HH:mm time name the minute of `now`, the lab's
+ * current minute: a control timed then is stamped by the server when it is
+ * saved, which a minute's precision or a skewed browser clock cannot misorder
+ * against a release made in that minute.
+ */
+export const isCurrentMinute = (displayDate, time, dateLocale, now) =>
+  toLocalDateTime(displayDate, time, dateLocale) ===
+  format(now, "yyyy-MM-dd'T'HH:mm:00");
+
 export const formatDateTime = (intl, value) =>
   value
     ? intl.formatDate(new Date(value), {

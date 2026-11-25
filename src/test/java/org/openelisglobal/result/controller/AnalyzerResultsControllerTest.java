@@ -180,6 +180,30 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(jsonPath("$.resultList[0].heldRunId").value(run));
     }
 
+    /**
+     * OGC-1200 slice 8: a value held because its test requires a control on every
+     * run and its open run has none is shown held for the missing control, not for
+     * a failed one.
+     */
+    @Test
+    public void aValueHeldForAMissingRequiredControlIsShownHeldForThatReason() throws Exception {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        long run = jdbc.queryForObject("SELECT nextval('clinlims.result_run_seq')", Long.class);
+        jdbc.update("INSERT INTO clinlims.result_run (id, source, state, row_count, opened_at, last_activity_at)"
+                + " VALUES (?, 'ANALYZER', 'HELD', 1, NOW(), NOW())", run);
+        jdbc.update("UPDATE clinlims.analyzer_results SET run_id = ? WHERE id = 1001", run);
+        String testId = jdbc.queryForObject("SELECT test_id::text FROM clinlims.analyzer_results WHERE id = 1001",
+                String.class);
+        jdbc.update("INSERT INTO clinlims.test_qc_policy (test_id, control_required, control_when_missing,"
+                + " last_updated) VALUES (?::numeric, true, 'HOLD', NOW())", testId);
+
+        mockMvc.perform(get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultList[0].importIssueReason").value("run_qc_missing"))
+                .andExpect(jsonPath("$.resultList[0].readOnly").value(true))
+                .andExpect(jsonPath("$.resultList[0].heldRunId").value(run));
+    }
+
     @Test
     public void awaitingSpecimenKeepsItsMappedValueAvailableForReview() throws Exception {
         new JdbcTemplate(dataSource).update(
