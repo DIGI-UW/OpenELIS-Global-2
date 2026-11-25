@@ -238,4 +238,22 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
         mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label")).andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "application/pdf"));
     }
+
+    @Test
+    public void printLabel_ShouldReturn401_WhenUnauthenticated() throws Exception {
+        SecurityContext previousContext = SecurityContextHolder.getContext();
+        try {
+            SecurityContextHolder.clearContext();
+            int beforeCount = countRowsInTable("storage_location_print_history");
+
+            mockMvc.perform(post("/rest/storage/device/" + TEST_STORAGE_DEVICE_ID + "/print-label"))
+                    .andExpect(status().isUnauthorized()).andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.error").value("Authentication required to print label"));
+
+            int afterCount = countRowsInTable("storage_location_print_history");
+            assertEquals("No print history should be recorded for unauthenticated requests", beforeCount, afterCount);
+        } finally {
+            SecurityContextHolder.setContext(previousContext);
+        }
+    }
 }

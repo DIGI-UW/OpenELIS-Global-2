@@ -80,9 +80,17 @@ public class LabelManagementRestController extends BaseRestController {
                 return;
             }
 
+            // Resolve acting user; reject unauthenticated requests with 401
+            String userId = getCurrentUserId(request);
+            if (userId == null || userId.isBlank()) {
+                response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                response.getWriter().write("{\"error\":\"Authentication required to print label\"}");
+                return;
+            }
+
             // Generate label (uses code from entity)
             ByteArrayOutputStream pdfStream;
-            String userId = getCurrentUserId(request);
 
             if (location instanceof StorageDevice) {
                 pdfStream = labelManagementService.generateLabel((StorageDevice) location);
@@ -199,14 +207,14 @@ public class LabelManagementRestController extends BaseRestController {
     }
 
     /**
-     * Get current user ID from request session or security context. Falls back to
-     * default system user if unauthenticated.
+     * Get current user ID from request session or security context. Returns null if
+     * unauthenticated.
      */
     private String getCurrentUserId(HttpServletRequest request) {
         String userId = request != null ? getSysUserId(request) : getSysUserId();
         if (userId != null && !userId.isBlank()) {
             return userId;
         }
-        return "1";
+        return null;
     }
 }
