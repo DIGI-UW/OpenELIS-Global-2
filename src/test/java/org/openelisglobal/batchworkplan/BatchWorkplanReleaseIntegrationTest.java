@@ -397,6 +397,61 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
                         + " WHERE d.run_id = ?", String.class, laterRunId));
     }
 
+    /**
+     * OGC-1200 FR-E3 on a batch run: the run lists the usable lots of its tests'
+     * reagents, records the one chosen on it for itself and its batch, offers it as
+     * the last-used lot on the next run, refuses a lot that is not usable, and is
+     * marked complete with its batch.
+     */
+    @Test
+    public void aBatchRunRecordsTheLotChosenOnItAndIsMarkedCompleteThere() {
+        Long runId = releaseIntoRun();
+        org.openelisglobal.resultrun.form.RunLotOptions options = resultRunService.lotOptions(runId, unitViewer())
+                .orElseThrow();
+        assertEquals(reagentLotId, options.currentLotId());
+        InventoryLot second = new InventoryLot();
+        second.setFhirUuid(UUID.randomUUID());
+        second.setInventoryItem(inventoryItemService.get(reagentId));
+        second.setLotNumber("R2-" + UUID.randomUUID().toString().substring(0, 8));
+        second.setInitialQuantity(10.0);
+        second.setCurrentQuantity(10.0);
+        second.setQcStatus(QCStatus.PASSED);
+        second.setStatus(LotStatus.ACTIVE);
+        second.setExpirationDate(Timestamp.valueOf(LocalDateTime.now().plusYears(2)));
+        second.setSysUserId(ACTOR);
+        Long secondLotId = inventoryLotService.insert(second);
+        assertTrue("the run offers its reagent's usable lots",
+                resultRunService.lotOptions(runId, unitViewer()).orElseThrow().reagents().stream()
+                        .filter(reagent -> reagent.id().equals(reagentId)).flatMap(reagent -> reagent.lots().stream())
+                        .anyMatch(lot -> lot.id().equals(secondLotId)));
+
+        assertEquals(second.getLotNumber(), resultRunService
+                .setReagentLot(runId, reagentId, secondLotId, unitViewer(), ACTOR).orElseThrow().reagentLot());
+        assertEquals("the batch records the lot chosen on its run", secondLotId, jdbcTemplate.queryForObject(
+                "SELECT reagent_lot_id FROM clinlims.batch_workplan WHERE id = ?", Long.class, batchId));
+        try {
+            resultRunService.setReagentLot(runId, reagentId, -1L, unitViewer(), ACTOR);
+            fail("a lot that is not usable is refused");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("expired, used up"));
+        }
+
+        batchId = createDraftBatch(createAnalysis());
+        Long nextRunId = releaseIntoRun();
+        assertEquals("the next run offers the lot last used", secondLotId,
+                resultRunService.lotOptions(nextRunId, unitViewer()).orElseThrow().lastUsedLotId());
+
+        assertEquals("COMPLETE", resultRunService.markComplete(nextRunId, unitViewer(), ACTOR).orElseThrow().state());
+        assertEquals("COMPLETED", jdbcTemplate.queryForObject("SELECT status FROM clinlims.batch_workplan WHERE id = ?",
+                String.class, batchId));
+        try {
+            resultRunService.markComplete(nextRunId, unitViewer(), ACTOR);
+            fail("a closed run is not marked complete again");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("no longer open"));
+        }
+    }
+
     private List<String> batchAnalysisIds() {
         return jdbcTemplate.queryForList("SELECT CAST(analysis_id AS VARCHAR) FROM clinlims.batch_workplan_item"
                 + " WHERE batch_workplan_id = ? ORDER BY sort_order", String.class, batchId);

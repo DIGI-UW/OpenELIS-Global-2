@@ -220,6 +220,82 @@ describe("OGC-1200 runs on the unified worklist", () => {
     expect(resultField()).toBeNull();
   });
 
+  it("batches pending rows of one test picked on the worklist into a run and opens it", () => {
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+      (_url: string, _body: string, callback: any) =>
+        callback({ id: 30, status: "ACTIVE", runId: 205 }),
+    );
+    const onOpenRun = renderPage([
+      row({ testId: "5" }),
+      row({
+        id: "r-2",
+        analysisId: "62",
+        testId: "5",
+        accessionNumber: "DEV0126000000000401",
+      }),
+    ]);
+
+    fireEvent.click(
+      screen.getByLabelText("Select DEV0126000000000400 Glucose for a batch"),
+    );
+    expect(screen.getByTestId("batch-these")).toBeDisabled();
+    fireEvent.click(
+      screen.getByLabelText("Select DEV0126000000000401 Glucose for a batch"),
+    );
+    fireEvent.click(screen.getByTestId("batch-these"));
+
+    const batched = utilsMock.postToOpenElisServerJsonResponse.mock.calls.find(
+      ([url]: [string]) =>
+        url === "/rest/batch-workplans/batches/from-worklist",
+    );
+    expect(batched).toBeDefined();
+    const body = batched[1];
+    expect(JSON.parse(body)).toEqual({ analysisIds: ["61", "62"] });
+    expect(onOpenRun).toHaveBeenCalledWith(205);
+  });
+
+  it("keeps a picked row while another lab number is searched", () => {
+    renderPage([row({ testId: "5" })]);
+
+    fireEvent.click(
+      screen.getByLabelText("Select DEV0126000000000400 Glucose for a batch"),
+    );
+    const search = screen.getByRole("searchbox");
+    fireEvent.change(search, { target: { value: "DEV0126000000000401" } });
+    fireEvent.keyDown(search, { key: "Enter" });
+
+    expect(screen.getByTestId("batch-these-count")).toHaveTextContent(
+      "Rows selected for a batch: 1",
+    );
+  });
+
+  it("offers no pick on a row that is resulted, waiting or batched in a run", () => {
+    renderPage([
+      row({ testId: "5", resultValue: "88" }),
+      row({
+        id: "r-2",
+        analysisId: "62",
+        testId: "5",
+        accessionNumber: "DEV0126000000000401",
+        waitingRun: WAITING,
+      }),
+      row({
+        id: "r-3",
+        analysisId: "63",
+        testId: "5",
+        accessionNumber: "DEV0126000000000402",
+        waitingRun: {
+          ...WAITING,
+          runId: 9,
+          label: "RUN-9",
+          source: "WORKPLAN",
+        },
+      }),
+    ]);
+
+    expect(screen.queryByLabelText(/for a batch$/)).not.toBeInTheDocument();
+  });
+
   it("leaves a pending test with no waiting value open for entry", () => {
     renderPage([row()]);
 

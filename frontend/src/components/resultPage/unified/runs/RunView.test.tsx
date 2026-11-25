@@ -753,6 +753,47 @@ describe("OGC-1200 slice 2: chips, paging and selection", () => {
       ).not.toBeInTheDocument();
     });
 
+    it("marks an open batch run complete from its header", () => {
+      let state = "OPEN";
+      utilsMock.getFromOpenElisServer.mockImplementation(
+        (endPoint: string, callback: (response: unknown) => void) => {
+          if (endPoint === "/rest/result-runs/7")
+            return callback({ ...BATCH, state });
+          if (endPoint.startsWith("/rest/result-runs/7/rows"))
+            return callback(BATCH_ROWS);
+          if (endPoint.startsWith("/rest/result-runs"))
+            return callback({ open: 1, held: 0, runs: [] });
+          return callback(undefined);
+        },
+      );
+      utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+        (_url: string, _body: string, callback: (r: unknown) => void) => {
+          state = "COMPLETE";
+          callback({ ...BATCH, state });
+        },
+      );
+      renderRun();
+
+      expect(screen.getByTestId("run-lot-none")).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId("run-mark-complete"));
+
+      expect(utilsMock.postToOpenElisServerJsonResponse.mock.calls[0][0]).toBe(
+        "/rest/result-runs/7/complete",
+      );
+      expect(screen.getByTestId("run-settings")).toHaveTextContent("Complete");
+      expect(screen.queryByTestId("run-mark-complete")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("run-lot-none")).not.toBeInTheDocument();
+    });
+
+    it("offers no lot choice or Mark complete on an analyzer run", () => {
+      wire(HEADER);
+      renderRun();
+
+      expect(screen.queryByTestId("run-mark-complete")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("run-lot-none")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("run-lot-picker")).not.toBeInTheDocument();
+    });
+
     it("opens a waiting analysis for entry with no staged value, under the batch and its lot", () => {
       wire(BATCH, BATCH_ROWS);
       renderRun();

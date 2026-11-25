@@ -30,6 +30,7 @@ import org.openelisglobal.common.services.IResultSaveService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
+import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.inventory.service.InventoryLotService;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.result.service.ResultService;
@@ -108,6 +109,9 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     @Lazy
     @Autowired
     private RunExceptionService runExceptionService;
+    @Lazy
+    @Autowired
+    private org.openelisglobal.batchworkplan.service.BatchWorkplanService batchWorkplanService;
 
     public ResultRunServiceImpl() {
         super(ResultRun.class);
@@ -412,6 +416,59 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     @Transactional(readOnly = true)
     public Optional<ResultRun> batchRun(Long batchWorkplanId) {
         return baseObjectDAO.findBatchRun(batchWorkplanId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<org.openelisglobal.resultrun.form.RunLotOptions> lotOptions(Long runId, RunViewer viewer) {
+        return visibleRun(runId, viewer).map(seen -> {
+            ResultRun run = seen.run();
+            if (run.getSource() != ResultRunSource.WORKPLAN || run.getBatchWorkplanId() == null) {
+                return new org.openelisglobal.resultrun.form.RunLotOptions(List.of(), run.getReagentLotId(), null);
+            }
+            List<org.openelisglobal.batchworkplan.form.ReagentOptionResponse> reagents = batchWorkplanService
+                    .runReagentOptions(run.getBatchWorkplanId());
+            List<Long> lotIds = reagents.stream().flatMap(reagent -> reagent.lots().stream())
+                    .map(org.openelisglobal.batchworkplan.form.ReagentLotOptionResponse::id).toList();
+            return new org.openelisglobal.resultrun.form.RunLotOptions(reagents, run.getReagentLotId(),
+                    baseObjectDAO.findLastUsedLot(lotIds, run.getId()).orElse(null));
+        });
+    }
+
+    @Override
+    @Transactional
+    public Optional<ResultRunHeader> setReagentLot(Long runId, Long reagentId, Long reagentLotId, RunViewer viewer,
+            String sysUserId) {
+        Optional<ResultRun> open = openWorkplanRun(runId, viewer);
+        open.ifPresent(run -> {
+            batchWorkplanService.setRunReagentLot(run.getBatchWorkplanId(), reagentId, reagentLotId, sysUserId);
+            run.setReagentLotId(reagentLotId);
+            run.setLastActivityAt(Timestamp.from(Instant.now()));
+            run.setSysUserId(sysUserId);
+            update(run);
+        });
+        return open.flatMap(run -> getHeader(run.getId(), viewer));
+    }
+
+    @Override
+    @Transactional
+    public Optional<ResultRunHeader> markComplete(Long runId, RunViewer viewer, String sysUserId) {
+        Optional<ResultRun> open = openWorkplanRun(runId, viewer);
+        open.ifPresent(run -> batchWorkplanService.completeFromRun(run.getBatchWorkplanId(), sysUserId));
+        return open.flatMap(run -> getHeader(run.getId(), viewer));
+    }
+
+    private Optional<ResultRun> openWorkplanRun(Long runId, RunViewer viewer) {
+        Optional<ResultRun> seen = visibleRun(runId, viewer).map(VisibleRun::run);
+        seen.ifPresent(run -> {
+            if (run.getSource() != ResultRunSource.WORKPLAN || run.getBatchWorkplanId() == null) {
+                throw new IllegalArgumentException(MessageUtil.getMessage("run.refusal.notWorkplan"));
+            }
+            if (!run.getState().isActive()) {
+                throw new IllegalArgumentException(MessageUtil.getMessage("run.refusal.closed"));
+            }
+        });
+        return seen;
     }
 
     @Override

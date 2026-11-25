@@ -96,6 +96,26 @@ public interface ResultRunService extends BaseObjectService<ResultRun, Long> {
     Optional<ResultRun> batchRun(Long batchWorkplanId);
 
     /**
+     * FR-E3: the reagent lots a workplan run may record, the one it records, and
+     * the last one recorded on another run; empty when the viewer cannot see it.
+     */
+    Optional<org.openelisglobal.resultrun.form.RunLotOptions> lotOptions(Long runId, RunViewer viewer);
+
+    /**
+     * FR-E3: records the reagent lot an open workplan run uses, on the run and on
+     * its batch, and answers with the run's header; empty when the viewer cannot
+     * see it. A closed run, or one that is not a batch's, is refused.
+     */
+    Optional<ResultRunHeader> setReagentLot(Long runId, Long reagentId, Long reagentLotId, RunViewer viewer,
+            String sysUserId);
+
+    /**
+     * FR-E3 Mark complete: completes an open workplan run with its batch, and
+     * answers with the run's header; empty when the viewer cannot see it.
+     */
+    Optional<ResultRunHeader> markComplete(Long runId, RunViewer viewer, String sysUserId);
+
+    /**
      * For analyses batched in an open or held workplan run: analysis id to run id,
      * so a result entered for one records into its run (FR-D5).
      */

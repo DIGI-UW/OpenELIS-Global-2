@@ -9,6 +9,7 @@ import org.openelisglobal.batchworkplan.form.BatchWorkplanResponse;
 import org.openelisglobal.batchworkplan.form.PendingBatchTestResponse;
 import org.openelisglobal.batchworkplan.form.PendingTestsPageResponse;
 import org.openelisglobal.batchworkplan.form.PendingTestsQuery;
+import org.openelisglobal.batchworkplan.form.ReagentOptionResponse;
 import org.openelisglobal.batchworkplan.valueholder.BatchWorkplanStatus;
 
 public interface BatchWorkplanService {
@@ -52,6 +53,30 @@ public interface BatchWorkplanService {
      * The reagents and analyzers a draft batch can be set up with (FR-RA-001/002).
      */
     BatchSetupOptionsResponse getSetupOptions(Long id, String sysUserId);
+
+    /**
+     * OGC-1200 FR-B4 "Batch these": two or more pending analyses of one test,
+     * picked on the Results worklist, become a batch that is released at once as a
+     * run. The run's controls are its QC and its lot is chosen on it (FR-E3,
+     * FR-G4), so no release QC is taken; rows of different tests are refused.
+     */
+    BatchWorkplanResponse batchFromWorklist(List<String> analysisIds, String sysUserId);
+
+    /**
+     * FR-E3: the reagents linked to the tests of a batch, each with its usable
+     * lots, for the lot chosen on the batch's run. The run's lab unit, not the
+     * batch's owner, decides who may see it.
+     */
+    List<ReagentOptionResponse> runReagentOptions(Long id);
+
+    /** FR-E3: the reagent lot chosen on the batch's run becomes the batch's lot. */
+    void setRunReagentLot(Long id, Long reagentId, Long reagentLotId, String sysUserId);
+
+    /**
+     * FR-E3 Mark complete on the batch's run: the batch is complete, and so is its
+     * run.
+     */
+    void completeFromRun(Long id, String sysUserId);
 
     /**
      * Phase 2: the reagent, lot and analyzer a draft batch runs with
