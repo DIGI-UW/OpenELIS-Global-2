@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { IntlProvider } from "react-intl";
-import { vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import messages from "../../../languages/en.json";
 
 vi.mock("../../utils/Utils", () => ({
@@ -16,14 +16,14 @@ vi.mock("../../nonconform/common/InlineNceForm", () => ({
   default: () => <div data-testid="inline-nce-form" />,
 }));
 
-import ExpandedPanel from "./ExpandedPanel";
+import ExpandedPanel, { PanelRow } from "./ExpandedPanel";
 import { getFromOpenElisServer } from "../../utils/Utils";
 
 const getMock = getFromOpenElisServer as ReturnType<typeof vi.fn>;
 
 const noop = vi.fn();
 
-const baseRow = {
+const baseRow: PanelRow = {
   id: "1",
   accessionNumber: "DEV012600000000000128",
   analysisId: "58",
@@ -32,10 +32,7 @@ const baseRow = {
   resultType: "D",
 };
 
-const renderPanel = (
-  row: Record<string, unknown>,
-  attachmentsEditable?: boolean,
-) =>
+const renderPanel = (row: PanelRow, attachmentsEditable?: boolean) =>
   render(
     <IntlProvider locale="en" messages={messages}>
       <ExpandedPanel
