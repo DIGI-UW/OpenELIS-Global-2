@@ -209,11 +209,15 @@ interface SaveResponse {
  */
 export interface RunEntry {
   runId: number;
-  runRowId: string;
+  /**
+   * The staged analyzer value being accepted; absent for a workplan batch's row,
+   * which has no analyzer value and records into its run when saved (FR-D5).
+   */
+  runRowId?: string | null;
   testId?: string | null;
   componentId?: string | null;
   /** The value the row is prefilled with: for a dictionary test, the choice's id. */
-  value: string;
+  value?: string | null;
   /** What the instrument sent, shown once the value is edited. */
   reported?: string | null;
   units?: string | null;
@@ -235,6 +239,17 @@ export const isRunEntryRow = (
   (row.testResultComponentId || null) === (entry.componentId || null) &&
   !row.resultValue &&
   (!row.multiSelectResultValues || row.multiSelectResultValues === "{}");
+
+/**
+ * OGC-1200 FR-D5: a row batched in a workplan run is entered here and records
+ * into its run, so only a held batch, or a value waiting in an analyzer run,
+ * keeps the row from being entered.
+ */
+export const isBatchedRun = (run?: WaitingRun | null): boolean =>
+  run?.source === "WORKPLAN";
+
+export const blocksEntry = (run?: WaitingRun | null): boolean =>
+  Boolean(run) && (!isBatchedRun(run) || Boolean(run?.held));
 
 /** FR-E10: the unit check, made only when both sides name a unit. */
 export const unitsDiffer = (
@@ -466,7 +481,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
           .slice(0, 1)
           .map((row) => ({
             ...row,
-            resultValue: entry.value,
+            resultValue: entry.value ?? row.resultValue,
             analyzerId: entry.analyzerId || row.analyzerId,
           }));
       }
@@ -509,7 +524,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
               row.multiSelectResultValues &&
               row.multiSelectResultValues !== "{}",
             ),
-          Boolean(row.waitingRun),
+          blocksEntry(row.waitingRun),
           Boolean(row.waitingRun?.held),
         );
         if (unsaved[worklistRowKey(row)]) {
@@ -1310,7 +1325,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
       postToOpenElisServerJsonResponse(
         `/rest/results-entry/analysis/${row.analysisId}/result`,
         JSON.stringify(
-          entry
+          entry?.runRowId
             ? { testResult: item, runRowId: entry.runRowId }
             : { testResult: item },
         ),
@@ -1962,12 +1977,14 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                               <FormattedMessage id="label.results.referredOut" />
                             </Tag>
                           )}
-                          {state === "WAITING" && row.waitingRun && (
-                            <WaitingTag
-                              run={row.waitingRun}
-                              onOpenRun={onOpenRun}
-                            />
-                          )}
+                          {row.waitingRun &&
+                            (state === "WAITING" ||
+                              isBatchedRun(row.waitingRun)) && (
+                              <WaitingTag
+                                run={row.waitingRun}
+                                onOpenRun={onOpenRun}
+                              />
+                            )}
                         </TableCell>
                         <TableCell className="unifiedResultsSmallCell">
                           {methods.find((m) => m.id === row.testMethod)
@@ -2012,7 +2029,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                               }
                             />
                           </span>
-                          {runEntry &&
+                          {runEntry?.runRowId &&
                             showSave(state) &&
                             (row.resultValue === runEntry.value ? (
                               <Tag
@@ -2036,7 +2053,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                                 />
                               </Tag>
                             ))}
-                          {runEntry &&
+                          {runEntry?.runRowId &&
                             showSave(state) &&
                             unitsDiffer(runEntry.units, row.unitsOfMeasure) && (
                               <Tag

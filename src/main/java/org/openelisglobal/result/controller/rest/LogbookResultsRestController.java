@@ -557,9 +557,11 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                 statusRuleSet, request);
         ResultUtil.createAnalysisOnlyUpdates(actionDataSet, request);
         ResultUtil.holdOpenWhileRequiredComponentsBlank(actionDataSet);
-        runQcService.detachFromDecidedRuns(java.util.stream.Stream
+        List<Result> savedResults = java.util.stream.Stream
                 .concat(actionDataSet.getNewResults().stream(), actionDataSet.getModifiedResults().stream())
-                .map(resultSet -> resultSet.result).toList());
+                .map(resultSet -> resultSet.result).toList();
+        updaters.add(resultRunService.recordIntoWorkplanRuns(savedResults, getSysUserId(request)));
+        runQcService.detachFromDecidedRuns(savedResults);
 
         try {
             List<Analysis> reflexAnalysises = logbookPersistService.persistDataSet(actionDataSet, updaters,
