@@ -658,9 +658,7 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
                 try {
                     questionnaireStorageService.storeQuestionnaireResponseLocally(localQResponse);
                 } catch (Exception e) {
-                    LogEvent.logError(getClass().getSimpleName(), "saveRemoteTaskAsLocalTask",
-                            "Could not store imported QuestionnaireResponse locally: " + e.getMessage());
-                    throw new FhirLocalPersistingException(
+                    LogEvent.logWarn(getClass().getSimpleName(), "saveRemoteTaskAsLocalTask",
                             "Could not store imported QuestionnaireResponse locally: " + e.getMessage());
                 }
             }

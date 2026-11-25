@@ -2,6 +2,7 @@ package org.openelisglobal.sample.controller.rest;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -24,7 +25,6 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.patient.valueholder.Patient;
@@ -346,8 +346,8 @@ public class SamplePatientEntryEOrderQuestionnaireAdoptionTest {
         assertEquals(expectedUuid, resolved);
     }
 
-    @Test(expected = LIMSRuntimeException.class)
-    public void resolveAdoptedQuestionnaireResponseUuid_throwsLIMSRuntimeExceptionWhenResolutionFailsDueToException() {
+    @Test
+    public void resolveAdoptedQuestionnaireResponseUuid_returnsNullAndDoesNotThrowWhenResolutionFailsDueToException() {
         SamplePatientUpdateData updateData = mock(SamplePatientUpdateData.class);
         ElectronicOrder eOrder = new ElectronicOrder();
         eOrder.setId("eo-err");
@@ -359,7 +359,28 @@ public class SamplePatientEntryEOrderQuestionnaireAdoptionTest {
         when(parser.parseResource(eq(Task.class), anyString()))
                 .thenThrow(new RuntimeException("Simulated parser or database connectivity failure"));
 
-        samplePatientService.resolveAdoptedQuestionnaireResponseUuid(updateData);
+        UUID resolved = samplePatientService.resolveAdoptedQuestionnaireResponseUuid(updateData);
+        assertNull(resolved);
+    }
+
+    @Test
+    public void resolveProgramQuestionnaireResponseUuid_generatesNewUuidAndDoesNotThrowWhenResolutionFailsDueToException() {
+        SamplePatientUpdateData updateData = mock(SamplePatientUpdateData.class);
+        QuestionnaireResponse qr = new QuestionnaireResponse();
+        when(updateData.getProgramQuestionnaireResponse()).thenReturn(qr);
+
+        ElectronicOrder eOrder = new ElectronicOrder();
+        eOrder.setId("eo-err");
+        eOrder.setData("{\"resourceType\":\"Task\"}");
+        when(updateData.getElectronicOrder()).thenReturn(eOrder);
+
+        IParser parser = mock(IParser.class);
+        when(fhirUtil.getFhirParser()).thenReturn(parser);
+        when(parser.parseResource(eq(Task.class), anyString()))
+                .thenThrow(new RuntimeException("Simulated parser or database connectivity failure"));
+
+        UUID result = samplePatientService.resolveProgramQuestionnaireResponseUuid(updateData);
+        assertNotNull(result);
     }
 
     @Test
@@ -426,18 +447,51 @@ public class SamplePatientEntryEOrderQuestionnaireAdoptionTest {
     }
 
     @Test
-    public void resolveProgramQuestionnaireResponseUuid_reusesExistingMeaningfulIdWithoutPerformingLookup() {
+    public void resolveProgramQuestionnaireResponseUuid_ignoresClientSuppliedIdAndGeneratesNewUuidWhenNonEOrder() {
         SamplePatientUpdateData updateData = mock(SamplePatientUpdateData.class);
-        UUID existingId = UUID.randomUUID();
-        QuestionnaireResponse existingQr = new QuestionnaireResponse();
-        existingQr.setId(existingId.toString());
-        when(updateData.getProgramQuestionnaireResponse()).thenReturn(existingQr);
+        UUID clientId = UUID.randomUUID();
+        QuestionnaireResponse clientQr = new QuestionnaireResponse();
+        clientQr.setId(clientId.toString());
+        when(updateData.getProgramQuestionnaireResponse()).thenReturn(clientQr);
+        when(updateData.getElectronicOrder()).thenReturn(null);
 
         UUID result = samplePatientService.resolveProgramQuestionnaireResponseUuid(updateData);
 
-        assertEquals(existingId, result);
-        // ElectronicOrder should never even be inspected when QR already has a meaningful ID
-        org.mockito.Mockito.verify(updateData, org.mockito.Mockito.never()).getElectronicOrder();
+        assertNotNull(result);
+        assertNotEquals(clientId, result);
+    }
+
+    @Test
+    public void resolveProgramQuestionnaireResponseUuid_adoptsServerResolvedQrAndIgnoresClientSuppliedId() {
+        SamplePatientUpdateData updateData = mock(SamplePatientUpdateData.class);
+        UUID clientId = UUID.randomUUID();
+        QuestionnaireResponse clientQr = new QuestionnaireResponse();
+        clientQr.setId(clientId.toString());
+        when(updateData.getProgramQuestionnaireResponse()).thenReturn(clientQr);
+
+        ElectronicOrder eOrder = new ElectronicOrder();
+        eOrder.setId("eo-client-override");
+        eOrder.setData("{\"resourceType\":\"Task\"}");
+        when(updateData.getElectronicOrder()).thenReturn(eOrder);
+
+        Task task = new Task();
+        task.addBasedOn(new Reference("ServiceRequest/sr-ad-1"));
+
+        IParser parser = mock(IParser.class);
+        when(fhirUtil.getFhirParser()).thenReturn(parser);
+        when(parser.parseResource(eq(Task.class), anyString())).thenReturn(task);
+
+        UUID adoptedUuid = UUID.randomUUID();
+        QuestionnaireResponse serverQr = new QuestionnaireResponse();
+        serverQr.setId(adoptedUuid.toString());
+
+        when(questionnaireStorageService.getQuestionnaireResponseForServiceRequest("sr-ad-1", null))
+                .thenReturn(Optional.of(serverQr));
+
+        UUID result = samplePatientService.resolveProgramQuestionnaireResponseUuid(updateData);
+
+        assertEquals(adoptedUuid, result);
+        assertNotEquals(clientId, result);
     }
 
     @Test

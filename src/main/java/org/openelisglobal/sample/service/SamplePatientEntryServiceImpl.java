@@ -23,7 +23,6 @@ import org.openelisglobal.address.valueholder.OrganizationAddress;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.barcode.service.BarcodeInfoService;
-import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.log.LogEvent;
@@ -1751,8 +1750,6 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             LogEvent.logError(this.getClass().getName(), "resolveAdoptedQuestionnaireResponseUuid",
                     "Failed to resolve adopted questionnaire response for electronic order: " + eOrder.getId()
                             + " - " + e.getMessage());
-            throw new LIMSRuntimeException("Failed to resolve adopted questionnaire response for electronic order: "
-                    + eOrder.getId(), e);
         }
         return null;
     }
@@ -1789,10 +1786,6 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     public UUID resolveProgramQuestionnaireResponseUuid(SamplePatientUpdateData updateData) {
         if (updateData == null || updateData.getProgramQuestionnaireResponse() == null) {
             return null;
-        }
-        if (hasMeaningfulId(updateData.getProgramQuestionnaireResponse())) {
-            return QuestionnaireStorageServiceImpl
-                    .toStorageUuid(updateData.getProgramQuestionnaireResponse().getIdElement().getIdPart());
         }
         UUID adopted = resolveAdoptedQuestionnaireResponseUuid(updateData);
         return adopted != null ? adopted : UUID.randomUUID();

@@ -154,8 +154,6 @@ public class QuestionnaireStorageServiceLookupTest {
 
         when(questionnaireResponseService.getAllMatching("subjectReference", "Patient/pat-999"))
                 .thenReturn(Collections.emptyList());
-        when(questionnaireResponseService.getAllMatching("subjectReference", null))
-                .thenReturn(Collections.emptyList());
 
         Optional<QuestionnaireResponse> result = storageService.getQuestionnaireResponseForServiceRequest("sr-500",
                 "pat-999");
@@ -164,52 +162,13 @@ public class QuestionnaireStorageServiceLookupTest {
     }
 
     @Test
-    public void getQuestionnaireResponseForServiceRequest_patientlessOrder_findsMatchingResponseLocally() {
+    public void getQuestionnaireResponseForServiceRequest_localSearch_returnsEmptyWhenPatientMissingWithoutScan() {
         when(fhirConfig.getLocalFhirStorePath()).thenReturn(null);
 
-        QuestionnaireResponse fhirQr = new QuestionnaireResponse();
-        fhirQr.setId("qr-patientless-1");
-        fhirQr.setStatus(QuestionnaireResponseStatus.COMPLETED);
-        fhirQr.addBasedOn(new Reference("ServiceRequest/sr-env-100"));
-
-        org.openelisglobal.questionnaire.valueholder.QuestionnaireResponse entity = new org.openelisglobal.questionnaire.valueholder.QuestionnaireResponse();
-        entity.setFhirUuid(UUID.randomUUID());
-        entity.setResourceJson(parser.encodeResourceToString(fhirQr));
-
-        when(questionnaireResponseService.getAllMatching("subjectReference", null))
-                .thenReturn(Collections.singletonList(entity));
-
-        Optional<QuestionnaireResponse> result = storageService.getQuestionnaireResponseForServiceRequest("sr-env-100",
+        Optional<QuestionnaireResponse> result = storageService.getQuestionnaireResponseForServiceRequest("sr-500",
                 null);
-
-        assertTrue("Patientless local lookup must find matching QuestionnaireResponse by ServiceRequest",
-                result.isPresent());
-        assertEquals("qr-patientless-1", result.get().getIdElement().getIdPart());
-        verify(questionnaireResponseService, never()).getAllMatching(eq("subjectReference"), org.mockito.ArgumentMatchers.startsWith("Patient/"));
-    }
-
-    @Test
-    public void getQuestionnaireResponseForServiceRequest_patientSearchMisses_fallsBackToPatientlessSubjectLocally() {
-        when(fhirConfig.getLocalFhirStorePath()).thenReturn(null);
-
-        QuestionnaireResponse fhirQr = new QuestionnaireResponse();
-        fhirQr.setId("qr-patientless-2");
-        fhirQr.setStatus(QuestionnaireResponseStatus.COMPLETED);
-        fhirQr.addBasedOn(new Reference("ServiceRequest/sr-env-200"));
-
-        org.openelisglobal.questionnaire.valueholder.QuestionnaireResponse entity = new org.openelisglobal.questionnaire.valueholder.QuestionnaireResponse();
-        entity.setFhirUuid(UUID.randomUUID());
-        entity.setResourceJson(parser.encodeResourceToString(fhirQr));
-
-        when(questionnaireResponseService.getAllMatching("subjectReference", "Patient/pat-missing"))
-                .thenReturn(Collections.emptyList());
-        when(questionnaireResponseService.getAllMatching("subjectReference", null))
-                .thenReturn(Collections.singletonList(entity));
-
-        Optional<QuestionnaireResponse> result = storageService.getQuestionnaireResponseForServiceRequest("sr-env-200",
-                "pat-missing");
-
-        assertTrue("Should fall back to patientless subjectReference when patient lookup misses", result.isPresent());
-        assertEquals("qr-patientless-2", result.get().getIdElement().getIdPart());
+        assertFalse(result.isPresent());
+        verify(questionnaireResponseService, never()).getAll();
+        verify(questionnaireResponseService, never()).getAllMatching(any(), any());
     }
 }
