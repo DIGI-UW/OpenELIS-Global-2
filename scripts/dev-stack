@@ -44,6 +44,8 @@ class ModuleCheckout(NamedTuple):
     module_id: str
     entry: str | None
     dev_port: int | None
+    # The manifest's frontend.messages, such as "messages/{locale}.json"
+    messages: str | None = None
 
 
 MODULE_MANIFEST = Path("src/main/resources/META-INF/openelis-module.json")
@@ -75,7 +77,14 @@ SUBMODULE_SERVICES = {
 # Checkout paths baked into the backend development image; the WAR is mounted.
 BACKEND_IMAGE_INPUTS = ("Dockerfile.dev", "install", "tomcat/client-certificates", "tomcat/oe_server.xml")
 # Frontend files baked into the development image; src and public are mounted.
-FRONTEND_IMAGE_INPUTS = ("package.json", "package-lock.json", "vite.config.ts", "index.html", "tsconfig.json")
+FRONTEND_IMAGE_INPUTS = (
+    "package.json",
+    "package-lock.json",
+    "vite.config.ts",
+    "module-federation.config.js",
+    "index.html",
+    "tsconfig.json",
+)
 
 def slugify(value: str, limit: int = 28) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-") or "worktree"
@@ -410,6 +419,9 @@ def read_module_checkout(path_text: str) -> ModuleCheckout:
         raise RuntimeError(f"--module {path_text}: the manifest has no valid id")
     frontend = manifest.get("frontend") if isinstance(manifest.get("frontend"), dict) else None
     entry = frontend.get("entry") if frontend else None
+    messages = frontend.get("messages") if frontend else None
+    if not isinstance(messages, str) or "{locale}" not in messages:
+        messages = None
     dev_port = None
     package_json = path / "frontend" / "package.json"
     if entry and package_json.is_file():
@@ -423,7 +435,7 @@ def read_module_checkout(path_text: str) -> ModuleCheckout:
                     if match:
                         dev_port = int(match.group(1))
                     break
-    return ModuleCheckout(path, module_id, entry, dev_port)
+    return ModuleCheckout(path, module_id, entry, dev_port, messages)
 
 
 def read_module_checkouts(paths: Sequence[str]) -> list[ModuleCheckout]:
@@ -448,8 +460,28 @@ def jar_module_id(jar: Path) -> str | None:
         return None
 
 
+def link_core_checkout(context: StackContext, module: ModuleCheckout) -> Path:
+    """Make this core checkout reachable as <module>/core, where the module's frontend installs the SDK from.
+
+    A module declares `@openelis/module-sdk` as `file:../core/frontend/packages/module-sdk`; its CI checks the
+    core out at ./core, and a developer's checkout gets a link to this one. A real directory there (a CI-style
+    checkout) is left alone.
+    """
+    link = module.path / "core"
+    if link.is_symlink():
+        if link.resolve() == context.repo_root.resolve():
+            return link
+        link.unlink()
+    elif link.exists():
+        return link
+    link.symlink_to(context.repo_root.resolve(), target_is_directory=True)
+    print(f"Module {module.module_id}: {link} -> {context.repo_root}")
+    return link
+
+
 def build_module(context: StackContext, environment: dict[str, str], module: ModuleCheckout) -> None:
     """Build the module JAR, pages included, against the core this checkout just installed."""
+    link_core_checkout(context, module)
     print(f"Building module {module.module_id} from {module.path}")
     run(
         [
@@ -516,7 +548,7 @@ def require_module_support(context: StackContext, environment: dict[str, str]) -
     except subprocess.CalledProcessError:
         raise RuntimeError(
             f"The backend image {image} cannot load modules (its entrypoint predates the module runtime). "
-            "Pull newer development images (rerun up without --skip-build), or add --build to build "
+            "Pull newer development images (rerun up --pull), or add --build to build "
             "them from this checkout."
         ) from None
 
@@ -572,6 +604,7 @@ def start_module_dev_server(
         )
     frontend = module.path / "frontend"
     if not (frontend / "node_modules").is_dir():
+        link_core_checkout(context, module)
         run(["npm", "ci", "--no-audit", "--no-fund"], cwd=frontend, environment=environment)
     state = module_state_dir(context)
     state.mkdir(parents=True, exist_ok=True)
@@ -606,8 +639,28 @@ def start_module_dev_server(
     )
 
 
+def module_messages_route(module: ModuleCheckout) -> str:
+    """The proxy route that sends a module's message bundles to its Vite dev server.
+
+    The dev server serves `frontend/public/messages/fr.json` at `/messages/fr.json`, the path the
+    build copies it to under the module's asset base, so a development shell that reads the
+    bundles from the asset base gets the file as saved, without a JAR rebuild.
+    """
+    if not module.messages or not module.dev_port:
+        return ""
+    before, after = module.messages.split("{locale}", 1)
+    pattern = before.replace(".", "\\.") + "([A-Za-z0-9_-]+)" + after.replace(".", "\\.")
+    target = f"{before}$1{after}"
+    return (
+        f"        # dev-stack up --module: message bundles of {module.module_id} from its Vite dev server\n"
+        f'        location ~ "^/api/OpenELIS-Global/modules/{module.module_id}/(?:[0-9a-f]{{16}}/)?{pattern}$" {{\n'
+        f"            return 307 http://localhost:{module.dev_port}/{target};\n"
+        "        }\n\n"
+    )
+
+
 def route_module_pages(context: StackContext, modules: Sequence[ModuleCheckout]) -> None:
-    """Send the shell's request for a module's remote entry to that module's Vite dev server.
+    """Send the shell's requests for a module's remote entry and message bundles to its Vite dev server.
 
     bootstrap.sh writes a fresh nginx.conf on every up, so the routes last until the next up.
     The file is rewritten in place because the proxy mounts that single file.
@@ -616,12 +669,18 @@ def route_module_pages(context: StackContext, modules: Sequence[ModuleCheckout])
         return
     config = context.project_dir / "volume" / "nginx" / "nginx.conf"
     text = config.read_text(encoding="utf-8")
+    # The registry names the entry under the JAR's digest (/modules/<id>/<sha16>/<entry>); the plain
+    # form stays one release. A regex location matches both and still wins over `location /api/`.
+    # Quoted, because nginx reads the `{16}` of an unquoted regex as a block.
     blocks = "".join(
         f"        # dev-stack up --module: pages of {module.module_id} from its Vite dev server\n"
-        f"        location = /api/OpenELIS-Global/modules/{module.module_id}/{module.entry} {{\n"
+        f'        location ~ "^/api/OpenELIS-Global/modules/{module.module_id}/(?:[0-9a-f]{{16}}/)?'
+        f'{entry_pattern}$" {{\n'
         f"            return 307 http://localhost:{module.dev_port}/{module.entry};\n"
         "        }\n\n"
+        + module_messages_route(module)
         for module in modules
+        for entry_pattern in [module.entry.replace(".", "\\.")]
     )
     routed, count = re.subn(r"^[ \t]*location /api/ \{", lambda match: blocks + match.group(0), text, flags=re.M)
     if not count:
@@ -645,11 +704,16 @@ def bootstrap_analyzer_harness(
 
 
 def build_images(context: StackContext, environment: dict[str, str]) -> None:
-    """Build every application image from the checkout and run those instead."""
-    for _, variable, _, name in APPLICATION_IMAGES:
+    """Build the application images this setup runs from the checkout and run those instead."""
+    images = [
+        image
+        for image in APPLICATION_IMAGES
+        if context.setup != "light" or image[0] in LIGHT_SERVICES
+    ]
+    for _, variable, _, name in images:
         environment[variable] = f"{context.project}-{name}:dev"
     run(
-        compose_command(context, "build", *(service for service, _, _, _ in APPLICATION_IMAGES)),
+        compose_command(context, "build", *(service for service, _, _, _ in images)),
         cwd=context.project_dir,
         environment=environment,
     )
@@ -686,11 +750,32 @@ def frontend_image_differences(
     ]
 
 
-def pull_image(context: StackContext, environment: dict[str, str], image: str) -> None:
-    """Pull an image; on failure keep an existing copy or explain the way out."""
+def local_image_created(context: StackContext, environment: dict[str, str], image: str) -> str | None:
+    """The build date of an image already on this machine, or None when it is not here."""
+    try:
+        created = output(
+            ["docker", "image", "inspect", "--format", "{{.Created}}", image],
+            cwd=context.repo_root,
+            environment=environment,
+        )
+    except subprocess.CalledProcessError:
+        return None
+    return created[:10] or "unknown date"
+
+
+def pull_image(context: StackContext, environment: dict[str, str], image: str, always: bool = True) -> bool:
+    """Pull an image (only when missing unless `always`); on failure keep an existing copy or explain the way out.
+
+    Returns False when a pull failed and the copy already on this machine is used instead.
+    """
+    if not always:
+        created = local_image_created(context, environment, image)
+        if created is not None:
+            print(f"Using {image} already on this machine (built {created}); run up --pull for a newer one")
+            return True
     try:
         run(["docker", "pull", image], cwd=context.repo_root, environment=environment)
-        return
+        return True
     except subprocess.CalledProcessError:
         try:
             run(["docker", "image", "inspect", image], cwd=context.repo_root, environment=environment, capture=True)
@@ -700,6 +785,7 @@ def pull_image(context: StackContext, environment: dict[str, str], image: str) -
                 "or rerun with --build to build the images from this checkout."
             ) from None
     print(f"Warning: could not pull {image}; using the copy already on this machine", file=sys.stderr)
+    return False
 
 
 def backend_image_differences(
@@ -729,6 +815,48 @@ def backend_image_differences(
     ]
 
 
+REMEMBERED_TERMINALS = 20
+
+
+def terminal_session_key() -> str | None:
+    """Identify the terminal this command runs in: its session id and the session leader's start time."""
+    try:
+        session = os.getsid(0)
+        started = run(
+            ["ps", "-o", "lstart=", "-p", str(session)], cwd=Path.cwd(), environment=dict(os.environ), capture=True
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return f"{session}:{started}" if started else None
+
+
+def terminal_pull_record(context: StackContext) -> Path:
+    return context.repo_root / ".dev-stack" / "pulled-terminal"
+
+
+def first_up_in_terminal(context: StackContext) -> bool:
+    """True until `up` has pulled this setup's images once in this terminal (a full pull covers light)."""
+    key = terminal_session_key()
+    record = terminal_pull_record(context)
+    if key is None or not record.is_file():
+        return True
+    known = record.read_text(encoding="utf-8").splitlines()
+    return f"{key} {context.setup}" not in known and f"{key} full" not in known
+
+
+def mark_terminal_pulled(context: StackContext) -> None:
+    """Remember this terminal and setup (and the most recent others) as having pulled."""
+    key = terminal_session_key()
+    if key is None:
+        return
+    entry = f"{key} {context.setup}"
+    record = terminal_pull_record(context)
+    record.parent.mkdir(parents=True, exist_ok=True)
+    known = record.read_text(encoding="utf-8").splitlines() if record.is_file() else []
+    known = [line for line in known if line and line != entry][-(REMEMBERED_TERMINALS - 1):] + [entry]
+    record.write_text("\n".join(known) + "\n", encoding="utf-8")
+
+
 def image_record(context: StackContext) -> Path:
     return context.repo_root / ".dev-stack" / "images.json"
 
@@ -755,13 +883,17 @@ def reuse_recorded_images(context: StackContext, environment: dict[str, str]) ->
 
 
 def pull_images(
-    context: StackContext, environment: dict[str, str], changed_submodules: Sequence[str]
-) -> None:
-    """Pull the published development images and say what they cannot reflect."""
+    context: StackContext, environment: dict[str, str], changed_submodules: Sequence[str], always: bool = True
+) -> bool:
+    """Pull the published development images (missing ones only unless `always`) and say what they cannot reflect.
+
+    Returns True when every image is the published one or was already here, False when a pull failed.
+    """
+    pulled = True
     for service, variable, _, _ in APPLICATION_IMAGES:
         if context.setup == "light" and service in FULL_ONLY_SERVICES:
             continue
-        pull_image(context, environment, environment[variable])
+        pulled &= pull_image(context, environment, environment[variable], always=always)
     images = {service: environment[variable] for service, variable, _, _ in APPLICATION_IMAGES}
     for path, service in SUBMODULE_SERVICES.items():
         if path in changed_submodules and not (context.setup == "light" and service in FULL_ONLY_SERVICES):
@@ -786,6 +918,7 @@ def pull_images(
             "Rerun with --build if the backend runtime needs them.",
             file=sys.stderr,
         )
+    return pulled
 
 
 def published_port(context: StackContext, service: str, target: int, environment: dict[str, str]) -> int:
@@ -1138,6 +1271,11 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         action="store_true",
         help="Build the application images from this checkout instead of using the published ones.",
     )
+    images.add_argument(
+        "--pull",
+        action="store_true",
+        help="Pull the latest published images now. Without it, up pulls on its first run in each terminal and when an image is missing.",
+    )
     up.add_argument(
         "--setup",
         choices=SETUPS,
@@ -1213,11 +1351,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         heal_war_mount(context)
         modules_changed = False
+        pull_latest = args.pull or (not args.build and not args.skip_build and first_up_in_terminal(context))
+        if pull_latest and not args.pull:
+            print("First up in this terminal: pulling the latest published images "
+                  "(later runs here reuse them; up --pull pulls again)")
         if modules and not args.build:
             if args.skip_build:
                 reuse_recorded_images(context, environment)
             else:
-                pull_image(context, environment, environment["DEV_STACK_BACKEND_IMAGE"])
+                pull_image(context, environment, environment["DEV_STACK_BACKEND_IMAGE"], always=pull_latest)
             require_module_support(context, environment)
         if not args.skip_build:
             build_application(context, environment, install_for_modules=bool(modules))
@@ -1229,7 +1371,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.build:
                 build_images(context, environment)
             else:
-                pull_images(context, environment, changed_submodules)
+                if pull_images(context, environment, changed_submodules, always=pull_latest) and pull_latest:
+                    mark_terminal_pulled(context)
             record_images(context, environment)
         elif not (context.repo_root / "target" / "OpenELIS-Global.war").is_file():
             raise RuntimeError("--skip-build requires target/OpenELIS-Global.war")

@@ -1,0 +1,13 @@
+/*
+ * A Carbon modal container is transformed (translate3d), which makes it the
+ * containing block of a position: fixed descendant. An e-signature modal
+ * opened from inside another modal (Validation's Release all clear) was
+ * therefore laid out inside that container and its Sign button fell outside
+ * the screen. While the e-signature modal is open, its host container keeps
+ * no transform, so the e-signature modal covers the viewport. Carbon's own
+ * rule sets the transform with the same specificity and loads later, hence
+ * !important.
+ */
+.cds--modal-container:has(.esignature-modal.is-visible) {
+  transform: none !important;
+}

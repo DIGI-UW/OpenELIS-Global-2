@@ -119,6 +119,80 @@ export function slideRows(page: Page) {
   return page.locator("#pathology-section-microtomy .pathology-case-view__row");
 }
 
+/** The microtomy section, where every slide is listed under its block. */
+const MICROTOMY_SECTION = "#pathology-section-microtomy";
+
+/**
+ * One block's group on the microtomy list: its header line and the slides cut
+ * from it. Addressed by the designation in the header, matched whole, so the
+ * slides' own designations under it never match.
+ */
+export function blockGroup(page: Page, designation: string) {
+  return page
+    .locator(`${MICROTOMY_SECTION} .pathology-case-view__group`)
+    .filter({
+      has: page.locator(
+        ".pathology-case-view__group-header .pathology-case-view__row-designation",
+        { hasText: new RegExp(`^${escapeRegExp(designation)}$`) },
+      ),
+    });
+}
+
+/** The last group on the microtomy list, holding slides that name no block. */
+export function legacySlideGroup(page: Page) {
+  return page
+    .locator(`${MICROTOMY_SECTION} .pathology-case-view__group`)
+    .filter({
+      has: page.locator(".pathology-case-view__group-title", {
+        hasText: /^Slides with no block recorded$/,
+      }),
+    });
+}
+
+/** The Add slide of one block's group, named after the block. */
+export function addSlideButton(page: Page, designation: string) {
+  return page.getByRole("button", {
+    name: `Add slide to ${designation}`,
+    exact: true,
+  });
+}
+
+/** Add one unsaved slide under a block, from that block's own Add slide. */
+export async function addSlideTo(page: Page, designation: string) {
+  const button = addSlideButton(page, designation);
+  await expect(button).toBeEnabled();
+  await button.click();
+}
+
+/**
+ * The control on a slide's row that opens its label check, named after the
+ * slide as printed ("Verify label of A1.1").
+ */
+export function verifyLabelButton(page: Page, slideName: string) {
+  return page.getByRole("button", {
+    name: `Verify label of ${slideName}`,
+    exact: true,
+  });
+}
+
+/**
+ * The two fields a slide's label check is scanned or typed into, the block
+ * first and the slide's printed label second, addressed by the slide's id.
+ */
+export function scanFields(page: Page, slideId: number | string) {
+  return {
+    block: page.locator(`#scanBlock-${slideId}`),
+    slide: page.locator(`#scanSlide-${slideId}`),
+  };
+}
+
+/** The Verified or Unverified tag in a slide row's identity line. */
+export function labelTag(row: Locator) {
+  return row
+    .locator(".pathology-case-view__row-identity .cds--tag")
+    .filter({ hasText: /^(Verified|Unverified)$/ });
+}
+
 /**
  * The one row on a list carrying a designation, matched whole, so A1 never
  * also matches A10.
@@ -305,22 +379,61 @@ export async function returnCase(
   return stage;
 }
 
-/** One configuration row of a stage switch, and its stored value. */
-async function readStageSwitchRow(page: Page, stage: OptionalStageId) {
+/** One row of the Result Entry Configuration page, and its stored value. */
+async function readSiteSettingRow(page: Page, name: string) {
   const menu = await apiGet<{ menuList: { id: string; name: string }[] }>(
     page,
     `${API_PREFIX}/rest/ResultConfigurationMenu`,
   );
-  const switchName = `pathology.stage.${stage}.enabled`;
-  const row = menu.menuList.find((entry) => entry.name === switchName);
+  const row = menu.menuList.find((entry) => entry.name === name);
   if (!row) {
-    throw new Error(`No configuration row named ${switchName}`);
+    throw new Error(`No configuration row named ${name}`);
   }
   const stored = await apiGet<Record<string, unknown>>(
     page,
     `${API_PREFIX}/rest/ResultConfiguration?ID=${row.id}`,
   );
-  return { row, stored, switchName };
+  return { row, stored };
+}
+
+/**
+ * One setting of the Result Entry Configuration page, as stored ("true" or
+ * "false" for a switch). A row stored with no value reads as `fallback`.
+ */
+export async function readSiteSetting(
+  page: Page,
+  name: string,
+  fallback = "true",
+) {
+  return String(
+    (await readSiteSettingRow(page, name)).stored.value ?? fallback,
+  );
+}
+
+/**
+ * Change one setting exactly as the Result Entry Configuration page does:
+ * read the configuration row the administrator would select, change its
+ * value, and post it back to the same endpoint. The server reloads its own
+ * configuration as part of that save; the browser reads it once, when the
+ * application boots, so a page shows the new value only after a full load.
+ */
+export async function setSiteSetting(page: Page, name: string, value: string) {
+  const { row, stored } = await readSiteSettingRow(page, name);
+  await apiPost(
+    page,
+    `${API_PREFIX}/rest/ResultConfiguration?ID=${row.id}`,
+    { ...stored, value },
+    `Setting ${name} to ${value}`,
+  );
+}
+
+/** The setting that says whether slide labels are checked with a scanner. */
+export const SCAN_VERIFICATION_SETTING =
+  "pathology.microtomy.scanVerificationRequired";
+
+/** The name of the switch that says whether the laboratory tracks a stage. */
+function stageSwitchName(stage: OptionalStageId) {
+  return `pathology.stage.${stage}.enabled`;
 }
 
 /**
@@ -328,29 +441,16 @@ async function readStageSwitchRow(page: Page, stage: OptionalStageId) {
  * the Result Entry Configuration page says ("true" or "false").
  */
 export async function readStageSwitch(page: Page, stage: OptionalStageId) {
-  return String((await readStageSwitchRow(page, stage)).stored.value ?? "true");
+  return readSiteSetting(page, stageSwitchName(stage));
 }
 
-/**
- * Turn one optional bench stage on or off exactly as the Result Entry
- * Configuration page does: read the configuration row the administrator would
- * select, change its value, and post it back to the same endpoint. The server
- * reloads its own configuration as part of that save; the browser reads it
- * once, when the application boots, so a page shows the new value only after
- * a full load.
- */
+/** Turn one optional bench stage on or off, as setSiteSetting does. */
 export async function setStageSwitch(
   page: Page,
   stage: OptionalStageId,
   value: string,
 ) {
-  const { row, stored } = await readStageSwitchRow(page, stage);
-  await apiPost(
-    page,
-    `${API_PREFIX}/rest/ResultConfiguration?ID=${row.id}`,
-    { ...stored, value },
-    `Setting pathology.stage.${stage}.enabled to ${value}`,
-  );
+  await setSiteSetting(page, stageSwitchName(stage), value);
 }
 
 /**
@@ -365,7 +465,7 @@ export async function expectStageSwitchesOn(
   const off: string[] = [];
   for (const stage of stages) {
     if ((await readStageSwitch(page, stage)) === "false") {
-      off.push(`pathology.stage.${stage}.enabled`);
+      off.push(stageSwitchName(stage));
     }
   }
   if (off.length > 0) {

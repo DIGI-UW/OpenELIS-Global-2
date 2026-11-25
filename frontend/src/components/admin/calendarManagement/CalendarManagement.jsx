@@ -14,11 +14,11 @@ import {
   InlineNotification,
   DataTableSkeleton,
   Modal,
-  DatePicker,
   DatePickerInput,
   TextInput,
   Checkbox,
 } from "@carbon/react";
+import { DatePicker } from "../../common/DatePicker";
 import { Add, Edit, TrashCan, Upload, Download } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -262,6 +262,7 @@ function CalendarManagement() {
             id="year-dropdown"
             data-testid="year-dropdown"
             titleText={intl.formatMessage({ id: "calendar.management.year" })}
+            label={intl.formatMessage({ id: "calendar.management.year" })}
             items={yearOptions}
             selectedItem={yearOptions.find((y) => y.id === year)}
             itemToString={(item) => item?.text ?? ""}
@@ -341,6 +342,10 @@ function CalendarManagement() {
                           >
                             <DatePickerInput
                               id="new-holiday-date"
+                              labelText={intl.formatMessage({
+                                id: "calendar.management.date",
+                              })}
+                              hideLabel
                               placeholder="yyyy-mm-dd"
                               size="sm"
                               autoFocus
@@ -350,6 +355,10 @@ function CalendarManagement() {
                         <TableCell>
                           <TextInput
                             id="new-holiday-name"
+                            labelText={intl.formatMessage({
+                              id: "calendar.management.holidayName",
+                            })}
+                            hideLabel
                             value={editForm.name}
                             onChange={(e) =>
                               setEditForm((f) => ({
@@ -431,6 +440,10 @@ function CalendarManagement() {
                               >
                                 <DatePickerInput
                                   id="edit-holiday-date"
+                                  labelText={intl.formatMessage({
+                                    id: "calendar.management.date",
+                                  })}
+                                  hideLabel
                                   placeholder="yyyy-mm-dd"
                                   size="sm"
                                 />
@@ -439,6 +452,10 @@ function CalendarManagement() {
                             <TableCell>
                               <TextInput
                                 id="edit-holiday-name"
+                                labelText={intl.formatMessage({
+                                  id: "calendar.management.holidayName",
+                                })}
+                                hideLabel
                                 value={editForm.name}
                                 onChange={(e) =>
                                   setEditForm((f) => ({

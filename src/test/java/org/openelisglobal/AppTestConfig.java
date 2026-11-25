@@ -131,8 +131,9 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.resultreporting.service", "org.openelisglobal.security", "org.openelisglobal.genericsample",
         "org.openelisglobal.questionnaire", "org.openelisglobal.qa", "org.openelisglobal.microbiology",
         "org.openelisglobal.batchworkplan", "org.openelisglobal.resultrun", "org.openelisglobal.containertype",
-        "org.openelisglobal.reportqueue", "org.openelisglobal.delivery", "org.openelisglobal.workplan.daoimpl",
-        "org.openelisglobal.dashboard" }, excludeFilters = {
+        "org.openelisglobal.validationpolicy", "org.openelisglobal.facilityregistry", "org.openelisglobal.reportqueue",
+        "org.openelisglobal.delivery", "org.openelisglobal.workplan.daoimpl", "org.openelisglobal.dashboard",
+        "org.openelisglobal.textmacro.service", "org.openelisglobal.textmacro.daoimpl" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.[BS].*"),
@@ -237,7 +238,7 @@ public class AppTestConfig implements WebMvcConfigurer {
         return mock(FhirConfig.class);
     }
 
-    @Bean()
+    @Bean(name = { "closeableHttpClient", "localFhirHttpClient", "partnerFhirHttpClient" })
     @Profile("test")
     public CloseableHttpClient closeableHttpClient() {
         return mock(CloseableHttpClient.class);

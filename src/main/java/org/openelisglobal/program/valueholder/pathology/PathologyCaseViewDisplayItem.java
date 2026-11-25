@@ -70,7 +70,19 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
      */
     private Map<String, String> tissueTypeNames;
 
+    /**
+     * The name of every stain the case's slides carry, by dictionary id, so a stain
+     * retired after a slide recorded it still reads as a name.
+     */
+    private Map<String, String> stainNames;
+
     private List<PathologyReport> reports;
+
+    /**
+     * Who checked each slide's label against its block, and when, by slide id; a
+     * slide never checked is absent.
+     */
+    private Map<Integer, LabelVerificationView> labelVerifications;
 
     /** Every stage the case entered, oldest first, as recorded by the server. */
     private List<StageEventView> stageEvents;
@@ -216,6 +228,14 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
         this.tissueTypeNames = tissueTypeNames;
     }
 
+    public Map<String, String> getStainNames() {
+        return stainNames;
+    }
+
+    public void setStainNames(Map<String, String> stainNames) {
+        this.stainNames = stainNames;
+    }
+
     public String getConclusionText() {
         return conclusionText;
     }
@@ -270,6 +290,14 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
 
     public void setReports(List<PathologyReport> reports) {
         this.reports = reports;
+    }
+
+    public Map<Integer, LabelVerificationView> getLabelVerifications() {
+        return labelVerifications;
+    }
+
+    public void setLabelVerifications(Map<Integer, LabelVerificationView> labelVerifications) {
+        this.labelVerifications = labelVerifications;
     }
 
     public List<StageEventView> getStageEvents() {
@@ -343,6 +371,23 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
 
         private static String nameOf(SystemUser user) {
             return user == null ? null : user.getDisplayName();
+        }
+    }
+
+    /**
+     * A slide label's check against its block: when, formatted as the stage entries
+     * are, and who, by name. The slide row itself carries only the user's id.
+     */
+    public record LabelVerificationView(String verifiedAt, String verifiedBy) {
+
+        /** The check on a slide, or null when its label was never checked. */
+        public static LabelVerificationView of(PathologySlide slide, SystemUser verifier) {
+            if (slide.getLabelVerifiedAt() == null) {
+                return null;
+            }
+            return new LabelVerificationView(
+                    DateUtil.convertTimestampToStringDateAndConfiguredHourTime(slide.getLabelVerifiedAt()),
+                    verifier == null ? null : verifier.getDisplayName());
         }
     }
 

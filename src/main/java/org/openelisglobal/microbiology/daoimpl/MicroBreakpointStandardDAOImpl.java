@@ -54,6 +54,19 @@ public class MicroBreakpointStandardDAOImpl extends BaseDAOImpl<MicroBreakpointS
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<MicroBreakpointStandard> findByAuthorityAndConfigurationHash(String authority,
+            String configurationHash) {
+        Query<MicroBreakpointStandard> query = entityManager.unwrap(Session.class).createQuery(
+                "from MicroBreakpointStandard s where s.authority = :authority and s.configurationHash = :hash",
+                MicroBreakpointStandard.class);
+        query.setParameter("authority", authority);
+        query.setParameter("hash", configurationHash);
+        query.setMaxResults(1);
+        return query.uniqueResultOptional();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<MicroBreakpointStandard> getActiveForAuthority(String authority) {
         Query<MicroBreakpointStandard> query = entityManager.unwrap(Session.class).createQuery(
                 "from MicroBreakpointStandard s where s.authority = :authority and s.lifecycleStatus = 'ACTIVE'",

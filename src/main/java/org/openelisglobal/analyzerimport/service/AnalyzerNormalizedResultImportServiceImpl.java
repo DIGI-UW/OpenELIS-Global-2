@@ -6,6 +6,7 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -107,6 +108,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         }
 
         int controlsProcessed = processControls(staged, analyzer, effectiveActor);
+        run.ifPresent(opened -> resultRunService.refreshQcState(opened.getId(), effectiveActor));
         int held = (int) staged.stream().filter(AnalyzerResults::isReadOnly).count();
         AnalyzerDeliveryReceipt receipt = new AnalyzerDeliveryReceipt();
         receipt.setConnectionId(contract.bridgeConnectionId());
@@ -138,6 +140,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         Analyzer analyzer = analyzerService.findByBridgeConnectionIdForUpdate(candidate.getBridgeConnectionId())
                 .orElseThrow(() -> new IllegalArgumentException("Analyzer connection not found"));
         int recoveredCount = 0;
+        Set<Long> touchedRuns = new LinkedHashSet<>();
         // Retry the stored normalized observation using the current local mapping.
         for (AnalyzerResults held : analyzerResultsService.findHeldMappingResultsByAnalyzer(analyzerId)) {
             if (AnalyzerResults.IMPORT_ISSUE_SETUP_CAPTURE.equals(held.getImportIssueReason())) {
@@ -147,6 +150,9 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                     || !analyzer.getBridgeConnectionId().equals(held.getSourceConnectionId())
                     || held.getSourcePayload() == null) {
                 continue;
+            }
+            if (held.getRunId() != null) {
+                touchedRuns.add(held.getRunId());
             }
             // The stored observation already contains the Bridge's interpretation. Recovery
             // applies only local mapping and placement; historical parser snapshots remain
@@ -220,6 +226,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                 recoveredCount++;
             }
         }
+        touchedRuns.forEach(runId -> resultRunService.refreshQcState(runId, effectiveActor));
         return recoveredCount;
     }
 
@@ -471,7 +478,8 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         LocalDateTime timestamp = row.getCompleteDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
         if ("D".equals(row.getResultType())) {
             return qcResultProcessingService.processQualitativeQCResult(analyzer.getId(), row.getTestId(),
-                    row.getComponentId(), specimenIdOf(row), row.getControlLevel(), row.getResult(), timestamp);
+                    row.getComponentId(), specimenIdOf(row), row.getControlLevel(), row.getResult(), timestamp,
+                    row.getRunId());
         }
         BigDecimal value;
         try {
@@ -481,8 +489,8 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                     "Control result is neither numeric nor a mapped answer and remains staged for review");
             return QCResultProcessingService.Outcome.UNSUPPORTED_VALUE;
         }
-        return qcResultProcessingService.processQCResult(analyzer.getId(), row.getTestId(), specimenIdOf(row),
-                row.getControlLevel(), value, row.getUnits(), timestamp);
+        return qcResultProcessingService.processQCResult(analyzer.getId(), row.getTestId(), row.getComponentId(),
+                specimenIdOf(row), row.getControlLevel(), value, row.getUnits(), timestamp, row.getRunId());
     }
 
     private void hold(AnalyzerResults row, String reason) {

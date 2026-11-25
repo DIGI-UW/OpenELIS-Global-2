@@ -52,6 +52,9 @@ abstract class PathologyControllerTestSupport extends BaseWebContextSensitiveTes
      */
     protected static final int LEGACY_BLOCK_ID = 101;
 
+    /** The fixture's slide on the case, cut before slides named their block. */
+    protected static final int LEGACY_SLIDE_ID = 201;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     protected AnnotationConfigWebApplicationContext securityContext;

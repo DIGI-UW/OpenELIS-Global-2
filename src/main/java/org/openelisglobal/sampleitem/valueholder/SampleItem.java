@@ -57,6 +57,7 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
     private String sampleTemperature;
     private String specimenOrigin;
     private String container;
+    private Long containerTypeId;
     private Integer cultureSetNumber;
     private String bodySite;
     private String locationDetails;
@@ -294,6 +295,15 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
 
     public void setContainer(String container) {
         this.container = container;
+    }
+
+    /** The clinical container type the sample was taken in, if recorded. */
+    public Long getContainerTypeId() {
+        return containerTypeId;
+    }
+
+    public void setContainerTypeId(Long containerTypeId) {
+        this.containerTypeId = containerTypeId;
     }
 
     public String getLocationDetails() {

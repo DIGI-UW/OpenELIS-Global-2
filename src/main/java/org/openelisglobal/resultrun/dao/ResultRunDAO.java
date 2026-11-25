@@ -25,4 +25,19 @@ public interface ResultRunDAO extends BaseDAO<ResultRun, Long> {
      * rows a worklist must not let anyone result around.
      */
     List<AnalyzerResults> getWaitingRowsForAccessions(Collection<String> accessionNumbers);
+
+    /**
+     * For each of these analyses that has a result stored from a run: the analysis
+     * id, the run id and the analysis's test id.
+     */
+    List<Object[]> getRunsOfAnalyses(Collection<String> analysisIds);
+
+    /** The tests of the results stored from a run. */
+    List<String> getTestIdsOfResults(Long runId);
+
+    /**
+     * The analyses of one test in a run: those with a result stored from it and
+     * those its staged values were reported for.
+     */
+    List<String> getAnalysisIdsOfRunTest(Long runId, String testId);
 }

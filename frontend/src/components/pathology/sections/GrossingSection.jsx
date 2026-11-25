@@ -17,9 +17,9 @@ import {
   cassetteStateBadge,
   countedRows,
   deactivatedCount,
+  heldOrServedItems,
   labelStreamUrl,
   rowListEditors,
-  tissueTypeItems,
   unsavedPosition,
 } from "../pathologyRows";
 import { rowActionLock } from "../pathologySections";
@@ -123,9 +123,9 @@ const GrossingSection = ({
             onDeactivate={onDeactivate}
           >
             {({ hiddenName, disabled }) => {
-              const tissueItems = tissueTypeItems(
+              const tissueItems = heldOrServedItems(
                 tissueTypes,
-                block,
+                block.tissueTypeId,
                 caseInfo.tissueTypeNames,
               );
               return (

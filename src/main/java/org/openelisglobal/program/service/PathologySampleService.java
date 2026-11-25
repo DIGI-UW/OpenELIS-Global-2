@@ -23,8 +23,20 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
     /** Audit verb recorded when a block is retired. */
     String PATHOLOGY_BLOCK_DEACTIVATED = "PATHOLOGY_BLOCK_DEACTIVATED";
 
+    /** Audit verb recorded when a slide is cut from a block. */
+    String PATHOLOGY_SLIDE_CREATED = "PATHOLOGY_SLIDE_CREATED";
+
     /** Audit verb recorded when a slide is retired. */
     String PATHOLOGY_SLIDE_DEACTIVATED = "PATHOLOGY_SLIDE_DEACTIVATED";
+
+    /** Audit verb recorded when a slide's printed label matches its block. */
+    String PATHOLOGY_SLIDE_LABEL_VERIFIED = "PATHOLOGY_SLIDE_LABEL_VERIFIED";
+
+    /**
+     * Audit verb recorded when the identifiers scanned for a slide do not match it
+     * and its block.
+     */
+    String PATHOLOGY_SLIDE_LABEL_MISMATCH = "PATHOLOGY_SLIDE_LABEL_MISMATCH";
 
     /** Audit verb recorded when a case is sent on to a later stage. */
     String PATHOLOGY_STAGE_ADVANCED = "PATHOLOGY_STAGE_ADVANCED";
@@ -37,6 +49,23 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
 
     /** Audit verb recorded when the processor run is written at Processing. */
     String PATHOLOGY_RUN_REFERENCE_RECORDED = "PATHOLOGY_RUN_REFERENCE_RECORDED";
+
+    /** Dictionary category a laboratory fills with the tissue types it cuts. */
+    String TISSUE_TYPE_CATEGORY = "pathology_tissue_types";
+
+    /**
+     * Dictionary category of the stains a slide may carry, shipped by the
+     * configuration loader and extended by the laboratory. The code reads the
+     * category by this name.
+     */
+    String STAIN_CATEGORY = "Pathology Stains";
+
+    /**
+     * What checking a slide's label against its block found: the slide as it now
+     * stands, and whether the identifiers given matched it and its block.
+     */
+    record LabelVerification(PathologySlide slide, boolean match) {
+    }
 
     List<PathologySample> getWithStatus(List<PathologyStatus> statuses);
 
@@ -85,6 +114,30 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
      * @throws PathologyCaseRuleException when the row has been retired
      */
     Optional<PathologyBlock> embedBlock(Integer blockId, String sysUserId);
+
+    /**
+     * Checks a slide's printed label against its block before the slide is
+     * sectioned (FR-7.3 to FR-7.5). The block field must carry the parent block's
+     * barcode and the slide field the slide's own; where the laboratory has no
+     * scanner the identifiers as printed are taken instead. A match stamps the
+     * slide with the session user and the server clock.
+     *
+     * <p>
+     * The refusals come first, in this order: a blank field, a retired slide, a
+     * slide with no block recorded and a slide of a signed-out case, each with a
+     * message id the screen translates. Then the identifiers are compared, whether
+     * or not the slide was verified before.
+     *
+     * <p>
+     * A mismatch is not thrown: it is answered as a result with {@code match}
+     * false, so the audit entry recording it commits rather than being rolled back
+     * with a refusal. That holds for a slide already verified too: a wrong scan is
+     * recorded, and the earlier stamp stands. A matching scan of a slide already
+     * verified writes nothing.
+     *
+     * @return the outcome, or empty when no slide carries that id
+     */
+    Optional<LabelVerification> verifySlideLabel(Integer slideId, String block, String slide, String sysUserId);
 
     /** The case a block belongs to, null when no case holds it. */
     PathologySample getCaseOfBlock(Integer blockId);

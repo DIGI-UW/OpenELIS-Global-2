@@ -4,13 +4,13 @@ import {
   ComboBox,
   NumberInput,
   TextInput,
-  DatePicker,
   DatePickerInput,
   InlineNotification,
   FormLabel,
   Button,
   Stack,
 } from "@carbon/react";
+import { DatePicker } from "../common/DatePicker";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   InventoryManagementAPI,
@@ -203,7 +203,7 @@ const QuickReceiveModal = ({
             id="quick-receive-item"
             titleText={<FormattedMessage id="catalog.item.name" />}
             placeholder={intl.formatMessage({
-              id: "inventory.search.placeholder",
+              id: "catalog.search.placeholder",
             })}
             items={options}
             selectedItem={selected}
@@ -222,7 +222,7 @@ const QuickReceiveModal = ({
                   values={{ units: selected.row.units }}
                 />
               ) : (
-                <FormattedMessage id="lot.currentQuantity" />
+                <FormattedMessage id="inventory.receive.quantity" />
               )
             }
             min={1}
