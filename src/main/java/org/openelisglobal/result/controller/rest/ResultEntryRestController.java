@@ -358,6 +358,9 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
         }
 
+        if (acceptedRun == null && StringUtils.isNotBlank(item.getResultValue())) {
+            resultRunService.holdRunsOfOneMissingControl(List.of(analysis.getId()), getSysUserId(request));
+        }
         Optional<Long> holdingRun = holdingRun(acceptedRun, analysis);
         if (holdingRun.isPresent()) {
             WaitingRun held = resultRunService.heldRun(holdingRun.get(),

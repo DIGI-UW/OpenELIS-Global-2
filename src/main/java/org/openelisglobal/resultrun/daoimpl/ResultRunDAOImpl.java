@@ -22,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class ResultRunDAOImpl extends BaseDAOImpl<ResultRun, Long> implements ResultRunDAO {
 
     private static final List<ResultRunState> ACTIVE = List.of(ResultRunState.OPEN, ResultRunState.HELD);
+    /** Advisory lock namespace for an analysis's run of one (OGC-1200). */
+    private static final int RUN_OF_ONE_LOCK = 1200;
 
     public ResultRunDAOImpl() {
         super(ResultRun.class);
@@ -76,6 +78,40 @@ public class ResultRunDAOImpl extends BaseDAOImpl<ResultRun, Long> implements Re
                         + " FROM clinlims.result_run run JOIN clinlims.analysis a ON a.id = run.analysis_id"
                         + " WHERE CAST(run.analysis_id AS VARCHAR) IN (:analysisIds) AND run.state IN ('OPEN', 'HELD')")
                 .setParameterList("analysisIds", analysisIds).getResultList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    @SuppressWarnings("unchecked")
+    public List<Object[]> getReusableRunsOfOne(Collection<String> analysisIds) {
+        if (analysisIds == null || analysisIds.isEmpty()) {
+            return List.of();
+        }
+        return session()
+                .createNativeQuery("SELECT DISTINCT ON (run.analysis_id) CAST(run.analysis_id AS VARCHAR), run.id,"
+                        + " CAST(a.test_id AS VARCHAR), run.state FROM clinlims.result_run run"
+                        + " JOIN clinlims.analysis a ON a.id = run.analysis_id"
+                        + " WHERE CAST(run.analysis_id AS VARCHAR) IN (:analysisIds) AND run.state <> 'SUPERSEDED'"
+                        + " AND NOT EXISTS (SELECT 1 FROM clinlims.result_run_test_disposition d"
+                        + " WHERE d.run_id = run.id AND d.action IN ('RETEST', 'REJECT'))"
+                        + " ORDER BY run.analysis_id, run.id DESC")
+                .setParameterList("analysisIds", analysisIds).getResultList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<ResultRun> findReusableRunOfOne(String analysisId) {
+        if (StringUtils.isBlank(analysisId)) {
+            return Optional.empty();
+        }
+        return getReusableRunsOfOne(List.of(analysisId)).stream().findFirst()
+                .flatMap(row -> get(((Number) row[1]).longValue()));
+    }
+
+    @Override
+    public void lockRunOfOne(String analysisId) {
+        session().createNativeQuery("SELECT CAST(pg_advisory_xact_lock(:namespace, hashtext(:analysis)) AS text)")
+                .setParameter("namespace", RUN_OF_ONE_LOCK).setParameter("analysis", analysisId).getSingleResult();
     }
 
     @Override

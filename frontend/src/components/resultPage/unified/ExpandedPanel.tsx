@@ -840,6 +840,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
         analysisId={row.analysisId as string | undefined}
         runId={rowRunId}
         hasSavedResult={Boolean(row.resultId)}
+        runOfOneOpen={Boolean(row.runOfOneOpen)}
         editable={editable}
         resultType={row.resultType}
         testSectionId={testSectionId}

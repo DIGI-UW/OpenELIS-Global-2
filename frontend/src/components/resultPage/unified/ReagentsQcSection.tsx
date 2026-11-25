@@ -70,6 +70,11 @@ interface ReagentsQcSectionProps {
   runId?: number | null;
   /** The row's result is stored, so a control recorded now opens no run. */
   hasSavedResult?: boolean;
+  /**
+   * The row's run of one is still open: the row keeps its reagent use and
+   * control capture under the run's summary until its value is saved.
+   */
+  runOfOneOpen?: boolean;
 }
 
 interface QcCaptureDraft {
@@ -130,10 +135,14 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
   dilution,
   runId,
   hasSavedResult,
+  runOfOneOpen,
 }) => {
   const intl = useIntl();
   const [rowRunId, setRowRunId] = useState<number | null>(runId ?? null);
   useEffect(() => setRowRunId(runId ?? null), [runId]);
+  const [rowRunOpen, setRowRunOpen] = useState(Boolean(runOfOneOpen));
+  useEffect(() => setRowRunOpen(Boolean(runOfOneOpen)), [runOfOneOpen]);
+  const [summaryVersion, setSummaryVersion] = useState(0);
   const fromAnalyzer = Boolean(fromAnalyzerId);
   const [links, setLinks] = useState<ReagentLink[] | null>(null);
   const [lotsByItem, setLotsByItem] = useState<Record<string, InventoryLot[]>>(
@@ -354,14 +363,26 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
         setQcDraft(EMPTY_QC_DRAFT);
         if (response.runId) {
           setRowRunId(response.runId);
+          setRowRunOpen(true);
+          setSummaryVersion((version) => version + 1);
         }
+        const onRun = response.runId
+          ? { run: `RUN-${response.runId}` }
+          : undefined;
         setQcMessage({
           kind: failing ? "blocked" : "ok",
-          text: intl.formatMessage({
-            id: failing
-              ? "label.results.control.capture.recordedBlocked"
-              : "label.results.control.capture.recorded",
-          }),
+          text: intl.formatMessage(
+            {
+              id: onRun
+                ? failing
+                  ? "label.results.control.capture.recordedHeld"
+                  : "label.results.control.capture.recordedOnRun"
+                : failing
+                  ? "label.results.control.capture.recordedBlocked"
+                  : "label.results.control.capture.recorded",
+            },
+            onRun,
+          ),
         });
       },
     );
@@ -379,9 +400,16 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
       open={open}
       onToggle={onToggle}
     >
-      {rowRunId ? (
+      {rowRunId && (
+        <RowRunSummary
+          key={`${rowRunId}-${summaryVersion}`}
+          runId={rowRunId}
+          testId={testId}
+          variant="reagents"
+        />
+      )}
+      {rowRunId && !(rowRunOpen && !hasSavedResult) ? (
         <>
-          <RowRunSummary runId={rowRunId} testId={testId} variant="reagents" />
           {qcMessage && (
             <div
               className={

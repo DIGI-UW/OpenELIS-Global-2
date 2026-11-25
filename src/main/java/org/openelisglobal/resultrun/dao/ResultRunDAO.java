@@ -46,6 +46,22 @@ public interface ResultRunDAO extends BaseDAO<ResultRun, Long> {
      */
     Optional<ResultRun> findOpenRunOfOne(String analysisId);
 
+    /**
+     * Per analysis, {analysisId, runId, testId, state} of its latest run of one
+     * that later controls and values still belong to: not superseded, and not set
+     * aside by a Retest or Reject decision.
+     */
+    List<Object[]> getReusableRunsOfOne(Collection<String> analysisIds);
+
+    /** The analysis's run of one that later controls and values belong to. */
+    Optional<ResultRun> findReusableRunOfOne(String analysisId);
+
+    /**
+     * Serialises the work that opens or completes an analysis's run of one, until
+     * the transaction ends, so two requests at once cannot open two runs.
+     */
+    void lockRunOfOne(String analysisId);
+
     /** The run each of the results was recorded in, by result id. */
     java.util.Map<String, Long> getRunIdsOfResults(Collection<String> resultIds);
 

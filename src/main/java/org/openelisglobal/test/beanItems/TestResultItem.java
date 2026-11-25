@@ -402,6 +402,11 @@ public class TestResultItem implements ResultItem, Serializable {
      * run of one.
      */
     private Long runId;
+    /**
+     * OGC-1200: the row's run of one is still open, so the row keeps its entry
+     * tools.
+     */
+    private boolean runOfOneOpen;
     private String testSortOrder = null;
     private boolean isReflexGroup = false;
     private int reflexParentGroup = 0;
@@ -1255,6 +1260,14 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setRunId(Long runId) {
         this.runId = runId;
+    }
+
+    public boolean isRunOfOneOpen() {
+        return runOfOneOpen;
+    }
+
+    public void setRunOfOneOpen(boolean runOfOneOpen) {
+        this.runOfOneOpen = runOfOneOpen;
     }
 
     public void setNonconforming(boolean nonconforming) {

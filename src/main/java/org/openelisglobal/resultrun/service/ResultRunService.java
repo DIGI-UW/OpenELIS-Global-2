@@ -110,6 +110,14 @@ public interface ResultRunService extends BaseObjectService<ResultRun, Long> {
     org.openelisglobal.qc.valueholder.QCResult recordRowControl(String analysisId,
             org.openelisglobal.qc.form.BenchQCCaptureForm capture, RunViewer viewer, String sysUserId);
 
+    /**
+     * FR-C7, FR-H4: a first value about to be saved on a row in no run, whose test
+     * requires a control on every run and holds when it is missing, makes the row's
+     * run of one, held for the missing control, so the save is refused like any
+     * held row's until a control is recorded or the test is decided.
+     */
+    void holdRunsOfOneMissingControl(Collection<String> analysisIds, String sysUserId);
+
     /** The run each of the results was recorded in, by result id (FR-D6, FR-D7). */
     Map<String, Long> runsOfResults(Collection<String> resultIds);
 

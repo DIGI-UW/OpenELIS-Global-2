@@ -359,7 +359,7 @@ describe("ReagentsQcSection (R5/R6)", () => {
     expect(screen.queryByText(/Control result recorded/)).toBeNull();
   });
 
-  it("OGC-1200: a control on a row with no stored result opens its run of one and the section shows the run", () => {
+  it("OGC-1200: a control on a row with no stored result opens its run of one, shown above the row's open entry tools", () => {
     respondWith({
       "/rest/results-entry/test/13/reagents": [],
       "/rest/result-runs/248": {
@@ -408,7 +408,49 @@ describe("ReagentsQcSection (R5/R6)", () => {
     const summary = screen.getByTestId("row-run-summary");
     expect(summary).toHaveTextContent("In RUN-248, Manual entry.");
     expect(summary).toHaveTextContent("Held");
-    expect(screen.queryByTestId("qc-record")).not.toBeInTheDocument();
+    expect(screen.getByTestId("qc-capture-message")).toHaveTextContent(
+      "Control result recorded on RUN-248. It failed, so this row is held until the test is decided on the run.",
+    );
+    expect(screen.getByTestId("qc-record")).toBeInTheDocument();
+  });
+
+  it("OGC-1200: a row whose run of one is open keeps its reagent use under the run, for the save to take the lot", () => {
+    respondWith({
+      "/rest/results-entry/test/13/reagents": LINKS,
+      "/rest/inventory/lots/item/1/available": LOTS,
+      "/rest/result-runs/249": {
+        id: 249,
+        label: "RUN-249",
+        source: "RESULT_ENTRY",
+        state: "OPEN",
+        reagentLot: null,
+        qc: {
+          overall: "PASS",
+          tests: [
+            { testId: "13", testName: "HIV", verdict: "PASS", controls: [] },
+          ],
+        },
+      },
+    });
+    wrap(
+      <ReagentsQcSection
+        testId="13"
+        analysisId="441"
+        testSectionId="36"
+        resultType="N"
+        runId={249}
+        runOfOneOpen
+        editable
+        open
+        onToggle={() => {}}
+      />,
+    );
+
+    expect(screen.getByTestId("row-run-summary")).toHaveTextContent(
+      "In RUN-249, Manual entry.",
+    );
+    expect(screen.getByTestId("record-use-1")).toBeInTheDocument();
+    expect(screen.getByTestId("lot-LOT-2026-0421")).toBeInTheDocument();
   });
 
   it("OGC-1200: a row in a run shows the run read-only, with no use or control to record", () => {

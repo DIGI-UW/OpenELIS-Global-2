@@ -118,6 +118,9 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     @Lazy
     @Autowired
     private org.openelisglobal.systemuser.service.SystemUserService systemUserService;
+    @Lazy
+    @Autowired
+    private org.openelisglobal.testcatalog.service.TestQcPolicyService testQcPolicyService;
 
     public ResultRunServiceImpl() {
         super(ResultRun.class);
@@ -459,12 +462,24 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
         };
     }
 
+    /**
+     * The analysis's run of one, completed with the save: the run its control
+     * opened, or the run an earlier part of the test was saved into, or a new one.
+     * A run opened by a control before the reagent use was recorded takes its lot
+     * now.
+     */
     private ResultRun completedRunOfOne(Analysis analysis, String sysUserId) {
+        baseObjectDAO.lockRunOfOne(analysis.getId());
         Timestamp now = Timestamp.from(Instant.now());
-        ResultRun run = baseObjectDAO.findOpenRunOfOne(analysis.getId())
+        ResultRun run = baseObjectDAO.findReusableRunOfOne(analysis.getId())
                 .orElseGet(() -> newRunOfOne(analysis, sysUserId, now));
-        run.setState(ResultRunState.COMPLETE);
-        run.setCompletedAt(now);
+        if (run.getReagentLotId() == null) {
+            run.setReagentLotId(lotConsumedFor(analysis.getId()));
+        }
+        if (run.getState() != ResultRunState.COMPLETE) {
+            run.setState(ResultRunState.COMPLETE);
+            run.setCompletedAt(now);
+        }
         run.setLastActivityAt(now);
         run.setSysUserId(sysUserId);
         if (run.getId() == null) {
@@ -513,7 +528,8 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     @Transactional
     public org.openelisglobal.qc.valueholder.QCResult recordRowControl(String analysisId,
             org.openelisglobal.qc.form.BenchQCCaptureForm capture, RunViewer viewer, String sysUserId) {
-        Analysis analysis = StringUtils.isBlank(analysisId) ? null : analysisService.get(analysisId);
+        Analysis analysis = StringUtils.isNumeric(analysisId) ? analysisService.getMatch("id", analysisId).orElse(null)
+                : null;
         if (analysis == null || analysis.getTest() == null || !viewer.testIds().contains(analysis.getTest().getId())
                 || capture == null || !analysis.getTest().getId().equals(capture.testId())) {
             throw new IllegalArgumentException(MessageUtil.getMessage("run.refusal.rowNotVisible"));
@@ -527,12 +543,44 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
                 .anyMatch(result -> StringUtils.isNotBlank(result.getValue()))) {
             throw new IllegalArgumentException(MessageUtil.getMessage("run.refusal.rowResulted"));
         }
-        ResultRun run = baseObjectDAO.findOpenRunOfOne(analysisId).orElseGet(() -> {
+        ResultRun run = openRunOfOne(analysis, sysUserId);
+        return runQcService.recordControl(run.getId(), capture, Integer.parseInt(sysUserId));
+    }
+
+    private ResultRun openRunOfOne(Analysis analysis, String sysUserId) {
+        baseObjectDAO.lockRunOfOne(analysis.getId());
+        return baseObjectDAO.findOpenRunOfOne(analysis.getId()).orElseGet(() -> {
             ResultRun opened = newRunOfOne(analysis, sysUserId, Timestamp.from(Instant.now()));
             opened.setId(insert(opened));
             return opened;
         });
-        return runQcService.recordControl(run.getId(), capture, Integer.parseInt(sysUserId));
+    }
+
+    @Override
+    @Transactional
+    public void holdRunsOfOneMissingControl(Collection<String> analysisIds, String sysUserId) {
+        List<String> ids = analysisIds == null ? List.of()
+                : analysisIds.stream().filter(StringUtils::isNumeric).distinct().toList();
+        if (ids.isEmpty()) {
+            return;
+        }
+        Set<String> batched = activeBatchRunsOf(ids).keySet();
+        for (String analysisId : ids) {
+            Analysis analysis = batched.contains(analysisId) ? null
+                    : analysisService.getMatch("id", analysisId).orElse(null);
+            if (analysis == null || analysis.getTest() == null || !holdsWhenControlMissing(analysis.getTest().getId())
+                    || resultService.getResultsByAnalysis(analysis).stream()
+                            .anyMatch(result -> StringUtils.isNotBlank(result.getValue()))) {
+                continue;
+            }
+            runQcService.refreshState(openRunOfOne(analysis, sysUserId).getId(), sysUserId);
+        }
+    }
+
+    private boolean holdsWhenControlMissing(String testId) {
+        org.openelisglobal.testcatalog.valueholder.TestQcPolicy policy = testQcPolicyService.policiesOf(List.of(testId))
+                .get(testId);
+        return policy != null && policy.holdsWhenControlMissing();
     }
 
     @Override
@@ -844,26 +892,32 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     }
 
     /**
-     * FR-B3, FR-D7: a pending row whose control opened its run of one names that
-     * run, and is held when the run holds its test; otherwise it stays open to
-     * entry, and the save completes the run.
+     * FR-B3, FR-D7: a pending row whose control opened its run of one, or an
+     * earlier part of whose test was saved into one, names that run. While the run
+     * is open the row keeps its reagent use and control capture, and is held when
+     * the run holds its test; the save completes the run.
      */
     private void markRunsOfOne(List<TestResultItem> pending, Map<Long, WaitingRun> runs,
             Map<Long, Map<String, RunHoldCause>> heldTests) {
         if (pending.isEmpty()) {
             return;
         }
-        Map<String, Long> ofOne = new HashMap<>();
+        Map<String, Object[]> ofOne = new HashMap<>();
         for (Object[] row : baseObjectDAO
-                .getActiveRunsOfOne(pending.stream().map(TestResultItem::getAnalysisId).distinct().toList())) {
-            ofOne.put(String.valueOf(row[0]), ((Number) row[1]).longValue());
+                .getReusableRunsOfOne(pending.stream().map(TestResultItem::getAnalysisId).distinct().toList())) {
+            ofOne.put(String.valueOf(row[0]), row);
         }
         for (TestResultItem item : pending) {
-            Long runId = ofOne.get(item.getAnalysisId());
-            if (runId == null) {
+            Object[] row = ofOne.get(item.getAnalysisId());
+            if (row == null) {
                 continue;
             }
+            Long runId = ((Number) row[1]).longValue();
             item.setRunId(runId);
+            item.setRunOfOneOpen(ResultRunState.valueOf(String.valueOf(row[3])).isActive());
+            if (!item.isRunOfOneOpen()) {
+                continue;
+            }
             RunHoldCause cause = heldTests.computeIfAbsent(runId, runQcService::holdCauses).get(item.getTestId());
             if (cause != null) {
                 item.setWaitingRun(runs.computeIfAbsent(runId, this::waitingRun).held(cause));

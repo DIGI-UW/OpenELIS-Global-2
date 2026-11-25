@@ -532,6 +532,10 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             }
         }
 
+        resultRunService.holdRunsOfOneMissingControl(
+                actionDataSet.getModifiedItems().stream().filter(item -> StringUtils.isNotBlank(item.getResultValue()))
+                        .map(TestResultItem::getAnalysisId).filter(Objects::nonNull).toList(),
+                getSysUserId(request));
         Map<String, Long> holding = runQcService.entryHoldingRuns(actionDataSet.getModifiedItems().stream()
                 .map(TestResultItem::getAnalysisId).filter(Objects::nonNull).toList());
         if (!holding.isEmpty()) {

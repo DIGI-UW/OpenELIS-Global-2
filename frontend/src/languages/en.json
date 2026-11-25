@@ -4656,6 +4656,8 @@
   "label.results.control.capture.uncertainty": "Uncertainty (±)",
   "label.results.control.capture.record": "Record control result",
   "label.results.control.capture.recorded": "Control result recorded.",
+  "label.results.control.capture.recordedOnRun": "Control result recorded on {run}.",
+  "label.results.control.capture.recordedHeld": "Control result recorded on {run}. It failed, so this row is held until the test is decided on the run.",
   "label.results.control.capture.recordedBlocked": "Control result recorded. Reporting is blocked for covered results until a passing repeat is recorded.",
   "label.results.control.capture.blockedHint": "A failing control blocks reporting for covered results — a repeat run is expected.",
   "label.results.control.capture.noBenchLots": "No bench control lot is configured for this test — add one under QC → Control Lots before recording a quantitative control.",

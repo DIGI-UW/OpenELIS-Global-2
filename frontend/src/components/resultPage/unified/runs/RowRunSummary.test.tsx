@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
@@ -68,6 +68,30 @@ describe("OGC-1200 FR-D6, FR-D7 a row's run", () => {
   it("keeps History quiet while the run is still open", () => {
     renderSummary("HELD", "history");
     expect(screen.queryByTestId("row-run-reference")).not.toBeInTheDocument();
+  });
+
+  it("drops a run that answers after the row was closed, without a state update on an unmounted summary", async () => {
+    let answer: ((r: unknown) => void) | undefined;
+    let signal: AbortSignal | undefined;
+    utilsMock.getFromOpenElisServer.mockImplementation(
+      (_url: string, callback: (r: unknown) => void, abort?: AbortSignal) => {
+        answer = callback;
+        signal = abort;
+      },
+    );
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { unmount } = render(
+      <IntlProvider locale="en" messages={messages}>
+        <RowRunSummary runId={248} testId="5" variant="reagents" />
+      </IntlProvider>,
+    );
+    unmount();
+    await act(async () => {});
+    answer?.(header("HELD"));
+
+    expect(signal?.aborted).toBe(true);
+    expect(errors).not.toHaveBeenCalled();
+    errors.mockRestore();
   });
 
   it("says when a run has no control for the row's test and no lot", () => {

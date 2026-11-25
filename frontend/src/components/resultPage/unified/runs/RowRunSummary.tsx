@@ -49,9 +49,17 @@ const RowRunSummary: React.FC<RowRunSummaryProps> = ({
   );
 
   useEffect(() => {
-    getFromOpenElisServer(`/rest/result-runs/${runId}`, (body?: RowRunHeader) =>
-      setHeader(body && body.id ? body : null),
+    const controller = new AbortController();
+    getFromOpenElisServer(
+      `/rest/result-runs/${runId}`,
+      (body?: RowRunHeader) => {
+        if (!controller.signal.aborted) {
+          setHeader(body && body.id ? body : null);
+        }
+      },
+      controller.signal,
     );
+    return () => controller.abort();
   }, [runId]);
 
   if (header === undefined) {
