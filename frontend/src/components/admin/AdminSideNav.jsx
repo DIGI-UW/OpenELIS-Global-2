@@ -28,7 +28,9 @@ import {
   Sprout,
   ListChecked,
   Chemistry,
+  TextShortParagraph,
   WarningAlt,
+  Plug,
 } from "@carbon/icons-react";
 import {
   SideNavItems,
@@ -238,7 +240,7 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
     !!editorSampleTypeId ||
     !!editorPanelId ||
     !!editorLabUnitId ||
-    /\/(TestCatalogList|SampleTypeEditor|LabUnitManagement|CatalogImport)(\/|$)/.test(
+    /\/(TestCatalogList|SampleTypeEditor|ContainerTypes|LabUnitManagement|CatalogImport)(\/|$)/.test(
       location.pathname,
     );
 
@@ -325,6 +327,13 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
           <FormattedMessage id="sidenav.label.admin.testmgt.calculated" />
         </SideNavMenuItem>
       </SideNavMenu>
+      <SideNavLink
+        data-testid="text-macro-library"
+        renderIcon={TextShortParagraph}
+        {...navProps(`${path}/MacroLibrary`)}
+      >
+        <FormattedMessage id="textMacro.admin.title" />
+      </SideNavLink>
       <SideNavMenu
         data-testid="microbiology-reference-menu"
         renderIcon={Chemistry}
@@ -368,6 +377,12 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
                 : "sidenav.label.admin.sampleTypeManagement"
             }
           />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="containerTypes"
+          {...navProps(`${path}/ContainerTypes`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.containerTypes" />
         </SideNavMenuItem>
         <SideNavMenuItem
           data-cy="testCatalogList"
@@ -903,6 +918,36 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
       >
         <FormattedMessage id="testnotificationconfig.browse.title" />
       </SideNavLink>
+      <SideNavMenu
+        title={intl.formatMessage({
+          id: "sidenav.label.admin.notifications",
+        })}
+        renderIcon={Bullhorn}
+        data-cy="notificationsMenu"
+      >
+        <SideNavMenuItem
+          {...navProps(`${path}/notificationTriggerConfig/triggers`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.notifications.triggers" />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          {...navProps(`${path}/notificationTriggerConfig/templates`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.notifications.templates" />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="notificationChannels"
+          {...navProps(`${path}/notificationTriggerConfig/channels`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.notifications.channels" />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="deliverySettings"
+          {...navProps(`${path}/notificationTriggerConfig/delivery`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.notifications.delivery" />
+        </SideNavMenuItem>
+      </SideNavMenu>
       <SideNavLink
         data-cy="dictMenu"
         renderIcon={CharacterWholeNumber}
@@ -988,6 +1033,13 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
         {...navProps(`${path}/calendarManagement`)}
       >
         <FormattedMessage id="calendar.management.title" />
+      </SideNavLink>
+      <SideNavLink
+        data-cy="modulesAdmin"
+        renderIcon={Plug}
+        {...navProps(`${path}/modules`)}
+      >
+        <FormattedMessage id="modules.admin.title" />
       </SideNavLink>
       <SideNavLink
         renderIcon={Catalog}

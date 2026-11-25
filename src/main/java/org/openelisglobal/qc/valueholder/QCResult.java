@@ -114,6 +114,19 @@ public class QCResult extends BaseObject<String> {
     @Column(name = "sys_user_id", nullable = false)
     private Integer systemUserId;
 
+    /** The run this control was recorded on (OGC-1200 FR-G1); null off a run. */
+    @Column(name = "run_id")
+    private Long runId;
+
+    /** The control's verdict for its run (FR-C2), independent of Westgard. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "run_verdict", length = 10)
+    private RunControlVerdict runVerdict;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "verdict_source", length = 20)
+    private RunVerdictSource verdictSource;
+
     public QCResult() {
     }
 
@@ -269,5 +282,29 @@ public class QCResult extends BaseObject<String> {
 
     public void setControlLabel(String controlLabel) {
         this.controlLabel = controlLabel;
+    }
+
+    public Long getRunId() {
+        return runId;
+    }
+
+    public void setRunId(Long runId) {
+        this.runId = runId;
+    }
+
+    public RunControlVerdict getRunVerdict() {
+        return runVerdict;
+    }
+
+    public void setRunVerdict(RunControlVerdict runVerdict) {
+        this.runVerdict = runVerdict;
+    }
+
+    public RunVerdictSource getVerdictSource() {
+        return verdictSource;
+    }
+
+    public void setVerdictSource(RunVerdictSource verdictSource) {
+        this.verdictSource = verdictSource;
     }
 }

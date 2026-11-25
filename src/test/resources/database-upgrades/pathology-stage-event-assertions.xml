@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet id="assert-pathology-stage-event"
+        author="openelis">
+        <preConditions onFail="HALT" onError="HALT">
+            <sqlCheck expectedResult="12">
+                SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_schema = 'clinlims'
+                AND table_name = 'pathology_stage_event'
+                AND column_name IN ('id', 'pathology_sample_id', 'stage', 'entered_at',
+                'entered_by', 'completed_at', 'completed_by', 'direction', 'reason',
+                'run_reference', 'notes', 'last_updated')
+            </sqlCheck>
+            <sqlCheck expectedResult="12">
+                SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_schema = 'clinlims'
+                AND table_name = 'pathology_stage_event'
+            </sqlCheck>
+            <sqlCheck expectedResult="6">
+                SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_schema = 'clinlims'
+                AND table_name = 'pathology_stage_event'
+                AND is_nullable = 'NO'
+                AND column_name IN ('id', 'pathology_sample_id', 'stage', 'entered_at',
+                'entered_by', 'direction')
+            </sqlCheck>
+            <sqlCheck expectedResult="3">
+                SELECT COUNT(*) FROM information_schema.table_constraints
+                WHERE table_schema = 'clinlims'
+                AND table_name = 'pathology_stage_event'
+                AND constraint_type = 'FOREIGN KEY'
+                AND constraint_name IN ('pathology_stage_event_case_fk',
+                'pathology_stage_event_entered_by_fk',
+                'pathology_stage_event_completed_by_fk')
+            </sqlCheck>
+            <sqlCheck expectedResult="2">
+                SELECT COUNT(*) FROM information_schema.table_constraints
+                WHERE table_schema = 'clinlims'
+                AND table_name = 'pathology_stage_event'
+                AND constraint_type = 'CHECK'
+                AND constraint_name IN ('pathology_stage_event_direction_ck',
+                'pathology_stage_event_return_reason_ck')
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM pg_indexes
+                WHERE schemaname = 'clinlims'
+                AND tablename = 'pathology_stage_event'
+                AND indexname = 'idx_pathology_stage_event_case'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM information_schema.sequences
+                WHERE sequence_schema = 'clinlims'
+                AND sequence_name = 'pathology_stage_event_seq'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.pathology_stage_event
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.pathology_sample
+                WHERE id = 990401 AND status = 'PROCESSING'
+            </sqlCheck>
+        </preConditions>
+        <comment>Every assertion lives in the preConditions above.</comment>
+        <sql>SELECT 1;</sql>
+    </changeSet>
+</databaseChangeLog>

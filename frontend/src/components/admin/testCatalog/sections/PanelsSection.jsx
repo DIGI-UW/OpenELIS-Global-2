@@ -266,17 +266,33 @@ const PanelsSection = ({ testId, testDomain }) => {
           { name: panel.name },
         ),
         (ok) => {
-          setCreating(false);
-          if (ok) {
-            setNewPanelName("");
-            if (activateOnceMember) {
-              putToOpenElisServerFullResponse(
-                `/rest/test-catalog/panels/${panel.id}/basic-info`,
-                JSON.stringify({ active: true }),
-                () => {},
-              );
+          if (!ok || !activateOnceMember) {
+            setCreating(false);
+            if (ok) {
+              setNewPanelName("");
             }
+            return;
           }
+          setNewPanelName("");
+          // The create is not done until the panel is switched on: leaving the
+          // page earlier used to cancel this call and leave the panel inactive.
+          putToOpenElisServerFullResponse(
+            `/rest/test-catalog/panels/${panel.id}/basic-info`,
+            JSON.stringify({ active: true }),
+            (response) => {
+              setCreating(false);
+              if (!response || response.status !== 200) {
+                addNotification({
+                  kind: "error",
+                  title: intl.formatMessage({ id: "error.title" }),
+                  message: intl.formatMessage(
+                    { id: "error.testCatalog.panels.activateFailed" },
+                    { name: panel.name },
+                  ),
+                });
+              }
+            },
+          );
         },
       );
     };

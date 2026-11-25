@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <project id="9001" name="Testing" is_active="Y"
+        display_key="database.project.testing"
+        lastupdated="2026-01-01 00:00:00" />
+    <project id="9026" display_key="project.RTNStudy.name"
+        name="Routine HIV Testing" is_active="Y" program_code="LRTN"
+        lastupdated="2026-01-01 00:00:00" />
+    <project id="9028" display_key="project.VLStudy.name"
+        name="Viral Load Results" is_active="Y" program_code="LARC"
+        lastupdated="2026-01-01 00:00:00" />
+    <project id="9099" name="Site survey" is_active="Y"
+        lastupdated="2026-01-01 00:00:00" />
+    <system_user id="990901" login_name="study-export-admin"
+        first_name="Study" last_name="Export Admin" is_employee="Y"
+        is_active="Y" />
+    <system_role id="990901" name="Global Administrator"
+        description="Admin fixture" display_key="role.admin" />
+    <system_user_role system_user_id="990901"
+        role_id="990901" />
+</dataset>

@@ -253,15 +253,15 @@ public class SiteBrandingServiceTest {
     }
 
     /**
-     * Test: validateLogoFile - valid SVG file Task Reference: T026
+     * Test: validateLogoFile - SVG uploads are unsupported Task Reference: T026
      */
     @Test
-    public void testValidateLogoFile_WithValidSvg_ReturnsTrue() {
+    public void testValidateLogoFile_WithSvg_ReturnsFalse() {
         String svgContent = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"100\" height=\"100\">"
                 + "<circle cx=\"50\" cy=\"50\" r=\"40\" fill=\"blue\"/></svg>";
         MockMultipartFile file = new MockMultipartFile("file", "test-logo.svg", "image/svg+xml", svgContent.getBytes());
 
-        assertTrue("Valid SVG file should pass validation", siteBrandingService.validateLogoFile(file));
+        assertFalse("SVG uploads are not supported", siteBrandingService.validateLogoFile(file));
     }
 
     /**
@@ -316,34 +316,6 @@ public class SiteBrandingServiceTest {
         MockMultipartFile file = new MockMultipartFile("file", "empty.png", "image/png", new byte[0]);
 
         assertFalse("Empty file should fail validation", siteBrandingService.validateLogoFile(file));
-    }
-
-    /**
-     * Test: validateLogoFile - SVG with XXE attack attempt Task Reference: T026
-     *
-     * Ensures that SVG files with external entity declarations (potential XXE
-     * attacks) are rejected.
-     */
-    @Test
-    public void testValidateLogoFile_WithXxeSvg_ReturnsFalse() {
-        // SVG with DOCTYPE and external entity - potential XXE attack
-        String xxeSvg = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
-                + "<!DOCTYPE svg [ <!ENTITY xxe SYSTEM \"file:///etc/passwd\"> ]>"
-                + "<svg xmlns=\"http://www.w3.org/2000/svg\">" + "<text>&xxe;</text>" + "</svg>";
-        MockMultipartFile file = new MockMultipartFile("file", "xxe.svg", "image/svg+xml", xxeSvg.getBytes());
-
-        assertFalse("SVG with XXE attack should fail validation", siteBrandingService.validateLogoFile(file));
-    }
-
-    /**
-     * Test: validateLogoFile - invalid SVG (not XML) Task Reference: T026
-     */
-    @Test
-    public void testValidateLogoFile_WithInvalidSvg_ReturnsFalse() {
-        String invalidSvg = "this is not valid XML or SVG content";
-        MockMultipartFile file = new MockMultipartFile("file", "invalid.svg", "image/svg+xml", invalidSvg.getBytes());
-
-        assertFalse("Invalid SVG content should fail validation", siteBrandingService.validateLogoFile(file));
     }
 
     /**

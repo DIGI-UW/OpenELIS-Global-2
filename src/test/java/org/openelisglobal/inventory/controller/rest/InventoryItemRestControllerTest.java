@@ -15,17 +15,23 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.config.ControllerSetup;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
 /**
  * Covers the REST paths for {@code inventory_item.code}: generation, explicit
@@ -41,6 +47,9 @@ public class InventoryItemRestControllerTest extends BaseWebContextSensitiveTest
 
     @Autowired
     private javax.sql.DataSource dataSource;
+
+    @Autowired
+    private InventoryItemRestController controller;
 
     private ObjectMapper objectMapper;
     private JdbcTemplate jdbc;
@@ -114,6 +123,54 @@ public class InventoryItemRestControllerTest extends BaseWebContextSensitiveTest
         assertEquals(CODE_PREFIX + "DUP", body.get("params").get("code").asText());
     }
 
+    // No Jakarta EL on the test classpath, so the shared context's @Valid is a
+    // no-op; Tomcat supplies EL in production.
+    private MockMvc validatingMvc() {
+        LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
+        validator.setMessageInterpolator(new ParameterMessageInterpolator());
+        validator.afterPropertiesSet();
+        Object target = AopProxyUtils.getSingletonTarget(controller);
+        return MockMvcBuilders.standaloneSetup(target != null ? target : controller).setValidator(validator)
+                .setControllerAdvice(new ControllerSetup()).build();
+    }
+
+    @Test
+    public void create_rejectsBlankNameAndUnits_andSavesNothing() throws Exception {
+        Integer before = jdbc.queryForObject("SELECT COUNT(*) FROM clinlims.inventory_item", Integer.class);
+        HashMap<String, Object> body = new HashMap<>();
+        body.put("code", CODE_PREFIX + "BLANK");
+        body.put("name", "   ");
+        body.put("units", "   ");
+
+        MvcResult result = validatingMvc().perform(post("/rest/inventory/items").session(mockSession)
+                .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(body))).andReturn();
+
+        assertEquals(400, result.getResponse().getStatus());
+        List<String> rejected = new ArrayList<>();
+        objectMapper.readTree(result.getResponse().getContentAsString()).get("errors").fieldNames()
+                .forEachRemaining(rejected::add);
+        Collections.sort(rejected);
+        assertEquals(List.of("name", "units"), rejected);
+        assertEquals(before, jdbc.queryForObject("SELECT COUNT(*) FROM clinlims.inventory_item", Integer.class));
+    }
+
+    @Test
+    public void update_rejectsBlankUnits_andKeepsTheSavedUnits() throws Exception {
+        MvcResult createResult = createItem(CODE_PREFIX + "UNITS", CODE_PREFIX + "Units");
+        Long id = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asLong();
+
+        HashMap<String, Object> updateBody = new HashMap<>();
+        updateBody.put("name", CODE_PREFIX + "Units");
+        updateBody.put("units", "   ");
+
+        validatingMvc().perform(put("/rest/inventory/items/" + id).session(mockSession)
+                .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(updateBody)))
+                .andExpect(status().isBadRequest());
+
+        assertEquals("mL",
+                jdbc.queryForObject("SELECT units FROM clinlims.inventory_item WHERE id = ?", String.class, id));
+    }
+
     @Test
     public void update_persistsTagsAndReadsThemBack() throws Exception {
         MvcResult createResult = createItem(CODE_PREFIX + "TAGGED", CODE_PREFIX + "Tagged");
@@ -138,18 +195,18 @@ public class InventoryItemRestControllerTest extends BaseWebContextSensitiveTest
     }
 
     @Test
-    public void create_succeedsWithoutAnItemType() throws Exception {
+    public void create_toleratesAClientStillSendingTheRemovedItemType() throws Exception {
         HashMap<String, Object> body = new HashMap<>();
         body.put("name", CODE_PREFIX + "No Type");
         body.put("units", "tests");
         body.put("tags", List.of("Consumable"));
+        body.put("itemType", "REAGENT");
 
         MvcResult result = mockMvc.perform(post("/rest/inventory/items").session(mockSession)
                 .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(body))).andReturn();
 
         assertEquals(201, result.getResponse().getStatus());
         JsonNode created = objectMapper.readTree(result.getResponse().getContentAsString());
-        assertEquals("REAGENT", created.get("itemType").asText());
         assertEquals("Consumable", created.get("tags").get(0).asText());
     }
 

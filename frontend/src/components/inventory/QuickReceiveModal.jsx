@@ -4,19 +4,20 @@ import {
   ComboBox,
   NumberInput,
   TextInput,
-  DatePicker,
   DatePickerInput,
   InlineNotification,
   FormLabel,
   Button,
   Stack,
 } from "@carbon/react";
+import { DatePicker } from "../common/DatePicker";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   InventoryManagementAPI,
   InventoryLotStorageAPI,
 } from "./InventoryService";
 import { toLocalIsoDate } from "../utils/Utils";
+import { gtinMatches } from "./gs1";
 import LocationPickerModal from "../storage/LocationPicker/LocationPickerModal";
 import {
   selectionToHierarchicalPath,
@@ -60,8 +61,8 @@ const QuickReceiveModal = ({
   const resolveScan = (code) => {
     const normalized = code.trim();
     if (!normalized) return;
-    const match = options.find(
-      (option) => option.row.upc && option.row.upc.trim() === normalized,
+    const match = options.find((option) =>
+      gtinMatches(option.row.upc, normalized),
     );
     if (match) {
       setItemId(match.id);
@@ -202,7 +203,7 @@ const QuickReceiveModal = ({
             id="quick-receive-item"
             titleText={<FormattedMessage id="catalog.item.name" />}
             placeholder={intl.formatMessage({
-              id: "inventory.search.placeholder",
+              id: "catalog.search.placeholder",
             })}
             items={options}
             selectedItem={selected}
@@ -221,7 +222,7 @@ const QuickReceiveModal = ({
                   values={{ units: selected.row.units }}
                 />
               ) : (
-                <FormattedMessage id="lot.currentQuantity" />
+                <FormattedMessage id="inventory.receive.quantity" />
               )
             }
             min={1}

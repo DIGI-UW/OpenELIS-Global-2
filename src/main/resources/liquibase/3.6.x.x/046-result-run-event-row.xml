@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+ <changeSet id="OGC-1200-result-run-event-row" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <not>
+    <columnExists schemaName="clinlims" tableName="result_run_event" columnName="row_id"/>
+   </not>
+  </preConditions>
+  <comment>OGC-1200 FR-E4: the run value an exception decision (matched, held, ignored) was taken on. An ignored value leaves staging, so this is a plain reference, not a foreign key.</comment>
+  <addColumn schemaName="clinlims" tableName="result_run_event">
+   <column name="row_id" type="numeric(10)"/>
+  </addColumn>
+  <createIndex schemaName="clinlims" tableName="result_run_event" indexName="idx_result_run_event_row">
+   <column name="row_id"/>
+  </createIndex>
+ </changeSet>
+
+ <changeSet id="OGC-1200-result-run-event-record-key" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <not>
+    <columnExists schemaName="clinlims" tableName="result_run_event" columnName="record_key"/>
+   </not>
+  </preConditions>
+  <comment>OGC-1200 FR-E4: the exception record a decision was taken on, so a hold shows only on that record and not on the value's next one.</comment>
+  <addColumn schemaName="clinlims" tableName="result_run_event">
+   <column name="record_key" type="text"/>
+  </addColumn>
+ </changeSet>
+</databaseChangeLog>

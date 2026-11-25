@@ -3,6 +3,7 @@ package org.openelisglobal.eqa.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -13,13 +14,14 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
-import org.openelisglobal.alert.valueholder.AlertNotificationPayload;
 import org.openelisglobal.analyte.dao.AnalyteDAO;
 import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.delivery.service.DeliveryOutboxService;
+import org.openelisglobal.delivery.service.DeliveryRequest;
 import org.openelisglobal.eqa.dao.EQAParticipantFollowupDAO;
 import org.openelisglobal.eqa.dao.EQAParticipantResultDAO;
 import org.openelisglobal.eqa.valueholder.EQACompetencyEventType;
@@ -31,8 +33,10 @@ import org.openelisglobal.eqa.valueholder.EQAParticipantResult;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQAProgramEnrollment;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
-import org.openelisglobal.notification.service.sender.EmailNotificationSender;
-import org.openelisglobal.notification.valueholder.EmailNotification;
+import org.openelisglobal.notification.valueholder.NotificationChannel;
+import org.openelisglobal.notification.valueholder.NotificationLog;
+import org.openelisglobal.notification.valueholder.NotificationLog.Product;
+import org.openelisglobal.notification.valueholder.NotificationRecipientType;
 import org.openelisglobal.organization.service.OrganizationContactService;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
@@ -83,7 +87,7 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
     private OrganizationContactService organizationContactService;
 
     @Autowired
-    private EmailNotificationSender emailSender;
+    private DeliveryOutboxService deliveryOutboxService;
 
     @Autowired
     private EQAParticipantResultDAO participantResultDAO;
@@ -391,15 +395,16 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
 
         boolean emailed = false;
         if (!GenericValidator.isBlankOrNull(recipient)) {
-            EmailNotification email = new EmailNotification();
-            email.setRecipientEmailAddress(recipient);
-            email.setPayload(new AlertNotificationPayload(subject, message));
             try {
-                emailSender.send(email);
-                emailed = true;
+                NotificationLog queued = deliveryOutboxService.enqueue(new DeliveryRequest().setProduct(Product.TRIGGER)
+                        .setEventCode("EQA_FOLLOWUP").setRecipientType(NotificationRecipientType.FACILITY)
+                        .setRecipientDisplayName(recipient).setRecipientEmail(recipient).setSubject(subject)
+                        .setMessage(message).setSentByUserId(sysUserId).addChannel(NotificationChannel.EMAIL));
+                emailed = queued.getOverallStatus() != NotificationLog.OverallStatus.FAILED
+                        && queued.getOverallStatus() != NotificationLog.OverallStatus.SKIPPED;
             } catch (RuntimeException e) {
-                // A mail transport that is not configured must not roll back the
-                // notification itself: the reviewer falls back to the CSV instead.
+                // A queue that cannot be written must not roll back the notification
+                // itself: the reviewer falls back to the CSV instead.
                 LogEvent.logError(e);
             }
         }
@@ -430,13 +435,24 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
         nameAnalytes(List.of(Map.of("results", rows)));
         for (Map<String, Object> row : rows) {
             body.append("- ").append(row.getOrDefault("testName", row.getOrDefault("analyteName", "")))
-                    .append(": reported ").append(Objects.toString(row.get("reported"), "")).append(", target ")
-                    .append(Objects.toString(row.get("target"), "")).append('\n');
+                    .append(": reported ").append(shown(row.get("reported"))).append(", target ")
+                    .append(shown(row.get("target"))).append('\n');
         }
         if (Boolean.TRUE.equals(followup.getPersistentFailureFlag())) {
             body.append("\nThis is a repeated failure across recent cycles and has been escalated.\n");
         }
         return body.append("\nPlease investigate and reply with your corrective action.").toString();
+    }
+
+    /**
+     * A number as the Performance Report prints it: the snapshot reads a stored
+     * 60.00000 back as 60.0, which the message would otherwise show.
+     */
+    private static String shown(Object value) {
+        if (value instanceof Number) {
+            return new BigDecimal(value.toString()).stripTrailingZeros().toPlainString();
+        }
+        return Objects.toString(value, "");
     }
 
     private String contactEmail(Long organizationId) {

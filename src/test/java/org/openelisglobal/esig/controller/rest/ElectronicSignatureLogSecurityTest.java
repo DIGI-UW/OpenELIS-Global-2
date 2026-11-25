@@ -3,8 +3,10 @@ package org.openelisglobal.esig.controller.rest;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -15,15 +17,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.sql.Timestamp;
 import java.util.List;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.DefaultConfigurationProperties;
 import org.openelisglobal.esig.service.ElectronicSignatureService;
 import org.openelisglobal.esig.valueholder.ElectronicSignature;
 import org.openelisglobal.esig.valueholder.SignatureMeaning;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
+import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.testsupport.SliceSecurityConfig;
+import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -53,12 +59,34 @@ public class ElectronicSignatureLogSecurityTest extends SecuritySliceMockMvcTest
      * Content tests re-stub the shared mock; restore the empty defaults before
      * every test so assertions stay order-independent.
      */
+    private final AutowireCapableBeanFactory beanFactory = mock(AutowireCapableBeanFactory.class);
+    private AutowireCapableBeanFactory previousFactory;
+
+    /**
+     * The PDF export reads the paper size through the static
+     * ConfigurationProperties lookup; serve it from this slice so the class does
+     * not depend on another test having started the full context first.
+     */
+    @Before
+    public void setUpSpringContextFactory() {
+        previousFactory = (AutowireCapableBeanFactory) ReflectionTestUtils.getField(SpringContext.class, "factory");
+        ReflectionTestUtils.setField(SpringContext.class, "factory", beanFactory);
+        when(beanFactory.getBean(DefaultConfigurationProperties.class))
+                .thenReturn(mock(DefaultConfigurationProperties.class));
+    }
+
+    @After
+    public void restoreSpringContextFactory() {
+        ReflectionTestUtils.setField(SpringContext.class, "factory", previousFactory);
+    }
+
     @Before
     public void resetServiceStub() {
         ElectronicSignatureService service = webApplicationContext.getBean(ElectronicSignatureService.class);
         reset(service);
-        when(service.searchSignatures(any(), any(), any(), any(), any(), anyInt(), anyInt())).thenReturn(List.of());
-        when(service.countSearchSignatures(any(), any(), any(), any(), any())).thenReturn(0L);
+        when(service.searchSignatures(any(), any(), any(), any(), any(), any(), anyInt(), anyInt()))
+                .thenReturn(List.of());
+        when(service.countSearchSignatures(any(), any(), any(), any(), any(), any())).thenReturn(0L);
     }
 
     @Test
@@ -136,6 +164,25 @@ public class ElectronicSignatureLogSecurityTest extends SecuritySliceMockMvcTest
     }
 
     @Test
+    public void typedText_reachesTheSearchFromTheLogAndBothExports() throws Exception {
+        ElectronicSignatureService service = webApplicationContext.getBean(ElectronicSignatureService.class);
+        SimpleGrantedAuthority viewQms = new SimpleGrantedAuthority("qa.view.qms");
+
+        mockMvc.perform(get(LOG_URL + "&text=élis").with(user("qaofficer").authorities(viewQms)))
+                .andExpect(status().isOk());
+        verify(service).searchSignatures(any(), any(), any(), any(), any(), eq("élis"), anyInt(), anyInt());
+        verify(service).countSearchSignatures(any(), any(), any(), any(), any(), eq("élis"));
+
+        mockMvc.perform(get(CSV_URL + "&text=recollect").with(user("qaofficer").authorities(viewQms)))
+                .andExpect(status().isOk());
+        verify(service).searchSignatures(any(), any(), any(), any(), any(), eq("recollect"), anyInt(), anyInt());
+
+        mockMvc.perform(get(PDF_URL + "&text=304").with(user("qaofficer").authorities(viewQms)))
+                .andExpect(status().isOk());
+        verify(service).searchSignatures(any(), any(), any(), any(), any(), eq("304"), anyInt(), anyInt());
+    }
+
+    @Test
     public void exportPdf_roleWithoutPermissionAuthorityReturns403() throws Exception {
         mockMvc.perform(get(PDF_URL).with(user("validator").roles("VALIDATION"))).andExpect(status().isForbidden());
     }
@@ -172,7 +219,7 @@ public class ElectronicSignatureLogSecurityTest extends SecuritySliceMockMvcTest
         validated.setRejectionReason("=cmd");
 
         ElectronicSignatureService service = webApplicationContext.getBean(ElectronicSignatureService.class);
-        when(service.searchSignatures(any(), any(), any(), any(), any(), anyInt(), anyInt()))
+        when(service.searchSignatures(any(), any(), any(), any(), any(), any(), anyInt(), anyInt()))
                 .thenReturn(List.of(rejected, validated));
     }
 

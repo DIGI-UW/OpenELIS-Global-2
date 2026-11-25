@@ -19,3 +19,19 @@ export function samplesMissingTests(samples) {
     return numbers;
   }, []);
 }
+
+/**
+ * The warning for a sample that has a sample type but no test, naming the sample
+ * as the Result Reporting headings do ("Sample 1: Serum") when its type name is
+ * known, and by its number alone otherwise.
+ */
+export function missingTestsTitle(intl, samples, sampleNumber, typeNamesById) {
+  const typeId = (samples || [])[sampleNumber - 1]?.sampleTypeId;
+  const sampleType = typeId ? (typeNamesById || {})[String(typeId)] : undefined;
+  return sampleType
+    ? intl.formatMessage(
+        { id: "order.sample.missingTests.named" },
+        { sampleNumber, sampleType },
+      )
+    : intl.formatMessage({ id: "order.sample.missingTests" }, { sampleNumber });
+}

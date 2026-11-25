@@ -27,9 +27,51 @@ const API_PREFIX = "/api/OpenELIS-Global";
 /** The test every pathology case in this seed is ordered against. */
 const PATHOLOGY_TEST_NAME = "Histopathology examination";
 
-/** How long the dashboard is given to surface a case the save just created. */
-const CASE_LOOKUP_TIMEOUT_MS = 10_000;
-const CASE_LOOKUP_INTERVAL_MS = 500;
+/**
+ * How long a read-back is given to show what a save just wrote: the case on
+ * the dashboard, or a dictionary entry in its category's list.
+ */
+const READ_BACK_TIMEOUT_MS = 10_000;
+const READ_BACK_INTERVAL_MS = 500;
+
+/** The dictionary category a cassette's tissue type is chosen from. */
+const TISSUE_TYPE_CATEGORY = "pathology_tissue_types";
+
+/**
+ * The dictionary category a slide's stain is chosen from. The application
+ * creates it from its shipped dictionary files when it starts, not through a
+ * changeset.
+ */
+const STAIN_CATEGORY = "Pathology Stains";
+
+/** The column a dictionary entry's local abbreviation is stored in. */
+const LOCAL_ABBREVIATION_MAX_LENGTH = 10;
+
+/** The bench stages in the order the bench works them, as the server names them. */
+export const PATHOLOGY_STAGE_ORDER = [
+  "ACCESSIONED",
+  "GROSSING",
+  "DECALCIFICATION",
+  "PROCESSING",
+  "EMBEDDING",
+  "MICROTOMY",
+  "STAINING",
+  "COVERSLIPPING",
+  "READY_PATHOLOGIST",
+  "UNDER_REVIEW",
+  "COMPLETED",
+] as const;
+
+export type PathologyStageId = (typeof PATHOLOGY_STAGE_ORDER)[number];
+
+/** The description moveCaseToStage writes when it has to finish grossing. */
+const SETUP_DESCRIPTION = "Seeded by E2E";
+
+/** The level moveCaseToStage gives the slide it cuts at Microtomy. */
+const SETUP_SLIDE_LEVEL = "1";
+
+/** The reason moveCaseToStage gives when it returns a case. */
+const SETUP_RETURN_REASON = "E2E setup";
 
 interface IdValuePair {
   id: string;
@@ -62,6 +104,23 @@ export interface PathologyOrderTarget {
   providerPersonId: string;
 }
 
+/** One dictionary entry a picker on the case view offers: its id and name. */
+export interface DictionaryEntry {
+  id: string;
+  name: string;
+}
+
+/** One tissue type a cassette can be given, as the case view offers it. */
+export type TissueType = DictionaryEntry;
+
+/** One stain a slide can be given, as the case view offers it. */
+export type Stain = DictionaryEntry;
+
+interface DictionaryCategoryRow {
+  id: string;
+  categoryName?: string;
+}
+
 /** One seeded case: the accession it was ordered under, and its case id. */
 export interface SeededPathologyCase {
   accessionNumber: string;
@@ -73,7 +132,7 @@ export interface SeededPathologyCase {
  * seed that cannot see the data it needs says which call failed and why
  * instead of failing later on an empty list.
  */
-async function apiGet<T>(page: Page, path: string): Promise<T> {
+export async function apiGet<T>(page: Page, path: string): Promise<T> {
   const result = await page.evaluate(async (p) => {
     const csrf = localStorage.getItem("CSRF") || "";
     const res = await fetch(p, {
@@ -95,6 +154,43 @@ async function apiGet<T>(page: Page, path: string): Promise<T> {
       `GET ${path} returned non-JSON: ${result.text.substring(0, 400)}`,
     );
   }
+}
+
+/**
+ * POST JSON through the browser session, the counterpart of apiGet, and return
+ * the response body as text. Throws on any non-2xx with the body, so a seed
+ * the server refuses says why; `action` names what was being done.
+ */
+export async function apiPost(
+  page: Page,
+  path: string,
+  body: unknown,
+  action = `POST ${path}`,
+): Promise<string> {
+  const result = await page.evaluate(
+    async ({ p, data }) => {
+      const csrf = localStorage.getItem("CSRF") || "";
+      const res = await fetch(p, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrf,
+        },
+        body: JSON.stringify(data),
+      });
+      return { status: res.status, text: await res.text() };
+    },
+    { p: path, data: body },
+  );
+
+  if (result.status < 200 || result.status >= 300) {
+    throw new Error(
+      `${action} failed: HTTP ${result.status}: ${result.text.substring(0, 600)}`,
+    );
+  }
+  return result.text;
 }
 
 /**
@@ -391,32 +487,18 @@ export async function createPathologyCase(
     rejectReasonList: null,
   };
 
-  const saved = await page.evaluate(async (formData) => {
-    const csrf = localStorage.getItem("CSRF") || "";
-    const res = await fetch("/api/OpenELIS-Global/rest/SamplePatientEntry", {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": csrf,
-      },
-      body: JSON.stringify(formData),
-    });
-    return { status: res.status, text: await res.text() };
-  }, form);
-
-  if (saved.status < 200 || saved.status >= 300) {
-    throw new Error(
-      `Ordering ${order.testName} on ${order.sampleTypeName} for programme ` +
-        `${order.programName} failed: HTTP ${saved.status}: ${saved.text.substring(0, 600)}`,
-    );
-  }
+  const saved = await apiPost(
+    page,
+    `${API_PREFIX}/rest/SamplePatientEntry`,
+    form,
+    `Ordering ${order.testName} on ${order.sampleTypeName} for programme ${order.programName}`,
+  );
 
   const accessionNumber =
-    (JSON.parse(saved.text)?.sampleOrderItems?.labNo as string) || "";
+    (JSON.parse(saved)?.sampleOrderItems?.labNo as string) || "";
   if (!accessionNumber) {
     throw new Error(
-      `Order saved but answered with no accession number: ${saved.text.substring(0, 400)}`,
+      `Order saved but answered with no accession number: ${saved.substring(0, 400)}`,
     );
   }
 
@@ -461,11 +543,437 @@ async function findCaseId(
           `The pathology dashboard never listed a case at ACCESSIONED for ${accessionNumber}. ` +
           `The order saved, so either the programme it was ordered under is not a pathology ` +
           `programme or the case was created at some other stage.`,
-        intervals: [CASE_LOOKUP_INTERVAL_MS],
-        timeout: CASE_LOOKUP_TIMEOUT_MS,
+        intervals: [READ_BACK_INTERVAL_MS],
+        timeout: READ_BACK_TIMEOUT_MS,
       },
     )
     .not.toBe("");
 
   return caseId;
+}
+
+/**
+ * A new entry of this run's own in one dictionary category, added through the
+ * endpoint the Dictionary admin screen posts to and read back through the list
+ * the case view loads, so what is returned is what its picker will offer
+ * rather than what was posted. `missing` says why the category would be
+ * absent on a deployment.
+ */
+async function addRunEntry(
+  page: Page,
+  categoryName: string,
+  entryPrefix: string,
+  missing: string,
+): Promise<DictionaryEntry> {
+  if (!page.url().startsWith("http")) {
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+  }
+
+  const categories = await apiGet<DictionaryCategoryRow[]>(
+    page,
+    `${API_PREFIX}/rest/dictionary-categories`,
+  );
+  const category = categories.find(
+    (entry) => entry.categoryName === categoryName,
+  );
+  if (!category) {
+    throw new Error(
+      `No dictionary category named ${categoryName} on this deployment, ${missing}`,
+    );
+  }
+
+  const runTag = `${Date.now().toString(36)}${Math.floor(Math.random() * 36 * 36).toString(36)}`;
+  const dictEntry = `${entryPrefix} ${runTag}`;
+  const localAbbreviation = `E${runTag}`
+    .slice(-LOCAL_ABBREVIATION_MAX_LENGTH)
+    .toUpperCase();
+
+  await apiPost(page, `${API_PREFIX}/rest/Dictionary`, {
+    id: "",
+    selectedDictionaryCategoryId: category.id,
+    dictEntry,
+    localAbbreviation,
+    isActive: "Y",
+    dirtyFormFields: "",
+  });
+
+  const listPath = `${API_PREFIX}/rest/dictionary/category/${encodeURIComponent(categoryName)}`;
+  let added: DictionaryEntry | undefined;
+  await expect
+    .poll(
+      async () => {
+        const after = await apiGet<IdValuePair[]>(page, listPath);
+        const entry = after.find((item) => item.value === dictEntry);
+        added = entry ? { id: String(entry.id), name: entry.value } : undefined;
+        return Boolean(added);
+      },
+      {
+        message: `${dictEntry} was saved but ${listPath} does not list it`,
+        intervals: [READ_BACK_INTERVAL_MS],
+        timeout: READ_BACK_TIMEOUT_MS,
+      },
+    )
+    .toBe(true);
+
+  return added!;
+}
+
+/**
+ * A tissue type of this run's own, added to the laboratory's tissue category.
+ *
+ * Each call adds a new entry with a name no other run uses, so a spec picks a
+ * tissue it created rather than whichever entry the shared category happens
+ * to list first, which another spec or an administrator may retire or rename
+ * at any time. The entry is never deleted afterwards, since a cassette that
+ * holds it keeps pointing at it; a retired entry stays valid on the cassettes
+ * that recorded it.
+ */
+export async function ensureTissueType(page: Page): Promise<TissueType> {
+  return addRunEntry(
+    page,
+    TISSUE_TYPE_CATEGORY,
+    "E2E tissue",
+    "so the changeset that creates it has not run here.",
+  );
+}
+
+/**
+ * A stain of this run's own, added to the laboratory's stain category, for
+ * the same reasons as ensureTissueType: the shipped stains are the
+ * laboratory's to rename or retire, and a slide that recorded one keeps it.
+ */
+export async function ensureStain(page: Page): Promise<Stain> {
+  return addRunEntry(
+    page,
+    STAIN_CATEGORY,
+    "E2E stain",
+    "so the application never loaded its shipped dictionary files " +
+      "(configuration/backend/dictionaries/pathology-stains.csv).",
+  );
+}
+
+/** One cassette or block as the case view reads it. */
+interface CaseBlock {
+  id?: number | string;
+  designation?: string;
+  barcode?: string;
+  cassetteState?: string;
+  active?: boolean;
+  location?: string;
+  tissueTypeId?: string | null;
+}
+
+/** One slide as the case view reads it. */
+export interface CaseSlide {
+  id?: number | string;
+  blockId?: number | string | null;
+  designation?: string;
+  barcode?: string;
+  level?: string | null;
+  stainId?: string | null;
+  active?: boolean;
+  location?: string;
+}
+
+/** A slide label's check against its block, as the case view reads it. */
+export interface SlideLabelVerification {
+  verifiedAt?: string;
+  verifiedBy?: string;
+}
+
+/** The parts of a stored case the stage moves below read and post back. */
+export interface StoredPathologyCase {
+  status: PathologyStageId;
+  nextStage?: PathologyStageId | null;
+  previousStage?: PathologyStageId | null;
+  grossExam?: string | null;
+  decalcificationRequired?: boolean;
+  microscopyExam?: string | null;
+  conclusionText?: string | null;
+  assignedTechnicianId?: string | null;
+  assignedPathologistId?: string | null;
+  blocks?: CaseBlock[];
+  slides?: CaseSlide[];
+  /** Who checked each slide's label against its block and when, by slide id. */
+  labelVerifications?: Record<string, SlideLabelVerification | null>;
+  reports?: unknown[];
+  techniques?: { id?: string }[];
+  requests?: { id?: string; status?: string }[];
+  conclusions?: { id?: string }[];
+}
+
+function casePath(caseId: string) {
+  return `${API_PREFIX}/rest/pathology/caseView/${caseId}`;
+}
+
+/** The case as the server stores it, read the way the case view reads it. */
+export async function readCase(
+  page: Page,
+  caseId: string,
+): Promise<StoredPathologyCase> {
+  return apiGet<StoredPathologyCase>(page, casePath(caseId));
+}
+
+/**
+ * Move a case one stage on, or one stage back with a reason, through the
+ * endpoints the case view posts to, naming the stage it is moved from. Throws
+ * with the server's body when the move is refused. Returns the stage the case
+ * now stands at.
+ */
+export async function moveCaseOnce(
+  page: Page,
+  caseId: string,
+  direction: "advance" | "return",
+  from: PathologyStageId,
+  reason?: string,
+): Promise<PathologyStageId> {
+  const answer = await apiPost(
+    page,
+    `${casePath(caseId)}/${direction}`,
+    direction === "return" ? { from, reason } : { from },
+    `Moving case ${caseId} (${direction}) from ${from}`,
+  );
+  const status = (JSON.parse(answer) as { status?: PathologyStageId }).status;
+  if (!status) {
+    throw new Error(
+      `Moving case ${caseId} (${direction}) from ${from} answered no stage: ${answer.substring(0, 400)}`,
+    );
+  }
+  return status;
+}
+
+/** The changes saveCaseThroughApi applies on top of the stored case. */
+export interface CaseSaveChanges {
+  grossExam?: string;
+  /** Cut one new cassette. */
+  addCassette?: boolean;
+  /** The tissue type the new cassette is given. */
+  cassetteTissueTypeId?: string;
+  /** Cut one new slide (level 1, no stain) under the block with this id. */
+  addSlideUnder?: number | string;
+}
+
+/**
+ * Save the case through the same endpoint and with the same form the case
+ * view's Save draft posts, built from the stored case, with the changes
+ * given applied on top.
+ */
+export async function saveCaseThroughApi(
+  page: Page,
+  caseId: string,
+  stored: StoredPathologyCase,
+  changes: CaseSaveChanges,
+) {
+  const blocks = [...(stored.blocks ?? [])];
+  if (changes.addCassette) {
+    blocks.push({
+      location: "",
+      tissueTypeId: changes.cassetteTissueTypeId ?? null,
+    });
+  }
+  const slides = [...(stored.slides ?? [])];
+  if (changes.addSlideUnder !== undefined) {
+    slides.push({
+      blockId: changes.addSlideUnder,
+      level: SETUP_SLIDE_LEVEL,
+      stainId: null,
+      location: "",
+    });
+  }
+  await apiPost(
+    page,
+    casePath(caseId),
+    {
+      assignedTechnicianId: stored.assignedTechnicianId,
+      assignedPathologistId: stored.assignedPathologistId,
+      blocks,
+      slides,
+      reports: stored.reports ?? [],
+      grossExam: changes.grossExam ?? stored.grossExam,
+      decalcificationRequired: stored.decalcificationRequired ?? false,
+      microscopyExam: stored.microscopyExam,
+      conclusionText: stored.conclusionText,
+      release: false,
+      referToImmunoHistoChemistry: false,
+      techniques: (stored.techniques ?? []).map((entry) => entry.id),
+      requests: (stored.requests ?? []).map((entry) => ({
+        value: entry.id,
+        status: entry.status,
+      })),
+      conclusions: (stored.conclusions ?? []).map((entry) => entry.id),
+    },
+    `Saving case ${caseId}`,
+  );
+}
+
+/**
+ * Check the label of every slide of the case that still waits for it, through
+ * the endpoint the microtomy section posts to, with the block's and the
+ * slide's barcodes as the server stores them: what a scanner reads off a
+ * block and off the slide label printed for it. A slide whose label was
+ * already checked, a deactivated slide, and a slide that names no block are
+ * left as they are, since none of them holds a case at microtomy. Throws with
+ * the server's body when a check is refused or does not match. Returns the
+ * barcodes of the slides it checked.
+ */
+export async function verifySlideLabels(
+  page: Page,
+  seeded: Pick<SeededPathologyCase, "pathologySampleId">,
+): Promise<string[]> {
+  const caseId = seeded.pathologySampleId;
+  const stored = await readCase(page, caseId);
+  const blocks = new Map(
+    (stored.blocks ?? []).map((block) => [String(block.id), block]),
+  );
+  const verified: string[] = [];
+  for (const slide of stored.slides ?? []) {
+    if (
+      slide.id == null ||
+      slide.active === false ||
+      slide.blockId == null ||
+      stored.labelVerifications?.[String(slide.id)]
+    ) {
+      continue;
+    }
+    const block = blocks.get(String(slide.blockId));
+    if (!block?.barcode || !slide.barcode) {
+      throw new Error(
+        `Slide ${slide.id} of case ${caseId} or its block carries no barcode to scan.`,
+      );
+    }
+    await apiPost(
+      page,
+      `${API_PREFIX}/rest/pathology/slide/${slide.id}/verify-label`,
+      { block: block.barcode, slide: slide.barcode },
+      `Verifying the label of slide ${slide.barcode} of case ${caseId}`,
+    );
+    verified.push(slide.barcode);
+  }
+  return verified;
+}
+
+/**
+ * Bring a case to a stage for a test's setup, doing the bench's work on the
+ * way rather than going round it: the server refuses to send a case on from
+ * grossing until it is described and has a cassette, from embedding until
+ * every cassette is a block, and from microtomy until a slide is cut and
+ * every slide's label is checked against its block, so a blank description
+ * is filled in and a cassette cut through the case save, each outstanding
+ * cassette is embedded through its own endpoint, and one slide is cut under
+ * the first block through the case save and every label checked through
+ * verifySlideLabels, exactly as the screen would. Nothing is done at the target stage itself, so a case brought
+ * to microtomy arrives there with no slide. A target
+ * behind the case is reached by returning it, one stage at a time, with a
+ * reason.
+ *
+ * A stage the laboratory does not track is skipped by the server, so asking
+ * for one fails, naming it, rather than leaving the case somewhere else. The
+ * page has to be on the application, since the calls carry its session; the
+ * screen it shows is not read again here, so a caller showing the case opens
+ * it afresh afterwards.
+ */
+export async function moveCaseToStage(
+  page: Page,
+  seeded: Pick<SeededPathologyCase, "pathologySampleId">,
+  stageId: PathologyStageId,
+): Promise<void> {
+  const caseId = seeded.pathologySampleId;
+  const target = PATHOLOGY_STAGE_ORDER.indexOf(stageId);
+  const position = (stage: PathologyStageId) =>
+    PATHOLOGY_STAGE_ORDER.indexOf(stage);
+
+  for (let step = 0; step <= PATHOLOGY_STAGE_ORDER.length; step += 1) {
+    const stored = await readCase(page, caseId);
+    const here = position(stored.status);
+    if (here === target) {
+      return;
+    }
+
+    if (here > target) {
+      const now = await moveCaseOnce(
+        page,
+        caseId,
+        "return",
+        stored.status,
+        SETUP_RETURN_REASON,
+      );
+      if (position(now) < target) {
+        throw new Error(
+          `Returning case ${caseId} from ${stored.status} went to ${now}, past ${stageId}: ` +
+            `${stageId} is not a stage this case can stand at here.`,
+        );
+      }
+      continue;
+    }
+
+    if (!stored.nextStage) {
+      throw new Error(
+        `Case ${caseId} stands at ${stored.status}, and the server offers no stage after it, ` +
+          `so it cannot be brought to ${stageId}.`,
+      );
+    }
+
+    if (stored.status === "GROSSING") {
+      const inUse = (stored.blocks ?? []).filter(
+        (block) => block.active !== false,
+      );
+      const described = (stored.grossExam ?? "").trim() !== "";
+      if (!described || inUse.length === 0) {
+        await saveCaseThroughApi(page, caseId, stored, {
+          grossExam: described ? undefined : SETUP_DESCRIPTION,
+          addCassette: inUse.length === 0,
+        });
+      }
+    }
+
+    if (stored.status === "EMBEDDING") {
+      const outstanding = (stored.blocks ?? []).filter(
+        (block) => block.active !== false && block.cassetteState !== "BLOCK",
+      );
+      for (const block of outstanding) {
+        await apiPost(
+          page,
+          `${API_PREFIX}/rest/pathology/block/${block.id}/embed`,
+          {},
+          `Embedding cassette ${block.designation} of case ${caseId}`,
+        );
+      }
+    }
+
+    if (stored.status === "MICROTOMY") {
+      const slideInUse = (stored.slides ?? []).some(
+        (slide) => slide.id != null && slide.active !== false,
+      );
+      if (!slideInUse) {
+        const inUse = (stored.blocks ?? []).filter(
+          (block) => block.id != null && block.active !== false,
+        );
+        // Where the laboratory tracks embedding a slide is cut only from a
+        // block; where it does not, no row ever becomes one.
+        const parent =
+          inUse.find((block) => block.cassetteState === "BLOCK") ?? inUse[0];
+        if (!parent) {
+          throw new Error(
+            `Case ${caseId} stands at MICROTOMY with no block to cut a slide from.`,
+          );
+        }
+        await saveCaseThroughApi(page, caseId, stored, {
+          addSlideUnder: parent.id,
+        });
+      }
+      await verifySlideLabels(page, seeded);
+    }
+
+    const now = await moveCaseOnce(page, caseId, "advance", stored.status);
+    if (position(now) > target) {
+      throw new Error(
+        `Sending case ${caseId} on from ${stored.status} went to ${now}, past ${stageId}: ` +
+          `the laboratory does not track ${stageId}, or the specimen was not flagged for it.`,
+      );
+    }
+  }
+
+  throw new Error(
+    `Case ${caseId} did not reach ${stageId} within the stage count.`,
+  );
 }

@@ -13,6 +13,7 @@ import org.junit.Test;
 import org.openelisglobal.AppTestConfig;
 import org.openelisglobal.BaseTestConfig;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.IsolatedDatabase;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +31,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 @ContextConfiguration(inheritLocations = false, classes = { AppTestConfig.class,
         AnalyzerCatalogIdentityIntegrationTest.TestConfig.class })
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@IsolatedDatabase
 public class AnalyzerCatalogIdentityIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Configuration

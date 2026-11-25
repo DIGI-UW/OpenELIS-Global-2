@@ -39,11 +39,12 @@ const expectActiveReference = async (
   resource: "organisms" | "antibiotics",
   id: string,
   active: boolean,
+  search = "",
 ) => {
   await expect
     .poll(async () => {
       const response = await page.request.get(
-        `${API_BASE}/reference/${resource}`,
+        `${API_BASE}/reference/${resource}?q=${encodeURIComponent(search)}`,
       );
       expect(response.ok()).toBeTruthy();
       const options = (await response.json()) as Array<{ id: string }>;
@@ -136,10 +137,22 @@ test.describe("OGC-782 M3 microbiology reference administration", () => {
         "prevents new selection but preserves those historical references",
       );
       await impactDialog.getByRole("button", { name: /Deactivate$/ }).click();
-      await expectActiveReference(page, "organisms", seeded.organismId, false);
+      await expectActiveReference(
+        page,
+        "organisms",
+        seeded.organismId,
+        false,
+        "Reference organism (UAT)",
+      );
 
       await openRowAction(page, "Reference organism (UAT)", "Reactivate");
-      await expectActiveReference(page, "organisms", seeded.organismId, true);
+      await expectActiveReference(
+        page,
+        "organisms",
+        seeded.organismId,
+        true,
+        "Reference organism (UAT)",
+      );
     });
 
     await test.step("Repeat the guarded workflow for an antibiotic", async () => {
@@ -175,7 +188,7 @@ test.describe("OGC-782 M3 microbiology reference administration", () => {
   });
 
   test("publishes an immutable AST panel version", async ({ page }) => {
-    const seeded = await seedMicrobiologyReferenceAdmin(page);
+    await seedMicrobiologyReferenceAdmin(page);
     const reviewed = await seedReviewedMicrobiologyCase(page);
     const originalRunsResponse = await page.request.get(
       `${API_BASE}/ast/runs?isolateId=${encodeURIComponent(reviewed.isolateId)}`,
@@ -188,7 +201,7 @@ test.describe("OGC-782 M3 microbiology reference administration", () => {
     const originalRun = originalRuns.find(
       (run) => run.id === reviewed.astRunId,
     );
-    expect(originalRun?.panelId).toBe(seeded.astPanelId);
+    expect(originalRun?.panelId).toBe(reviewed.astPanelId);
 
     await page.goto(
       `${ADMIN_BASE}/ast-panels?${canonicalQuery({ q: "Gram negative AST panel (UAT)" })}`,
@@ -206,12 +219,11 @@ test.describe("OGC-782 M3 microbiology reference administration", () => {
     const originalVersion = Number(versionText.replace(/^v/, ""));
     await currentRow.getByRole("button", { name: "Options" }).click();
     await page.getByRole("menuitem", { name: "Publish new version" }).click();
-    await expectQuery(page, "edit", seeded.astPanelId);
+    await expectQuery(page, "edit", reviewed.astPanelId);
     const editor = page.getByRole("dialog");
     await expect(
       editor.getByText(/Saving creates a new panel version/),
     ).toBeVisible();
-    await editor.getByLabel("Tier").first().selectOption("2");
     await editor.getByRole("button", { name: "Publish new version" }).click();
     const confirmation = page.getByRole("dialog");
     await expect(
@@ -239,7 +251,7 @@ test.describe("OGC-782 M3 microbiology reference administration", () => {
     }>;
     expect(
       preservedRuns.find((run) => run.id === reviewed.astRunId)?.panelId,
-    ).toBe(seeded.astPanelId);
+    ).toBe(reviewed.astPanelId);
   });
 
   test("activates a loaded standard without changing reviewed AST history", async ({
@@ -297,9 +309,9 @@ test.describe("OGC-782 M3 microbiology reference administration", () => {
     const importVersion = `SYNTH-UAT-${randomUUID().slice(0, 8).toUpperCase()}`;
     const csv = [
       "publisher,version,organism_or_group,antibiotic_whonet_code,method,specimen_type_id,breakpoint_type,susceptible_value,intermediate_lower_value,intermediate_upper_value,resistant_value,units",
-      `CLSI,${importVersion},group:UAT_SYNTHETIC,REFUAT,MIC,,MIC,1,2,2,4,synthetic-mg/L`,
-      `CLSI,${importVersion},Unknown organism,REFUAT,MIC,,MIC,1,2,2,4,synthetic-mg/L`,
-      `CLSI,${importVersion},group:UAT_SYNTHETIC,REFUAT,MIC,,MIC,not-a-number,2,2,4,synthetic-mg/L`,
+      `CLSI,${importVersion},group:UAT_SYNTHETIC,REFUAT,MIC,,MIC,1,2,2,4,mg/L`,
+      `CLSI,${importVersion},Unknown organism,REFUAT,MIC,,MIC,1,2,2,4,mg/L`,
+      `CLSI,${importVersion},group:UAT_SYNTHETIC,REFUAT,MIC,,MIC,not-a-number,2,2,4,mg/L`,
     ].join("\n");
 
     const openImport = async () => {

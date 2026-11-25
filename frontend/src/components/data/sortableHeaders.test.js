@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createIntl } from "react-intl";
 import messages from "../../languages/en.json";
-import {
-  OrderCurrentTestsHeaders,
-  OrderPossibleTestsHeaders,
-} from "./orderCurrentTestsHeaders";
+import { OrderCurrentTestsHeaders } from "./orderCurrentTestsHeaders";
 import { auditTrailHeaderData } from "../reports/auditTrailReport/AuditTrailTableHeader";
 
 /**
@@ -16,7 +13,6 @@ const intl = createIntl({ locale: "en", messages });
 
 describe.each([
   ["Edit Order current tests", OrderCurrentTestsHeaders],
-  ["Edit Order possible tests", OrderPossibleTestsHeaders],
   ["Audit trail", auditTrailHeaderData],
 ])("%s headers", (_, headersFor) => {
   it("are translated strings", () => {

@@ -26,23 +26,6 @@ export const getReagentLotOverview = (caseId) =>
     );
   });
 
-export const getCaseInoculations = (caseId) =>
-  new Promise((resolve) => {
-    getFromOpenElisServer(
-      `/rest/microbiology/cases/${encodeURIComponent(caseId)}/inoculations`,
-      resolve,
-    );
-  });
-
-export const recordCaseInoculation = (caseId, payload) =>
-  new Promise((resolve) => {
-    postToOpenElisServerJsonResponse(
-      `/rest/microbiology/cases/${encodeURIComponent(caseId)}/inoculations`,
-      JSON.stringify(payload),
-      resolve,
-    );
-  });
-
 export const getCaseTimeline = (caseId) =>
   new Promise((resolve) => {
     getFromOpenElisServer(
@@ -57,30 +40,6 @@ export const addCaseNote = (caseId, text) =>
       `/rest/microbiology/cases/${encodeURIComponent(caseId)}/notes`,
       JSON.stringify({ text }),
       resolve,
-    );
-  });
-
-export const createIsolate = (payload) =>
-  new Promise((resolve) => {
-    postToOpenElisServerJsonResponse(
-      "/rest/microbiology/isolates",
-      JSON.stringify(payload),
-      resolve,
-    );
-  });
-
-export const updateIsolateIdentification = (isolateId, payload) =>
-  new Promise((resolve) => {
-    putToOpenElisServerFullResponse(
-      `/rest/microbiology/isolates/${encodeURIComponent(isolateId)}/identification`,
-      JSON.stringify(payload),
-      (response) => {
-        if (!response) {
-          resolve({ status: 0 });
-          return;
-        }
-        response.json().then(resolve);
-      },
     );
   });
 
@@ -254,7 +213,7 @@ export const getCaseReadiness = (caseId) =>
   });
 
 export const getWorklistRows = (query = {}) =>
-  new Promise((resolve) => {
+  new Promise((resolve, reject) => {
     const params = new URLSearchParams();
     [
       "grain",
@@ -273,13 +232,16 @@ export const getWorklistRows = (query = {}) =>
         params.set(key, query[key]);
       }
     });
-    ["specimen", "organism", "origin", "significance"].forEach((key) =>
-      (query[key] || []).forEach((value) => params.append(key, value)),
+    ["specimen", "organism", "origin", "significance", "labUnitIds"].forEach(
+      (key) => (query[key] || []).forEach((value) => params.append(key, value)),
     );
     const search = params.toString();
     getFromOpenElisServer(
       `/rest/microbiology/worklist${search ? `?${search}` : ""}`,
-      resolve,
+      (response) =>
+        response === undefined
+          ? reject(new Error("Worklist could not be loaded"))
+          : resolve(response),
     );
   });
 
@@ -318,21 +280,6 @@ export const logCriticalCommunication = (caseId, payload) =>
       `/rest/microbiology/cases/${caseId}/critical-communications`,
       JSON.stringify(payload),
       settleJsonResponse(resolve, reject),
-    );
-  });
-
-export const acknowledgeCriticalCommunication = (communicationId) =>
-  new Promise((resolve) => {
-    putToOpenElisServerFullResponse(
-      `/rest/microbiology/critical-communications/${communicationId}/acknowledge`,
-      JSON.stringify({}),
-      (response) => {
-        if (!response) {
-          resolve({ status: 0 });
-          return;
-        }
-        response.json().then(resolve);
-      },
     );
   });
 
@@ -439,16 +386,6 @@ export const releaseAmendedReport = (caseId) =>
     );
   });
 
-export const getIdentificationHistory = (isolateId) =>
-  new Promise((resolve) => {
-    getFromOpenElisServer(
-      `/rest/microbiology/isolates/${encodeURIComponent(
-        isolateId,
-      )}/identification-history`,
-      resolve,
-    );
-  });
-
 export const saveOrderDetail = (caseId, payload) =>
   new Promise((resolve) => {
     putToOpenElisServerFullResponse(
@@ -475,13 +412,9 @@ export const getWhonetReadiness = (caseId) =>
 const MicrobiologyService = {
   getCaseDetail,
   recordCaseActivity,
-  getCaseInoculations,
-  recordCaseInoculation,
   getCaseTimeline,
   addCaseNote,
   getReagentLotOverview,
-  createIsolate,
-  updateIsolateIdentification,
   getAstPanels,
   getAstSetupForIsolate,
   getAstPanelAntibiotics,
@@ -505,7 +438,6 @@ const MicrobiologyService = {
   getWorklistRows,
   getCriticalCommunications,
   logCriticalCommunication,
-  acknowledgeCriticalCommunication,
   closeCriticalCommunication,
   getNceCategories,
   getNceReportingUnits,
@@ -518,7 +450,6 @@ const MicrobiologyService = {
   openCaseAmendment,
   cancelCaseAmendment,
   releaseAmendedReport,
-  getIdentificationHistory,
   saveOrderDetail,
   getWhonetReadiness,
 };

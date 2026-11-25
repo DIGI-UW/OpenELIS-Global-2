@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import {
-  DatePicker,
   DatePickerInput,
   Dropdown,
   FilterableMultiSelect,
@@ -8,10 +7,12 @@ import {
   Modal,
   Stack,
 } from "@carbon/react";
+import { DatePicker } from "../../common/DatePicker";
 import { useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
+  parseIsoDate,
   toLocalIsoDate,
 } from "../../utils/Utils";
 
@@ -160,6 +161,7 @@ const EnrollTestsModal = ({ open, onClose, bodies, onSaved }) => {
         <DatePicker
           datePickerType="single"
           dateFormat="Y-m-d"
+          parseDate={parseIsoDate}
           value={effectiveFrom ? [effectiveFrom] : []}
           onChange={(dates) =>
             setEffectiveFrom(dates.length ? toLocalIsoDate(dates[0]) : "")
@@ -167,6 +169,12 @@ const EnrollTestsModal = ({ open, onClose, bodies, onSaved }) => {
         >
           <DatePickerInput
             id="enroll-effective-from"
+            onBlur={(event) => {
+              const typed = parseIsoDate(event.target.value);
+              if (typed) {
+                setEffectiveFrom(toLocalIsoDate(typed));
+              }
+            }}
             labelText={intl.formatMessage({
               id: "qa.qms.accreditation.enroll.field.effectiveFrom",
             })}

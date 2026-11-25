@@ -130,17 +130,78 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
     @Test
     public void aNumberOnAComponentKeepsTheComponentsDigits() throws Exception {
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
-        jdbc.update("INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, significant_digits, is_active,"
+        jdbc.update("INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, reporting_decimal_places, is_active,"
                 + " lastupdated) VALUES (4901, 4001, 'N', 0, true, NOW())");
         jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, is_primary, is_active,"
-                + " significant_digits, lastupdated) VALUES ('comp-log-digits', 4001, 'LOG', 'Log viral load', false,"
+                + " reporting_decimal_places, lastupdated) VALUES ('comp-log-digits', 4001, 'LOG', 'Log viral load', false,"
                 + " 'Y', 2, NOW())");
-        jdbc.update("UPDATE clinlims.analyzer_results SET component_id = 'comp-log-digits', result = '3.00'"
+        jdbc.update("UPDATE clinlims.analyzer_results SET component_id = 'comp-log-digits', result = '3.001'"
                 + " WHERE id = 1001");
 
         mockMvc.perform(get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.resultList[0].result").value("3.00"))
-                .andExpect(jsonPath("$.resultList[0].significantDigits").value("2"));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.resultList[0].result").value("3.001"))
+                .andExpect(jsonPath("$.resultList[0].reportingDecimalPlaces").value("2"));
+    }
+
+    @Test
+    public void numericReviewPreservesTheMeasurementWhenReportingUsesNoDecimals() throws Exception {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        jdbc.update("INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, reporting_decimal_places, is_active,"
+                + " lastupdated) VALUES (4901, 4001, 'N', 0, true, NOW())");
+        jdbc.update("UPDATE clinlims.analyzer_results SET result = '1.17', raw_result_value = '1.17' WHERE id = 1001");
+
+        mockMvc.perform(get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.resultList[0].result").value("1.17"))
+                .andExpect(jsonPath("$.resultList[0].rawResultValue").value("1.17"))
+                .andExpect(jsonPath("$.resultList[0].reportingDecimalPlaces").value("0"));
+    }
+
+    /**
+     * OGC-1200 slice 4: a value whose run holds its test is shown held, read-only,
+     * with the run to open, so ticking it cannot drop it silently.
+     */
+    @Test
+    public void aValueHeldByAFailedControlInItsRunIsShownHeldWithItsRun() throws Exception {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        long run = jdbc.queryForObject("SELECT nextval('clinlims.result_run_seq')", Long.class);
+        jdbc.update("INSERT INTO clinlims.result_run (id, source, state, row_count, opened_at, last_activity_at)"
+                + " VALUES (?, 'ANALYZER', 'HELD', 1, NOW(), NOW())", run);
+        jdbc.update("UPDATE clinlims.analyzer_results SET run_id = ? WHERE id = 1001", run);
+        String testId = jdbc.queryForObject("SELECT test_id::text FROM clinlims.analyzer_results WHERE id = 1001",
+                String.class);
+        jdbc.update("INSERT INTO clinlims.qc_result (id, test_id, source, result_value, run_date_time, result_status,"
+                + " sys_user_id, run_id, run_verdict, verdict_source) VALUES (?, ?::numeric, 'ASTM', 1, NOW(),"
+                + " 'PENDING', 1, ?, 'FAIL', 'COMPUTED')", java.util.UUID.randomUUID().toString(), testId, run);
+
+        mockMvc.perform(get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultList[0].importIssueReason").value("run_qc_failed"))
+                .andExpect(jsonPath("$.resultList[0].readOnly").value(true))
+                .andExpect(jsonPath("$.resultList[0].heldRunId").value(run));
+    }
+
+    /**
+     * OGC-1200 slice 8: a value held because its test requires a control on every
+     * run and its open run has none is shown held for the missing control, not for
+     * a failed one.
+     */
+    @Test
+    public void aValueHeldForAMissingRequiredControlIsShownHeldForThatReason() throws Exception {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        long run = jdbc.queryForObject("SELECT nextval('clinlims.result_run_seq')", Long.class);
+        jdbc.update("INSERT INTO clinlims.result_run (id, source, state, row_count, opened_at, last_activity_at)"
+                + " VALUES (?, 'ANALYZER', 'HELD', 1, NOW(), NOW())", run);
+        jdbc.update("UPDATE clinlims.analyzer_results SET run_id = ? WHERE id = 1001", run);
+        String testId = jdbc.queryForObject("SELECT test_id::text FROM clinlims.analyzer_results WHERE id = 1001",
+                String.class);
+        jdbc.update("INSERT INTO clinlims.test_qc_policy (test_id, control_required, control_when_missing,"
+                + " last_updated) VALUES (?::numeric, true, 'HOLD', NOW())", testId);
+
+        mockMvc.perform(get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultList[0].importIssueReason").value("run_qc_missing"))
+                .andExpect(jsonPath("$.resultList[0].readOnly").value(true))
+                .andExpect(jsonPath("$.resultList[0].heldRunId").value(run));
     }
 
     @Test
@@ -221,20 +282,7 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void aMismatchedInstrumentPatientIsShownAndKeepsTheGroupingUnticked() throws Exception {
-        orderFor("ACC123456", 4001, true);
-        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
-        long person = jdbc.queryForObject("SELECT nextval('person_seq')", Long.class);
-        jdbc.update("INSERT INTO clinlims.person (id, last_name, first_name, lastupdated)"
-                + " VALUES (?, 'Doe', 'Jane', NOW())", person);
-        long patient = jdbc.queryForObject("SELECT nextval('patient_seq')", Long.class);
-        jdbc.update("INSERT INTO clinlims.patient (id, person_id, gender, birth_date, external_id, lastupdated)"
-                + " VALUES (?, ?, 'F', '1990-01-01', 'EXT-REAL-1', NOW())", patient, person);
-        long sample = jdbc.queryForObject("SELECT id FROM clinlims.sample WHERE accession_number = 'ACC123456'",
-                Long.class);
-        jdbc.update("INSERT INTO clinlims.sample_human (id, patient_id, samp_id, lastupdated)"
-                + " VALUES (nextval('sample_human_seq'), ?, ?, NOW())", patient, sample);
-        jdbc.update("UPDATE clinlims.analyzer_results SET instrument_patient_id = 'SOMEONE-ELSE',"
-                + " instrument_patient_name = 'Roe, Rick' WHERE id = 1001");
+        stageMismatchedPatient();
 
         mockMvc.perform(get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.resultList[0].placement.state").value("RESOLVED"))
@@ -242,6 +290,92 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(jsonPath("$.resultList[0].placement.patient.instrumentId").value("SOMEONE-ELSE"))
                 .andExpect(jsonPath("$.resultList[0].placement.patient.orderName").isNotEmpty())
                 .andExpect(jsonPath("$.resultList[0].isAccepted").value(false));
+    }
+
+    /**
+     * OGC-1662 — a selected row the save keeps in review is named in the answer, so
+     * the page does not report it saved.
+     */
+    @Test
+    public void aSelectedMismatchSavedWithoutANote_isNamedAsLeftInReview() throws Exception {
+        stageMismatchedPatient();
+        MockHttpSession session = new MockHttpSession();
+        String loaded = mockMvc.perform(
+                get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        mockMvc.perform(post("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).with(csrf()).session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(acceptRowWithNote(loaded, "1001", null)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.leftInReview.length()").value(1))
+                .andExpect(jsonPath("$.leftInReview[0].id").value("1001"))
+                .andExpect(jsonPath("$.leftInReview[0].accessionNumber").value("ACC123456"))
+                .andExpect(jsonPath("$.leftInReview[0].reason").value("awaiting_placement"));
+    }
+
+    /**
+     * A read-only copy of the test (a re-export) is ticked with it on the page but
+     * never saves; the save still stored the test and must not call it unsaved.
+     */
+    @Test
+    public void aReadOnlyCopyOfASavedTest_isNotNamedAsLeftInReview() throws Exception {
+        orderWithPatientFor("ACC123456");
+        new JdbcTemplate(dataSource).update("INSERT INTO clinlims.analyzer_results (id, analyzer_id, accession_number,"
+                + " test_name, result, iscontrol, read_only, test_id, last_updated) VALUES (1009, 2001, 'ACC123456',"
+                + " 'Glucose', '5.6', false, true, 4001, NOW())");
+        MockHttpSession session = new MockHttpSession();
+        String loaded = mockMvc.perform(
+                get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        String body = mockMvc
+                .perform(post("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).with(csrf()).session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(acceptRowWithNote(acceptRowWithNote(loaded, "1001", null), "1009", null)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        org.junit.Assert.assertEquals("", body);
+        org.junit.Assert.assertEquals(Integer.valueOf(0), new JdbcTemplate(dataSource)
+                .queryForObject("SELECT count(*)::int FROM clinlims.analyzer_results WHERE id = 1001", Integer.class));
+    }
+
+    @Test
+    public void aSelectedMismatchSavedWithANote_isSavedAndNothingIsLeftInReview() throws Exception {
+        stageMismatchedPatient();
+        MockHttpSession session = new MockHttpSession();
+        String loaded = mockMvc.perform(
+                get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        String body = mockMvc
+                .perform(post("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).with(csrf()).session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(acceptRowWithNote(loaded, "1001", "Relabelled tube, checked with the ward")))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        org.junit.Assert.assertEquals("", body);
+        org.junit.Assert.assertEquals(Integer.valueOf(0), new JdbcTemplate(dataSource)
+                .queryForObject("SELECT count(*)::int FROM clinlims.analyzer_results WHERE id = 1001", Integer.class));
+    }
+
+    private void stageMismatchedPatient() {
+        orderWithPatientFor("ACC123456");
+        new JdbcTemplate(dataSource).update("UPDATE clinlims.analyzer_results SET instrument_patient_id ="
+                + " 'SOMEONE-ELSE', instrument_patient_name = 'Roe, Rick' WHERE id = 1001");
+    }
+
+    private void orderWithPatientFor(String accession) {
+        orderFor(accession, 4001, true);
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        long person = jdbc.queryForObject("SELECT nextval('person_seq')", Long.class);
+        jdbc.update("INSERT INTO clinlims.person (id, last_name, first_name, lastupdated)"
+                + " VALUES (?, 'Doe', 'Jane', NOW())", person);
+        long patient = jdbc.queryForObject("SELECT nextval('patient_seq')", Long.class);
+        jdbc.update("INSERT INTO clinlims.patient (id, person_id, gender, birth_date, external_id, lastupdated)"
+                + " VALUES (?, ?, 'F', '1990-01-01', 'EXT-REAL-1', NOW())", patient, person);
+        long sample = jdbc.queryForObject("SELECT id FROM clinlims.sample WHERE accession_number = ?", Long.class,
+                accession);
+        jdbc.update("INSERT INTO clinlims.sample_human (id, patient_id, samp_id, lastupdated)"
+                + " VALUES (nextval('sample_human_seq'), ?, ?, NOW())", patient, sample);
     }
 
     private long orderFor(String accession, long testId, boolean awaitingResult) {
@@ -327,6 +461,92 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
         new JdbcTemplate(dataSource).update("UPDATE clinlims.analyzer_results SET result = '5.6' WHERE id = 1001");
     }
 
+    @Test
+    public void acceptingACodedRowChangedToACriticalAnswer_isRefusedUntilAcknowledged() throws Exception {
+        String detected = codedAnswer("OGC1610 Detected", true);
+        String notDetected = codedAnswer("OGC1610 Not detected", false);
+        stageCodedAnswer(notDetected);
+        MockHttpSession session = new MockHttpSession();
+        String loaded = mockMvc.perform(
+                get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        mockMvc.perform(post("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).with(csrf()).session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(acceptRow(loaded, "1001", detected)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.acknowledgementRequired[0].kind").value("CRITICAL"))
+                .andExpect(jsonPath("$.acknowledgementRequired[0].rowId").value("1001"))
+                .andExpect(jsonPath("$.acknowledgementRequired[0].value").value("OGC1610 Detected"));
+    }
+
+    @Test
+    public void acceptingACriticalCodedAnswer_raisesTheCriticalResultAlert() throws Exception {
+        long analysis = orderFor("ACC123456", 4001, true);
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        long person = jdbc.queryForObject("SELECT nextval('person_seq')", Long.class);
+        jdbc.update("INSERT INTO clinlims.person (id, last_name, first_name, lastupdated)"
+                + " VALUES (?, 'Doe', 'Jane', NOW())", person);
+        long patient = jdbc.queryForObject("SELECT nextval('patient_seq')", Long.class);
+        jdbc.update("INSERT INTO clinlims.patient (id, person_id, gender, birth_date, lastupdated)"
+                + " VALUES (?, ?, 'F', '1990-01-01', NOW())", patient, person);
+        jdbc.update("INSERT INTO clinlims.sample_human (id, patient_id, samp_id, lastupdated) VALUES"
+                + " (nextval('sample_human_seq'), ?, (SELECT id FROM clinlims.sample WHERE accession_number ="
+                + " 'ACC123456'), NOW())", patient);
+        String detected = codedAnswer("OGC1610 Detected", true);
+        stageCodedAnswer(detected);
+        MockHttpSession session = new MockHttpSession();
+        String loaded = mockMvc.perform(
+                get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        mockMvc.perform(post("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).with(csrf()).session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(acceptRow(loaded, "1001", detected)))
+                .andExpect(status().isOk());
+
+        org.junit.Assert.assertEquals(Integer.valueOf(1),
+                new JdbcTemplate(dataSource).queryForObject(
+                        "SELECT count(*)::int FROM clinlims.alert WHERE alert_type = 'CRITICAL_RESULT'"
+                                + " AND alert_entity_type = 'ANALYSIS' AND alert_entity_id = ?",
+                        Integer.class, analysis));
+    }
+
+    @Test
+    public void anUneditedCodedInstrumentAnswer_andANonCriticalOne_oweNothing() {
+        String detected = codedAnswer("OGC1610 Detected", true);
+        String notDetected = codedAnswer("OGC1610 Not detected", false);
+        stageCodedAnswer(detected);
+        ResultEntryAcknowledgementService acknowledgementService = securityContext.getParent()
+                .getBean(ResultEntryAcknowledgementService.class);
+
+        AnalyzerResultItem unedited = new AnalyzerResultItem();
+        unedited.setId("1001");
+        unedited.setResult(detected);
+        unedited.setIsAccepted(true);
+        org.junit.Assert.assertEquals(List.of(), acknowledgementService.alertsForAnalyzerItems(List.of(unedited)));
+
+        AnalyzerResultItem changed = new AnalyzerResultItem();
+        changed.setId("1001");
+        changed.setResult(notDetected);
+        changed.setIsAccepted(true);
+        org.junit.Assert.assertEquals(List.of(), acknowledgementService.alertsForAnalyzerItems(List.of(changed)));
+    }
+
+    private String codedAnswer(String entry, boolean critical) {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        String id = jdbc.queryForObject("SELECT nextval('clinlims.dictionary_seq')::text", String.class);
+        jdbc.update("INSERT INTO clinlims.dictionary (id, dict_entry, is_active, lastupdated) VALUES (?::numeric, ?,"
+                + " 'Y', NOW())", id, entry);
+        jdbc.update("INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, value, sort_order, is_active,"
+                + " is_critical, lastupdated) VALUES (nextval('clinlims.test_result_seq'), 4001, 'D', ?, 1, true, ?,"
+                + " NOW())", id, critical);
+        return id;
+    }
+
+    private void stageCodedAnswer(String answer) {
+        new JdbcTemplate(dataSource).update(
+                "UPDATE clinlims.analyzer_results SET test_result_type = 'D', result = ? WHERE id = 1001", answer);
+    }
+
     private void seedGlucoseCriticalLimit() {
         new JdbcTemplate(dataSource).update("INSERT INTO clinlims.result_limits (id, test_id, test_result_type_id,"
                 + " min_age, max_age, low_normal, high_normal, low_valid, high_valid, low_reporting_range,"
@@ -343,6 +563,19 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
             if (rowId.equals(row.path("id").asText())) {
                 ((com.fasterxml.jackson.databind.node.ObjectNode) row).put("result", value);
                 ((com.fasterxml.jackson.databind.node.ObjectNode) row).put("isAccepted", true);
+            }
+        }
+        return mapper.writeValueAsString(form);
+    }
+
+    private static String acceptRowWithNote(String loaded, String rowId, String note) throws Exception {
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        com.fasterxml.jackson.databind.node.ObjectNode form = (com.fasterxml.jackson.databind.node.ObjectNode) mapper
+                .readTree(loaded);
+        for (com.fasterxml.jackson.databind.JsonNode row : form.withArray("resultList")) {
+            if (rowId.equals(row.path("id").asText())) {
+                ((com.fasterxml.jackson.databind.node.ObjectNode) row).put("isAccepted", true);
+                ((com.fasterxml.jackson.databind.node.ObjectNode) row).put("note", note);
             }
         }
         return mapper.writeValueAsString(form);

@@ -1,9 +1,11 @@
 package org.openelisglobal.analyzerresults.service;
 
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.result.action.util.ResultEntryAlert;
+import org.openelisglobal.result.valueholder.Result;
 
 /**
  * Orchestrates the "accept analyzer results" workflow: extracts actionable
@@ -23,19 +25,28 @@ public interface AnalyzerResultsAcceptService {
      * @param allResults every {@link AnalyzerResultItem} on the current page
      *                   (accepted, rejected, deleted, and untouched)
      * @param sysUserId  the authenticated user's system id
+     * @return the accepted results and the results calculations wrote from them
      */
-    void acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId);
+    List<Result> acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId);
 
     /**
      * The same, recording in the same transaction each acknowledgement the reviewer
      * gave for a value they retyped (OGC-1417).
      */
-    void acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId, List<ResultEntryAlert> alerts);
+    List<Result> acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId, List<ResultEntryAlert> alerts);
+
+    /**
+     * The rows the reviewer acted on that are still staged after an accept, each
+     * with the reason it is held ("" when it carries none). A saved, retested or
+     * ignored row leaves staging, so these are the ones the save did not take. A
+     * read-only copy of a test, such as a re-export, never saves and is left out.
+     */
+    Map<String, String> stillInReview(List<AnalyzerResultItem> allResults);
 
     /**
      * The decimal places a staged number is shown and saved with: its component's
      * when it is on one, otherwise the test's first active result definition's.
      * Null when the result has no test or no value, or the definition sets none.
      */
-    String significantDigitsFor(AnalyzerResults staged);
+    String reportingDecimalPlacesFor(AnalyzerResults staged);
 }

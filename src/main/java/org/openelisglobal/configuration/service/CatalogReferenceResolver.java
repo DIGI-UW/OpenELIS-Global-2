@@ -2,6 +2,10 @@ package org.openelisglobal.configuration.service;
 
 import java.util.List;
 import org.openelisglobal.configuration.valueholder.UnresolvedReference;
+import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
+import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
+import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
+import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.test.service.LegacyTestVariantFinder;
 import org.openelisglobal.test.service.LegacyTestVariantFinder.LegacyTestVariant;
 import org.openelisglobal.test.service.TestSectionService;
@@ -48,10 +52,48 @@ public class CatalogReferenceResolver {
     @Autowired
     private ReferenceAliasService aliasService;
 
+    @Autowired
+    private MicroOrganismDAO organismDAO;
+
+    @Autowired
+    private MicroAntibioticDAO antibioticDAO;
+
+    /**
+     * The one active test whose catalogue name is {@code name}, on the row's
+     * specimen when the row names one. A test created in the Test Catalogue Editor
+     * carries its name in {@code test.name} and the localisation while
+     * {@code test.description} holds a free-text description, so a file that names
+     * it the way the catalogue shows it must still find it. Several active tests
+     * sharing a name are legacy per-specimen variants, left to the specimen-aware
+     * lookup in {@link #resolveTest}; so is a single namesake that is not offered
+     * on the row's specimen (an upgraded catalogue carries legacy
+     * {@code Name(Specimen)} tests whose localised name is the plain name, and
+     * "Glucose" on Serum must not bind {@code Glucose(Plasma)}).
+     */
+    private Test onlyActiveTestNamed(String name, String sampleTypeName) {
+        List<Test> named = testService.getActiveTestByName(name);
+        if (named == null || named.size() != 1) {
+            return null;
+        }
+        Test test = named.get(0);
+        if (sampleTypeName == null || sampleTypeName.isBlank()) {
+            return test;
+        }
+        TypeOfSample specimen = findSampleType(sampleTypeName);
+        if (specimen == null) {
+            return null;
+        }
+        List<TypeOfSample> offeredOn = typeOfSampleService.getTypeOfSampleForTest(test.getId());
+        boolean linked = offeredOn != null
+                && offeredOn.stream().anyMatch(sampleType -> specimen.getId().equals(sampleType.getId()));
+        return linked ? test : null;
+    }
+
     /**
      * The test a file names: by plain description (exact, then normalized), by
-     * local code, by a remembered alias, and finally, when the row names a
-     * specimen, the legacy {@code Name(Specimen)} record for that specimen.
+     * local code, by a remembered alias, by its catalogue name when exactly one
+     * active test carries it on the row's specimen, and finally, when the row names
+     * a specimen, the legacy {@code Name(Specimen)} record for that specimen.
      */
     public Test resolveTest(String name, String sampleTypeName, String context) {
         if (name == null || name.isBlank()) {
@@ -69,6 +111,9 @@ public class CatalogReferenceResolver {
             if (aliased != null) {
                 test = testService.get(aliased);
             }
+        }
+        if (test == null) {
+            test = onlyActiveTestNamed(name, sampleTypeName);
         }
         if (test == null && sampleTypeName != null && !sampleTypeName.isBlank()) {
             TypeOfSample specimen = findSampleType(sampleTypeName);
@@ -140,6 +185,35 @@ public class CatalogReferenceResolver {
         return unit;
     }
 
+    public MicroOrganism resolveOrganism(String name, String context) {
+        MicroOrganism organism = organismDAO.findByDisplayNameIgnoreCase(name)
+                .or(() -> organismDAO.findByWhonetName(name)).orElse(null);
+        if (organism == null) {
+            String aliased = aliasService.resolve(UnresolvedReference.TYPE_ORGANISM, name);
+            if (aliased != null) {
+                organism = organismDAO.get(aliased).orElse(null);
+            }
+        }
+        if (organism == null) {
+            ImportRunContext.addPending(UnresolvedReference.TYPE_ORGANISM, name, context);
+        }
+        return organism;
+    }
+
+    public MicroAntibiotic resolveAntibiotic(String whonetCode, String context) {
+        MicroAntibiotic antibiotic = antibioticDAO.findByWhonetCodeIgnoreCase(whonetCode).orElse(null);
+        if (antibiotic == null) {
+            String aliased = aliasService.resolve(UnresolvedReference.TYPE_ANTIBIOTIC, whonetCode);
+            if (aliased != null) {
+                antibiotic = antibioticDAO.get(aliased).orElse(null);
+            }
+        }
+        if (antibiotic == null) {
+            ImportRunContext.addPending(UnresolvedReference.TYPE_ANTIBIOTIC, whonetCode, context);
+        }
+        return antibiotic;
+    }
+
     /** A test's result component by code; blank means the primary component. */
     public TestResultComponent resolveComponent(String testId, String code, String context) {
         List<TestResultComponent> components = componentService.getActiveComponentsByTestId(testId);
@@ -182,6 +256,14 @@ public class CatalogReferenceResolver {
         case UnresolvedReference.TYPE_UNIT_OF_MEASURE -> {
             UnitOfMeasure unit = resolveUnitOfMeasure(name, null);
             return unit == null ? null : unit.getId();
+        }
+        case UnresolvedReference.TYPE_ORGANISM -> {
+            MicroOrganism organism = resolveOrganism(name, null);
+            return organism == null ? null : organism.getId();
+        }
+        case UnresolvedReference.TYPE_ANTIBIOTIC -> {
+            MicroAntibiotic antibiotic = resolveAntibiotic(name, null);
+            return antibiotic == null ? null : antibiotic.getId();
         }
         default -> {
             return null;

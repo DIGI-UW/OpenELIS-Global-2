@@ -6,6 +6,7 @@ import {
   markPanelDistributed,
   InHouseSchemeSeed,
 } from "../../../helpers/seed-eqa-data";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 
 /**
  * In-house blinded panels: what a sealed target reveals, to whom (OGC-613).
@@ -111,9 +112,9 @@ test.describe.serial("EQA in-house panels", () => {
     await test.step("the list shows it sealed and in testing", async () => {
       await page.goto("/qa/eqa/in-house", { timeout: NAV_TIMEOUT });
       // Wait for the picker's schemes to load before choosing one.
-      const schemePicker = page.locator("select#inhouse-scheme-filter");
+      const schemePicker = page.locator("#inhouse-scheme-filter");
       await expect(schemePicker).not.toHaveValue("", { timeout: UI_TIMEOUT });
-      await schemePicker.selectOption({ label: seed.schemeName });
+      await chooseCarbonOption(schemePicker, seed.schemeName);
 
       const panelRow = page.locator("tr", { hasText: panelName });
       await expect(panelRow).toBeVisible({ timeout: UI_TIMEOUT });
@@ -171,9 +172,9 @@ test.describe.serial("EQA in-house panels", () => {
   }) => {
     test.setTimeout(180_000);
     await page.goto("/qa/eqa/in-house", { timeout: NAV_TIMEOUT });
-    const schemePicker = page.locator("select#inhouse-scheme-filter");
+    const schemePicker = page.locator("#inhouse-scheme-filter");
     await expect(schemePicker).not.toHaveValue("", { timeout: UI_TIMEOUT });
-    await schemePicker.selectOption({ label: seed.schemeName });
+    await chooseCarbonOption(schemePicker, seed.schemeName);
 
     const panelRow = page.locator("tr", { hasText: panelName });
     await panelRow.getByRole("button", { name: "Unblind now" }).click();

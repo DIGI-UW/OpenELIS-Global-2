@@ -564,6 +564,56 @@ public class ElectronicSignatureServiceIntegrationTest extends BaseWebContextSen
                 electronicSignatureService.countSearchSignatures(start, end, Long.valueOf(-1L), null, "QC_RESULT"));
     }
 
+    /**
+     * OGC-1515: the log is searched by typing part of the signer, the reason or the
+     * subject, ignoring case and accents, and the count follows the search.
+     */
+    @Test
+    public void testSearchSignatures_MatchesTypedTextInSignerReasonOrSubject() {
+        certifyTestUser();
+        Long recordBase = Long.valueOf(System.currentTimeMillis());
+        Timestamp start = new Timestamp(System.currentTimeMillis() - 86400000L);
+        Timestamp end = new Timestamp(System.currentTimeMillis() + 86400000L);
+
+        electronicSignatureService.executeSignature(TEST_USERNAME, TEST_PASSWORD, SignatureMeaning.REJECTED,
+                "RESULT_BATCH", recordBase, "Contrôle hors limites", null, null);
+        electronicSignatureService.executeSignature(TEST_USERNAME, TEST_PASSWORD, SignatureMeaning.REJECTED,
+                "RESULT_BATCH", Long.valueOf(recordBase + 1), "Sample haemolysed", null, null);
+        electronicSignatureService.executeSignature(TEST_USERNAME, TEST_PASSWORD, SignatureMeaning.AUTHORED,
+                "RESULT_BATCH", Long.valueOf(recordBase + 2), null, null, null);
+
+        List<ElectronicSignature> byReason = electronicSignatureService.searchSignatures(start, end, null, null,
+                "RESULT_BATCH", "CONTROLE", 0, 10);
+        assertEquals(List.of(recordBase), byReason.stream().map(ElectronicSignature::getRecordId).toList());
+        assertEquals(1,
+                electronicSignatureService.countSearchSignatures(start, end, null, null, "RESULT_BATCH", "CONTROLE"));
+
+        assertEquals(List.of(Long.valueOf(recordBase + 1)),
+                electronicSignatureService.searchSignatures(start, end, null, null, "RESULT_BATCH", "haemo", 0, 10)
+                        .stream().map(ElectronicSignature::getRecordId).toList());
+
+        assertEquals(List.of(Long.valueOf(recordBase + 2)),
+                electronicSignatureService
+                        .searchSignatures(start, end, null, null, "RESULT_BATCH", String.valueOf(recordBase + 2), 0, 10)
+                        .stream().map(ElectronicSignature::getRecordId).toList());
+
+        List<Long> ours = List.of(recordBase, Long.valueOf(recordBase + 1), Long.valueOf(recordBase + 2));
+        String signer = byReason.get(0).getSignerNamePrinted();
+        List<ElectronicSignature> bySigner = electronicSignatureService.searchSignatures(start, end, null, null,
+                "RESULT_BATCH", signer.substring(0, Math.min(4, signer.length())).toUpperCase(), 0, 500);
+        assertTrue(bySigner.stream().map(ElectronicSignature::getRecordId).toList().containsAll(ours));
+
+        List<ElectronicSignature> bySubjectType = electronicSignatureService.searchSignatures(start, end, null, null,
+                null, "result_batch", 0, 500);
+        assertTrue(bySubjectType.stream().map(ElectronicSignature::getRecordId).toList().containsAll(ours));
+        assertTrue(bySubjectType.stream().allMatch(s -> "RESULT_BATCH".equals(s.getRecordType())));
+
+        assertEquals(0, electronicSignatureService.countSearchSignatures(start, end, null, null, "RESULT_BATCH",
+                "%" + recordBase));
+        assertEquals(electronicSignatureService.countSearchSignatures(start, end, null, null, "RESULT_BATCH"),
+                electronicSignatureService.countSearchSignatures(start, end, null, null, "RESULT_BATCH", " "));
+    }
+
     @Test
     public void testSearchSignatures_PaginationAndDateRange() {
         certifyTestUser();

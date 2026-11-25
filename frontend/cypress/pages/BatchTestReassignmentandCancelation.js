@@ -15,8 +15,14 @@ class BatchTestReassignmentandCancelationPage {
       .and("contain.text", "Batch test reassignment and cancelation");
   }
 
+  chooseFromSearchableList(selector, name) {
+    cy.get(selector).clear().type(name);
+    cy.contains('[role="option"]', new RegExp(`^${name}$`)).click();
+    cy.get(selector).should("have.value", name);
+  }
+
   selectSampleType() {
-    cy.get(this.selectors.sampleType).select("Serum");
+    this.chooseFromSearchableList(this.selectors.sampleType, "Serum");
   }
 
   checkBoxes(boxName) {
@@ -24,7 +30,8 @@ class BatchTestReassignmentandCancelationPage {
   }
 
   selectTest(testNum) {
-    cy.get(`#selectSampleType${testNum}`).select("Amylase");
+    cy.get(`#selectSampleType${testNum}`).clear().type("Amylase");
+    cy.contains('[role="option"]', /^Amylase$/).click();
   }
 
   clickOk() {

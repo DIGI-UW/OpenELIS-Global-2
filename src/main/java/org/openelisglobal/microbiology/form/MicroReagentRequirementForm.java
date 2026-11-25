@@ -6,6 +6,7 @@ import java.util.List;
 
 public class MicroReagentRequirementForm {
     public String analysisId;
+    public boolean astReagent;
     public String testId;
     public String testName;
     public String linkId;

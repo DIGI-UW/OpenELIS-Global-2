@@ -192,4 +192,11 @@ public class TestSection extends EnumValueItemImpl {
     public int hashCode() {
         return Objects.hash(id);
     }
+
+    @lombok.Getter
+    @lombok.Setter
+    private boolean requireTrackedMedia;
+    @lombok.Getter
+    @lombok.Setter
+    private String gramStainTestId;
 }

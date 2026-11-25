@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <localization id="993410"
+        description="Barcode test laboratory"
+        lastupdated="2026-01-01 00:00:00" />
+    <localization id="993411"
+        description="Barcode test billing" lastupdated="2026-01-01 00:00:00" />
+    <localization_value id="993410"
+        localization_id="993410" locale="en" value="Barcode test laboratory" />
+    <localization_value id="993411"
+        localization_id="993411" locale="en" value="Barcode test billing" />
+</dataset>

@@ -62,7 +62,10 @@ public class BridgeOutboxClient {
     }
 
     public void retry(String outboxEntryId) {
-        send("POST", entryUrl(outboxEntryId) + "/retry");
+        JsonNode queued = send("POST", entryUrl(outboxEntryId) + "/retry");
+        if (!outboxEntryId.equals(queued.path("id").asText()) || !"PENDING".equals(queued.path("state").asText())) {
+            throw new BridgeAnalyzerConnectionException("analyzer.deliveryIssues.error.bridgeInvalidResponse");
+        }
     }
 
     public void dismiss(String outboxEntryId) {
@@ -77,6 +80,9 @@ public class BridgeOutboxClient {
         try {
             response = "GET".equals(method) ? httpClient.get(url, REQUEST_TIMEOUT)
                     : httpClient.post(url, "{}", REQUEST_TIMEOUT);
+        } catch (BridgeHttpClient.BridgeNotPairedException exception) {
+            throw new BridgeAnalyzerConnectionException("analyzer.deliveryIssues.error.bridgeNotPaired", Map.of(),
+                    exception);
         } catch (IOException exception) {
             throw new BridgeAnalyzerConnectionException("analyzer.deliveryIssues.error.bridgeUnreachable",
                     Map.of("detail", String.valueOf(exception.getMessage())), exception);

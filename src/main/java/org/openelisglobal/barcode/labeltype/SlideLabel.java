@@ -53,7 +53,7 @@ public class SlideLabel extends Label {
             aboveFields.add(getAvailableIdField(patient));
         if (useSlideId)
             aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.slideNumber"),
-                    String.valueOf(slide.getSlideNumber()), 4));
+                    slide.displayIdentifier(), 4));
 
         if (useStaintype)
             aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.stainType"),
@@ -67,8 +67,7 @@ public class SlideLabel extends Label {
             aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.caseNumber"),
                     StringUtils.defaultString(caseNumber), 4));
 
-        // adding bar code
-        setCode(labNo);
+        setRowCode(slide.getBarcode(), labNo);
     }
 
     /**
@@ -128,5 +127,15 @@ public class SlideLabel extends Label {
     public int getMaxNumLabels() {
         return BarcodeConfigUtil.parseIntSafe(
                 ConfigurationProperties.getInstance().getPropertyValue(Property.MAX_SLIDE_LABEL_PRINTED), 10);
+    }
+
+    @Override
+    protected String labelInfoCode() {
+        return orderLabNo() + "-S";
+    }
+
+    @Override
+    protected String labelInfoType() {
+        return "slide";
     }
 }

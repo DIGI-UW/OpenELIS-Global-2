@@ -51,4 +51,24 @@ public class BatchWorkplanItemDAOImpl extends BaseDAOImpl<BatchWorkplanItem, Lon
             throw new LIMSRuntimeException("Error checking batch workplan analysis ids", e);
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<String> getExistingAnalysisIdsOutsideBatch(List<String> analysisIds, List<BatchWorkplanStatus> statuses,
+            Long batchWorkplanId) {
+        if (analysisIds == null || analysisIds.isEmpty()) {
+            return new HashSet<>();
+        }
+        try {
+            String hql = "SELECT i.analysisId FROM BatchWorkplanItem i WHERE i.analysisId IN (:analysisIds)"
+                    + " AND i.batchWorkplan.status IN (:statuses) AND i.batchWorkplan.id <> :batchId";
+            Query<String> query = entityManager.unwrap(Session.class).createQuery(hql, String.class);
+            query.setParameterList("analysisIds", analysisIds);
+            query.setParameterList("statuses", statuses);
+            query.setParameter("batchId", batchWorkplanId);
+            return new HashSet<>(query.list());
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error checking batch workplan analysis ids", e);
+        }
+    }
 }

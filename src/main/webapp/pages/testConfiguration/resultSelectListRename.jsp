@@ -1,3 +1,4 @@
+<%@ taglib prefix="enc" uri="/WEB-INF/taglib/output-encoding.tld" %>
 <%--
   Created by IntelliJ IDEA.
   User: kenny
@@ -77,17 +78,17 @@
 <table>
     <c:forEach items="${form.resultSelectOptionList}" begin="0" end="${fn:length(form.resultSelectOptionList)}" step="4" var="option" varStatus="counter">
         <tr style="padding: 5px;">
-            <td style="padding: 5px;" class="test-list-name-${form.resultSelectOptionList[counter.index].id}">
-                <a onclick="return editName(${form.resultSelectOptionList[counter.index].id})"><c:out value="${form.resultSelectOptionList[counter.index].dictEntry}" /></a>
+            <td style="padding: 5px;" class="test-list-name-${enc:attribute(form.resultSelectOptionList[counter.index].id)}">
+                <a onclick="return editName(${enc:jsAttribute(form.resultSelectOptionList[counter.index].id)})"><c:out value="${form.resultSelectOptionList[counter.index].dictEntry}" /></a>
             </td>
-            <td style="padding: 5px;" class="test-list-name-${form.resultSelectOptionList[counter.index + 1].id}">
-                <a onclick="return editName(${form.resultSelectOptionList[counter.index + 1].id})"><c:out value="${form.resultSelectOptionList[counter.index + 1].dictEntry}" /></a>
+            <td style="padding: 5px;" class="test-list-name-${enc:attribute(form.resultSelectOptionList[counter.index + 1].id)}">
+                <a onclick="return editName(${enc:jsAttribute(form.resultSelectOptionList[counter.index + 1].id)})"><c:out value="${form.resultSelectOptionList[counter.index + 1].dictEntry}" /></a>
             </td>
-            <td style="padding: 5px;" class="test-list-name-${form.resultSelectOptionList[counter.index + 2].id}">
-                <a onclick="return editName(${form.resultSelectOptionList[counter.index + 2].id})"><c:out value="${form.resultSelectOptionList[counter.index + 2].dictEntry}" /></a>
+            <td style="padding: 5px;" class="test-list-name-${enc:attribute(form.resultSelectOptionList[counter.index + 2].id)}">
+                <a onclick="return editName(${enc:jsAttribute(form.resultSelectOptionList[counter.index + 2].id)})"><c:out value="${form.resultSelectOptionList[counter.index + 2].dictEntry}" /></a>
             </td>
-            <td style="padding: 5px;" class="test-list-name-${form.resultSelectOptionList[counter.index + 3].id}">
-                <a onclick="return editName(${form.resultSelectOptionList[counter.index + 3].id})"><c:out value="${form.resultSelectOptionList[counter.index + 3].dictEntry}" /></a>
+            <td style="padding: 5px;" class="test-list-name-${enc:attribute(form.resultSelectOptionList[counter.index + 3].id)}">
+                <a onclick="return editName(${enc:jsAttribute(form.resultSelectOptionList[counter.index + 3].id)})"><c:out value="${form.resultSelectOptionList[counter.index + 3].dictEntry}" /></a>
             </td>
         </tr>
     </c:forEach>
@@ -98,9 +99,9 @@
     var options= {};
     var localization = {};
     <c:forEach items="${form.resultSelectOptionList}" var="dictionary">
-        var id = '${dictionary.id}';
-        options[id] = '${dictionary.dictEntry}';
-        localization[id] = "${dictionary.localizedDictionaryName.localeValues}"
+        var id = '${enc:js(dictionary.id)}';
+        options[id] = '${enc:js(dictionary.dictEntry)}';
+        localization[id] = "${enc:js(dictionary.localizedDictionaryName.localeValues)}"
     </c:forEach>
 
     function editName(id) {
@@ -123,8 +124,8 @@
 
             }
         }
-        jQuery('.english').html(en);
-        jQuery('.french').html(fr);
+        jQuery('.english').text(en);
+        jQuery('.french').text(fr);
         jQuery('#resultSelectOptionId').val(id);
         jQuery("#form-div").show();
 

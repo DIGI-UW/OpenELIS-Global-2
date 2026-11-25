@@ -32,9 +32,13 @@ public class DictionaryForm extends BaseForm {
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String dictEntry = "";
 
+    /**
+     * As long as the dictionary.local_abbrev column holds: the shipped checklist
+     * items keep their sentence here (OGC-1507 walk).
+     */
     @NotBlank
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
-    @Length(max = 10)
+    @Length(max = 60)
     private String localAbbreviation = "";
 
     // in validator

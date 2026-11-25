@@ -34,7 +34,6 @@ interface Preset {
 interface Reagent {
   id: number | string;
   name: string;
-  isActive?: string | boolean;
 }
 
 const csrfToken = async (page: Page): Promise<string> => {
@@ -277,12 +276,9 @@ test.describe("Test Catalog saves report what really happened (OGC-1461)", () =>
   }) => {
     await page.goto("/");
     const headers = { "X-CSRF-Token": await csrfToken(page) };
-    const items = (await (
-      await page.request.get(`${API}/rest/inventory/items/type/REAGENT`)
+    const reagents = (await (
+      await page.request.get(`${API}/rest/inventory/items`)
     ).json()) as Reagent[];
-    const reagents = items.filter(
-      (r) => r.isActive === "Y" || r.isActive === true,
-    );
     test.skip(reagents.length < 2, "needs two active reagents");
     const [first, second] = reagents;
     const testId = await seedTest(page, headers);

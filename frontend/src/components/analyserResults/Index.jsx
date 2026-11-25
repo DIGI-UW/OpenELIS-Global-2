@@ -110,17 +110,18 @@ const Index = () => {
    * Rereads the worklist the address bar names, after a write changes it, and
    * reopens the page the user was on when the reread worklist still has it.
    */
-  const refreshResults = (pageToReopen) => {
+  const refreshResults = (pageToReopen, pendingEdits) => {
     if (!url) {
       return;
     }
     setIsLoading(true);
+    const applyResults = (data) => handleResults(data, pendingEdits);
     getFromOpenElisServer(url, (data) => {
       const totalPages = Number(data?.paging?.totalPages) || 1;
       if (pageToReopen > 1 && pageToReopen <= totalPages) {
-        getFromOpenElisServer(url + "&page=" + pageToReopen, handleResults);
+        getFromOpenElisServer(url + "&page=" + pageToReopen, applyResults);
       } else {
-        handleResults(data);
+        applyResults(data);
       }
     });
   };
@@ -149,10 +150,10 @@ const Index = () => {
   };
 
   // A test's action checkboxes are shown on its head row, which changes when a
-  // held row is recovered; a restored action moves with it.
-  const moveTestActionsToHeads = (rows, serverRows, applied) => {
+  // held row is recovered; a restored action moves with it. Every row of the
+  // test takes it, as the server accepts a test when any of its rows is ticked.
+  const moveTestActionsToHeads = (rows, applied) => {
     const { headIdByKey } = groupTestParts(rows);
-    const serverById = new Map(serverRows.map((row) => [String(row.id), row]));
     const actionsByTest = new Map();
     rows.forEach((row) => {
       const edits = applied[String(row.id)] ?? {};
@@ -173,11 +174,10 @@ const Index = () => {
       const moved = { ...row };
       const edits = { ...applied[id] };
       Object.entries(actions).forEach(([field, value]) => {
+        moved[field] = value;
         if (isHead) {
-          moved[field] = value;
           edits[field] = value;
-        } else if (Object.prototype.hasOwnProperty.call(edits, field)) {
-          moved[field] = serverById.get(id)?.[field];
+        } else {
           delete edits[field];
         }
       });
@@ -190,10 +190,12 @@ const Index = () => {
     });
   };
 
-  const handleResults = (data) => {
+  const handleResults = (data, pendingEdits) => {
     if (data) {
+      const editsToRestore =
+        pendingEdits ?? (restoringDraft ? worklistDraft.edits : null);
       const applied = {};
-      const restoredList = restoringDraft
+      const restoredList = editsToRestore
         ? data.resultList.map((row) => {
             if (
               row.importIssueReason &&
@@ -201,7 +203,7 @@ const Index = () => {
             ) {
               return row;
             }
-            const edits = worklistDraft.edits?.[String(row.id)];
+            const edits = editsToRestore[String(row.id)];
             if (!edits) return row;
             const restored = { ...row };
             restorableResultFields.forEach((field) => {
@@ -216,12 +218,12 @@ const Index = () => {
             return restored;
           })
         : data.resultList;
-      const resultList = restoringDraft
-        ? moveTestActionsToHeads(restoredList, data.resultList, applied)
+      const resultList = editsToRestore
+        ? moveTestActionsToHeads(restoredList, applied)
         : restoredList;
       setRestoredEdits(applied);
       setResults({ ...data, resultList });
-      if (restoringDraft) {
+      if (restoringDraft && pendingEdits === undefined) {
         const remainingState = { ...location.state };
         delete remainingState.worklistDraft;
         history.replace({
@@ -283,10 +285,9 @@ const Index = () => {
   const breadcrumbs = [
     { label: "home.label", link: "/" },
     { label: "analyzer.navigation.analyzers", link: "/analyzers" },
-    {
-      label: analyzerName || "banner.menu.results.analyzer",
-      isCurrentPage: true,
-    },
+    analyzerName
+      ? { text: analyzerName, isCurrentPage: true }
+      : { label: "banner.menu.results.analyzer", isCurrentPage: true },
   ];
 
   return (

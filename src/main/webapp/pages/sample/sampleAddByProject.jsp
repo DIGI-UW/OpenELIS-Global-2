@@ -1,3 +1,4 @@
+<%@ taglib prefix="enc" uri="/WEB-INF/taglib/output-encoding.tld" %>
 <%@ page language="java" contentType="text/html; charset=UTF-8"
 	import="org.openelisglobal.common.action.IActionConstants,
 				org.openelisglobal.sample.util.AccessionNumberUtil,
@@ -2371,7 +2372,7 @@ var requestType = '<%=Encode.forJavaScript(requestType)%>';
 						<spring:message code='sample.entry.project.LVL' />
 					</c:set> <INPUT type="text" name="vl.labNoForDisplay"
 					id="vl.labNoForDisplay" size="5" class="text"
-					onchange="handleLabNoChange( this, '${labPrefix}', false );makeDirty();"
+                    onchange="handleLabNoChange( this, '${enc:jsAttribute(labPrefix)}', false );makeDirty();"
 					maxlength="5" /> <form:input path="labNo" size="5" cssClass="text"
 						style="display:none;" id="vl.labNo" />
 					<div id="vl.labNoMessage" class="blank"></div>
@@ -2503,17 +2504,17 @@ var requestType = '<%=Encode.forJavaScript(requestType)%>';
 				<c:forEach items="${form.observations.currentARVTreatmentINNsList}"
 					var="ongoingARVTreatment" varStatus="iter">
 
-					<tr id="vl.currentARVTreatmentINNRow${iter.index}"
+                    <tr id="vl.currentARVTreatmentINNRow${enc:attribute(iter.index)}"
 						style="display: none">
 						<td></td>
-						<td class="bulletItem">${iter.index})</td>
+                        <td class="bulletItem">${enc:html(iter.index)})</td>
 
 						<td><form:input
 								path="observations.currentARVTreatmentINNsList[${iter.index}]"
 								cssClass="text"
 								onchange="makeDirty();compareAllObservationHistoryFields(true);"
 								id="vl.currentARVTreatmentINNs${iter.index}" maxlength="10" />
-							<div id="vl.currentARVTreatmentINNs${iter.index}Message"
+                            <div id="vl.currentARVTreatmentINNs${enc:attribute(iter.index)}Message"
 								class="blank"></div></td>
 					</tr>
 				</c:forEach>

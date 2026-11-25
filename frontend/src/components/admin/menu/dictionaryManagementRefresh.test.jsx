@@ -6,6 +6,7 @@
  */
 import React from "react";
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -72,6 +73,10 @@ describe("Dictionary menu refresh", () => {
       if (url.startsWith("/rest/DictionaryMenu")) return callback(menuList);
       if (url.startsWith("/rest/SearchDictionaryMenu"))
         return callback(menuList);
+      if (url === "/rest/dictionary-categories")
+        return callback([
+          { id: "5", description: "General", categoryName: "General" },
+        ]);
       return callback([]);
     });
     postToOpenElisServer.mockReset();
@@ -131,6 +136,21 @@ describe("Dictionary menu refresh", () => {
 
     fireEvent.click(document.querySelector('[data-cy="addButton"]'));
     const dialog = screen.getByRole("dialog");
+    fireEvent.change(document.getElementById("dictEntry"), {
+      target: { value: "Entry B" },
+    });
+    fireEvent.change(document.getElementById("localAbbrev"), {
+      target: { value: "EB" },
+    });
+    await userEvent.type(
+      within(dialog).getByRole("combobox", { name: /Dictionary Category/ }),
+      "Gen",
+    );
+    await userEvent.click(screen.getByRole("option", { name: "General" }));
+    await userEvent.click(
+      within(dialog).getByRole("combobox", { name: /Is Active/ }),
+    );
+    await userEvent.click(screen.getByRole("option", { name: "Y" }));
 
     // Only the server knows about Entry B.
     menuList = { menuList: [entry(1, "Entry A"), entry(2, "Entry B")] };
@@ -142,5 +162,28 @@ describe("Dictionary menu refresh", () => {
     await waitFor(() =>
       expect(screen.queryByText("Entry B")).toBeInTheDocument(),
     );
+  });
+
+  it("marks the entry and abbreviation required and will not send them blank", async () => {
+    renderScreen();
+    await screen.findByText("Entry A");
+
+    fireEvent.click(document.querySelector('[data-cy="addButton"]'));
+    const dialog = screen.getByRole("dialog");
+
+    expect(document.getElementById("localAbbrev")).toHaveAttribute(
+      "aria-required",
+      "true",
+    );
+    expect(
+      within(dialog).queryByText("Enter a local abbreviation."),
+    ).not.toBeInTheDocument();
+    fireEvent.focusOut(document.getElementById("localAbbrev"));
+    expect(
+      within(dialog).getByText("Enter a local abbreviation."),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Add" })).toBeDisabled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Add" }));
+    expect(postToOpenElisServerFullResponse).not.toHaveBeenCalled();
   });
 });

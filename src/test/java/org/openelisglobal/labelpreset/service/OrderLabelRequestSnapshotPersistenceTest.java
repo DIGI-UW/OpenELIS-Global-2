@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -110,6 +111,40 @@ public class OrderLabelRequestSnapshotPersistenceTest extends BaseWebContextSens
     @After
     public void tearDown() {
         cleanTestData();
+    }
+
+    @Test
+    public void validateQuantities_checksSampleCellsAndAggregateBeforeWrites() {
+        OrderLabelPersistRequest payload = new OrderLabelPersistRequest();
+        OrderLabelPersistRequest.PersistSampleRow row = new OrderLabelPersistRequest.PersistSampleRow("S1");
+        row.getCells().add(new OrderLabelPersistRequest.PersistCell(specimenPreset.getId(), 101));
+        payload.getSampleRows().add(row);
+        assertThrows(LabelQuantityRefusedException.class, () -> orderLabelRequestService.validateQuantities(payload));
+        row.getCells().clear();
+        row.getCells().add(new OrderLabelPersistRequest.PersistCell(specimenPreset.getId(), 0));
+        orderLabelRequestService.validateQuantities(payload);
+        for (int i = 0; i < 11; i++) {
+            row.getCells().add(new OrderLabelPersistRequest.PersistCell(specimenPreset.getId(), 100));
+        }
+        assertThrows(LabelQuantityRefusedException.class, () -> orderLabelRequestService.validateQuantities(payload));
+    }
+
+    @Test
+    public void persistRequest_rejectedReplacementPreservesExistingRows() {
+        OrderLabelPersistRequest initial = new OrderLabelPersistRequest();
+        initial.getOrderCells().add(new OrderLabelPersistRequest.PersistCell(orderPreset.getId(), 2));
+        Integer savedId = orderLabelRequestService
+                .persistRequest(sampleId, Map.of(), initial, TEST_SYS_USER_ID, Map.of()).get(0).getId();
+        for (int quantity : new int[] { -1, 101, Integer.MAX_VALUE }) {
+            OrderLabelPersistRequest replacement = new OrderLabelPersistRequest();
+            replacement.getOrderCells().add(new OrderLabelPersistRequest.PersistCell(orderPreset.getId(), quantity));
+            assertThrows(LabelQuantityRefusedException.class, () -> orderLabelRequestService.persistRequest(sampleId,
+                    Map.of(), replacement, TEST_SYS_USER_ID, Map.of()));
+            List<OrderLabelRequest> rows = orderLabelRequestDAO.listByParentSampleId(sampleId);
+            assertEquals(1, rows.size());
+            assertEquals(savedId, rows.get(0).getId());
+            assertEquals(Integer.valueOf(2), rows.get(0).getQty());
+        }
     }
 
     @Test

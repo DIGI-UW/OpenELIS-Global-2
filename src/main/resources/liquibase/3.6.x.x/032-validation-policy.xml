@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+ <changeSet id="OGC-1364-validation-policy-tables" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <not>
+    <tableExists schemaName="clinlims" tableName="validation_policy"/>
+   </not>
+  </preConditions>
+  <comment>OGC-1364: which results need review and how many sequential reviews, with a role per level. A policy without a lab unit is the lab-wide default.</comment>
+  <createSequence schemaName="clinlims" sequenceName="validation_policy_seq" startValue="1" incrementBy="1"/>
+  <createTable schemaName="clinlims" tableName="validation_policy">
+   <column name="id" type="BIGINT">
+    <constraints primaryKey="true" nullable="false" primaryKeyName="pk_validation_policy"/>
+   </column>
+   <column name="test_section_id" type="numeric(10)"/>
+   <column name="review_trigger" type="VARCHAR(20)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="review_levels" type="INT">
+    <constraints nullable="false"/>
+   </column>
+   <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+    <constraints nullable="false"/>
+   </column>
+   <column name="sys_user_id" type="numeric(10)"/>
+   <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+  </createTable>
+  <addForeignKeyConstraint constraintName="fk_validation_policy_test_section" baseTableSchemaName="clinlims"
+   baseTableName="validation_policy" baseColumnNames="test_section_id" referencedTableSchemaName="clinlims"
+   referencedTableName="test_section" referencedColumnNames="id"/>
+  <sql>
+   ALTER TABLE clinlims.validation_policy ADD CONSTRAINT ck_validation_policy_trigger
+     CHECK (review_trigger IN ('ALL', 'NEEDS_REVIEW', 'NONE'));
+   ALTER TABLE clinlims.validation_policy ADD CONSTRAINT ck_validation_policy_levels
+     CHECK (review_levels BETWEEN 0 AND 5 AND ((review_trigger = 'NONE') = (review_levels = 0)));
+   CREATE UNIQUE INDEX uq_validation_policy_lab_default ON clinlims.validation_policy ((1)) WHERE test_section_id IS NULL;
+   CREATE UNIQUE INDEX uq_validation_policy_test_section ON clinlims.validation_policy (test_section_id) WHERE test_section_id IS NOT NULL;
+  </sql>
+  <createTable schemaName="clinlims" tableName="validation_policy_level">
+   <column name="validation_policy_id" type="BIGINT">
+    <constraints nullable="false"/>
+   </column>
+   <column name="level" type="INT">
+    <constraints nullable="false"/>
+   </column>
+   <column name="role_id" type="numeric(10)">
+    <constraints nullable="false"/>
+   </column>
+  </createTable>
+  <addPrimaryKey schemaName="clinlims" tableName="validation_policy_level" columnNames="validation_policy_id, level"
+   constraintName="pk_validation_policy_level"/>
+  <addForeignKeyConstraint constraintName="fk_validation_policy_level_policy" baseTableSchemaName="clinlims"
+   baseTableName="validation_policy_level" baseColumnNames="validation_policy_id" referencedTableSchemaName="clinlims"
+   referencedTableName="validation_policy" referencedColumnNames="id" onDelete="CASCADE"/>
+  <addForeignKeyConstraint constraintName="fk_validation_policy_level_role" baseTableSchemaName="clinlims"
+   baseTableName="validation_policy_level" baseColumnNames="role_id" referencedTableSchemaName="clinlims"
+   referencedTableName="system_role" referencedColumnNames="id"/>
+ </changeSet>
+
+ <changeSet id="OGC-1364-validation-policy-lab-default" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <sqlCheck expectedResult="0">select count(*) from clinlims.validation_policy where test_section_id is null</sqlCheck>
+  </preConditions>
+  <comment>OGC-1364: the lab-wide default takes over "validate all results": true becomes All results with 1 review, anything else Only results that need review with 1 review, signed by the Validation role.</comment>
+  <sql>
+   INSERT INTO clinlims.validation_policy (id, test_section_id, review_trigger, review_levels, is_active, last_updated)
+   SELECT nextval('clinlims.validation_policy_seq'), NULL,
+     CASE WHEN EXISTS (SELECT 1 FROM clinlims.site_information
+                       WHERE name = 'validate all results' AND lower(trim(value)) = 'true')
+          THEN 'ALL' ELSE 'NEEDS_REVIEW' END,
+     1, true, CURRENT_TIMESTAMP;
+   INSERT INTO clinlims.validation_policy_level (validation_policy_id, level, role_id)
+   SELECT p.id, 1, r.id FROM clinlims.validation_policy p
+     JOIN clinlims.system_role r ON trim(r.name) = 'Validation'
+   WHERE p.test_section_id IS NULL;
+  </sql>
+ </changeSet>
+
+ <changeSet id="OGC-1364-use-multi-level-validation-flag" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'useMultiLevelValidation'</sqlCheck>
+  </preConditions>
+  <comment>OGC-1364: feature flag. Off keeps "validate all results"; on lets the validation policy decide which results wait for review.</comment>
+  <insert schemaName="clinlims" tableName="site_information">
+   <column name="id" valueSequenceNext="site_information_seq"/>
+   <column name="name" value="useMultiLevelValidation"/>
+   <column name="lastupdated" valueComputed="CURRENT_TIMESTAMP"/>
+   <column name="description" value="If true, the validation policy decides which results wait for review instead of 'validate all results'"/>
+   <column name="value" value="false"/>
+   <column name="encrypted" value="false"/>
+   <column name="domain_id" valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'resultConfiguration')"/>
+   <column name="value_type" value="boolean"/>
+   <column name="group" value="0"/>
+  </insert>
+ </changeSet>
+</databaseChangeLog>
