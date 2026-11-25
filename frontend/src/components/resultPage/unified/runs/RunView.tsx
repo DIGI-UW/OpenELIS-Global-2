@@ -30,6 +30,7 @@ import { FlagChip } from "../flags";
 import PageBreadCrumb from "../../../common/PageBreadCrumb";
 import { AlertDialog } from "../../../common/CustomNotification";
 import RunsChip from "./RunsChip";
+import RunLotPicker from "./RunLotPicker";
 import RunQcBlock, { RunQc } from "./RunQcBlock";
 import RunExceptions, {
   RunExceptionKind,
@@ -185,6 +186,7 @@ const RunView: React.FC<RunViewProps> = ({
   const [summary, setSummary] = useState<SelectionSummary | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
+  const [completeError, setCompleteError] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -227,6 +229,29 @@ const RunView: React.FC<RunViewProps> = ({
     setSelection(EMPTY_SELECTION);
     setReload((n) => n + 1);
   }, []);
+
+  const headerChanged = (next: unknown) => {
+    setHeader(next as RunHeader);
+    setReload((n) => n + 1);
+  };
+
+  const markComplete = () => {
+    setCompleteError(null);
+    postToOpenElisServerJsonResponse(
+      `/rest/result-runs/${runId}/complete`,
+      "{}",
+      (response?: { id?: number; message?: string; status?: unknown }) => {
+        if (!response?.id) {
+          setCompleteError(
+            response?.message ||
+              intl.formatMessage({ id: "run.complete.failed" }),
+          );
+          return;
+        }
+        headerChanged(response);
+      },
+    );
+  };
 
   useEffect(() => {
     const controller = new AbortController();
@@ -591,6 +616,10 @@ const RunView: React.FC<RunViewProps> = ({
                   </Tag>,
                 )}
               </div>
+              {header.source === "WORKPLAN" &&
+                ["OPEN", "HELD"].includes(header.state) && (
+                  <RunLotPicker runId={header.id} onSaved={headerChanged} />
+                )}
               <p className="runProgress" data-testid="run-progress">
                 <FormattedMessage
                   id="run.progress"
@@ -598,6 +627,16 @@ const RunView: React.FC<RunViewProps> = ({
                 />
               </p>
               <div className="runHeaderActions">
+                {header.source === "WORKPLAN" && header.state === "OPEN" && (
+                  <Button
+                    kind="tertiary"
+                    size="sm"
+                    onClick={markComplete}
+                    data-testid="run-mark-complete"
+                  >
+                    <FormattedMessage id="run.action.markComplete" />
+                  </Button>
+                )}
                 {header.rawAvailable && (
                   <Button kind="ghost" size="sm" onClick={toggleRaw}>
                     <FormattedMessage
@@ -619,6 +658,15 @@ const RunView: React.FC<RunViewProps> = ({
                     </Link>
                   )}
               </div>
+              {completeError && (
+                <InlineNotification
+                  kind="error"
+                  lowContrast
+                  hideCloseButton
+                  title={completeError}
+                  data-testid="run-complete-error"
+                />
+              )}
               {rawState === "loading" && <InlineLoading />}
               {rawState === "failed" && (
                 <p className="runsChipNote">

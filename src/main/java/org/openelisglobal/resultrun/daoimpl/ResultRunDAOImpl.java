@@ -274,6 +274,23 @@ public class ResultRunDAOImpl extends BaseDAOImpl<ResultRun, Long> implements Re
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Long> findLastUsedLot(Collection<Long> lotIds, Long excludeRunId) {
+        if (lotIds == null || lotIds.isEmpty()) {
+            return Optional.empty();
+        }
+        try {
+            return session()
+                    .createQuery("SELECT r.reagentLotId FROM ResultRun r WHERE r.reagentLotId IN (:lots)"
+                            + " AND r.id <> :run ORDER BY r.lastActivityAt DESC, r.id DESC", Long.class)
+                    .setParameterList("lots", lotIds).setParameter("run", excludeRunId == null ? -1L : excludeRunId)
+                    .setMaxResults(1).uniqueResultOptional();
+        } catch (RuntimeException e) {
+            throw new LIMSRuntimeException("Error finding the last-used reagent lot", e);
+        }
+    }
+
     private Session session() {
         return entityManager.unwrap(Session.class);
     }

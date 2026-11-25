@@ -38,6 +38,12 @@ public interface ResultRunDAO extends BaseDAO<ResultRun, Long> {
     /** How many analyses have a value recorded in the run. */
     int countResultedAnalyses(Long runId);
 
+    /**
+     * Of the given reagent lots, the one most recently recorded on a run other than
+     * this one (FR-E3 "Use last-used lot").
+     */
+    Optional<Long> findLastUsedLot(java.util.Collection<Long> lotIds, Long excludeRunId);
+
     /** The tests of a workplan run's batched analyses. */
     List<String> getBatchTestIds(Long runId);
 

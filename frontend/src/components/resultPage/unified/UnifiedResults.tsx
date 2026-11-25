@@ -10,6 +10,7 @@ import {
   ActionableNotification,
   InlineNotification,
   Button,
+  Checkbox,
   Column,
   DatePickerInput,
   Grid,
@@ -100,6 +101,7 @@ import "./unified-results.scss";
 import RunsChip from "./runs/RunsChip";
 import { clearMethodChoices } from "./methodChoices";
 import WaitingTag, { WaitingRun } from "./runs/WaitingTag";
+import BatchTheseBar, { BatchPick } from "./runs/BatchTheseBar";
 import { displayRange, rangeNotAppliedKey } from "../../common/rangeNotApplied";
 
 const replaceResultsUrl = (urlState: URLSearchParams) => {
@@ -303,6 +305,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
   const [showHeld, setShowHeld] = useState(true);
   const [rows, setRows] = useState<WorklistRow[]>([]);
   const [rowStates, setRowStates] = useState<Record<string, RowEditState>>({});
+  const [batchPicks, setBatchPicks] = useState<Record<string, BatchPick>>({});
   const [staleInfo, setStaleInfo] = useState<
     Record<string, { modifiedBy?: string; modifiedAt?: string }>
   >({});
@@ -764,6 +767,34 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
   );
 
   const pagedRows = filteredRows;
+  // OGC-1200 FR-B4: pending rows of one test can be picked and batched into a
+  // run, on the worklist itself, never inside a run or an embedded entry. Picks
+  // outlive a search or a page change, so rows found one lab number at a time
+  // can be batched together; the server refuses any that stopped being pending.
+  const canBatch = !runEntry && !embedded && Boolean(onOpenRun);
+  const batchable = (row: WorklistRow, state: RowEditState) =>
+    canBatch &&
+    state === "EMPTY" &&
+    !row.waitingRun &&
+    !row.referredOut &&
+    Boolean(row.analysisId) &&
+    Boolean(row.testId);
+  const toggleBatchPick = (row: WorklistRow, picked: boolean) => {
+    const analysisId = String(row.analysisId);
+    setBatchPicks((current) => {
+      const next = { ...current };
+      if (picked) {
+        next[analysisId] = {
+          testId: String(row.testId),
+          label: [row.accessionNumber, row.testName].filter(Boolean).join(" "),
+        };
+      } else {
+        delete next[analysisId];
+      }
+      return next;
+    });
+  };
+  const fullWidth = canBatch ? 12 : 11;
   const arrows = serverPageArrowsProps({
     paging,
     onPageRequest: loadWorklistPage,
@@ -1851,6 +1882,20 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
           style={runEntry && !rows.length ? { display: "none" } : undefined}
         >
           {arrows.show && <ServerPageArrows {...arrows} />}
+          {canBatch && onOpenRun && (
+            <BatchTheseBar
+              picks={batchPicks}
+              onRemove={(analysisId) =>
+                setBatchPicks((current) => {
+                  const next = { ...current };
+                  delete next[analysisId];
+                  return next;
+                })
+              }
+              onClear={() => setBatchPicks({})}
+              onOpenRun={onOpenRun}
+            />
+          )}
           <TableContainer>
             {/* The expanded panel renders a second table (History) inside this
                 one, so naming the outer table is what tells a screen-reader
@@ -1864,6 +1909,13 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
               <TableHead>
                 <TableRow>
                   <TableHeader className="unifiedExpandHeader" />
+                  {canBatch && (
+                    <TableHeader className="unifiedSelectHeader">
+                      <span className="cds--visually-hidden">
+                        <FormattedMessage id="run.batch.column" />
+                      </span>
+                    </TableHeader>
+                  )}
                   <TableHeader>
                     {formatDomainMessage(intl, "label.results.subject", domain)}
                   </TableHeader>
@@ -1930,6 +1982,31 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                             {isExpanded ? "▼" : "▶"}
                           </Button>
                         </TableCell>
+                        {canBatch && (
+                          <TableCell className="unifiedSelectCell">
+                            {batchable(row, state) && (
+                              <Checkbox
+                                id={`batch-pick-${key}`}
+                                data-testid={`batch-pick-${row.analysisId}`}
+                                labelText={intl.formatMessage(
+                                  { id: "run.batch.selectRow" },
+                                  {
+                                    accession: row.accessionNumber || "",
+                                    test: row.testName || "",
+                                  },
+                                )}
+                                hideLabel
+                                checked={Boolean(
+                                  batchPicks[String(row.analysisId)],
+                                )}
+                                onChange={(
+                                  _event: React.ChangeEvent<HTMLInputElement>,
+                                  { checked }: { checked: boolean },
+                                ) => toggleBatchPick(row, checked)}
+                              />
+                            )}
+                          </TableCell>
+                        )}
                         <TableCell>
                           {subjectCell(row)}
                           {reviewer && (
@@ -2101,7 +2178,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                       </TableRow>
                       {isExpanded && (
                         <TableRow className="unifiedExpandedRow">
-                          <TableCell colSpan={11}>
+                          <TableCell colSpan={fullWidth}>
                             <ExpandedPanel
                               row={row}
                               domain={domain}
@@ -2236,7 +2313,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                       )}
                       {stale && (
                         <TableRow>
-                          <TableCell colSpan={11}>
+                          <TableCell colSpan={fullWidth}>
                             {/* FR-O2 asks for a refresh ACTION, not only the
                                 word: InlineNotification has no `actions` prop,
                                 so the button handed to it was dropped and the
