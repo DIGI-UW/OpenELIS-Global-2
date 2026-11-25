@@ -8,10 +8,12 @@ package org.openelisglobal.resultrun.form;
  * {@code stagedResult} is the value the worklist row is prefilled with: for a
  * dictionary test the choice the import resolved, where {@code value} is the
  * instrument's own text. {@code exceptionKind} names the Exceptions block
- * record the value belongs to (FR-E4), if any.
+ * record the value belongs to (FR-E4), if any. {@code holdCause} says why the
+ * run holds the value's test, and {@code missingControl} that the test lacks a
+ * control it requires while its policy only warns (FR-A4, FR-D4).
  */
 public record ResultRunRow(String id, String accessionNumber, String testName, String part, String value, String units,
         boolean control, boolean duplicate, String importIssueReason, String instrumentFlags, String completedAt,
         String flag, ResultRunRowCategory category, String testId, String componentId, String stagedResult,
-        ResultRunExceptionKind exceptionKind, String code) {
+        ResultRunExceptionKind exceptionKind, String code, RunHoldCause holdCause, boolean missingControl) {
 }

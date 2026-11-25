@@ -76,6 +76,10 @@
   <include relativeToChangelogFile="true" file="045-result-run-retest.xml"/>
   <!-- OGC-1200 slice 7: the run value an exception decision was taken on -->
   <include relativeToChangelogFile="true" file="046-result-run-event-row.xml"/>
+  <!-- OGC-1200 slice 8: what each run of a test must carry (control required, warn or hold when missing) -->
+  <include relativeToChangelogFile="true" file="047-test-qc-policy.xml"/>
+  <!-- OGC-1200 slice 9a: a released workplan batch is a run -->
+  <include relativeToChangelogFile="true" file="048-result-run-batch.xml"/>
 
   <!-- Read-only FHIR interface: explicit resource-type reader permissions -->
   <include relativeToChangelogFile="true" file="027-fhir-read-permissions.xml"/>

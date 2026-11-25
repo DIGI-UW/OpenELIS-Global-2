@@ -20,7 +20,9 @@ import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.resultrun.form.ResultRunExceptionKind;
 import org.openelisglobal.resultrun.form.ResultRunRowCategory;
+import org.openelisglobal.resultrun.form.RunHoldCause;
 import org.openelisglobal.resultrun.form.RunOrderState;
+import org.openelisglobal.resultrun.form.RunTestVerdict;
 import org.openelisglobal.resultrun.valueholder.ResultRun;
 import org.openelisglobal.resultvalidation.util.ValidationSignals;
 import org.openelisglobal.sample.service.SampleService;
@@ -57,9 +59,13 @@ public class ResultRunRowClassifier {
             AnalyzerResults.IMPORT_ISSUE_CONFLICTING_ANSWER_MAPPING, AnalyzerResults.IMPORT_ISSUE_READING_CHANGED,
             AnalyzerResults.IMPORT_ISSUE_TYPE_READING_CHANGED, AnalyzerResults.IMPORT_ISSUE_OTHER_REVISION);
 
-    /** One row with its flag, review category and, for an exception, its kind. */
+    /**
+     * One row with its flag, review category and, for an exception, its kind; why
+     * the run holds its test, if it does; and whether its test lacks a control it
+     * requires while its policy only warns (FR-A4).
+     */
     public record ClassifiedRow(AnalyzerResults row, String flag, ResultRunRowCategory category,
-            ResultRunExceptionKind exceptionKind) {
+            ResultRunExceptionKind exceptionKind, RunHoldCause holdCause, boolean missingControl) {
     }
 
     @Lazy
@@ -112,11 +118,17 @@ public class ResultRunRowClassifier {
         Map<String, ResultLimit> limits = new HashMap<>();
         Map<String, RunOrderState> ordered = new HashMap<>();
         Lookups lookups = new Lookups();
-        Set<String> heldTests = run.getId() == null ? Set.of() : runQcService.heldTestIds(run.getId());
+        Map<String, RunHoldCause> holds = run.getId() == null ? Map.of() : runQcService.holdCauses(run.getId());
+        Set<String> noControl = run.getId() == null ? Set.of()
+                : runQcService.testVerdicts(run.getId()).entrySet().stream()
+                        .filter(entry -> entry.getValue() == RunTestVerdict.NO_CONTROL).map(Map.Entry::getKey)
+                        .collect(java.util.stream.Collectors.toSet());
         return rows.stream().map(row -> {
             ResultRunExceptionKind kind = exceptionKindOf(row, samples, ordered, lookups);
             String flag = flagFor(row, samples, patients, limits);
-            return new ClassifiedRow(row, flag, categoryOf(row, flag, heldTests.contains(row.getTestId()), kind), kind);
+            RunHoldCause hold = row.getTestId() == null ? null : holds.get(row.getTestId());
+            return new ClassifiedRow(row, flag, categoryOf(row, flag, hold != null, kind), kind, hold,
+                    hold == null && !row.getIsControl() && noControl.contains(row.getTestId()));
         }).toList();
     }
 
@@ -189,7 +201,10 @@ public class ResultRunRowClassifier {
         return name.isEmpty() ? row.getTestName() : name;
     }
 
-    private String catalogNameOf(String testId) {
+    /**
+     * The test as the catalog names it, in the user's language; empty when unknown.
+     */
+    public String catalogNameOf(String testId) {
         Test test = testService.get(testId);
         if (test == null) {
             return "";
