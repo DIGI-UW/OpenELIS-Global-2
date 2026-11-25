@@ -51,6 +51,9 @@ const sameText = (a, b) =>
     .toLowerCase();
 
 const limitText = (intl, limit) => {
+  if (limit.type === "DESCRIPTIVE") {
+    return limit.valueDescriptive || "";
+  }
   const values = {
     min: limit.min ?? "",
     max: limit.max ?? "",

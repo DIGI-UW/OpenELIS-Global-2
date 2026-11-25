@@ -134,7 +134,7 @@ public class ComplianceStandardServiceImpl extends AuditableBaseObjectServiceImp
                 limits.add(new SuggestedTest.Threshold(standard.getId(), standard.getRegulationNumber(),
                         threshold.getThresholdType() == null ? null : threshold.getThresholdType().name(),
                         threshold.getMinValue(), threshold.getMaxValue(), threshold.getTargetValue(),
-                        threshold.getUnits()));
+                        threshold.getUnits(), threshold.getValueDescriptive()));
             }
             suggested.add(new SuggestedTest(test.getId(), TestServiceImpl.getUserLocalizedTestName(test),
                     test.getLoinc(), sampleTypeIdsOf(test.getId(), environmentalTypeIds),
@@ -157,8 +157,10 @@ public class ComplianceStandardServiceImpl extends AuditableBaseObjectServiceImp
     }
 
     private static boolean disagree(List<SuggestedTest.Threshold> limits) {
-        return limits.stream().map(limit -> java.util.Arrays.asList(limit.type(), comparable(limit.min()),
-                comparable(limit.max()), comparable(limit.target()), limit.units())).distinct().count() > 1;
+        return limits
+                .stream().map(limit -> java.util.Arrays.asList(limit.type(), comparable(limit.min()),
+                        comparable(limit.max()), comparable(limit.target()), limit.units(), limit.valueDescriptive()))
+                .distinct().count() > 1;
     }
 
     private static java.math.BigDecimal comparable(java.math.BigDecimal value) {
