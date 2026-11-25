@@ -3,7 +3,9 @@
 Select the installed version from the
 [default distribution tags](https://github.com/DIGI-UW/openelis-docker/tags).
 Open `docs/backup-restore.md` in that tag to find the backup and restore
-commands for your installation.
+commands for your installation. Older tags, including `3.3.0`, predate this
+guide. For those versions, use the site’s existing backup procedure and verify a
+restore on a separate instance before upgrading.
 
 Back up the database, configuration, installation encryption key, certificate
 stores and Analyzer Bridge state together. A database backup without the key
