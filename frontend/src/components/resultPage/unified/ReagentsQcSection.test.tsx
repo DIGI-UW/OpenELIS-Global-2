@@ -376,13 +376,21 @@ describe("ReagentsQcSection (R5/R6)", () => {
         },
       },
     });
+    const held = {
+      runId: 248,
+      label: "RUN-248",
+      source: "RESULT_ENTRY",
+      held: true,
+      heldCause: "QC_FAILED",
+    };
     postMock.mockImplementation(
       (_url: string, _body: string, cb: (r: unknown) => void) => {
         if (typeof cb === "function") {
-          cb({ id: "qc-1", runId: 248 });
+          cb({ id: "qc-1", runId: 248, waitingRun: held });
         }
       },
     );
+    const onRowHoldChange = vi.fn();
     wrap(
       <ReagentsQcSection
         testId="13"
@@ -392,6 +400,7 @@ describe("ReagentsQcSection (R5/R6)", () => {
         editable
         open
         onToggle={() => {}}
+        onRowHoldChange={onRowHoldChange}
       />,
     );
     fireEvent.change(screen.getByLabelText("Control line"), {
@@ -412,6 +421,7 @@ describe("ReagentsQcSection (R5/R6)", () => {
       "Control result recorded on RUN-248. It failed, so this row is held until the test is decided on the run.",
     );
     expect(screen.getByTestId("qc-record")).toBeInTheDocument();
+    expect(onRowHoldChange).toHaveBeenCalledWith(held);
   });
 
   it("OGC-1200: a row whose run of one is open keeps its reagent use under the run, for the save to take the lot", () => {

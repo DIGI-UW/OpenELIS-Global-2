@@ -540,8 +540,10 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                 .map(TestResultItem::getAnalysisId).filter(Objects::nonNull).toList());
         if (!holding.isEmpty()) {
             Map<String, Object> refusal = new HashMap<>();
-            WaitingRun held = resultRunService.heldRun(holding.values().iterator().next(), null);
-            refusal.put("error", MessageUtil.getMessage(held.refusalKey(), new String[] { held.label() }));
+            TestResultItem heldItem = actionDataSet.getModifiedItems().stream()
+                    .filter(item -> holding.containsKey(item.getAnalysisId())).findFirst().orElseThrow();
+            WaitingRun held = resultRunService.heldRun(holding.get(heldItem.getAnalysisId()), heldItem.getTestId());
+            refusal.put("error", heldRowRefusal(heldItem, held));
             refusal.put("waitingRun", held);
             return ResponseEntity.status(HttpStatus.CONFLICT).body(refusal);
         }
@@ -691,6 +693,15 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             params.put("type", form.getType());
         }
         return ResponseEntity.ok(reflexMap);
+    }
+
+    /**
+     * OGC-1200: a page save is refused whole when one of its rows is held, so the
+     * refusal names that row's lab number and test as well as the run.
+     */
+    static String heldRowRefusal(TestResultItem heldItem, WaitingRun held) {
+        return MessageUtil.getMessage("run.refusal.heldRow", new String[] { heldItem.getAccessionNumber(),
+                heldItem.getTestName(), MessageUtil.getMessage(held.refusalKey(), new String[] { held.label() }) });
     }
 
     private String findLogBookForward(String forward) {

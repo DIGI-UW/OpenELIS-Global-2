@@ -1047,6 +1047,42 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
     setEditingAnalysisId(target.analysisId);
   }, []);
 
+  /**
+   * OGC-1200 FR-C4: a control recorded on a row in its run of one holds the
+   * test's rows when it fails, and releases them once the run no longer holds
+   * the test, without a reload.
+   */
+  const handleRowHoldChange = useCallback(
+    (target: WorklistRow, waitingRun: WaitingRun | null) => {
+      const sameAnalysis = rowsRef.current.filter(
+        (row) => row.analysisId === target.analysisId,
+      );
+      setRows((current) =>
+        current.map((row) =>
+          row.analysisId === target.analysisId
+            ? { ...row, waitingRun: waitingRun ?? undefined }
+            : row,
+        ),
+      );
+      setRowStates((current) => {
+        const next = { ...current };
+        for (const row of sameAnalysis) {
+          next[worklistRowKey(row)] = initialRowState(
+            Boolean(row.resultValue) ||
+              Boolean(
+                row.multiSelectResultValues &&
+                row.multiSelectResultValues !== "{}",
+              ),
+            blocksEntry(waitingRun),
+            Boolean(waitingRun?.held),
+          );
+        }
+        return next;
+      });
+    },
+    [],
+  );
+
   const handleSaveResponse = useCallback(
     (target: WorklistRow, response: SaveResponse | undefined) => {
       const key = worklistRowKey(target);
@@ -2266,6 +2302,9 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                                   disposition,
                                   reasonId,
                                 )
+                              }
+                              onRowHoldChange={(waitingRun) =>
+                                handleRowHoldChange(row, waitingRun)
                               }
                               actions={
                                 <>

@@ -15,6 +15,7 @@ import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.qc.form.BenchQCCaptureForm;
+import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.resultrun.form.ResultRunChip;
 import org.openelisglobal.resultrun.form.ResultRunHeader;
 import org.openelisglobal.resultrun.form.ResultRunListResponse;
@@ -24,6 +25,7 @@ import org.openelisglobal.resultrun.form.ResultRunSelectionSummary;
 import org.openelisglobal.resultrun.form.RunLotOptions;
 import org.openelisglobal.resultrun.form.RunOrderMatch;
 import org.openelisglobal.resultrun.form.RunViewer;
+import org.openelisglobal.resultrun.form.WaitingRun;
 import org.openelisglobal.resultrun.service.ResultRunService;
 import org.openelisglobal.resultrun.service.RunExceptionService;
 import org.openelisglobal.resultrun.service.RunQcService;
@@ -168,16 +170,28 @@ public class ResultRunRestController extends BaseRestController {
     }
 
     /**
+     * A control recorded on a row: its id, the run it is on, and the row's hold
+     * after it, null once the run no longer holds the row's test.
+     */
+    public record RowControl(String id, Long runId, WaitingRun waitingRun) {
+    }
+
+    /**
      * A control recorded on a row in no run (FR-B3, FR-D7): it opens the row's run
-     * of one and is recorded on it. Answers with the stored control, which names
-     * the run.
+     * of one and is recorded on it. Answers with the control's id and run, and the
+     * row's hold after it, so the worklist holds or releases the row at once.
      */
     @PostMapping(value = "/of-analysis/{analysisId}/controls", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> recordRowControl(HttpServletRequest request, @PathVariable String analysisId,
             @RequestBody BenchQCCaptureForm capture) {
         try {
-            return ResponseEntity.status(HttpStatus.CREATED).body(
-                    resultRunService.recordRowControl(analysisId, capture, viewer(request), getSysUserId(request)));
+            QCResult control = resultRunService.recordRowControl(analysisId, capture, viewer(request),
+                    getSysUserId(request));
+            WaitingRun held = runQcService.holdCauses(control.getRunId()).containsKey(control.getTestId())
+                    ? resultRunService.heldRun(control.getRunId(), control.getTestId())
+                    : null;
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(new RowControl(control.getId(), control.getRunId(), held));
         } catch (IllegalArgumentException e) {
             String message = e.getMessage() == null ? "Invalid control result" : e.getMessage();
             return ResponseEntity.badRequest().body(Map.of("message", message));

@@ -28,6 +28,7 @@ import CriticalCallbackAction from "./CriticalCallbackAction";
 import HistorySection from "./HistorySection";
 import InterpretationSection from "./InterpretationSection";
 import ReagentsQcSection from "./ReagentsQcSection";
+import type { WaitingRun } from "./runs/WaitingTag";
 import AliquotsSection from "./AliquotsSection";
 import ReferralAction, {
   ReferralDraft,
@@ -186,6 +187,8 @@ interface ExpandedPanelProps {
     disposition: NceDisposition,
     rejectReasonId: string,
   ) => void;
+  /** OGC-1200: a control recorded on the row held or released it. */
+  onRowHoldChange?: (waitingRun: WaitingRun | null) => void;
 }
 
 const noteVisibilityTag = (noteType?: string) =>
@@ -248,6 +251,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   nceRejectReasonId,
   onNceRejectReasonChange,
   onNceApplyDisposition,
+  onRowHoldChange,
 }) => {
   const intl = useIntl();
   const { configurationProperties } = (useContext(ConfigurationContext) ||
@@ -841,6 +845,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
         runId={rowRunId}
         hasSavedResult={Boolean(row.resultId)}
         runOfOneOpen={Boolean(row.runOfOneOpen)}
+        onRowHoldChange={onRowHoldChange}
         editable={editable}
         resultType={row.resultType}
         testSectionId={testSectionId}

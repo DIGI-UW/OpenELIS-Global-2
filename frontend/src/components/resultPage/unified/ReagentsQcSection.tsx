@@ -3,6 +3,7 @@ import { Button, Select, SelectItem, Tag, TextInput } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import ReferenceSection from "./ReferenceSection";
 import RowRunSummary from "./runs/RowRunSummary";
+import type { WaitingRun } from "./runs/WaitingTag";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
@@ -75,6 +76,11 @@ interface ReagentsQcSectionProps {
    * control capture under the run's summary until its value is saved.
    */
   runOfOneOpen?: boolean;
+  /**
+   * A control recorded on the row changed its hold: the run that now holds the
+   * row, or null once the run no longer holds its test.
+   */
+  onRowHoldChange?: (waitingRun: WaitingRun | null) => void;
 }
 
 interface QcCaptureDraft {
@@ -136,6 +142,7 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
   runId,
   hasSavedResult,
   runOfOneOpen,
+  onRowHoldChange,
 }) => {
   const intl = useIntl();
   const [rowRunId, setRowRunId] = useState<number | null>(runId ?? null);
@@ -340,6 +347,7 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
       (response?: {
         id?: string;
         runId?: number | null;
+        waitingRun?: WaitingRun | null;
         message?: string;
         error?: string;
         status?: number;
@@ -365,6 +373,7 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
           setRowRunId(response.runId);
           setRowRunOpen(true);
           setSummaryVersion((version) => version + 1);
+          onRowHoldChange?.(response.waitingRun ?? null);
         }
         const onRun = response.runId
           ? { run: `RUN-${response.runId}` }

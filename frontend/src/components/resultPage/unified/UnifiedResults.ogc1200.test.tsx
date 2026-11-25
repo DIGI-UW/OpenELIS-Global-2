@@ -157,6 +157,67 @@ describe("OGC-1200 runs on the unified worklist", () => {
     expect(screen.getByTestId("held-chip")).toHaveTextContent("Held (1)");
   });
 
+  it("releases a row held for a missing control as soon as a control recorded on it clears the hold", () => {
+    renderPage([
+      row({
+        testId: "1",
+        runId: 7,
+        runOfOneOpen: true,
+        waitingRun: {
+          ...WAITING,
+          source: "RESULT_ENTRY",
+          held: true,
+          heldCause: "QC_MISSING",
+        },
+      }),
+    ]);
+    expect(screen.getByTestId("held-run-7")).toHaveTextContent(
+      "Held: QC missing in RUN-7",
+    );
+    expect(resultField()).toBeNull();
+    const pageRoutes = utilsMock.getFromOpenElisServer.getMockImplementation();
+    utilsMock.getFromOpenElisServer.mockImplementation(
+      (endPoint: string, callback: any) =>
+        endPoint.startsWith("/rest/qc/results/control-lots")
+          ? callback([
+              {
+                id: "lot-1",
+                lotNumber: "CTL-1",
+                productName: "Control",
+                controlLevel: "NORMAL",
+              },
+            ])
+          : pageRoutes?.(endPoint, callback),
+    );
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+      (url: string, _body: string, callback: any) =>
+        url === "/rest/result-runs/of-analysis/61/controls"
+          ? callback({ id: "qc-9", runId: 7, waitingRun: null })
+          : callback({}),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /expand row/i }));
+    fireEvent.change(screen.getByTestId("qc-outcome"), {
+      target: { value: "PASS" },
+    });
+    fireEvent.change(screen.getByTestId("qc-lot"), {
+      target: { value: "lot-1" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Measured value" }), {
+      target: { value: "81" },
+    });
+    fireEvent.change(screen.getByLabelText("Expected value"), {
+      target: { value: "80" },
+    });
+    fireEvent.change(screen.getByLabelText("Uncertainty (±)"), {
+      target: { value: "8" },
+    });
+    fireEvent.click(screen.getByTestId("qc-record"));
+
+    expect(screen.queryByTestId("held-run-7")).not.toBeInTheDocument();
+    expect(resultField()).not.toBeNull();
+  });
+
   it("shows a stored result held by its run as held, with its value and no Edit", () => {
     renderPage([
       row({ resultValue: "88", waitingRun: { ...WAITING, held: true } }),

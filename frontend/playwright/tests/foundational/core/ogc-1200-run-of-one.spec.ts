@@ -330,8 +330,10 @@ test.describe("OGC-1200 a single save is a run of one", () => {
         `Control result recorded on ${held}.`,
         { timeout: LONG_TIMEOUT },
       );
+      await expect(page.getByText(`Held: QC missing in ${held}`)).toHaveCount(
+        0,
+      );
 
-      await openRow(page, accession);
       await saveValue(page, "81");
       await page.goto(`/Results?run=${held.replace("RUN-", "")}`);
       await expect(page.getByTestId("run-settings")).toContainText("Complete", {
