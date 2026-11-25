@@ -26,6 +26,7 @@ import org.openelisglobal.localization.valueholder.SupportedLocale;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -104,6 +105,7 @@ public class SupportedLocaleRestController extends BaseController {
      * @return the created locale
      */
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createLocale(@RequestBody SupportedLocaleDTO dto) {
         try {
             // Check if locale code already exists
@@ -136,6 +138,7 @@ public class SupportedLocaleRestController extends BaseController {
      * @return the updated locale
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateLocale(@PathVariable String id, @RequestBody SupportedLocaleDTO dto) {
         try {
             SupportedLocale existing = supportedLocaleService.get(id);
@@ -179,6 +182,7 @@ public class SupportedLocaleRestController extends BaseController {
      * @return success response
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteLocale(@PathVariable String id) {
         try {
             SupportedLocale existing = supportedLocaleService.get(id);
@@ -212,6 +216,7 @@ public class SupportedLocaleRestController extends BaseController {
      * @return the updated locale
      */
     @PostMapping("/{id}/setFallback")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> setFallback(@PathVariable String id) {
         try {
             SupportedLocale updatedLocale = supportedLocaleService.setFallback(id, getSysUserId(request));
