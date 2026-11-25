@@ -145,7 +145,16 @@ public class NotificationRestController extends BaseRestController {
 
     @PutMapping("/notification/markasread/{id}")
     public ResponseEntity<?> markNotificationAsRead(@PathVariable String id) {
-        Notification notification = notificationDAO.getNotificationById(Long.parseLong(id));
+        long notificationId;
+        try {
+            notificationId = Long.parseLong(id);
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().body("Invalid notification id");
+        }
+        Notification notification = notificationDAO.getNotificationById(notificationId);
+        if (notification == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Notification not found");
+        }
         notification.setReadAt(OffsetDateTime.now());
         notificationDAO.updateNotification(notification);
         return ResponseEntity.ok().body("Notification updated successfully");
