@@ -295,34 +295,14 @@ async function fillOrderDetails(page: Page, pause: PauseFn) {
   }
 
   const requesterLookup = page.locator("input#requesterId");
-  if (await requesterLookup.isVisible()) {
-    await requesterLookup.clear();
-    await requesterLookup.fill("Prime");
-    await pause(800);
-    await pickFirstAutosuggestOptional(page, pause);
-  }
-
-  const requesterFirst = page.locator("input#requesterFirstName");
-  if (await requesterFirst.isVisible()) {
-    await requesterFirst.clear();
-    await requesterFirst.fill("Optimus");
-    await expect(requesterFirst).toHaveValue("Optimus");
-  }
-  const requesterLast = page.locator("input#requesterLastName");
-  if (await requesterLast.isVisible()) {
-    await requesterLast.clear();
-    await requesterLast.fill("Prime");
-    await expect(requesterLast).toHaveValue("Prime");
-  }
-
-  if (await requesterLookup.isVisible()) {
-    if (!(await requesterLookup.inputValue()).trim()) {
-      await requesterLookup.fill("Prime, Optimus");
-    }
-    await expect(requesterLookup).not.toHaveValue("", {
-      timeout: SHORT_TIMEOUT,
-    });
-  }
+  await requesterLookup.fill("Prime");
+  const requesterSuggestion = page
+    .locator('[data-cy="auto-suggestion"]')
+    .filter({ hasText: /^Prime, Optimus$/ });
+  await expect(requesterSuggestion).toBeVisible({ timeout: UI_TIMEOUT });
+  await requesterSuggestion.click();
+  await expect(page.locator("input#requesterFirstName")).toHaveValue("Optimus");
+  await expect(page.locator("input#requesterLastName")).toHaveValue("Prime");
 
   // Newer order-entry validation requires explicit selections here.
   const paymentStatus = page.getByRole("combobox", {
