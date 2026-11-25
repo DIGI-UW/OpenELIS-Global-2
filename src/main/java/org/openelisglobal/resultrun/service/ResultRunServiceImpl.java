@@ -420,6 +420,13 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<ResultRun> holdingBatchRun(Long batchWorkplanId) {
+        return baseObjectDAO.findBatchRun(batchWorkplanId)
+                .filter(run -> run.getState().isActive() && !runQcService.holdCauses(run.getId()).isEmpty());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<org.openelisglobal.resultrun.form.RunLotOptions> lotOptions(Long runId, RunViewer viewer) {
         return visibleRun(runId, viewer).map(seen -> {
             ResultRun run = seen.run();
@@ -454,7 +461,12 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     @Transactional
     public Optional<ResultRunHeader> markComplete(Long runId, RunViewer viewer, String sysUserId) {
         Optional<ResultRun> open = openWorkplanRun(runId, viewer);
-        open.ifPresent(run -> batchWorkplanService.completeFromRun(run.getBatchWorkplanId(), sysUserId));
+        open.ifPresent(run -> {
+            if (!runQcService.holdCauses(run.getId()).isEmpty()) {
+                throw new IllegalArgumentException(MessageUtil.getMessage("run.refusal.completeHeld"));
+            }
+            batchWorkplanService.completeFromRun(run.getBatchWorkplanId(), sysUserId);
+        });
         return open.flatMap(run -> getHeader(run.getId(), viewer));
     }
 

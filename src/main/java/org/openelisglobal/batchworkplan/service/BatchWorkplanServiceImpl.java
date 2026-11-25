@@ -360,8 +360,10 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
         BatchWorkplanRequest request = new BatchWorkplanRequest();
         request.setAnalysisIds(ids);
         BatchWorkplan batch = requireOwnBatch(createBatch(request, sysUserId).getId(), sysUserId);
+        Timestamp now = Timestamp.from(Instant.now());
         batch.setStatus(BatchWorkplanStatus.ACTIVE);
-        batch.setGeneratedAt(Timestamp.from(Instant.now()));
+        batch.setActivatedAt(now);
+        batch.setGeneratedAt(now);
         batch.setGeneratedByUserId(requireUserId(sysUserId));
         stampUpdate(batch, sysUserId);
         BatchWorkplan released = batchWorkplanDAO.update(batch);
@@ -382,6 +384,10 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
     @Override
     public void completeFromRun(Long id, String sysUserId) {
         BatchWorkplan batch = requireBatch(id);
+        if (batch.getStatus() == BatchWorkplanStatus.DRAFT) {
+            throw new IllegalArgumentException(
+                    "This batch is back in setup on the Workplan page; release it again before marking its run complete");
+        }
         if (batch.getStatus() == BatchWorkplanStatus.ACTIVE) {
             batch.setStatus(BatchWorkplanStatus.COMPLETED);
             batch.setCompletedAt(Timestamp.from(Instant.now()));
@@ -613,6 +619,13 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
         Integer actorId = requireUserId(sysUserId);
         BatchWorkplan batch = requireOwnBatch(id, sysUserId);
         BatchWorkplanStatus currentStatus = batch.getStatus();
+        if (nextStatus == BatchWorkplanStatus.COMPLETED || nextStatus == BatchWorkplanStatus.ARCHIVED) {
+            resultRunService.holdingBatchRun(batch.getId()).ifPresent(run -> {
+                throw new IllegalArgumentException(run.getLabel()
+                        + " holds a test of this batch for QC: record the test's control on the run, or decide the"
+                        + " test there (Retest, Reject or Accept despite), before the batch is completed or archived");
+            });
+        }
         if (!currentStatus.canTransitionTo(nextStatus)) {
             throw new IllegalArgumentException(
                     "Cannot transition batch workplan from " + currentStatus + " to " + nextStatus);

@@ -73,8 +73,8 @@ public interface BatchWorkplanService {
     void setRunReagentLot(Long id, Long reagentId, Long reagentLotId, String sysUserId);
 
     /**
-     * FR-E3 Mark complete on the batch's run: the batch is complete, and so is its
-     * run.
+     * FR-E5 Mark complete on the batch's run: the batch is complete, and so is its
+     * run. A batch taken back to setup is refused.
      */
     void completeFromRun(Long id, String sysUserId);
 

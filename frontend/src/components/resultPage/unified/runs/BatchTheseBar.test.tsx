@@ -104,6 +104,44 @@ describe("OGC-1200 FR-B4 Batch these", () => {
     expect(onOpenRun).toHaveBeenCalledWith(205);
   });
 
+  it("drops a refusal once the picks it was about change", () => {
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+      (_url: string, _body: string, callback: (r: unknown) => void) =>
+        callback({ status: 400, message: "Already in an open batch: LAB-2" }),
+    );
+    const props = {
+      onRemove: vi.fn(),
+      onClear: vi.fn(),
+      onOpenRun: vi.fn(),
+    };
+    const { rerender } = render(
+      <IntlProvider locale="en" messages={messages}>
+        <BatchTheseBar
+          picks={{
+            "61": pick("5", "LAB-1 Amylase"),
+            "62": pick("5", "LAB-2 Amylase"),
+          }}
+          {...props}
+        />
+      </IntlProvider>,
+    );
+    fireEvent.click(screen.getByTestId("batch-these"));
+    expect(screen.getByTestId("batch-these-error")).toBeInTheDocument();
+
+    rerender(
+      <IntlProvider locale="en" messages={messages}>
+        <BatchTheseBar
+          picks={{
+            "61": pick("5", "LAB-1 Amylase"),
+            "63": pick("5", "LAB-3 Amylase"),
+          }}
+          {...props}
+        />
+      </IntlProvider>,
+    );
+    expect(screen.queryByTestId("batch-these-error")).not.toBeInTheDocument();
+  });
+
   it("says why the rows could not be batched and opens nothing", () => {
     utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
       (_url: string, _body: string, callback: (r: unknown) => void) =>

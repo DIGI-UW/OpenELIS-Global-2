@@ -219,9 +219,8 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
 
     /**
      * OGC-1200 FR-B2, FR-D5, FR-G4: a released batch is a run of the batch's lab
-     * unit, lot and analyses. A control recorded on it holds the batch's test, a
-     * second release keeps the same run, and marking the batch complete completes
-     * the run.
+     * unit, lot and analyses. A control recorded on it holds the batch's test, and
+     * once the test is decided, marking the batch complete completes the run.
      */
     @Test
     public void aReleasedBatchIsARunThatHoldsItsTestOnAFailedControlAndCompletesWithIt() {
@@ -278,6 +277,8 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
         assertEquals("HELD",
                 jdbcTemplate.queryForObject("SELECT state FROM clinlims.result_run WHERE id = ?", String.class, runId));
 
+        runQcService.decide(runId, testId, org.openelisglobal.resultrun.valueholder.RunTestAction.ACCEPT_DESPITE,
+                "Control repeated and passed", true, ACTOR);
         batchWorkplanService.transitionBatch(batchId, BatchWorkplanStatus.COMPLETED, ACTOR);
         assertEquals("COMPLETE",
                 jdbcTemplate.queryForObject("SELECT state FROM clinlims.result_run WHERE id = ?", String.class, runId));
@@ -450,6 +451,59 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().contains("no longer open"));
         }
+    }
+
+    /**
+     * OGC-1200 FR-C4, FR-C5, FR-E5: a run holding a test for QC is not completed,
+     * from the run or from its batch, until the test's control is recorded or the
+     * test is decided; completing it would free the held rows.
+     */
+    @Test
+    public void aHeldBatchRunIsNotCompletedUntilItsTestIsDecided() {
+        Long runId = releaseIntoRun();
+        recordInvalidControl(runId);
+
+        try {
+            resultRunService.markComplete(runId, unitViewer(), ACTOR);
+            fail("a held run is not marked complete");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("holds a test for QC"));
+        }
+        for (BatchWorkplanStatus closing : List.of(BatchWorkplanStatus.COMPLETED, BatchWorkplanStatus.ARCHIVED)) {
+            try {
+                batchWorkplanService.transitionBatch(batchId, closing, ACTOR);
+                fail("a batch whose run holds a test is not " + closing);
+            } catch (IllegalArgumentException expected) {
+                assertTrue(expected.getMessage().contains("holds a test of this batch for QC"));
+            }
+        }
+        assertEquals("HELD",
+                jdbcTemplate.queryForObject("SELECT state FROM clinlims.result_run WHERE id = ?", String.class, runId));
+        assertEquals("ACTIVE", jdbcTemplate.queryForObject("SELECT status FROM clinlims.batch_workplan WHERE id = ?",
+                String.class, batchId));
+
+        runQcService.decide(runId, testId, org.openelisglobal.resultrun.valueholder.RunTestAction.ACCEPT_DESPITE,
+                "Control repeated and passed", true, ACTOR);
+        assertEquals("COMPLETE", resultRunService.markComplete(runId, unitViewer(), ACTOR).orElseThrow().state());
+    }
+
+    /**
+     * OGC-1200 FR-E5: a batch taken back to setup keeps its undecided run open, and
+     * the run is not marked complete until the batch is released again.
+     */
+    @Test
+    public void aBatchBackInSetupIsNotCompletedFromItsRun() {
+        Long runId = releaseIntoRun();
+        batchWorkplanService.transitionBatch(batchId, BatchWorkplanStatus.DRAFT, ACTOR);
+
+        try {
+            resultRunService.markComplete(runId, unitViewer(), ACTOR);
+            fail("the run of a batch back in setup is not marked complete");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("back in setup"));
+        }
+        assertEquals("OPEN",
+                jdbcTemplate.queryForObject("SELECT state FROM clinlims.result_run WHERE id = ?", String.class, runId));
     }
 
     private List<String> batchAnalysisIds() {

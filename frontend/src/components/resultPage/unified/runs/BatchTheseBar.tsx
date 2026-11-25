@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button, DismissibleTag, InlineNotification } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { postToOpenElisServerJsonResponse } from "../../../utils/Utils";
@@ -34,6 +34,7 @@ const BatchTheseBar: React.FC<BatchTheseBarProps> = ({
   const intl = useIntl();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => setError(null), [picks]);
   const analysisIds = Object.keys(picks);
   if (!analysisIds.length) {
     return null;

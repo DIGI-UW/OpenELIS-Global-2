@@ -196,7 +196,7 @@ public class ResultRunRestController extends BaseRestController {
     }
 
     /**
-     * Marks an open workplan run complete with its batch (FR-E3) and answers with
+     * Marks an open workplan run complete with its batch (FR-E5) and answers with
      * the run's header.
      */
     @PostMapping(value = "/{id}/complete", produces = MediaType.APPLICATION_JSON_VALUE)

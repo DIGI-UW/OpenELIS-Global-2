@@ -627,17 +627,16 @@ const RunView: React.FC<RunViewProps> = ({
                 />
               </p>
               <div className="runHeaderActions">
-                {header.source === "WORKPLAN" &&
-                  ["OPEN", "HELD"].includes(header.state) && (
-                    <Button
-                      kind="tertiary"
-                      size="sm"
-                      onClick={markComplete}
-                      data-testid="run-mark-complete"
-                    >
-                      <FormattedMessage id="run.action.markComplete" />
-                    </Button>
-                  )}
+                {header.source === "WORKPLAN" && header.state === "OPEN" && (
+                  <Button
+                    kind="tertiary"
+                    size="sm"
+                    onClick={markComplete}
+                    data-testid="run-mark-complete"
+                  >
+                    <FormattedMessage id="run.action.markComplete" />
+                  </Button>
+                )}
                 {header.rawAvailable && (
                   <Button kind="ghost" size="sm" onClick={toggleRaw}>
                     <FormattedMessage

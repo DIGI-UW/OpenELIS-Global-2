@@ -96,6 +96,13 @@ public interface ResultRunService extends BaseObjectService<ResultRun, Long> {
     Optional<ResultRun> batchRun(Long batchWorkplanId);
 
     /**
+     * The batch's run while it is open and holds a test for QC (FR-C4): neither it
+     * nor its batch may be completed or archived until the test's control is
+     * recorded or the test is decided (FR-C5), or the hold would free its rows.
+     */
+    Optional<ResultRun> holdingBatchRun(Long batchWorkplanId);
+
+    /**
      * FR-E3: the reagent lots a workplan run may record, the one it records, and
      * the last one recorded on another run; empty when the viewer cannot see it.
      */
@@ -110,8 +117,9 @@ public interface ResultRunService extends BaseObjectService<ResultRun, Long> {
             String sysUserId);
 
     /**
-     * FR-E3 Mark complete: completes an open workplan run with its batch, and
-     * answers with the run's header; empty when the viewer cannot see it.
+     * FR-E5 Mark complete: completes an open workplan run with its batch, and
+     * answers with the run's header; empty when the viewer cannot see it. A run
+     * that holds a test, or whose batch is back in setup, is refused.
      */
     Optional<ResultRunHeader> markComplete(Long runId, RunViewer viewer, String sysUserId);
 

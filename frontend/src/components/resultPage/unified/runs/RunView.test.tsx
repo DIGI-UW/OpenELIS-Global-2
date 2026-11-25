@@ -785,6 +785,14 @@ describe("OGC-1200 slice 2: chips, paging and selection", () => {
       expect(screen.queryByTestId("run-lot-none")).not.toBeInTheDocument();
     });
 
+    it("offers no Mark complete on a batch run that holds a test", () => {
+      wire({ ...BATCH, state: "HELD" }, BATCH_ROWS);
+      renderRun();
+
+      expect(screen.queryByTestId("run-mark-complete")).not.toBeInTheDocument();
+      expect(screen.getByTestId("run-lot-none")).toBeInTheDocument();
+    });
+
     it("offers no lot choice or Mark complete on an analyzer run", () => {
       wire(HEADER);
       renderRun();
