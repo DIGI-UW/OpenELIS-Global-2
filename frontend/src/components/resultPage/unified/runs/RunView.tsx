@@ -90,6 +90,8 @@ interface RunRow {
   stagedResult?: string | null;
   exceptionKind?: RunExceptionKind | null;
   code?: string | null;
+  holdCause?: "QC_FAILED" | "QC_MISSING" | null;
+  missingControl?: boolean;
 }
 
 interface RunRowsPage {
@@ -335,14 +337,31 @@ const RunView: React.FC<RunViewProps> = ({
     if (row.category === "HELD") {
       return (
         <Tag size="sm" type="red" renderIcon={WarningFilled}>
-          <FormattedMessage id="run.row.held" />
+          <FormattedMessage
+            id={
+              row.holdCause === "QC_MISSING"
+                ? "run.row.heldQcMissing"
+                : "run.row.held"
+            }
+          />
         </Tag>
       );
     }
     return (
-      <Tag size="sm" type="green">
-        <FormattedMessage id="run.row.ready" />
-      </Tag>
+      <>
+        <Tag size="sm" type="green">
+          <FormattedMessage id="run.row.ready" />
+        </Tag>
+        {row.missingControl && (
+          <Tag
+            size="sm"
+            type="warm-gray"
+            data-testid={`run-row-no-control-${row.id}`}
+          >
+            <FormattedMessage id="run.row.noControl" />
+          </Tag>
+        )}
+      </>
     );
   };
 
@@ -361,7 +380,9 @@ const RunView: React.FC<RunViewProps> = ({
           : row.importIssueReason
             ? "run.entry.importIssue"
             : row.category === "HELD"
-              ? "run.entry.testHeld"
+              ? row.holdCause === "QC_MISSING"
+                ? "run.entry.testHeldMissing"
+                : "run.entry.testHeld"
               : header?.state !== "OPEN" && header?.state !== "HELD"
                 ? "run.entry.closed"
                 : null;
@@ -482,6 +503,7 @@ const RunView: React.FC<RunViewProps> = ({
             <RunQcBlock
               runId={header.id}
               qc={header.qc}
+              active={header.state === "OPEN" || header.state === "HELD"}
               onOpenRun={onOpenRun}
               onRecorded={(qc) => {
                 setHeader((current) =>
