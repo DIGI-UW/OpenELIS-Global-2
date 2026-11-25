@@ -13,7 +13,9 @@ import org.openelisglobal.qc.service.QCControlLotService;
 import org.openelisglobal.qc.service.QCResultService;
 import org.openelisglobal.qc.valueholder.QCControlLot;
 import org.openelisglobal.qc.valueholder.QCResult;
+import org.openelisglobal.resultrun.service.RunQcService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -60,6 +62,10 @@ public class BenchQCResultRestController extends BaseRestController {
     @Autowired
     private QCControlLotService controlLotService;
 
+    @Lazy
+    @Autowired
+    private RunQcService runQcService;
+
     /**
      * Record one bench control run. Returns 201 with the persisted result —
      * including the z-score, when the run was quantitative against a lot with
@@ -69,10 +75,16 @@ public class BenchQCResultRestController extends BaseRestController {
      * Returns 400 for an illegal source/value/outcome combination (for example an
      * RDT control carrying a number, which is never valid) or an unusable control
      * lot, rather than letting the database constraint surface as a 500.
+     *
+     * <p>
+     * With {@code runId} (OGC-1200 FR-B2, a workplan batch's run), the control is
+     * recorded on that run, so its verdict covers the batch's test there; a test
+     * the run does not cover, or one already decided on it, is refused (400).
      */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('RESULTS') or hasRole('GLOBAL_ADMIN')")
-    public ResponseEntity<?> record(@Valid @RequestBody BenchQCCaptureForm capture, HttpServletRequest request) {
+    public ResponseEntity<?> record(@Valid @RequestBody BenchQCCaptureForm capture,
+            @RequestParam(name = "runId", required = false) Long runId, HttpServletRequest request) {
 
         int sysUserId;
         try {
@@ -83,7 +95,8 @@ public class BenchQCResultRestController extends BaseRestController {
         }
 
         try {
-            QCResult saved = qcResultService.createBenchQCResult(capture, sysUserId);
+            QCResult saved = runId != null ? runQcService.recordControl(runId, capture, sysUserId)
+                    : qcResultService.createBenchQCResult(capture, sysUserId);
             return ResponseEntity.status(HttpStatus.CREATED).body(saved);
         } catch (IllegalArgumentException e) {
             LogEvent.logWarn(this.getClass().getName(), "record", "rejected QC capture: " + e.getMessage());

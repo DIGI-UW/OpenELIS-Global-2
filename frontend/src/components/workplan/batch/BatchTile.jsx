@@ -915,6 +915,7 @@ export default function BatchTile({
               {entryOpen && (
                 <QcEntryForm
                   batchId={batch.id}
+                  runId={batch.runId}
                   lots={recordableLots}
                   onSaved={qcSaved}
                   onCancel={() => setEntryOpen(false)}
@@ -951,6 +952,19 @@ export default function BatchTile({
                 rel="noopener noreferrer"
               >
                 <FormattedMessage id="workplan.batch.print" />
+              </Button>
+            )}
+            {batch.runId && (
+              <Button
+                size="sm"
+                kind="ghost"
+                href={`/Results?run=${batch.runId}`}
+                data-testid={`batch-${batch.id}-run`}
+              >
+                <FormattedMessage
+                  id="workplan.batch.openRun"
+                  values={{ run: `RUN-${batch.runId}` }}
+                />
               </Button>
             )}
           </div>

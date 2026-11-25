@@ -12,6 +12,27 @@ public interface ResultRunDAO extends BaseDAO<ResultRun, Long> {
     /** The run one accepted analyzer message created. */
     Optional<ResultRun> findAnalyzerRun(String connectionId, String messageId);
 
+    /** The run a workplan batch is, if it was released (FR-B2). */
+    Optional<ResultRun> findBatchRun(Long batchWorkplanId);
+
+    /** The analyses of a workplan run: its batch's items (FR-G4). */
+    List<String> getBatchAnalysisIds(Long runId);
+
+    /**
+     * How many of a workplan run's analyses still wait for a result: not cancelled,
+     * and with no result value.
+     */
+    long countBatchAnalysesAwaiting(Long runId, String cancelledStatusId);
+
+    /** The tests of a workplan run's batched analyses. */
+    List<String> getBatchTestIds(Long runId);
+
+    /**
+     * For each analysis batched in an open or held workplan run: analysis id, run
+     * id, test id (FR-D5).
+     */
+    List<Object[]> getActiveBatchRunsOfAnalyses(Collection<String> analysisIds);
+
     /** Runs with rows still to work (Open or Held), newest first. */
     List<ResultRun> getActiveRuns();
 

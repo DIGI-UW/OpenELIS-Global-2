@@ -112,6 +112,7 @@ public class RunQcServiceImpl implements RunQcService {
                 .filter(row -> !row.getIsControl() && StringUtils.isNotBlank(row.getTestId()))
                 .map(AnalyzerResults::getTestId).forEach(tests::add);
         resultRunDAO.getTestIdsOfResults(runId).stream().filter(Objects::nonNull).forEach(tests::add);
+        resultRunDAO.getBatchTestIds(runId).stream().filter(Objects::nonNull).forEach(tests::add);
         controls.stream().map(QCResult::getTestId).filter(Objects::nonNull).forEach(tests::add);
         dispositionDAO.getDispositions(runId).stream().map(ResultRunTestDisposition::getTestId).filter(Objects::nonNull)
                 .forEach(tests::add);

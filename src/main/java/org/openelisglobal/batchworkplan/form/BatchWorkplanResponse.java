@@ -8,6 +8,8 @@ import org.openelisglobal.batchworkplan.valueholder.BatchWorkplanStatus;
 public class BatchWorkplanResponse {
 
     private Long id;
+    /** The run the released batch is (OGC-1200 FR-B2), to open from the batch. */
+    private Long runId;
     private String name;
     private BatchWorkplanStatus status;
     private String testSectionId;
@@ -204,5 +206,13 @@ public class BatchWorkplanResponse {
 
     public void setReleases(List<BatchReleaseResponse> releases) {
         this.releases = releases;
+    }
+
+    public Long getRunId() {
+        return runId;
+    }
+
+    public void setRunId(Long runId) {
+        this.runId = runId;
     }
 }

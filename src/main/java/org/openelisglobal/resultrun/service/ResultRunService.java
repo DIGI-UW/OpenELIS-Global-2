@@ -71,6 +71,41 @@ public interface ResultRunService extends BaseObjectService<ResultRun, Long> {
      */
     void refreshQcState(Long runId, String sysUserId);
 
+    /**
+     * The run a released workplan batch is (FR-B2, FR-G4): created on its first
+     * release, reopened and brought up to date when it is released again. It
+     * carries the batch's lab unit, instrument, reagent lot and operator, and its
+     * holds follow the tests' QC policies at once.
+     */
+    ResultRun openWorkplanRun(Long batchWorkplanId, String testSectionId, String instrumentId, Long reagentLotId,
+            int rowCount, String operatorName, String sysUserId);
+
+    /** Completes the run of a batch that is marked complete (FR-B2). */
+    void completeWorkplanRun(Long batchWorkplanId, String sysUserId);
+
+    /** The run a workplan batch is, once released. */
+    Optional<Long> batchRunId(Long batchWorkplanId);
+
+    /**
+     * For analyses batched in an open or held workplan run: analysis id to run id,
+     * so a result entered for one records into its run (FR-D5).
+     */
+    Map<String, Long> activeBatchRunsOf(Collection<String> analysisIds);
+
+    /**
+     * After a result was saved into a workplan run: the run completes once every
+     * analysis of its batch has a result or was cancelled (FR-B2).
+     */
+    void workplanResultSaved(Long runId, String sysUserId);
+
+    /**
+     * Records results of batched analyses into their open workplan run (FR-D5), and
+     * returns the update that completes a run whose batch has no analysis left
+     * waiting, run in the same save.
+     */
+    org.openelisglobal.common.services.registration.interfaces.IResultUpdate recordIntoWorkplanRuns(
+            Collection<org.openelisglobal.result.valueholder.Result> results, String sysUserId);
+
     /** Whether the run exists and the viewer may see it. */
     boolean canSee(Long runId, RunViewer viewer);
 

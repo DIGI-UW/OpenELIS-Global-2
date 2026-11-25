@@ -1,5 +1,6 @@
 package org.openelisglobal.resultrun.daoimpl;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -43,6 +44,92 @@ public class ResultRunDAOImpl extends BaseDAOImpl<ResultRun, Long> implements Re
             return query.uniqueResultOptional();
         } catch (RuntimeException e) {
             throw new LIMSRuntimeException("Error finding the run of an analyzer message", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    @SuppressWarnings("unchecked")
+    public List<Object[]> getActiveBatchRunsOfAnalyses(Collection<String> analysisIds) {
+        if (analysisIds == null || analysisIds.isEmpty()) {
+            return List.of();
+        }
+        return session()
+                .createNativeQuery("SELECT CAST(item.analysis_id AS VARCHAR), run.id, CAST(a.test_id AS VARCHAR)"
+                        + " FROM clinlims.batch_workplan_item item"
+                        + " JOIN clinlims.result_run run ON run.batch_workplan_id = item.batch_workplan_id"
+                        + " JOIN clinlims.analysis a ON a.id = item.analysis_id"
+                        + " WHERE CAST(item.analysis_id AS VARCHAR) IN (:analysisIds) AND run.state IN ('OPEN', 'HELD')")
+                .setParameterList("analysisIds", analysisIds).getResultList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<ResultRun> findBatchRun(Long batchWorkplanId) {
+        if (batchWorkplanId == null) {
+            return Optional.empty();
+        }
+        try {
+            Query<ResultRun> query = session().createQuery("FROM ResultRun r WHERE r.batchWorkplanId = :batch",
+                    ResultRun.class);
+            query.setParameter("batch", batchWorkplanId);
+            query.setMaxResults(1);
+            return query.uniqueResultOptional();
+        } catch (RuntimeException e) {
+            throw new LIMSRuntimeException("Error finding the run of a workplan batch", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    @SuppressWarnings("unchecked")
+    public List<String> getBatchAnalysisIds(Long runId) {
+        if (runId == null) {
+            return List.of();
+        }
+        try {
+            return ((List<Object>) session()
+                    .createNativeQuery("SELECT CAST(item.analysis_id AS VARCHAR) FROM clinlims.batch_workplan_item item"
+                            + " JOIN clinlims.result_run run ON run.batch_workplan_id = item.batch_workplan_id"
+                            + " WHERE run.id = :run ORDER BY item.sort_order, item.analysis_id")
+                    .setParameter("run", runId).getResultList()).stream().map(String::valueOf).toList();
+        } catch (RuntimeException e) {
+            throw new LIMSRuntimeException("Error getting the analyses of a workplan run", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countBatchAnalysesAwaiting(Long runId, String cancelledStatusId) {
+        try {
+            Object count = session().createNativeQuery("SELECT COUNT(*) FROM clinlims.batch_workplan_item item"
+                    + " JOIN clinlims.result_run run ON run.batch_workplan_id = item.batch_workplan_id"
+                    + " JOIN clinlims.analysis a ON a.id = item.analysis_id WHERE run.id = :run"
+                    + " AND CAST(a.status_id AS VARCHAR) <> :cancelled AND NOT EXISTS (SELECT 1 FROM clinlims.result r"
+                    + " WHERE r.analysis_id = a.id AND COALESCE(r.value, '') <> '')").setParameter("run", runId)
+                    .setParameter("cancelled", String.valueOf(cancelledStatusId)).getSingleResult();
+            return ((Number) count).longValue();
+        } catch (RuntimeException e) {
+            throw new LIMSRuntimeException("Error counting the analyses a workplan run waits for", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    @SuppressWarnings("unchecked")
+    public List<String> getBatchTestIds(Long runId) {
+        if (runId == null) {
+            return List.of();
+        }
+        try {
+            return ((List<Object>) session()
+                    .createNativeQuery(
+                            "SELECT DISTINCT CAST(a.test_id AS VARCHAR)" + " FROM clinlims.batch_workplan_item item"
+                                    + " JOIN clinlims.result_run run ON run.batch_workplan_id = item.batch_workplan_id"
+                                    + " JOIN clinlims.analysis a ON a.id = item.analysis_id WHERE run.id = :run")
+                    .setParameter("run", runId).getResultList()).stream().map(String::valueOf).toList();
+        } catch (RuntimeException e) {
+            throw new LIMSRuntimeException("Error getting the tests of a workplan run", e);
         }
     }
 
@@ -120,7 +207,9 @@ public class ResultRunDAOImpl extends BaseDAOImpl<ResultRun, Long> implements Re
                     .createQuery("SELECT DISTINCT r.analysis.id, r.runId, r.analysis.test.id FROM Result r"
                             + " WHERE r.runId IS NOT NULL AND r.analysis.id IN (:analysisIds)", Object[].class);
             query.setParameterList("analysisIds", analysisIds);
-            return query.list();
+            List<Object[]> runs = new ArrayList<>(query.list());
+            runs.addAll(getActiveBatchRunsOfAnalyses(analysisIds));
+            return runs;
         } catch (RuntimeException e) {
             throw new LIMSRuntimeException("Error finding the runs of analyses", e);
         }

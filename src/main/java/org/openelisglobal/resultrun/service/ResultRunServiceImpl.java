@@ -7,6 +7,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -14,6 +15,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
+import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyzer.service.AnalyzerMappingDefinition;
 import org.openelisglobal.analyzer.service.AnalyzerService;
@@ -24,7 +26,14 @@ import org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt;
 import org.openelisglobal.analyzerresults.dao.AnalyzerResultsDAO;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.services.IResultSaveService;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
+import org.openelisglobal.inventory.service.InventoryLotService;
+import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.result.service.ResultService;
+import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultrun.dao.ResultRunDAO;
 import org.openelisglobal.resultrun.form.ResultRunChip;
 import org.openelisglobal.resultrun.form.ResultRunChipCounts;
@@ -37,6 +46,7 @@ import org.openelisglobal.resultrun.form.ResultRunSelection;
 import org.openelisglobal.resultrun.form.ResultRunSelectionSummary;
 import org.openelisglobal.resultrun.form.ResultRunSummary;
 import org.openelisglobal.resultrun.form.RunHoldCause;
+import org.openelisglobal.resultrun.form.RunTestVerdict;
 import org.openelisglobal.resultrun.form.RunViewer;
 import org.openelisglobal.resultrun.form.WaitingRun;
 import org.openelisglobal.resultrun.service.ResultRunRowClassifier.ClassifiedRow;
@@ -75,6 +85,18 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     private ResultService resultService;
     @Autowired
     private TestResultComponentService testResultComponentService;
+    @Lazy
+    @Autowired
+    private IStatusService statusService;
+    @Lazy
+    @Autowired
+    private InventoryLotService inventoryLotService;
+    @Lazy
+    @Autowired
+    private AnalysisService analysisService;
+
+    /** A workplan run's row names the analysis it is: "A" and its id. */
+    static final String WORKPLAN_ROW_PREFIX = "A";
     @Autowired
     private ResultRunRowClassifier rowClassifier;
     @Lazy
@@ -194,6 +216,21 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
         int open = 0;
         int held = 0;
         for (ResultRun run : runs) {
+            if (run.getSource() == ResultRunSource.WORKPLAN) {
+                if (!unitsVisible(workplanUnits(run), viewer)
+                        || (StringUtils.isNotBlank(testSectionId) && !testSectionId.equals(run.getTestSectionId()))) {
+                    continue;
+                }
+                if (run.getState() == ResultRunState.HELD) {
+                    held++;
+                } else {
+                    open++;
+                }
+                summaries.add(new ResultRunSummary(run.getId(), run.getLabel(), run.getSource().name(),
+                        run.getState().name(), analyzerName(run.getAnalyzerId()), iso(run.getOpenedAt()),
+                        workplanDispositioned(run), run.getRowCount()));
+                continue;
+            }
             List<String> analyzerUnits = unitsByAnalyzer.computeIfAbsent(String.valueOf(run.getAnalyzerId()),
                     id -> analyzerUnits(run.getAnalyzerId()));
             List<AnalyzerResults> staged = rowsByRun.getOrDefault(run.getId(), List.of());
@@ -223,6 +260,9 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     public Optional<ResultRunHeader> getHeader(Long runId, RunViewer viewer) {
         return visibleRun(runId, viewer).map(seen -> {
             ResultRun run = seen.run();
+            if (run.getSource() == ResultRunSource.WORKPLAN) {
+                return workplanHeader(seen);
+            }
             List<ClassifiedRow> classified = classifyVisible(seen, viewer);
             Optional<Analyzer> analyzer = run.getAnalyzerId() == null ? Optional.empty()
                     : analyzerService.getWithMapping(run.getAnalyzerId());
@@ -235,8 +275,186 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
                     run.getOperatorName(), iso(run.getOpenedAt()), iso(run.getLastActivityAt()),
                     iso(run.getCompletedAt()), Math.max(0, run.getRowCount() - seen.staged().size()), run.getRowCount(),
                     run.getDeliveryReceiptId() != null, chipCounts(classified), runQcService.qcBlock(run.getId()),
-                    runExceptionService.exceptionsOf(run.getId(), run.getAnalyzerId(), classified));
+                    runExceptionService.exceptionsOf(run.getId(), run.getAnalyzerId(), classified),
+                    lotNumberOf(run.getReagentLotId()), run.getBatchWorkplanId());
         });
+    }
+
+    /**
+     * FR-B2, FR-E3: a workplan run's header. Its rows are its batch's analyses
+     * still waiting for a result; its lab unit, instrument, operator and reagent
+     * lot are the batch's.
+     */
+    private ResultRunHeader workplanHeader(VisibleRun seen) {
+        ResultRun run = seen.run();
+        List<ResultRunRow> rows = workplanRows(run);
+        int heldRows = (int) rows.stream().filter(row -> row.category() == ResultRunRowCategory.HELD).count();
+        ResultRunChipCounts counts = new ResultRunChipCounts(rows.size(), 0, 0, 0, 0, heldRows, rows.size() - heldRows);
+        List<String> labUnits = workplanUnits(run).stream().map(this::labUnitName).filter(Objects::nonNull).toList();
+        return new ResultRunHeader(run.getId(), run.getLabel(), run.getSource().name(), run.getState().name(),
+                run.getAnalyzerId(), analyzerName(run.getAnalyzerId()), null, labUnits, run.getOperatorName(),
+                iso(run.getOpenedAt()), iso(run.getLastActivityAt()), iso(run.getCompletedAt()),
+                workplanDispositioned(run), run.getRowCount(), false, counts, runQcService.qcBlock(run.getId()),
+                List.of(), lotNumberOf(run.getReagentLotId()), run.getBatchWorkplanId());
+    }
+
+    /**
+     * The batch's analyses that still wait for a result, as run rows: entered
+     * through the Results Entry panel and recorded into the run (FR-D5), held when
+     * the run holds their test.
+     */
+    private List<ResultRunRow> workplanRows(ResultRun run) {
+        List<String> ids = baseObjectDAO.getBatchAnalysisIds(run.getId());
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        String cancelled = statusService.getStatusID(AnalysisStatus.Canceled);
+        Map<String, RunHoldCause> holds = runQcService.holdCauses(run.getId());
+        Set<String> noControl = runQcService.testVerdicts(run.getId()).entrySet().stream()
+                .filter(entry -> entry.getValue() == RunTestVerdict.NO_CONTROL).map(Map.Entry::getKey)
+                .collect(Collectors.toSet());
+        Map<String, String> names = new HashMap<>();
+        List<ResultRunRow> rows = new ArrayList<>();
+        for (Analysis analysis : analysisService.getAnalysesByIdsWithDetails(ids)) {
+            if (cancelled.equals(analysis.getStatusId()) || resultService.getResultsByAnalysis(analysis).stream()
+                    .anyMatch(result -> StringUtils.isNotBlank(result.getValue()))) {
+                continue;
+            }
+            String testId = analysis.getTest() == null ? null : analysis.getTest().getId();
+            RunHoldCause hold = testId == null ? null : holds.get(testId);
+            String accession = analysis.getSampleItem() == null || analysis.getSampleItem().getSample() == null ? null
+                    : analysis.getSampleItem().getSample().getAccessionNumber();
+            String name = testId == null ? null : names.computeIfAbsent(testId, rowClassifier::catalogNameOf);
+            rows.add(new ResultRunRow(WORKPLAN_ROW_PREFIX + analysis.getId(), accession, name, null, null, null, false,
+                    false, null, null, null, null,
+                    hold != null ? ResultRunRowCategory.HELD : ResultRunRowCategory.NORMAL, testId,
+                    testId == null ? null : componentOf(testId, null), null, null, null, hold,
+                    hold == null && noControl.contains(testId)));
+        }
+        return rows;
+    }
+
+    private int workplanDispositioned(ResultRun run) {
+        long awaiting = baseObjectDAO.countBatchAnalysesAwaiting(run.getId(),
+                statusService.getStatusID(AnalysisStatus.Canceled));
+        return (int) Math.max(0, run.getRowCount() - awaiting);
+    }
+
+    private static List<String> workplanUnits(ResultRun run) {
+        return run.getTestSectionId() == null ? List.of() : List.of(run.getTestSectionId());
+    }
+
+    private String lotNumberOf(Long reagentLotId) {
+        if (reagentLotId == null) {
+            return null;
+        }
+        return inventoryLotService.getMatch("id", reagentLotId).map(InventoryLot::getLotNumber).orElse(null);
+    }
+
+    @Override
+    @Transactional
+    public ResultRun openWorkplanRun(Long batchWorkplanId, String testSectionId, String instrumentId, Long reagentLotId,
+            int rowCount, String operatorName, String sysUserId) {
+        Timestamp now = Timestamp.from(Instant.now());
+        ResultRun run = baseObjectDAO.findBatchRun(batchWorkplanId).orElse(null);
+        boolean created = run == null;
+        if (created) {
+            run = new ResultRun();
+            run.setSource(ResultRunSource.WORKPLAN);
+            run.setBatchWorkplanId(batchWorkplanId);
+            run.setOpenedAt(now);
+            run.setState(ResultRunState.OPEN);
+        } else if (!run.getState().isActive() && run.getState() != ResultRunState.SUPERSEDED) {
+            run.setState(ResultRunState.OPEN);
+            run.setCompletedAt(null);
+        }
+        run.setTestSectionId(StringUtils.trimToNull(testSectionId));
+        run.setAnalyzerId(StringUtils.trimToNull(instrumentId));
+        run.setReagentLotId(reagentLotId);
+        run.setRowCount(rowCount);
+        run.setOperatorName(StringUtils.trimToNull(operatorName));
+        run.setLastActivityAt(now);
+        run.setSysUserId(sysUserId);
+        if (created) {
+            run.setId(insert(run));
+        } else {
+            update(run);
+        }
+        runQcService.refreshState(run.getId(), sysUserId);
+        return run;
+    }
+
+    @Override
+    @Transactional
+    public void completeWorkplanRun(Long batchWorkplanId, String sysUserId) {
+        baseObjectDAO.findBatchRun(batchWorkplanId).filter(run -> run.getState().isActive()).ifPresent(run -> {
+            Timestamp now = Timestamp.from(Instant.now());
+            run.setState(ResultRunState.COMPLETE);
+            run.setCompletedAt(now);
+            run.setLastActivityAt(now);
+            run.setSysUserId(sysUserId);
+            update(run);
+        });
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Long> batchRunId(Long batchWorkplanId) {
+        return baseObjectDAO.findBatchRun(batchWorkplanId).map(ResultRun::getId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Long> activeBatchRunsOf(Collection<String> analysisIds) {
+        Map<String, Long> runs = new HashMap<>();
+        for (Object[] row : baseObjectDAO.getActiveBatchRunsOfAnalyses(analysisIds)) {
+            runs.put(String.valueOf(row[0]), ((Number) row[1]).longValue());
+        }
+        return runs;
+    }
+
+    @Override
+    @Transactional
+    public void workplanResultSaved(Long runId, String sysUserId) {
+        ResultRun run = runId == null ? null : baseObjectDAO.get(runId).orElse(null);
+        if (run == null || run.getSource() != ResultRunSource.WORKPLAN || !run.getState().isActive()) {
+            return;
+        }
+        Timestamp now = Timestamp.from(Instant.now());
+        run.setLastActivityAt(now);
+        run.setSysUserId(sysUserId);
+        if (baseObjectDAO.countBatchAnalysesAwaiting(runId, statusService.getStatusID(AnalysisStatus.Canceled)) == 0) {
+            run.setState(ResultRunState.COMPLETE);
+            run.setCompletedAt(now);
+        }
+        update(run);
+    }
+
+    @Override
+    public IResultUpdate recordIntoWorkplanRuns(Collection<Result> results, String sysUserId) {
+        List<Result> unplaced = results == null ? List.of()
+                : results.stream().filter(result -> result != null && result.getRunId() == null
+                        && result.getAnalysis() != null && result.getAnalysis().getId() != null).toList();
+        Map<String, Long> runs = unplaced.isEmpty() ? Map.of()
+                : activeBatchRunsOf(unplaced.stream().map(result -> result.getAnalysis().getId()).distinct().toList());
+        Set<Long> touched = new LinkedHashSet<>();
+        for (Result result : unplaced) {
+            Long runId = runs.get(result.getAnalysis().getId());
+            if (runId != null) {
+                result.setRunId(runId);
+                touched.add(runId);
+            }
+        }
+        return new IResultUpdate() {
+            @Override
+            public void transactionalUpdate(IResultSaveService saveService) {
+                touched.forEach(runId -> workplanResultSaved(runId, sysUserId));
+            }
+
+            @Override
+            public void postTransactionalCommitUpdate(IResultSaveService saveService) {
+            }
+        };
     }
 
     @Override
@@ -265,6 +483,14 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
             int pageSize) {
         return visibleRun(runId, viewer).map(seen -> {
             int size = PAGE_SIZES.contains(pageSize) ? pageSize : DEFAULT_PAGE_SIZE;
+            if (seen.run().getSource() == ResultRunSource.WORKPLAN) {
+                List<ResultRunRow> matching = workplanRows(seen.run()).stream()
+                        .filter(row -> chip.matches(row.category())).toList();
+                int pages = Math.max(1, (matching.size() + size - 1) / size);
+                int current = Math.min(Math.max(page, 1), pages);
+                return new ResultRunRowsPage(matching.stream().skip((long) (current - 1) * size).limit(size).toList(),
+                        current, size, matching.size());
+            }
             List<ClassifiedRow> matching = inReviewOrder(classifyVisible(seen, viewer)).stream()
                     .filter(row -> chip.matches(row.category())).toList();
             int pages = Math.max(1, (matching.size() + size - 1) / size);
@@ -379,7 +605,31 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
             item.setWaitingRun(
                     byPart.get(partKey(item.getAccessionNumber(), item.getTestId(), item.getTestResultComponentId())));
         }
+        markBatched(pending, runs, heldTests);
         markHeldResults(items);
+    }
+
+    /**
+     * FR-D5: a pending row whose analysis is batched in an open or held workplan
+     * run carries that run, so it reads "Batched in RUN-x" and its result records
+     * into the run; held when the run holds its test.
+     */
+    private void markBatched(List<TestResultItem> pending, Map<Long, WaitingRun> runs,
+            Map<Long, Map<String, RunHoldCause>> heldTests) {
+        List<TestResultItem> unmarked = pending.stream()
+                .filter(item -> item.getWaitingRun() == null && StringUtils.isNotBlank(item.getAnalysisId())).toList();
+        if (unmarked.isEmpty()) {
+            return;
+        }
+        Map<String, Long> batched = activeBatchRunsOf(
+                unmarked.stream().map(TestResultItem::getAnalysisId).distinct().toList());
+        for (TestResultItem item : unmarked) {
+            Long runId = batched.get(item.getAnalysisId());
+            if (runId != null) {
+                item.setWaitingRun(runs.computeIfAbsent(runId, this::waitingRun)
+                        .held(heldTests.computeIfAbsent(runId, runQcService::holdCauses).get(item.getTestId())));
+            }
+        }
     }
 
     /**
@@ -474,6 +724,11 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
             return Optional.empty();
         }
         return baseObjectDAO.get(runId).flatMap(run -> {
+            if (run.getSource() == ResultRunSource.WORKPLAN) {
+                List<String> units = workplanUnits(run);
+                return unitsVisible(units, viewer) ? Optional.of(new VisibleRun(run, List.of(), units))
+                        : Optional.empty();
+            }
             List<String> units = analyzerUnits(run.getAnalyzerId());
             List<AnalyzerResults> staged = baseObjectDAO.getStagedRows(List.of(run.getId()));
             boolean seen = staged.isEmpty() ? unitsVisible(units, viewer)

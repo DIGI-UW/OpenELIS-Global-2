@@ -64,6 +64,7 @@ import org.openelisglobal.qaevent.valueholder.NceCategory;
 import org.openelisglobal.qaevent.valueholder.NceSpecimen;
 import org.openelisglobal.qc.service.QCControlLotService;
 import org.openelisglobal.qc.valueholder.QCControlLot;
+import org.openelisglobal.resultrun.service.ResultRunService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.systemuser.service.SystemUserService;
@@ -74,6 +75,7 @@ import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testreagentlink.service.TestReagentLinkService;
 import org.openelisglobal.testreagentlink.valueholder.TestReagentLink;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -113,6 +115,7 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
     private final NceCategoryService nceCategoryService;
     private final NceTypeService nceTypeService;
     private final NceSpecimenService nceSpecimenService;
+    private final ResultRunService resultRunService;
 
     public BatchWorkplanServiceImpl(BatchWorkplanDAO batchWorkplanDAO, BatchWorkplanItemDAO batchWorkplanItemDAO,
             AnalysisService analysisService, IStatusService statusService, UserService userService,
@@ -120,8 +123,8 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
             TestReagentLinkService testReagentLinkService, InventoryItemService inventoryItemService,
             InventoryLotService inventoryLotService, AnalyzerService analyzerService, NCEventService ncEventService,
             SystemUserService systemUserService, QCControlLotService controlLotService,
-            NceCategoryService nceCategoryService, NceTypeService nceTypeService,
-            NceSpecimenService nceSpecimenService) {
+            NceCategoryService nceCategoryService, NceTypeService nceTypeService, NceSpecimenService nceSpecimenService,
+            @Lazy ResultRunService resultRunService) {
         this.batchWorkplanDAO = batchWorkplanDAO;
         this.batchWorkplanItemDAO = batchWorkplanItemDAO;
         this.analysisService = analysisService;
@@ -139,6 +142,7 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
         this.nceCategoryService = nceCategoryService;
         this.nceTypeService = nceTypeService;
         this.nceSpecimenService = nceSpecimenService;
+        this.resultRunService = resultRunService;
     }
 
     @Override
@@ -455,7 +459,23 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
         batch.setGeneratedAt(now);
         batch.setGeneratedByUserId(actorId);
         stampUpdate(batch, sysUserId);
-        return toBatchResponse(batchWorkplanDAO.update(batch));
+        BatchWorkplan released = batchWorkplanDAO.update(batch);
+        openRunOf(released, sysUserId);
+        return toBatchResponse(released);
+    }
+
+    /**
+     * OGC-1200 FR-B2, FR-G4: the released batch is a run, with the batch's lab
+     * unit, instrument, reagent lot and owner, so its results, controls and holds
+     * are the run's.
+     */
+    private void openRunOf(BatchWorkplan batch, String sysUserId) {
+        resultRunService.openWorkplanRun(batch.getId(),
+                batch.getTestSectionId() == null ? null : String.valueOf(batch.getTestSectionId()),
+                batch.getInstrumentId() == null ? null : String.valueOf(batch.getInstrumentId()),
+                batch.getReagentLotId(), batch.getItems() == null ? 0 : batch.getItems().size(),
+                batch.getCreatedByUserId() == null ? null : userDisplayName(String.valueOf(batch.getCreatedByUserId())),
+                sysUserId);
     }
 
     @Override
@@ -497,6 +517,7 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
                     batch.setCompletedAt(Timestamp.from(now));
                     stampUpdate(batch, sysUserId);
                     batchWorkplanDAO.update(batch);
+                    resultRunService.completeWorkplanRun(batch.getId(), sysUserId);
                     changed++;
                 }
             } else if (batch.getStatus() == BatchWorkplanStatus.COMPLETED && batch.getCompletedAt() != null
@@ -545,7 +566,11 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
             batch.setArchivedAt(now);
         }
 
-        return toBatchResponse(batchWorkplanDAO.update(batch));
+        BatchWorkplan changed = batchWorkplanDAO.update(batch);
+        if (nextStatus == BatchWorkplanStatus.COMPLETED || nextStatus == BatchWorkplanStatus.ARCHIVED) {
+            resultRunService.completeWorkplanRun(changed.getId(), sysUserId);
+        }
+        return toBatchResponse(changed);
     }
 
     /**
@@ -924,6 +949,7 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
             }
         }
         response.setInstrumentId(batch.getInstrumentId());
+        response.setRunId(batch.getId() == null ? null : resultRunService.batchRunId(batch.getId()).orElse(null));
         response.setGeneratedAt(batch.getGeneratedAt());
         response.setGeneratedBy(batch.getGeneratedByUserId() == null ? null
                 : userDisplayName(String.valueOf(batch.getGeneratedByUserId())));

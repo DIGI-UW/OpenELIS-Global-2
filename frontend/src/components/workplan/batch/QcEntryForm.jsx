@@ -25,9 +25,17 @@ import {
  * Inline QC entry on a batch tile (OGC-427 FR-QCE-001..003). It records a
  * bench control run through the existing bench QC capture endpoint, so the
  * run lands in the same QC history, Levey-Jennings chart and violation path
- * as any other bench run; the workplan evaluates nothing itself.
+ * as any other bench run; the workplan evaluates nothing itself. Once the batch
+ * is released it is a run (OGC-1200 FR-B2), and the control is recorded on that
+ * run, so its verdict covers the batch's test there.
  */
-export default function QcEntryForm({ batchId, lots, onSaved, onCancel }) {
+export default function QcEntryForm({
+  batchId,
+  runId,
+  lots,
+  onSaved,
+  onCancel,
+}) {
   const intl = useIntl();
   const { configurationProperties = {} } =
     useContext(ConfigurationContext) || {};
@@ -58,7 +66,7 @@ export default function QcEntryForm({ batchId, lots, onSaved, onCancel }) {
     setBusy(true);
     setError(null);
     postToOpenElisServerJsonResponse(
-      "/rest/qc/results",
+      runId ? `/rest/qc/results?runId=${runId}` : "/rest/qc/results",
       JSON.stringify({
         source: "MANUAL",
         qualitativeOutcome: outcome,
