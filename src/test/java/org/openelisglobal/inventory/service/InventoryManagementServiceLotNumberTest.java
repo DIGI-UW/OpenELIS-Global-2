@@ -15,7 +15,6 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 
@@ -48,7 +47,6 @@ public class InventoryManagementServiceLotNumberTest {
         item.setCode("TAQ-DNA-POLYMERASE");
         item.setName("Taq DNA Polymerase");
         item.setUnits("mL");
-        item.setItemType(ItemType.REAGENT);
         when(inventoryItemService.get(anyLong())).thenReturn(item);
         when(inventoryLotService.save(any(InventoryLot.class))).thenAnswer(invocation -> {
             InventoryLot saved = invocation.getArgument(0);

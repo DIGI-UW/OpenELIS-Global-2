@@ -18,7 +18,7 @@ import { useOrderContext } from "../OrderContext";
 import { useNewOrderReset } from "../useNewOrderReset";
 import {
   describeUnmetRequirements,
-  hasRequesterOrRequestor,
+  fieldOrderRequirements,
 } from "../saveRequirements";
 import SaveRequirementsNotice from "../SaveRequirementsNotice";
 import { NotificationContext } from "../../layout/Layout";
@@ -33,6 +33,7 @@ import RequesterSection from "./sections/RequesterSection";
 import ProgramSection from "./sections/ProgramSection";
 import SampleTestSection from "./sections/SampleTestSection";
 import "../order-workflow.scss";
+import { orderSavedMessage } from "../orderSavedMessage";
 
 const WORKFLOW_TYPE = "vector";
 const WORKFLOW_PREFIX = "/order/vector";
@@ -122,22 +123,13 @@ const VectorOrderEnter = () => {
     envFields.vecCollectionSiteName ||
     envFields.vecOrganismGroupId
   );
-  const hasSampleTypes = samples.some((s) => s.sampleTypeId);
-  const saveRequirements = [
-    {
-      met: Boolean(localLabNumber),
-      labelId: "order.save.requirement.labNumber",
-    },
-    {
-      met: hasCollectionSite,
-      labelId: "order.save.requirement.collectionSite",
-    },
-    {
-      met: hasRequesterOrRequestor(orderData?.sampleOrderItems),
-      labelId: "order.save.requirement.requesterOrRequestor",
-    },
-    { met: hasSampleTypes, labelId: "order.save.requirement.sampleType" },
-  ];
+  const saveRequirements = fieldOrderRequirements({
+    labNumber: localLabNumber,
+    hasSite: hasCollectionSite,
+    siteLabelId: "order.save.requirement.collectionSite",
+    sampleOrderItems: orderData?.sampleOrderItems,
+    samples,
+  });
   const canSave = saveRequirements.every((requirement) => requirement.met);
   const canProceed = canSave;
 
@@ -156,7 +148,10 @@ const VectorOrderEnter = () => {
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "save.order.success.msg" }),
+        message: orderSavedMessage(
+          intl,
+          labNumber || orderData?.sampleOrderItems?.labNo,
+        ),
       });
       setNotificationVisible(true);
     } catch (error) {
@@ -175,9 +170,11 @@ const VectorOrderEnter = () => {
     try {
       await saveOrderEntry();
       markStepComplete("enter");
+      const savedLabNumber =
+        labNumber || orderData?.sampleOrderItems?.labNo || "";
       history.push(
-        labNumber
-          ? `/order/vector/label?order=${encodeURIComponent(labNumber)}`
+        savedLabNumber
+          ? `/order/vector/label?order=${encodeURIComponent(savedLabNumber)}`
           : "/order/vector/label",
       );
     } catch (error) {

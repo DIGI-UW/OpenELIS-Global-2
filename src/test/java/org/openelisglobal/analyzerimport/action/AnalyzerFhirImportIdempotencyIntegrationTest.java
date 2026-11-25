@@ -32,9 +32,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  */
 public class AnalyzerFhirImportIdempotencyIntegrationTest extends BaseWebContextSensitiveTest {
 
-    private static final long PROFILE_BINDING_ID = 98411L;
-    private static final long SITE_BINDING_ID = 98412L;
-    private static final long SITE_BINDING_REVISION_ID = 98413L;
+    private static final long MAPPING_ID = 98413L;
     private static final long ANALYZER_ID = 98414L;
     private static final String CONNECTION_ID = "bridge-connection-7f3c";
     private static final Path FIXTURE = Path.of("tools", "openelis-analyzer-bridge", "contracts", "analyzer", "v1",
@@ -51,23 +49,15 @@ public class AnalyzerFhirImportIdempotencyIntegrationTest extends BaseWebContext
         super.setUp();
         jdbc = new JdbcTemplate(dataSource);
         cleanup();
+        jdbc.update("INSERT INTO clinlims.analyzer (id, name, is_active, bridge_connection_id, last_updated)"
+                + " VALUES (?, 'Idempotency test analyzer', true, ?, NOW())", ANALYZER_ID, CONNECTION_ID);
         jdbc.update(
-                "INSERT INTO clinlims.analyzer_profile_binding"
-                        + " (id, profile_id, profile_revision, profile_fingerprint, last_updated)"
-                        + " VALUES (?, 'site.unknown-capable', 3, ?, NOW())",
-                PROFILE_BINDING_ID, "sha256:" + "3".repeat(64));
-        jdbc.update("INSERT INTO clinlims.analyzer_site_binding"
-                + " (id, profile_binding_id, created_by, created_at, last_updated) VALUES (?, ?, '1', NOW(), NOW())",
-                SITE_BINDING_ID, PROFILE_BINDING_ID);
-        jdbc.update("INSERT INTO clinlims.analyzer_site_binding_revision"
-                + " (id, site_binding_id, revision_number, binding_fingerprint, created_by, created_at, last_updated)"
-                + " VALUES (?, ?, 1, ?, '1', NOW(), NOW())", SITE_BINDING_REVISION_ID, SITE_BINDING_ID,
-                "sha256:" + "4".repeat(64));
-        jdbc.update(
-                "INSERT INTO clinlims.analyzer"
-                        + " (id, name, is_active, bridge_connection_id, site_binding_revision_id, last_updated)"
-                        + " VALUES (?, 'Idempotency test analyzer', true, ?, ?, NOW())",
-                ANALYZER_ID, CONNECTION_ID, SITE_BINDING_REVISION_ID);
+                "INSERT INTO clinlims.analyzer_mapping"
+                        + " (id, analyzer_id, revision_number, profile_id, profile_revision, profile_fingerprint,"
+                        + " mapping_fingerprint, created_by, created_at, last_updated)"
+                        + " VALUES (?, ?, 1, 'site.unknown-capable', 3, ?, ?, '1', NOW(), NOW())",
+                MAPPING_ID, ANALYZER_ID, "sha256:" + "3".repeat(64), "sha256:" + "4".repeat(64));
+        jdbc.update("UPDATE clinlims.analyzer SET mapping_id = ? WHERE id = ?", MAPPING_ID, ANALYZER_ID);
     }
 
     @After
@@ -108,9 +98,8 @@ public class AnalyzerFhirImportIdempotencyIntegrationTest extends BaseWebContext
         }
         jdbc.update("DELETE FROM clinlims.analyzer_results WHERE analyzer_id = ?", ANALYZER_ID);
         jdbc.update("DELETE FROM clinlims.analyzer_delivery_receipt WHERE analyzer_id = ?", ANALYZER_ID);
+        jdbc.update("UPDATE clinlims.analyzer SET mapping_id = NULL WHERE id = ?", ANALYZER_ID);
+        jdbc.update("DELETE FROM clinlims.analyzer_mapping WHERE id = ?", MAPPING_ID);
         jdbc.update("DELETE FROM clinlims.analyzer WHERE id = ?", ANALYZER_ID);
-        jdbc.update("DELETE FROM clinlims.analyzer_site_binding_revision WHERE id = ?", SITE_BINDING_REVISION_ID);
-        jdbc.update("DELETE FROM clinlims.analyzer_site_binding WHERE id = ?", SITE_BINDING_ID);
-        jdbc.update("DELETE FROM clinlims.analyzer_profile_binding WHERE id = ?", PROFILE_BINDING_ID);
     }
 }

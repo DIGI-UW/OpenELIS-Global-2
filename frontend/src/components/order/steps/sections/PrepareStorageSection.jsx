@@ -7,10 +7,8 @@ import {
   Tag,
   TextArea,
   Checkbox,
-  Button,
   InlineNotification,
 } from "@carbon/react";
-import { Printer } from "@carbon/icons-react";
 import LocationPickerInline from "../../../storage/LocationPicker/LocationPickerInline";
 import {
   getDeepestLocationSelection,
@@ -64,14 +62,6 @@ const PrepareStorageSection = ({
       storagePositionCoordinate: positionToCoordinate(state.position) || "",
       storageHierarchicalPath: selectionToHierarchicalPath(state.selection),
     });
-  };
-
-  const printLabels = () => {
-    if (!labNumber) return;
-    window.open(
-      `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=default&quantity=1`,
-      "_blank",
-    );
   };
 
   return (
@@ -229,21 +219,6 @@ const PrepareStorageSection = ({
               />
             </>
           )}
-
-          <div className="label-buttons">
-            <Button
-              kind="tertiary"
-              size="sm"
-              renderIcon={Printer}
-              disabled={!labNumber}
-              onClick={printLabels}
-            >
-              <FormattedMessage
-                id="order.samples.printLabels"
-                defaultMessage="Print labels"
-              />
-            </Button>
-          </div>
         </>
       )}
     </Tile>

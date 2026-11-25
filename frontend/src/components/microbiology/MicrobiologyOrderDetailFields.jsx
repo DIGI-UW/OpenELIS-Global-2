@@ -8,10 +8,10 @@ import {
   Select,
   SelectItem,
   Tag,
-  TextArea,
 } from "@carbon/react";
 import { format } from "date-fns";
 import { useIntl } from "react-intl";
+import MacroTextArea from "../common/textMacro/MacroTextArea";
 import CustomDatePicker from "../common/CustomDatePicker";
 import { ConfigurationContext } from "../layout/Layout";
 import {
@@ -32,12 +32,6 @@ export const emptyMicrobiologyOrderDetail = {
   antibioticExposure: false,
 };
 
-// Starting values for an order that qualifies for the microbiology workflow.
-export const defaultMicrobiologyOrderDetail = {
-  ...emptyMicrobiologyOrderDetail,
-  culturePurpose: "CLINICAL_DIAGNOSTIC",
-};
-
 export const formatAdmissionDateForPicker = formatIsoDateForBackend;
 export const formatAdmissionDateForApi = formatPickerDateForIso;
 
@@ -50,6 +44,7 @@ const MicrobiologyOrderDetailFields = ({
   isReadOnly = false,
   showCultureMethod = true,
   collectionDate = "",
+  showCulturePurpose = true,
 }) => {
   const intl = useIntl();
   const { configurationProperties = {} } =
@@ -124,41 +119,43 @@ const MicrobiologyOrderDetailFields = ({
           )}
         </div>
       )}
-      <div className="microbiology-order-detail-fields__wide">
-        <RadioButtonGroup
-          legendText={intl.formatMessage({
-            id: "microbiology.culturePurpose.label",
-          })}
-          name={`${idPrefix}-culture-purpose`}
-          valueSelected={fields.culturePurpose || ""}
-          onChange={(value) => onChange("culturePurpose", value)}
-          orientation="vertical"
-        >
-          <RadioButton
-            id={`${idPrefix}-culture-purpose-clinical`}
-            labelText={intl.formatMessage({
-              id: "microbiology.culturePurpose.clinical",
+      {showCulturePurpose && (
+        <div className="microbiology-order-detail-fields__wide">
+          <RadioButtonGroup
+            legendText={intl.formatMessage({
+              id: "microbiology.culturePurpose.label",
             })}
-            value="CLINICAL_DIAGNOSTIC"
-            disabled={isReadOnly}
-          />
-          <RadioButton
-            id={`${idPrefix}-culture-purpose-screening`}
-            labelText={intl.formatMessage({
-              id: "microbiology.culturePurpose.screening",
-            })}
-            value="ACTIVE_SCREENING"
-            disabled={isReadOnly}
-          />
-        </RadioButtonGroup>
-        {!fields.culturePurpose && (
-          <Tag type="gray" size="sm">
-            {intl.formatMessage({
-              id: "microbiology.culturePurpose.unspecified",
-            })}
-          </Tag>
-        )}
-      </div>
+            name={`${idPrefix}-culture-purpose`}
+            valueSelected={fields.culturePurpose || ""}
+            onChange={(value) => onChange("culturePurpose", value)}
+            orientation="vertical"
+          >
+            <RadioButton
+              id={`${idPrefix}-culture-purpose-clinical`}
+              labelText={intl.formatMessage({
+                id: "microbiology.culturePurpose.clinical",
+              })}
+              value="CLINICAL_DIAGNOSTIC"
+              disabled={isReadOnly}
+            />
+            <RadioButton
+              id={`${idPrefix}-culture-purpose-screening`}
+              labelText={intl.formatMessage({
+                id: "microbiology.culturePurpose.screening",
+              })}
+              value="ACTIVE_SCREENING"
+              disabled={isReadOnly}
+            />
+          </RadioButtonGroup>
+          {!fields.culturePurpose && (
+            <Tag type="gray" size="sm">
+              {intl.formatMessage({
+                id: "microbiology.culturePurpose.unspecified",
+              })}
+            </Tag>
+          )}
+        </div>
+      )}
       <Select
         id={`${idPrefix}-patient-origin`}
         labelText={intl.formatMessage({
@@ -247,8 +244,9 @@ const MicrobiologyOrderDetailFields = ({
         disabled={isReadOnly}
       />
       <div className="microbiology-order-detail-fields__wide">
-        <TextArea
+        <MacroTextArea
           id={`${idPrefix}-clinical-history`}
+          context="MICROBIOLOGY_CLINICAL_HISTORY"
           labelText={intl.formatMessage({
             id: "microbiology.orderDetail.clinicalHistory",
           })}

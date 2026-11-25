@@ -129,11 +129,9 @@ cd /path/to/OpenELIS-Global-2
 
 ### Docker Container Not Found
 
-Ensure the database container is running:
-
-```bash
-docker compose -f dev.docker-compose.yml up -d database
-```
+Use the owning isolated CI runner. It starts the database and passes the exact
+container ID to this internal loader. Do not start a fixed-name database or
+reload fixtures into the interactive development stack to reproduce CI.
 
 ### Direct psql Connection Issues
 

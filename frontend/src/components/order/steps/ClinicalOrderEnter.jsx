@@ -7,6 +7,7 @@ import SaveFailureNotice, { saveFailureMessage } from "../SaveFailureNotice";
 import { useOrderContext } from "../OrderContext";
 import { useNewOrderReset } from "../useNewOrderReset";
 import { describeUnmetRequirements } from "../saveRequirements";
+import { orderSavedMessage } from "../orderSavedMessage";
 import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -20,7 +21,18 @@ import ProgramSection from "./sections/ProgramSection";
 import ClinicalInfoSection from "./sections/ClinicalInfoSection";
 import RequesterSection from "./sections/RequesterSection";
 import SampleTestSection from "./sections/SampleTestSection";
+import MicroOrderPreview, {
+  MicroSampleCaseNote,
+  useMicroOrderPreview,
+} from "./sections/MicroOrderPreview";
 import "../order-workflow.scss";
+
+/** Patient fields the patient form marks inline when the server refuses them. */
+const PATIENT_INLINE_FIELDS = [
+  "patientProperties.nationalId",
+  "patientProperties.gender",
+  "patientProperties.birthDateForDisplay",
+];
 
 const WORKFLOW_TYPE = "clinical";
 const WORKFLOW_PREFIX = "/order/clinical";
@@ -52,8 +64,18 @@ const ClinicalOrderEnter = () => {
     configurationProperties.SampleEntryReferralSiteNameRequired === "true";
   const providerRequired =
     configurationProperties.REQUESTER_REQUIRED === "true";
+  const nationalIdRequired =
+    configurationProperties.PATIENT_NATIONAL_ID_REQUIRED !== "false";
+  const patientSexRequired =
+    configurationProperties.PATIENT_SEX_REQUIRED !== "false";
+  const patientAgeRequired =
+    configurationProperties.PATIENT_AGE_REQUIRED !== "false";
 
   const isNewOrder = useNewOrderReset(WORKFLOW_PREFIX);
+  const microPreview = useMicroOrderPreview({
+    samples,
+    savedOrder: isReadOnly || isEditMode,
+  });
 
   // Initialise empty — populated by the sync effect below after the mount
   // reset runs, preventing stale cross-domain lab numbers from bleeding in.
@@ -146,6 +168,37 @@ const ClinicalOrderEnter = () => {
     orderData?.sampleOrderItems?.noPatientOverride,
   );
   const hasSampleTypes = samples.some((s) => s.sampleTypeId);
+  const isEqa = Boolean(orderData?.sampleOrderItems?.isEQASample);
+  const patientValue = (field) =>
+    String(orderData?.patientProperties?.[field] ?? "").trim() !== "";
+  const patientFieldTarget = (fieldId) => [
+    fieldId,
+    "patient-edit-toggle",
+    "patient-edit-details",
+  ];
+  const patientFieldRequirements =
+    hasPatient && !noPatientOverride && !isEqa
+      ? [
+          {
+            met: !nationalIdRequired || patientValue("nationalId"),
+            labelId: "order.save.requirement.nationalId",
+            itemId: "order.continue.item.nationalId",
+            targetId: patientFieldTarget("nationalId"),
+          },
+          {
+            met: !patientSexRequired || patientValue("gender"),
+            labelId: "order.save.requirement.patientSex",
+            itemId: "order.continue.item.patientSex",
+            targetId: patientFieldTarget("create_patient_gender"),
+          },
+          {
+            met: !patientAgeRequired || patientValue("birthDateForDisplay"),
+            labelId: "order.save.requirement.patientBirthDate",
+            itemId: "order.continue.item.birthDate",
+            targetId: patientFieldTarget("date-picker-default-id"),
+          },
+        ]
+      : [];
   const hasProvider = Boolean(
     orderData?.sampleOrderItems?.providerPersonId ||
     orderData?.sampleOrderItems?.providerId,
@@ -165,11 +218,18 @@ const ClinicalOrderEnter = () => {
       targetId: "labNumber",
     },
     {
-      met: hasPatient || noPatientOverride || !patientRequired,
+      met: hasPatient || noPatientOverride || isEqa || !patientRequired,
       labelId: "order.save.requirement.patient",
       itemId: "order.continue.item.patient",
       targetId: "order-patient-search-lastName",
     },
+    {
+      met: !isEqa || Boolean(orderData?.sampleOrderItems?.eqaProgramId),
+      labelId: "order.save.requirement.eqaScheme",
+      itemId: "order.continue.item.eqaScheme",
+      targetId: "eqaProgramId",
+    },
+    ...patientFieldRequirements,
     {
       met: hasSampleTypes,
       labelId: "order.save.requirement.sampleType",
@@ -184,13 +244,28 @@ const ClinicalOrderEnter = () => {
       itemId: "order.continue.item.provider",
       targetId: "providerName",
     },
+    ...samples
+      .map((sample, index) => ({ sample, index }))
+      .filter(
+        ({ sample }) =>
+          sample.sampleTypeId &&
+          !sample.tests?.length &&
+          !sample.panels?.length,
+      )
+      .map(({ index }) => ({
+        met: false,
+        key: `order.continue.item.noTests-${index}`,
+        itemId: "order.continue.item.noTests",
+        values: { number: index + 1 },
+        targetId: `testSearch-${index}`,
+      })),
   ];
   const canSave = saveRequirements.every((requirement) => requirement.met);
   const toContinue = [...saveRequirements, ...completeRequirements]
     .filter((requirement) => !requirement.met)
     .map((requirement) => ({
-      id: requirement.itemId,
-      label: intl.formatMessage({ id: requirement.itemId }),
+      id: requirement.key || requirement.itemId,
+      label: intl.formatMessage({ id: requirement.itemId }, requirement.values),
       targetId: requirement.targetId,
     }));
 
@@ -214,7 +289,10 @@ const ClinicalOrderEnter = () => {
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "save.order.success.msg" }),
+        message: orderSavedMessage(
+          intl,
+          labNumber || orderData?.sampleOrderItems?.labNo || localLabNumber,
+        ),
       });
       setNotificationVisible(true);
       return true;
@@ -234,9 +312,11 @@ const ClinicalOrderEnter = () => {
     try {
       await saveOrderEntry();
       markStepComplete("enter");
+      const savedLabNumber =
+        labNumber || orderData?.sampleOrderItems?.labNo || "";
       history.push(
-        labNumber
-          ? `/order/clinical/collect?order=${encodeURIComponent(labNumber)}`
+        savedLabNumber
+          ? `/order/clinical/collect?order=${encodeURIComponent(savedLabNumber)}`
           : "/order/clinical/collect",
       );
     } catch (error) {
@@ -259,7 +339,14 @@ const ClinicalOrderEnter = () => {
       toContinue={toContinue}
     >
       {notificationVisible && <AlertDialog />}
-      <SaveFailureNotice inlineFields={["sampleOrderItems.labNo"]} />
+      <SaveFailureNotice
+        inlineFields={[
+          "sampleOrderItems.labNo",
+          "sampleOrderItems.eqaProgramId",
+          "sampleOrderItems.eqaCycleId",
+          ...PATIENT_INLINE_FIELDS,
+        ]}
+      />
 
       <Stack gap={7}>
         {/* 1. Order: the lab number, with the EQA and no-patient decisions
@@ -293,16 +380,20 @@ const ClinicalOrderEnter = () => {
           setOrderData={setOrderData}
           isReadOnly={isReadOnly && !isEditMode}
           patientRequired={patientRequired}
+          fieldErrors={fieldErrors}
         />
 
-        {/* 2. Patient */}
-        <PatientSearchSection
-          orderData={orderData}
-          setOrderData={setOrderData}
-          setPhoneValidation={setPhoneValidation}
-          isReadOnly={isReadOnly && !isEditMode}
-          required={patientRequired && !noPatientOverride}
-        />
+        {/* 2. Patient. A proficiency sample has none (OGC-1483). */}
+        {!isEqa && (
+          <PatientSearchSection
+            orderData={orderData}
+            setOrderData={setOrderData}
+            setPhoneValidation={setPhoneValidation}
+            isReadOnly={isReadOnly && !isEditMode}
+            required={patientRequired && !noPatientOverride}
+            fieldErrors={fieldErrors}
+          />
+        )}
 
         {/* 3. Requester, before the request details, as on the paper form */}
         <RequesterSection
@@ -318,7 +409,6 @@ const ClinicalOrderEnter = () => {
         <ProgramSection
           orderData={orderData}
           setOrderData={setOrderData}
-          samples={samples}
           isReadOnly={isReadOnly && !isEditMode}
           domain="CLINICAL"
         />
@@ -337,7 +427,11 @@ const ClinicalOrderEnter = () => {
           setOrderData={setOrderData}
           isReadOnly={isReadOnly && !isEditMode}
           workflowType={WORKFLOW_TYPE}
+          renderSampleNote={(index) => (
+            <MicroSampleCaseNote preview={microPreview} sampleIndex={index} />
+          )}
         />
+        <MicroOrderPreview preview={microPreview} />
         {/* T: order attachments existed on the legacy screen with an
             unchanged REST API; only the new lanes had no way in. */}
         <OrderAttachmentsSection

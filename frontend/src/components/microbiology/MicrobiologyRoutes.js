@@ -26,10 +26,29 @@ export const MICROBIOLOGY_CASE_ACTIONS = [
   "mark-positive",
   "mark-no-growth",
   "new-ast-attempt",
-  "set-protocol",
-  "change-protocol",
 ];
 export const MICROBIOLOGY_CRITICAL_TARGET_TYPES = ["CASE", "ISOLATE"];
+
+const sectionScopes = {
+  setup: "CULTURE",
+  timeline: "HISTORY",
+  isolates: "ISOLATES",
+  ast: "AST",
+  reports: "REPORT",
+  amendment: "AMENDMENT",
+  "critical-communication": "CRITICAL",
+  nonconformance: "NONCONFORMANCE",
+};
+
+export const routedScope = (search) => {
+  const params = new URLSearchParams(search);
+  return (
+    params.get("scope") ||
+    sectionScopes[params.get("section")] ||
+    { cultures: "CULTURE", ast: "AST" }[params.get("grain")] ||
+    "INITIAL"
+  );
+};
 
 const DEFAULT_WORKLIST_STATE = {
   grain: "cultures",
@@ -40,7 +59,6 @@ const DEFAULT_WORKLIST_STATE = {
   organism: [],
   origin: [],
   significance: [],
-  workflow: "",
   stage: "",
   urgency: "",
   due: "",
@@ -86,6 +104,9 @@ const normalizeWorklistState = (state = {}, now = labNow()) => {
   return {
     grain,
     status,
+    labUnitIds: values(
+      state.labUnitIds?.length ? state.labUnitIds : state.labUnitId,
+    ),
     from:
       grain === "ast"
         ? validIsoDate(state.from)
@@ -102,12 +123,11 @@ const normalizeWorklistState = (state = {}, now = labNow()) => {
     organism: grain === "ast" ? values(state.organism) : [],
     origin: grain === "ast" ? values(state.origin) : [],
     significance: grain === "ast" ? values(state.significance) : [],
-    workflow: textValue(state.workflow),
     stage: textValue(state.stage),
     urgency: textValue(state.urgency),
     due: textValue(state.due),
     q: textValue(state.q),
-    sort: ["priority", "newest", "workflow"].includes(state.sort)
+    sort: ["priority", "newest"].includes(state.sort)
       ? state.sort
       : DEFAULT_WORKLIST_STATE.sort,
     page: positiveInteger(state.page, DEFAULT_WORKLIST_STATE.page),
@@ -121,9 +141,10 @@ const normalizeWorklistState = (state = {}, now = labNow()) => {
 
 const toSearch = (state, caseState = {}) => {
   const params = new URLSearchParams();
-  if (state.grain !== DEFAULT_WORKLIST_STATE.grain) {
+  if (state.grain) {
     params.set("grain", state.grain);
   }
+  (state.labUnitIds || []).forEach((id) => params.append("labUnitIds", id));
   if (state.status) {
     params.set("status", state.status);
   }
@@ -133,9 +154,6 @@ const toSearch = (state, caseState = {}) => {
     ["specimen", "organism", "origin", "significance"].forEach((key) =>
       state[key].forEach((value) => params.append(key, value)),
     );
-  }
-  if (state.workflow) {
-    params.set("workflow", state.workflow);
   }
   if (state.stage) {
     params.set("stage", state.stage);
@@ -195,6 +213,10 @@ export const parseMicrobiologyWorklistSearch = (
   return normalizeWorklistState(
     {
       grain: params.get("grain"),
+      labUnitIds: [
+        ...params.getAll("labUnitIds"),
+        params.get("labUnitId"),
+      ].filter(Boolean),
       status: params.get("status"),
       from: params.get("from"),
       to: params.get("to"),
@@ -202,7 +224,6 @@ export const parseMicrobiologyWorklistSearch = (
       organism: params.getAll("organism"),
       origin: params.getAll("origin"),
       significance: params.getAll("significance"),
-      workflow: params.get("workflow"),
       stage: params.get("stage"),
       urgency: params.get("urgency"),
       due: params.get("due"),

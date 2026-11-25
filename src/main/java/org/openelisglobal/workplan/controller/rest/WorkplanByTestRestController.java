@@ -47,7 +47,7 @@ public class WorkplanByTestRestController extends WorkplanRestController {
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
         WorkplanForm form = new WorkplanForm();
-        WorkplanPaging paging = new WorkplanPaging();
+        WorkplanPaging paging = new WorkplanPaging("test:" + testType);
         List<TestResultItem> workplanTests = new ArrayList<TestResultItem>();
         List<TestResultItem> filteredTests = new ArrayList<TestResultItem>();
 
@@ -87,7 +87,7 @@ public class WorkplanByTestRestController extends WorkplanRestController {
 
         if (!(GenericValidator.isBlankOrNull(testType) || testType.equals("0"))) {
 
-            testList = analysisService.getAllAnalysisByTestAndStatus(testType, statusList);
+            testList = withoutReferredOut(analysisService.getAllAnalysisByTestAndStatus(testType, statusList));
 
             if (testList.isEmpty()) {
                 return new ArrayList<>();
@@ -95,6 +95,7 @@ public class WorkplanByTestRestController extends WorkplanRestController {
 
             for (Analysis analysis : testList) {
                 TestResultItem testResultItem = new TestResultItem();
+                testResultItem.setAnalysisId(analysis.getId());
                 testResultItem.setTestId(testType);
                 Sample sample = analysis.getSampleItem().getSample();
                 testResultItem.setAccessionNumber(sample.getAccessionNumber());
@@ -156,6 +157,7 @@ public class WorkplanByTestRestController extends WorkplanRestController {
                     testIdList = new ArrayList<>();
                 }
                 testResultItem = new TestResultItem();
+                testResultItem.setAnalysisId(analysis.getId());
                 testResultItem.setTestId(testType);
                 testResultItem.setAccessionNumber(currentAccessionNumber);
                 markEqaSample(testResultItem, sample);

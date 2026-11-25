@@ -45,7 +45,7 @@ import {
 } from "./qcDashboardUtils";
 import "./AlertsTab.css";
 
-const AlertsTab = () => {
+const AlertsTab = ({ refreshSignal, onAcknowledged }) => {
   const intl = useIntl();
   const intlRef = useRef(intl);
   intlRef.current = intl;
@@ -79,7 +79,6 @@ const AlertsTab = () => {
   ];
 
   const loadViolations = useCallback(() => {
-    setLoading(true);
     setError(null);
 
     fetchViolations(
@@ -101,7 +100,7 @@ const AlertsTab = () => {
 
   useEffect(() => {
     loadViolations();
-  }, [loadViolations]);
+  }, [loadViolations, refreshSignal]);
 
   // Filter by time period
   const filteredViolations = useMemo(() => {
@@ -126,7 +125,7 @@ const AlertsTab = () => {
   }, [filteredViolations]);
 
   const handleAcknowledge = (violationId) => {
-    acknowledgeViolation(violationId, loadViolations, () =>
+    acknowledgeViolation(violationId, onAcknowledged || loadViolations, () =>
       setError(intl.formatMessage({ id: ACKNOWLEDGE_FAILED_KEY })),
     );
   };

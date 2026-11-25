@@ -12,6 +12,7 @@ import {
   PROVIDER_PARTICIPANT_COUNT,
 } from "../../../helpers/seed-eqa-data";
 import { pickCalendarDay } from "../../../helpers/carbon-date-picker";
+import { csrfToken } from "../../../helpers/api-session";
 
 /**
  * EQA provider cycle lifecycle (OGC-613).
@@ -34,6 +35,7 @@ import { pickCalendarDay } from "../../../helpers/carbon-date-picker";
 
 const RUN = Date.now().toString(36);
 const N = PROVIDER_PARTICIPANT_COUNT;
+const API = "/api/OpenELIS-Global/rest";
 
 let seed: ProviderSchemeSeed;
 
@@ -62,6 +64,28 @@ test.describe("EQA provider cycle lifecycle", () => {
       expect(page.getByText(state, { exact: true }).first()).toBeVisible({
         timeout: UI_TIMEOUT,
       });
+
+    await test.step("the scheme admin assigns the scheme a testable test", async () => {
+      const headers = { "X-CSRF-Token": await csrfToken(page) };
+      const testable = await page.request.get(`${API}/eqa/testable-tests`, {
+        headers,
+      });
+      const catalog = await page.request.get(`${API}/displayList/ALL_TESTS`, {
+        headers,
+      });
+      expect(testable.ok(), `testable-tests: ${testable.status()}`).toBe(true);
+      expect(catalog.ok(), `ALL_TESTS: ${catalog.status()}`).toBe(true);
+      const usable = new Set((await testable.json()).map(String));
+      const picked = ((await catalog.json()) as { id: string }[]).find((row) =>
+        usable.has(String(row.id)),
+      );
+      expect(picked, "a catalog test with a sample type").toBeTruthy();
+      const assigned = await page.request.put(
+        `${API}/eqa/programs/${seed.programId}/tests`,
+        { headers, data: { testIds: [Number(picked!.id)] } },
+      );
+      expect(assigned.ok(), `assign test: ${assigned.status()}`).toBe(true);
+    });
 
     await test.step("scheme board lists the seeded scheme", async () => {
       await page.goto("/qa/eqa/provider/schemes", { timeout: NAV_TIMEOUT });
@@ -94,8 +118,12 @@ test.describe("EQA provider cycle lifecycle", () => {
       await page.locator("#cycle-number").fill("1");
       // The step-1 relabel: the range picker collects the dates the FRS
       // names, not "planned start/end".
-      await expect(page.getByText("Distribution date")).toBeVisible();
-      await expect(page.getByText("Submission deadline")).toBeVisible();
+      await expect(
+        page.getByText("Distribution date", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        page.getByText("Submission deadline", { exact: true }),
+      ).toBeVisible();
       // Both inputs take no keystrokes, so the range is chosen on the
       // calendar: distribution on the 1st of next month and the deadline on
       // its 15th, which keeps the cycle ahead of today whenever the spec runs.

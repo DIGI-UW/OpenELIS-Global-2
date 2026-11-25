@@ -33,6 +33,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 public class QCControlLotServiceTest {
 
     @Mock
+    private org.openelisglobal.test.service.TestService testService;
+
+    @Mock
     private QCControlLotDAO controlLotDAO;
 
     @Mock
@@ -48,6 +51,20 @@ public class QCControlLotServiceTest {
     private QCControlLotServiceImpl controlLotService;
 
     private QCControlLot testControlLot;
+
+    @Test
+    public void instrumentLotsIncludeTheirMappedTestName() {
+        QCControlLot secondLot = QCControlLotBuilder.create().withId("second-lot").withTestId("1").build();
+        when(controlLotDAO.getActiveByInstrument("1")).thenReturn(List.of(testControlLot, secondLot));
+        org.openelisglobal.test.valueholder.Test test = mock(org.openelisglobal.test.valueholder.Test.class);
+        when(test.getId()).thenReturn("1");
+        when(test.getLocalizedName()).thenReturn("Hemoglobin");
+        when(testService.getTestsByIds(List.of("1"))).thenReturn(List.of(test));
+        assertEquals("Hemoglobin", controlLotService.getActiveControlLotsByInstrument("1").get(0).getTestName());
+        assertEquals("Hemoglobin", secondLot.getTestName());
+        verify(testService).getTestsByIds(List.of("1"));
+        verifyNoMoreInteractions(testService);
+    }
 
     @Before
     public void setUp() {

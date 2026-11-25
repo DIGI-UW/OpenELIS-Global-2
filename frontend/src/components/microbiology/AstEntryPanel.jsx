@@ -46,7 +46,6 @@ const measurementTypeForTechnique = (technique) =>
 
 const AstEntryPanel = ({
   caseId,
-  workflowType,
   isolates = [],
   service,
   saving: caseSaving,
@@ -114,10 +113,7 @@ const AstEntryPanel = ({
   );
 
   useEffect(() => {
-    if (!workflowType) {
-      return;
-    }
-    service.getAstPanels(workflowType).then((items = []) => {
+    service.getAstPanels().then((items = []) => {
       setPanels(items);
       if (items.length > 0) {
         setSelectedPanelId((current) => current || items[0].id);
@@ -143,7 +139,7 @@ const AstEntryPanel = ({
         }
       });
     }
-  }, [service, workflowType]);
+  }, [service]);
 
   useEffect(() => {
     if (

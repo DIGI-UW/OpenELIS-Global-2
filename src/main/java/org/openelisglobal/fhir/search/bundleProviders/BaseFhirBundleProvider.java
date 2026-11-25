@@ -21,6 +21,11 @@ public abstract class BaseFhirBundleProvider<E, R extends IBaseResource> impleme
 
     private static final int DEFAULT_PAGE_SIZE = resolveDefaultPageSize();
 
+    /** The page size a search answers with when the client sends no _count. */
+    public static int defaultPageSize() {
+        return DEFAULT_PAGE_SIZE;
+    }
+
     /**
      * Unique identifier for this search result set.
      *

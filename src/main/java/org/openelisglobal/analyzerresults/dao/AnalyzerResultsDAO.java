@@ -39,8 +39,6 @@ public interface AnalyzerResultsDAO extends BaseDAO<AnalyzerResults, String> {
 
     List<AnalyzerResults> findHeldMappingResultsByAnalyzer(String analyzerId);
 
-    List<AnalyzerResults> findHeldMappingResultsByProfile(String profileId, int profileRevision);
-
     Map<String, Long> countHeldResultsByAnalyzerIds(List<String> analyzerIds);
 
     // public void deleteAll(List<AnalyzerResults> deletableAnalyzerResults) throws

@@ -1,6 +1,7 @@
 package org.openelisglobal.resultlimit.service;
 
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.BaseObjectService;
@@ -41,19 +42,25 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
      */
     void saveRangesForTest(String testId, List<ResultLimit> desired, String sysUserId);
 
+    /**
+     * {@link #saveRangesForTest} for several tests in one transaction: either every
+     * test gets its ranges or none does (the group editor's "set all to").
+     */
+    void saveRangesForTests(Map<String, List<ResultLimit>> desiredByTestId, String sysUserId);
+
     ResultLimit getResultLimitById(String resultLimitId) throws LIMSRuntimeException;
 
     String getDisplayAgeRange(ResultLimit resultLimit, String separator);
 
-    String getDisplayValidRange(ResultLimit resultLimit, String significantDigits, String separator);
+    String getDisplayValidRange(ResultLimit resultLimit, String reportingDecimalPlaces, String separator);
 
-    String getDisplayReportingRange(ResultLimit resultLimit, String significantDigits, String separator);
+    String getDisplayReportingRange(ResultLimit resultLimit, String reportingDecimalPlaces, String separator);
 
-    String getDisplayCriticalRange(ResultLimit resultLimit, String significantDigits, String separator);
+    String getDisplayCriticalRange(ResultLimit resultLimit, String reportingDecimalPlaces, String separator);
 
-    String getDisplayReferenceRange(ResultLimit resultLimit, String significantDigits, String separator);
+    String getDisplayReferenceRange(ResultLimit resultLimit, String reportingDecimalPlaces, String separator);
 
-    String getDisplayNormalRange(double low, double high, String significantDigits, String separator);
+    String getDisplayNormalRange(double low, double high, String reportingDecimalPlaces, String separator);
 
     ResultLimit getResultLimitForTestAndPatient(String testId, Patient patient);
 

@@ -59,11 +59,11 @@ The frontend serves this directory at `/translation/<locale>.json` and layers
 what it finds over its bundled messages. The files are fetched at runtime rather
 than compiled in, which is what lets a deployment change them without a rebuild.
 
-**Development** — already wired. `dev.docker-compose.yml` mounts this directory
-into the frontend container:
+**Development** — already wired. `scripts/dev-stack` mounts this directory into
+the frontend container:
 
 ```yaml
-- ./volume/translation:/app/public/translation
+- ../../volume/translation:/app/public/translation
 ```
 
 **Production** — mount your own directory into the frontend service:
@@ -74,6 +74,23 @@ frontend.openelis.org:
   volumes:
     - ./configs/translation:/usr/share/nginx/html/translation:ro
 ```
+
+### Printed reports
+
+The patient report prints its labels from the same catalogue as the screens, so
+an override rewords the report too. The backend reads the overrides from
+`/var/lib/openelis-global/translation`; mount the same directory there on the
+webapp service (the shipped `docker-compose.yml` and `scripts/dev-stack` already
+do):
+
+```yaml
+oe.openelis.org:
+  volumes:
+    - ./configs/translation:/var/lib/openelis-global/translation:ro
+```
+
+The report reads the files each time it prints, so a change shows on the next
+report with no restart.
 
 ### When a change takes effect
 
@@ -89,8 +106,11 @@ restarts — you will get the app's HTML instead of your JSON. Once the file
 exists, editing it needs only a reload:
 
 ```
-docker compose -f dev.docker-compose.yml restart frontend.openelis.org
+scripts/dev-stack down
+scripts/dev-stack up --skip-build
 ```
+
+These commands restart this checkout’s stack without deleting its data.
 
 Adding a locale is a rare, deliberate act, so this only bites the first time you
 introduce one.

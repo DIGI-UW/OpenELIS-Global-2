@@ -34,6 +34,7 @@ import {
 } from "../../common/CustomNotification";
 import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 import { getAcceptanceGate, getEnforcement } from "../api/sampleAcceptanceApi";
+import { orderSavedMessage } from "../orderSavedMessage";
 
 /**
  * OrderQA - Step 4: QA Review
@@ -177,6 +178,7 @@ const OrderQA = () => {
   // once the server has said one is needed.
   const [releaseNote, setReleaseNote] = useState("");
   const [releaseNoteNeeded, setReleaseNoteNeeded] = useState(false);
+  const [unacceptedSamples, setUnacceptedSamples] = useState([]);
   // Only the clinical lane has a Prepare Samples step to complete first; the
   // environmental and vector lanes release from their own steps.
   const prepareComplete =
@@ -193,7 +195,10 @@ const OrderQA = () => {
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "save.order.success.msg" }),
+        message: orderSavedMessage(
+          intl,
+          labNumber || orderData?.sampleOrderItems?.labNo,
+        ),
       });
       setNotificationVisible(true);
       return true;
@@ -341,7 +346,7 @@ const OrderQA = () => {
   if (isSubmitted) {
     return (
       <OrderWorkflowLayout
-        title={isClinical ? "order.step.sampleCheck" : "order.step.qa"}
+        title="order.step.sampleCheck"
         showSaveButtons={false}
       >
         <Tile className="qa-success-tile">
@@ -470,6 +475,7 @@ const OrderQA = () => {
               labNumber={displayLabNumber}
               samples={samples}
               onBlockedChange={setAcceptanceBlocked}
+              onUnacceptedChange={setUnacceptedSamples}
             />
           </div>
         )}
@@ -483,6 +489,14 @@ const OrderQA = () => {
               labelText={intl.formatMessage({
                 id: "order.sampleCheck.proceedReason",
               })}
+              helperText={
+                unacceptedSamples.length > 0
+                  ? intl.formatMessage(
+                      { id: "order.sampleCheck.notAcceptedYet" },
+                      { samples: unacceptedSamples.join(", ") },
+                    )
+                  : undefined
+              }
               value={releaseNote}
               onChange={(e) => setReleaseNote(e.target.value)}
               maxLength={255}
@@ -581,7 +595,7 @@ const OrderQA = () => {
                 );
               })()}
             </AccordionItem>
-          ) : (
+          ) : orderData?.sampleOrderItems?.isEQASample ? null : (
             <AccordionItem
               title={intl.formatMessage({
                 id: "qa.summary.patient",

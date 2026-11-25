@@ -13,7 +13,6 @@ import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.labelpreset.dto.OrderLabelPersistRequest;
-import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.action.bean.PatientClinicalInfo;
 import org.openelisglobal.patient.action.bean.PatientEnhancedSearch;
@@ -127,9 +126,9 @@ public class SamplePatientEntryForm extends BaseForm {
      * {@link JsonIgnoreProperties} even when the frontend omits it.
      */
     private OrderLabelPersistRequest labelPersistRequest;
+    private String cancelReason;
 
     @Valid
-    private MicroCaseOrderDetailRequestForm microbiologyOrderDetail;
 
     /**
      * Specimens requested at order entry, saved with the order in one transaction
@@ -149,14 +148,6 @@ public class SamplePatientEntryForm extends BaseForm {
 
     public void setRequestedSampleTypes(List<SampleTypeRequestDTO> requestedSampleTypes) {
         this.requestedSampleTypes = requestedSampleTypes;
-    }
-
-    public MicroCaseOrderDetailRequestForm getMicrobiologyOrderDetail() {
-        return microbiologyOrderDetail;
-    }
-
-    public void setMicrobiologyOrderDetail(MicroCaseOrderDetailRequestForm microbiologyOrderDetail) {
-        this.microbiologyOrderDetail = microbiologyOrderDetail;
     }
 
     public String getCurrentDate() {
@@ -397,5 +388,13 @@ public class SamplePatientEntryForm extends BaseForm {
 
     public void setRangeNotAppliedTests(List<String> rangeNotAppliedTests) {
         this.rangeNotAppliedTests = rangeNotAppliedTests == null ? new ArrayList<>() : rangeNotAppliedTests;
+    }
+
+    public String getCancelReason() {
+        return cancelReason;
+    }
+
+    public void setCancelReason(String cancelReason) {
+        this.cancelReason = cancelReason;
     }
 }

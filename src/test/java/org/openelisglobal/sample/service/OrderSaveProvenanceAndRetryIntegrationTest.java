@@ -81,6 +81,13 @@ public class OrderSaveProvenanceAndRetryIntegrationTest extends BaseWebContextSe
     @Autowired
     private SampleRequesterService sampleRequesterService;
 
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager entityManager;
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroCaseDAO microCases;
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroCaseRequestDAO microRequests;
+
     private String userId;
     private Patient patient;
     private TypeOfSample sampleType;
@@ -89,9 +96,118 @@ public class OrderSaveProvenanceAndRetryIntegrationTest extends BaseWebContextSe
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        fixtures.ensureRequiredWorkflowStatuses();
+        fixtures.ensureExternalOrderEnteredStatus();
+        fixtures.ensureExternalOrderRealizedStatus();
         userId = fixtures.defaultUserId();
         patient = fixtures.createPatient("PROV");
         sampleType = fixtures.createTypeOfSample();
+    }
+
+    @Autowired
+    private org.openelisglobal.dataexchange.service.order.ElectronicOrderService electronicOrders;
+    @Autowired
+    private org.openelisglobal.common.services.IStatusService statuses;
+
+    @Test
+    public void acceptingElectronicRequestedWorkOpensOneCaseBeforeCollectionAndSurvivesRetry() {
+        var test = electronicMicroTest();
+        var electronic = electronicOrder();
+        var requested = requested();
+        requested.setRequestedTests(test.getId());
+        String accession = "EOM" + UUID.randomUUID().toString().substring(0, 9);
+        Sample saved = acceptElectronicOrder(electronic, accession, null, requested);
+        entityManager.flush();
+        entityManager.clear();
+        var storedRequest = sampleTypeRequestService.getRequestsBySampleId(saved.getId()).getFirst();
+        String caseId = microRequests.getActiveByRequestAndTest(storedRequest.getId(), test.getId()).getCaseId();
+        assertTrue(sampleItemService.getSampleItemsBySampleId(saved.getId()).isEmpty());
+        assertNull(sampleService.get(saved.getId()).getReceivedTimestamp());
+        assertEquals(electronic.getId(), sampleService.get(saved.getId()).getClinicalOrderId());
+        assertEquals(fixtures.ensureExternalOrderRealizedStatus(),
+                electronicOrders.get(electronic.getId()).getStatusId());
+        requested.setId(storedRequest.getId().toString());
+        acceptElectronicOrder(electronic, accession, saved.getId(), requested);
+        entityManager.flush();
+        entityManager.clear();
+        assertEquals(1, microCases.getByOrder(saved.getId()).size());
+        assertEquals(1, sampleTypeRequestService.getRequestsBySampleId(saved.getId()).size());
+        assertEquals(caseId, microRequests.getActiveByRequestAndTest(storedRequest.getId(), test.getId()).getCaseId());
+        assertTrue(sampleItemService.getSampleItemsBySampleId(saved.getId()).isEmpty());
+    }
+
+    @Test
+    public void routingFailureRollsBackElectronicAcceptanceAlongWithOrderAndRequestedWork() {
+        var test = electronicMicroTest();
+        var electronic = electronicOrder();
+        String electronicId = electronic.getId();
+        String originalStatus = electronic.getStatusId();
+        org.springframework.test.context.transaction.TestTransaction.flagForCommit();
+        org.springframework.test.context.transaction.TestTransaction.end();
+        org.springframework.test.context.transaction.TestTransaction.start();
+        var requested = requested();
+        requested.setRequestedTests(test.getId());
+        String accession = "EOM" + UUID.randomUUID().toString().substring(0, 9);
+        Sample saved = acceptElectronicOrder(electronic, accession, null, requested);
+        String orderId = saved.getId();
+        assertEquals(1, microCases.getByOrder(orderId).size());
+        org.springframework.transaction.support.TransactionSynchronizationManager
+                .registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override
+                    public void beforeCommit(boolean readOnly) {
+                        throw new IllegalStateException("Failure after electronic case routing");
+                    }
+                });
+        org.springframework.test.context.transaction.TestTransaction.flagForCommit();
+        org.junit.Assert.assertThrows(IllegalStateException.class,
+                org.springframework.test.context.transaction.TestTransaction::end);
+        org.springframework.test.context.transaction.TestTransaction.start();
+        entityManager.clear();
+        assertEquals(originalStatus, electronicOrders.get(electronicId).getStatusId());
+        assertNull(sampleService.getSampleByAccessionNumber(accession));
+        assertTrue(microCases.getByOrder(orderId).isEmpty());
+        assertTrue(sampleTypeRequestService.getRequestsBySampleId(orderId).isEmpty());
+    }
+
+    private org.openelisglobal.test.valueholder.Test electronicMicroTest() {
+        var test = entityManager.find(org.openelisglobal.test.valueholder.Test.class, catalogTest().getId());
+        test.setTestSection(fixtures.createLabUnit());
+        test.setOpensMicrobiologyCase(true);
+        test.setMicrobiologyCaseRole("DIRECT");
+        entityManager.flush();
+        return test;
+    }
+
+    private org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder electronicOrder() {
+        var electronic = new org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder();
+        electronic.setExternalId("V2-" + UUID.randomUUID());
+        electronic.setOrderTimestamp(Timestamp.from(Instant.now()));
+        electronic.setPatient(patient);
+        electronic.setStatusId(fixtures.ensureExternalOrderEnteredStatus());
+        electronic.setData("{}");
+        electronic.setType(org.openelisglobal.dataexchange.order.valueholder.ElectronicOrderType.FHIR);
+        electronic.setSysUserId(userId);
+        electronicOrders.insert(electronic);
+        return electronic;
+    }
+
+    private Sample acceptElectronicOrder(org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder electronic,
+            String accession, String orderId, SampleTypeRequestDTO requested) {
+        var form = new SamplePatientEntryForm();
+        var order = new org.openelisglobal.sample.bean.SampleOrderItem();
+        form.setSampleOrderItems(order);
+        order.setSampleId(orderId);
+        order.setExternalOrderNumber(electronic.getExternalId());
+        var data = new SamplePatientUpdateData(userId);
+        data.setAccessionNumber(accession);
+        data.initSampleData("<samples></samples>", null, false, order);
+        form.setRequestedSampleTypes(List.of(requested));
+        PatientManagementInfo info = new PatientManagementInfo();
+        info.setPatientPK(patient.getId());
+        form.setPatientProperties(info);
+        samplePatientEntryService.persistData(data, SpringContext.getBean(PatientManagementUpdate.class), info, form,
+                new MockHttpServletRequest());
+        return data.getSample();
     }
 
     @Test
@@ -125,6 +241,92 @@ public class OrderSaveProvenanceAndRetryIntegrationTest extends BaseWebContextSe
         assertEquals(items.getFirst().getId(), collected.getFirst().getSampleItem().getId());
         assertEquals("the second requested specimen is still awaited", 1,
                 sampleTypeRequestService.getPendingRequestsBySampleId(sample.getId()).size());
+    }
+
+    @Test
+    public void explicitRequestIdentityCollectsTheChosenDuplicateAndCarriesItsRecordedDetails() {
+        Sample sample = newSample();
+        SampleTypeRequestDTO first = requested();
+        first.setCultureSetNumber(1);
+        first.setBodySite("Left arm");
+        SampleTypeRequestDTO second = requested();
+        second.setCultureSetNumber(2);
+        second.setBodySite("Right arm");
+        var site = new org.openelisglobal.vector.valueholder.VectorSamplingSite();
+        site.setCode("V2_" + UUID.randomUUID().toString().substring(0, 12));
+        site.setName("Requested site");
+        site.setActive(true);
+        entityManager.persist(site);
+        second.setCollectionLocationId(site.getId().toString());
+        second.setContainer("Configured bottle");
+        second.setCollectionDate("2026-10-07");
+        second.setCollectionTime("14:25");
+        persist(sample, "<samples></samples>", List.of(first, second));
+        List<SampleTypeRequest> requests = sampleTypeRequestService.getRequestsBySampleId(sample.getId());
+        SampleTypeRequest chosen = requests.stream().filter(row -> Integer.valueOf(2).equals(row.getCultureSetNumber()))
+                .findFirst().orElseThrow();
+        String xml = sampleXml(null, "", UUID.randomUUID().toString()).replace("<sample ",
+                "<sample sampleTypeRequestId='" + chosen.getId() + "' ");
+        persist(sample, samplesXml(xml), null);
+        persist(sample, samplesXml(xml), null);
+        List<SampleItem> items = sampleItemService.getSampleItemsBySampleId(sample.getId());
+        assertEquals(1, items.size());
+        assertEquals(Integer.valueOf(2), items.getFirst().getCultureSetNumber());
+        assertEquals("Right arm", items.getFirst().getBodySite());
+        assertEquals(site.getId().toString(), items.getFirst().getCollectionLocationId());
+        assertEquals("Configured bottle", items.getFirst().getContainer());
+        assertEquals(Timestamp.valueOf("2026-10-07 14:25:00"), items.getFirst().getCollectionDate());
+        assertEquals(items.getFirst().getId(), sampleTypeRequestService.get(chosen.getId()).getSampleItem().getId());
+        assertEquals(1, sampleTypeRequestService.getPendingRequestsBySampleId(sample.getId()).size());
+    }
+
+    @Test
+    public void collectingAPendingCaseTestKeepsOneCaseAndCreatesNoResultAnalysis() {
+        Sample sample = newSample();
+        org.openelisglobal.test.valueholder.Test test = entityManager
+                .find(org.openelisglobal.test.valueholder.Test.class, catalogTest().getId());
+        test.setTestSection(fixtures.createLabUnit());
+        test.setOpensMicrobiologyCase(true);
+        test.setMicrobiologyCaseRole("CASE");
+        entityManager.flush();
+        SampleTypeRequestDTO requested = requested();
+        requested.setRequestedTests(test.getId());
+        persist(sample, "<samples></samples>", List.of(requested));
+        SampleTypeRequest request = sampleTypeRequestService.getRequestsBySampleId(sample.getId()).getFirst();
+        String caseId = microRequests.getActiveByRequestAndTest(request.getId(), test.getId()).getCaseId();
+        String xml = sampleXml(test, "", UUID.randomUUID().toString()).replace("<sample ",
+                "<sample sampleTypeRequestId='" + request.getId() + "' ");
+        persist(sample, samplesXml(xml), null);
+        persist(sample, samplesXml(xml), null);
+        assertEquals(1, microCases.getByOrder(sample.getId()).size());
+        assertEquals(1, sampleTypeRequestService.getRequestsBySampleId(sample.getId()).size());
+        SampleItem collected = sampleItemService.getSampleItemsBySampleId(sample.getId()).getFirst();
+        assertTrue(analysisService.getAnalysesBySampleItem(collected).isEmpty());
+        assertEquals(caseId, microRequests.getActiveByRequestAndTest(request.getId(), test.getId()).getCaseId());
+        assertEquals(collected.getId(),
+                microRequests.getActiveByRequestAndTest(request.getId(), test.getId()).getSampleItemId());
+        assertNull(collected.getCollectionDate());
+        assertNull(collected.getReceivedDate());
+    }
+
+    @Test
+    public void reorderingSameTypeRequestsKeepsTheirIdentitiesAndUpdatesTheChosenBottle() {
+        Sample sample = newSample();
+        SampleTypeRequestDTO first = requested();
+        first.setCultureSetNumber(1);
+        SampleTypeRequestDTO second = requested();
+        second.setCultureSetNumber(2);
+        persist(sample, "<samples></samples>", List.of(first, second));
+        List<SampleTypeRequest> requests = sampleTypeRequestService.getRequestsBySampleId(sample.getId());
+        SampleTypeRequestDTO storedFirst = new SampleTypeRequestDTO(requests.get(0));
+        SampleTypeRequestDTO storedSecond = new SampleTypeRequestDTO(requests.get(1));
+        storedSecond.setBodySite("Right arm");
+        persist(sample, "<samples></samples>", List.of(storedSecond, storedFirst));
+        assertEquals(Integer.valueOf(2),
+                sampleTypeRequestService.get(Integer.valueOf(storedSecond.getId())).getCultureSetNumber());
+        assertEquals("Right arm", sampleTypeRequestService.get(Integer.valueOf(storedSecond.getId())).getBodySite());
+        assertNull(sampleTypeRequestService.get(Integer.valueOf(storedFirst.getId())).getBodySite());
+        assertEquals(2, sampleTypeRequestService.getRequestsBySampleId(sample.getId()).size());
     }
 
     @Test

@@ -284,12 +284,14 @@ test.describe("OGC-1186 multi-component result routing", () => {
         multiRow.getByRole("button", { name: /^edit$/i }),
       ).toBeVisible();
 
-      // Every component row of an accepted analysis renders read-only, so the
-      // sibling is checked for what it shows, not for which control it offers.
+      // A component row carries only its own results, so the sibling has no
+      // saved value and stays open for entry with nothing chosen.
       const dictionaryRow = rowFor("Dictionary Result");
       await expect(dictionaryRow).toBeVisible();
-      await expect(dictionaryRow).not.toContainText(DETECTED);
-      await expect(dictionaryRow).not.toContainText(NOT_DETECTED);
+      await expect(dictionaryRow.locator("select")).toHaveValue("");
+      await expect(
+        dictionaryRow.locator(".unifiedResultsReadOnlyValue"),
+      ).toHaveCount(0);
     });
 
     await test.step("The worklist reads the value back on the Multi-Select component only", async () => {

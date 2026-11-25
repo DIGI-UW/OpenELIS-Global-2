@@ -13,6 +13,7 @@ import PageBreadCrumb from "../common/PageBreadCrumb";
 import CustomDatePicker from "../common/CustomDatePicker";
 import CustomTimePicker from "../common/CustomTimePicker";
 import CustomSelect from "../common/CustomSelect";
+import SearchableSelect from "../common/SearchableSelect";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import Questionnaire from "../common/Questionnaire";
 import { getFromOpenElisServer } from "../utils/Utils";
@@ -123,8 +124,8 @@ export default function GenericSampleOrderEdit({
       });
     }
     if (showUom) {
-      getFromOpenElisServer("/rest/UomCreate", (res) => {
-        setUoms(res.existingUomList || []);
+      getFromOpenElisServer("/rest/uom", (res) => {
+        setUoms(Array.isArray(res) ? res : []);
       });
     }
     if (showNotebookSelection) {
@@ -480,7 +481,7 @@ export default function GenericSampleOrderEdit({
               </Column>
               {showSampleType && (
                 <Column lg={8} md={8} sm={4}>
-                  <CustomSelect
+                  <SearchableSelect
                     id="sampleType"
                     labelText={
                       <FormattedMessage
@@ -494,7 +495,9 @@ export default function GenericSampleOrderEdit({
                       id: s.id,
                       value: s.value,
                     }))}
-                    placeholder="Select sample type"
+                    placeholder={intl.formatMessage({
+                      id: "sample.select.type",
+                    })}
                   />
                 </Column>
               )}
@@ -523,7 +526,7 @@ export default function GenericSampleOrderEdit({
                 )}
                 {showUom && (
                   <Column lg={8} md={8} sm={4}>
-                    <CustomSelect
+                    <SearchableSelect
                       id="sampleUnitOfMeasure"
                       labelText={
                         <FormattedMessage
@@ -536,7 +539,9 @@ export default function GenericSampleOrderEdit({
                         updateDefaultField("sampleUnitOfMeasure", v)
                       }
                       options={uoms.map((u) => ({ id: u.id, value: u.value }))}
-                      placeholder="Select units"
+                      placeholder={intl.formatMessage({
+                        id: "sample.uom.search",
+                      })}
                     />
                   </Column>
                 )}

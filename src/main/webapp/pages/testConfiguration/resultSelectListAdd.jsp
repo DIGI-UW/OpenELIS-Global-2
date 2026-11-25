@@ -1,3 +1,4 @@
+<%@ taglib prefix="enc" uri="/WEB-INF/taglib/output-encoding.tld" %>
 <%--
    Created by IntelliJ IDEA.
    User: kenny
@@ -95,8 +96,8 @@
     var tests= [];
     <c:forEach items="${form.tests}" var="test" varStatus="counter">
         var test = {};
-        test['name'] = '${test.description}';
-        test['id'] = '${test.id}';
+        test['name'] = '${enc:js(test.description)}';
+        test['id'] = '${enc:js(test.id)}';
         tests.push(test);
     </c:forEach>
     var currentItem = "<c:out value="${form.nameEnglish}" />";
@@ -125,17 +126,17 @@
     <caption class="available-tests-cation">Available Tests</caption>
     <c:forEach items="${form.tests}" begin="0" end="${fn:length(form.tests)}" step="4" var="test" varStatus="counter">
         <tr style="padding: 5px;">
-            <td style="padding: 5px;" class="test-list-name-${form.tests[counter.index].id}">
-                <a onclick="return selectTest(${form.tests[counter.index].id})"><c:out value="${form.tests[counter.index].description}" /></a>
+            <td style="padding: 5px;" class="test-list-name-${enc:attribute(form.tests[counter.index].id)}">
+                <a onclick="return selectTest(${enc:jsAttribute(form.tests[counter.index].id)})"><c:out value="${form.tests[counter.index].description}" /></a>
             </td>
-            <td style="padding: 5px;" class="test-list-name-${form.tests[counter.index + 1].id}">
-                <a onclick="return selectTest(${form.tests[counter.index + 1].id})"><c:out value="${form.tests[counter.index + 1].description}" /></a>
+            <td style="padding: 5px;" class="test-list-name-${enc:attribute(form.tests[counter.index + 1].id)}">
+                <a onclick="return selectTest(${enc:jsAttribute(form.tests[counter.index + 1].id)})"><c:out value="${form.tests[counter.index + 1].description}" /></a>
             </td>
-            <td style="padding: 5px;" class="test-list-name-${form.tests[counter.index + 2].id}">
-                <a onclick="return selectTest(${form.tests[counter.index + 2].id})"><c:out value="${form.tests[counter.index + 2].description}" /></a>
+            <td style="padding: 5px;" class="test-list-name-${enc:attribute(form.tests[counter.index + 2].id)}">
+                <a onclick="return selectTest(${enc:jsAttribute(form.tests[counter.index + 2].id)})"><c:out value="${form.tests[counter.index + 2].description}" /></a>
             </td>
-            <td style="padding: 5px;" class="test-list-name-${form.tests[counter.index + 3].id}">
-                <a onclick="return selectTest(${form.tests[counter.index + 3].id})"><c:out value="${form.tests[counter.index + 3].description}" /></a>
+            <td style="padding: 5px;" class="test-list-name-${enc:attribute(form.tests[counter.index + 3].id)}">
+                <a onclick="return selectTest(${enc:jsAttribute(form.tests[counter.index + 3].id)})"><c:out value="${form.tests[counter.index + 3].description}" /></a>
             </td>
         </tr>
     </c:forEach>
@@ -145,11 +146,11 @@
     var testDictionary= {};
     <c:forEach items="${form.testDictionary}" var="dictionary">
     var dictionaries = [];
-    var testId = '${dictionary.key}';
+    var testId = '${enc:js(dictionary.key)}';
     <c:forEach items="${dictionary.value}" var="testDictionaries">
         var dic = {}
-        dic.id = '${testDictionaries.id}';
-        dic.value = '${testDictionaries.value}';
+        dic.id = '${enc:js(testDictionaries.id)}';
+        dic.value = '${enc:js(testDictionaries.value)}';
         dictionaries.push(dic);
     </c:forEach>
     testDictionary[testId] = dictionaries;

@@ -84,13 +84,24 @@
          the SSLImplementation selected. JSSE style configuration is used below.
     -->
 
+          <!-- Text responses (the REST API, module pages and their chunks) are
+               compressed for browsers that accept it; images and fonts are
+               already compressed. The proxies in front of OpenELIS compress
+               only the frontend's own files, so this is the one place that
+               covers every deployment. The HTTP/2 upgrade inherits these
+               settings from the connector. -->
           <Connector port="8443" protocol="org.apache.coyote.http11.Http11NioProtocol"
-               maxThreads="150" SSLEnabled="true">
+               maxThreads="150" SSLEnabled="true"
+               compression="on" compressionMinSize="1024"
+               compressibleMimeType="text/html,text/plain,text/css,text/javascript,application/javascript,application/json,application/xml,text/xml,image/svg+xml">
                <UpgradeProtocol className="org.apache.coyote.http2.Http2Protocol" />
-               <SSLHostConfig truststoreFile="/etc/openelis-global/truststore"
-                    truststorePassword="tspass" truststoreType="PKCS12">
+               <!-- Client certificates are requested, never required. Any is accepted
+                    in the handshake; OpenELIS recognises the paired Analyzer Bridge
+                    by its certificate's fingerprint. -->
+               <SSLHostConfig certificateVerification="optional"
+                    trustManagerClassName="org.openelisglobal.tomcat.AnyClientCertificateTrustManager">
                     <Certificate certificateKeystoreFile="/etc/openelis-global/keystore"
-                         certificateKeystorePassword="kspass"
+                         certificateKeystorePassword="${oe.ssl.keystorepassword}"
                          certificateKeystoreType="PKCS12"
                          type="RSA" />
                </SSLHostConfig>
@@ -136,7 +147,7 @@
                </Realm>
 
                <Host name="localhost" appBase="webapps"
-                    unpackWARs="true" autoDeploy="true">
+                    unpackWARs="true" autoDeploy="false" deployOnStartup="false">
 
                     <Context docBase="ROOT" path="/api" />
                     <Context docBase="OpenELIS-Global"

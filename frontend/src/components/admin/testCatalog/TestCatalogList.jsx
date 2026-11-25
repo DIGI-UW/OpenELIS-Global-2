@@ -113,6 +113,8 @@ const TestsList = () => {
     initParams.get("sampleType") || "",
   );
   const [sampleTypes, setSampleTypes] = useState([]);
+  const [labUnit, setLabUnit] = useState(initParams.get("labUnit") || "");
+  const [labUnits, setLabUnits] = useState([]);
   const [search, setSearch] = useState(initParams.get("search") || "");
   const [debouncedSearch, setDebouncedSearch] = useState(
     initParams.get("search") || "",
@@ -128,6 +130,9 @@ const TestsList = () => {
   useEffect(() => {
     getFromOpenElisServer("/rest/test-catalog/sample-types", (res) => {
       setSampleTypes(Array.isArray(res) ? res : []);
+    });
+    getFromOpenElisServer("/rest/test-catalog/lab-units", (res) => {
+      setLabUnits(Array.isArray(res) ? res : []);
     });
   }, []);
 
@@ -155,6 +160,7 @@ const TestsList = () => {
     if (status && status !== "all") params.set("status", status);
     if (amr) params.set("amr", amr);
     if (sampleType) params.set("sampleType", sampleType);
+    if (labUnit) params.set("labUnit", labUnit);
     if (debouncedSearch) params.set("search", debouncedSearch);
     if (issuesOnly) params.set("issuesOnly", "true");
     params.set("page", String(page));
@@ -185,6 +191,7 @@ const TestsList = () => {
     status,
     amr,
     sampleType,
+    labUnit,
     debouncedSearch,
     issuesOnly,
     page,
@@ -257,11 +264,22 @@ const TestsList = () => {
     ...sampleTypes,
   ];
 
+  const labUnitItems = [
+    {
+      id: "",
+      name: intl.formatMessage({
+        id: "label.testCatalog.list.filter.allLabUnits",
+      }),
+    },
+    ...labUnits,
+  ];
+
   const activeFilterCount =
     (domain ? 1 : 0) +
     (status && status !== "all" ? 1 : 0) +
     (amr ? 1 : 0) +
-    (sampleType ? 1 : 0);
+    (sampleType ? 1 : 0) +
+    (labUnit ? 1 : 0);
 
   const baseRows = (pageData.rows || []).map((r) => ({
     id: r.testId,
@@ -389,6 +407,19 @@ const TestsList = () => {
                   onChange={({ selectedItem }) => {
                     setPage(1);
                     setSampleType(selectedItem ? selectedItem.id : "");
+                  }}
+                />
+                <ComboBox
+                  id="filter-lab-unit"
+                  titleText={intl.formatMessage({
+                    id: "label.testCatalog.basicInfo.labUnit",
+                  })}
+                  items={labUnitItems}
+                  itemToString={(item) => (item ? item.name : "")}
+                  selectedItem={labUnitItems.find((o) => o.id === labUnit)}
+                  onChange={({ selectedItem }) => {
+                    setPage(1);
+                    setLabUnit(selectedItem ? selectedItem.id : "");
                   }}
                 />
                 <Toggle

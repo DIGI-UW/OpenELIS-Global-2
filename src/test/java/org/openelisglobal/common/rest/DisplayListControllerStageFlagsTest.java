@@ -243,4 +243,17 @@ public class DisplayListControllerStageFlagsTest extends BaseWebContextSensitive
         return objectMapper.readValue(response.getContentAsString(), new TypeReference<Map<String, Object>>() {
         });
     }
+
+    // ── OGC-1169: the label quantity settings reach the browser ──
+
+    @Test
+    public void configurationProperties_carryTheLabelQuantityDefaultsAndMaxima() throws Exception {
+        String body = callEndpoint().getContentAsString();
+
+        for (String key : new String[] { "DEFAULT_ORDER_LABEL_PRINTED", "MAX_ORDER_LABEL_PRINTED",
+                "DEFAULT_SPECIMEN_LABEL_PRINTED", "MAX_SPECIMEN_LABEL_PRINTED" }) {
+            assertTrue("the browser needs " + key + " for the label table's defaults and steppers",
+                    body.contains("\"" + key + "\""));
+        }
+    }
 }

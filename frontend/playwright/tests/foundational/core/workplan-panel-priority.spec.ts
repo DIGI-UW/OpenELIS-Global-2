@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { test, expect, Page } from "../../../helpers/test-base";
 import {
   AMYLASE_TEST,
@@ -13,11 +14,13 @@ import {
   NAV_TIMEOUT,
   UI_TIMEOUT,
 } from "../../../helpers/timeouts";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 
 /**
  * A work plan lists the tests still to be run for the panel or the order
- * priority chosen, and offers Print Workplan once it has rows. Each case
- * orders its own accessions and looks for them by lab number.
+ * priority chosen, and offers Print Workplan once it has rows; printing
+ * produces the plan as a PDF. Each case orders its own accessions and looks
+ * for them by lab number.
  */
 
 const planned = (page: Page, accession: string) =>
@@ -28,41 +31,40 @@ const planned = (page: Page, accession: string) =>
     .filter({ hasText: accession });
 
 /**
- * The plan's selector has no label of its own (its title is helper text), so
- * it is found by id. Choosing an entry loads that plan; the page holding
- * `accession` is then opened.
+ * A panel is searched for by name in the plan's Panel Type picker; a priority,
+ * a fixed list, is chosen from the plan's plain select, found by id. Choosing
+ * an entry loads that plan; the page holding `accession` is then opened.
  */
 async function choosePlan(
   page: Page,
   query: string,
-  value: string,
+  plan: { value: string; panelName?: string },
   accession: string,
 ) {
   const loaded = page.waitForResponse(
     (response) =>
       response.request().method() === "GET" &&
-      response.url().includes(`/rest/${query}=${value}`) &&
+      response.url().includes(`/rest/${query}=${plan.value}`) &&
       !response.url().includes("&page="),
     { timeout: LONG_TIMEOUT },
   );
-  await page.getByRole("main").locator("#select-1").selectOption(value);
+  const main = page.getByRole("main");
+  if (plan.panelName) {
+    await chooseCarbonOption(
+      main.getByRole("combobox", { name: "Panel Type" }),
+      plan.panelName,
+    );
+  } else {
+    await main.locator("#select-1").selectOption(plan.value);
+  }
   await openServerPageHolding(page, await loaded, accession);
 }
 
-async function openPlan(
-  page: Page,
-  path: string,
-  title: string,
-  value: string,
-) {
+async function openPlan(page: Page, path: string, title: string) {
   await page.goto(path, { waitUntil: "domcontentloaded" });
-  const main = page.getByRole("main");
-  await expect(main.getByRole("heading", { name: title })).toBeVisible({
-    timeout: NAV_TIMEOUT,
-  });
   await expect(
-    main.locator("#select-1").locator(`option[value="${value}"]`),
-  ).toBeAttached({ timeout: NAV_TIMEOUT });
+    page.getByRole("main").getByRole("heading", { name: title }),
+  ).toBeVisible({ timeout: NAV_TIMEOUT });
 }
 
 /** The list shows Print Workplan above and below its rows. */
@@ -73,6 +75,23 @@ async function expectPrintOffered(page: Page) {
   await expect(print).toHaveCount(2);
   await expect(print.first()).toBeVisible();
   await expect(print.last()).toBeVisible();
+}
+
+/**
+ * Print Workplan renders the plan as a PDF. The headless browser saves the PDF
+ * as a download instead of displaying it in the new tab.
+ */
+async function expectPrintDownloadsPdf(page: Page) {
+  const received = page.waitForEvent("download", { timeout: LONG_TIMEOUT });
+  await page
+    .getByRole("main")
+    .getByRole("button", { name: "Print Workplan" })
+    .first()
+    .click();
+  const file = await received;
+  expect(await file.failure()).toBeNull();
+  const pdf = await readFile(await file.path());
+  expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
 }
 
 async function panelOf(page: Page, testId: string) {
@@ -96,23 +115,32 @@ test.describe("Workplan by panel and by priority", () => {
     const query = "WorkPlanByPanel?panel_id";
 
     await test.step(`${hematologyPanel.panelName} lists the RBC order only`, async () => {
-      await openPlan(
+      await openPlan(page, "/WorkplanByPanel", "Workplan By Panel");
+      await choosePlan(
         page,
-        "/WorkplanByPanel",
-        "Workplan By Panel",
-        hematologyPanel.panelId,
+        query,
+        {
+          value: hematologyPanel.panelId,
+          panelName: hematologyPanel.panelName,
+        },
+        inPanel,
       );
-      await choosePlan(page, query, hematologyPanel.panelId, inPanel);
       await expect(planned(page, inPanel)).toContainText(
         "Red Blood Cells Count (RBC)",
         { timeout: UI_TIMEOUT },
       );
       await expect(planned(page, outOfPanel)).toHaveCount(0);
       await expectPrintOffered(page);
+      await expectPrintDownloadsPdf(page);
     });
 
     await test.step(`${otherPanel.panelName} lists the Amylase order only`, async () => {
-      await choosePlan(page, query, otherPanel.panelId, outOfPanel);
+      await choosePlan(
+        page,
+        query,
+        { value: otherPanel.panelId, panelName: otherPanel.panelName },
+        outOfPanel,
+      );
       await expect(planned(page, outOfPanel)).toContainText("Amylase", {
         timeout: UI_TIMEOUT,
       });
@@ -129,13 +157,14 @@ test.describe("Workplan by panel and by priority", () => {
     const query = "WorkPlanByPriority?priority";
 
     await test.step("STAT lists the STAT order only", async () => {
-      await openPlan(
-        page,
-        "/WorkplanByPriority",
-        "Workplan By Priority",
-        "STAT",
-      );
-      await choosePlan(page, query, "STAT", statOrder);
+      await openPlan(page, "/WorkplanByPriority", "Workplan By Priority");
+      await expect(
+        page
+          .getByRole("main")
+          .locator("#select-1")
+          .locator('option[value="STAT"]'),
+      ).toBeAttached({ timeout: NAV_TIMEOUT });
+      await choosePlan(page, query, { value: "STAT" }, statOrder);
       await expect(planned(page, statOrder)).toContainText(
         "Red Blood Cells Count (RBC)",
         { timeout: UI_TIMEOUT },
@@ -145,7 +174,7 @@ test.describe("Workplan by panel and by priority", () => {
     });
 
     await test.step("Routine lists the routine order only", async () => {
-      await choosePlan(page, query, "ROUTINE", routineOrder);
+      await choosePlan(page, query, { value: "ROUTINE" }, routineOrder);
       await expect(planned(page, routineOrder)).toBeVisible({
         timeout: UI_TIMEOUT,
       });

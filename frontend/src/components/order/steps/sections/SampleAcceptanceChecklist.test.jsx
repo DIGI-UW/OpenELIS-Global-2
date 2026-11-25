@@ -4,6 +4,7 @@ import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
+import { ConfigurationContext } from "../../../layout/contexts";
 
 // Hoisted mutable mocks so each test can program the API responses and assert
 // against stable spy instances.
@@ -267,6 +268,95 @@ describe("SampleAcceptanceChecklist", () => {
     ).not.toBeInTheDocument();
   });
 
+  test("the resampled-to banner shows the replacement's lab number after a reload", async () => {
+    apiMock.getSampleItemEvaluation = vi.fn(() =>
+      Promise.resolve(
+        evaluation({
+          resample: {
+            resampledToSampleId: 99,
+            resampledToAccession: "ENV-2026-00231-R1",
+          },
+        }),
+      ),
+    );
+    renderChecklist({ rejected: true });
+    await screen.findByText("Container intact");
+
+    expect(
+      screen.getByText("This sample was rejected and resampled.", {
+        exact: false,
+      }),
+    ).toHaveTextContent("Replacement order: ENV-2026-00231-R1.");
+    expect(screen.queryByText(/#99/)).not.toBeInTheDocument();
+  });
+
+  test("the replacement's banner shows the original's lab number, not its id", async () => {
+    apiMock.getSampleItemEvaluation = vi.fn(() =>
+      Promise.resolve(
+        evaluation({
+          resample: {
+            resampledFromSampleId: 41,
+            resampledFromAccession: "ENV-2026-00230",
+          },
+        }),
+      ),
+    );
+    renderChecklist();
+    await screen.findByText("Container intact");
+
+    expect(
+      screen.getByText(
+        "This is a replacement created by a resample of sample ENV-2026-00230.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/#41/)).not.toBeInTheDocument();
+  });
+
+  test("a committed resample makes the original read-only immediately, without a reload", async () => {
+    const Host = () => {
+      const [rejected, setRejected] = React.useState(false);
+      return (
+        <IntlProvider locale="en" messages={messages}>
+          <SampleAcceptanceChecklist
+            sampleItemId="42"
+            labNumber="ENV-2026-00231"
+            rejected={rejected}
+            onRejected={() => setRejected(true)}
+          />
+        </IntlProvider>
+      );
+    };
+    render(<Host />);
+    await screen.findByText("Container intact");
+
+    // After the commit the reloaded evaluation carries the link.
+    apiMock.getSampleItemEvaluation = vi.fn(() =>
+      Promise.resolve(
+        evaluation({
+          resample: {
+            resampledToSampleId: 99,
+            resampledToAccession: "ENV-2026-00231-R1",
+          },
+        }),
+      ),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Resample/i }));
+    fireEvent.click(await screen.findByText("commit-mock"));
+
+    expect(await screen.findByText("Rejected")).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Replacement order: ENV-2026-00231-R1/i),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("radio", { name: "Pass" })[0]).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Accept sample" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Resample/i }),
+    ).not.toBeInTheDocument();
+  });
+
   test("a rejected specimen is read-only: shows Rejected + the resample banner and hides actions", async () => {
     apiMock.getSampleItemEvaluation = vi.fn(() =>
       Promise.resolve(evaluation({ resample: { resampledToSampleId: 99 } })),
@@ -287,4 +377,38 @@ describe("SampleAcceptanceChecklist", () => {
       screen.queryByRole("button", { name: /Resample/i }),
     ).not.toBeInTheDocument();
   });
+});
+
+// OGC-1657 walk: Sample Check read "Collected 2026-11-05 10:00 · Received
+// 2026-11-06 14:20" on a day-first site; the transit time is unchanged.
+describe("SampleAcceptanceChecklist collected and received times", () => {
+  const renderOnSite = (dateLocale) =>
+    render(
+      <ConfigurationContext.Provider
+        value={{ configurationProperties: { DEFAULT_DATE_LOCALE: dateLocale } }}
+      >
+        <IntlProvider locale="en" messages={messages}>
+          <SampleAcceptanceChecklist
+            sampleItemId="42"
+            labNumber="ENV-2026-00231"
+            collectedAt="2026-03-05 10:00"
+            receivedAt="2026-03-06 14:20"
+          />
+        </IntlProvider>
+      </ConfigurationContext.Provider>,
+    );
+
+  test.each([
+    ["fr-FR", "05/03/2026 10:00", "06/03/2026 14:20"],
+    ["en-US", "03/05/2026 10:00", "03/06/2026 14:20"],
+  ])(
+    "%s: shows them in the site format",
+    async (locale, collected, received) => {
+      renderOnSite(locale);
+
+      expect(await screen.findByText(collected)).toBeInTheDocument();
+      expect(screen.getByText(received)).toBeInTheDocument();
+      expect(screen.getByText("28h 20m")).toBeInTheDocument();
+    },
+  );
 });

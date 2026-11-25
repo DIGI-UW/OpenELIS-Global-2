@@ -2,7 +2,6 @@ package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -23,7 +22,6 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
 import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
@@ -76,11 +74,10 @@ public class MicroCaseServiceTest {
     public void createOrGetCaseReturnsExistingCaseWithoutDuplicateActivity() {
         MicroCase existing = new MicroCase();
         existing.setSampleItemId("1001");
-        existing.setWorkflowType(MicroWorkflowType.BACTERIOLOGY.name());
-        when(caseDAO.getBySampleItemAndWorkflow("1001", MicroWorkflowType.BACTERIOLOGY.name())).thenReturn(existing);
+        when(caseDAO.getBySampleItem("1001")).thenReturn(java.util.List.of(existing));
 
         MicroCaseService service = service();
-        MicroCase result = service.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "1", "1");
+        MicroCase result = service.createOrGetCase("1001", "1", "1");
 
         assertEquals(existing, result);
         verify(caseDAO, never()).insert(any(MicroCase.class));
@@ -91,10 +88,9 @@ public class MicroCaseServiceTest {
     public void createOrGetCaseCreatesReceivedCaseAndTimelineActivity() {
         MicroCaseService service = service();
 
-        MicroCase result = service.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "1", "1");
+        MicroCase result = service.createOrGetCase("1001", "1", "1");
 
         assertEquals("1001", result.getSampleItemId());
-        assertEquals(MicroWorkflowType.BACTERIOLOGY.name(), result.getWorkflowType());
         assertEquals(MicroCaseStage.RECEIVED.name(), result.getStage());
         assertNotNull(result.getCreatedAt());
         verify(caseDAO).insert(result);
@@ -210,16 +206,14 @@ public class MicroCaseServiceTest {
     }
 
     @Test
-    public void getCaseDetailIncludesSiblingWorkflowLinksAndPreservationWarning() {
+    public void getCaseDetailIncludesSiblingCaseLinks() {
         MicroCase microCase = new MicroCase();
         microCase.setId("case-1");
         microCase.setSampleItemId("1001");
-        microCase.setWorkflowType(MicroWorkflowType.BACTERIOLOGY.name());
         microCase.setStage(MicroCaseStage.SETUP_RECORDED.name());
         MicroCase sibling = new MicroCase();
         sibling.setId("case-2");
         sibling.setSampleItemId("1001");
-        sibling.setWorkflowType(MicroWorkflowType.MYCOBACTERIOLOGY_TB.name());
         sibling.setStage(MicroCaseStage.RECEIVED.name());
         when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(microCase));
         when(activityDAO.getByCaseId("case-1")).thenReturn(java.util.List.of());
@@ -228,10 +222,8 @@ public class MicroCaseServiceTest {
 
         MicroCaseDetailForm form = service().getCaseDetail("case-1");
 
-        assertTrue(form.workflowChangeRequiresConfirmation);
         assertEquals(1, form.siblingCases.size());
         assertEquals("case-2", form.siblingCases.get(0).id);
-        assertEquals(MicroWorkflowType.MYCOBACTERIOLOGY_TB.name(), form.siblingCases.get(0).workflowType);
     }
 
     private MicroCaseService service() {

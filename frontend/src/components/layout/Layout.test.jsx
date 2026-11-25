@@ -729,4 +729,122 @@ describe("Layout", () => {
       expect(userIcon).toBeTruthy();
     });
   });
+
+  describe("while the server is unreachable (OGC-1442)", () => {
+    let defaultServer;
+
+    beforeAll(() => {
+      defaultServer = getFromOpenElisServer.getMockImplementation();
+    });
+
+    afterEach(() => {
+      getFromOpenElisServer.mockImplementation(defaultServer);
+    });
+
+    const ConfigReader = () => {
+      const { configurationProperties, reloadConfiguration } =
+        useContext(ConfigurationContext);
+      return (
+        <>
+          <p data-testid="banner">
+            {configurationProperties.BANNER_TEXT || "no banner"}
+          </p>
+          <p data-testid="lab-unit-rule">
+            {String(configurationProperties.REQUIRE_LAB_UNIT_AT_LOGIN)}
+          </p>
+          <button type="button" onClick={reloadConfiguration}>
+            Reload configuration
+          </button>
+        </>
+      );
+    };
+
+    const failingWhen = (failing) => (url, callback) => {
+      if (failing(url)) {
+        callback(undefined);
+      } else if (url === "/rest/configuration-properties") {
+        callback({ BANNER_TEXT: "Test Lab" });
+      } else if (url === "/rest/supportedlocales/active") {
+        callback([]);
+      }
+    };
+
+    test("a failed configuration load leaves the configuration readable, not undefined", () => {
+      getFromOpenElisServer.mockImplementation(
+        failingWhen((url) => url.includes("configuration-properties")),
+      );
+
+      renderWithProviders(
+        <Layout>
+          <ConfigReader />
+        </Layout>,
+        { userContext: { userSessionDetails: {}, logout: vi.fn() } },
+      );
+
+      expect(screen.getByTestId("banner").textContent).toBe("no banner");
+      expect(screen.getByTestId("lab-unit-rule").textContent).toBe("undefined");
+    });
+
+    test("a failed reload keeps the configuration already loaded", async () => {
+      let down = false;
+      getFromOpenElisServer.mockImplementation(failingWhen(() => down));
+
+      renderWithProviders(
+        <Layout>
+          <ConfigReader />
+        </Layout>,
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("banner").textContent).toBe("Test Lab"),
+      );
+
+      down = true;
+      fireEvent.click(screen.getByText("Reload configuration"));
+
+      await waitFor(() =>
+        expect(
+          getFromOpenElisServer.mock.calls.filter(
+            ([url]) => url === "/rest/configuration-properties",
+          ).length,
+        ).toBe(2),
+      );
+      expect(screen.getByTestId("banner").textContent).toBe("Test Lab");
+    });
+
+    test("loads the supported locales once the session check has answered", async () => {
+      getFromOpenElisServer.mockImplementation(failingWhen(() => false));
+      const localeFetches = () =>
+        getFromOpenElisServer.mock.calls.filter(
+          ([url]) => url === "/rest/supportedlocales/active",
+        ).length;
+      const pending = { userSessionDetails: {}, logout: vi.fn() };
+
+      const { rerender } = renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+        { userContext: pending },
+      );
+      expect(localeFetches()).toBe(0);
+
+      rerender(
+        <MemoryRouter initialEntries={["/"]}>
+          <IntlProvider locale="en" messages={enMessages}>
+            <UserSessionDetailsContext.Provider
+              value={{
+                ...pending,
+                userSessionDetails: { authenticated: false },
+              }}
+            >
+              <Layout>
+                <div>Content</div>
+              </Layout>
+            </UserSessionDetailsContext.Provider>
+          </IntlProvider>
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => expect(localeFetches()).toBe(1));
+    });
+  });
 });

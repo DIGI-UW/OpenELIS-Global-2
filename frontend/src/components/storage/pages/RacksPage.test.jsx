@@ -226,6 +226,20 @@ describe("RacksPage — who gets Add, Edit and Delete", () => {
     expect(screen.getByRole("button", { name: "Add" })).toBeInTheDocument();
   });
 
+  it("leaves the row menu column out of sorting, so every sort description names its column", async () => {
+    listOneRack();
+    renderPage(["Global Administrator"]);
+    expect(await screen.findByText("Rack R1")).toBeInTheDocument();
+
+    const descriptions = [
+      ...document.querySelectorAll(".cds--table-sort__description"),
+    ].map((node) => node.textContent);
+    expect(descriptions).toHaveLength(headerCount() - 1);
+    descriptions.forEach((text) => {
+      expect(text).not.toMatch(/sort rows by\s+header/);
+    });
+  });
+
   it("offers a Reception user no row menu and no column for one", async () => {
     listOneRack();
     renderPage(["Reception"]);

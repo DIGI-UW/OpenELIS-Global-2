@@ -68,6 +68,26 @@ public class OrganizationTransformServiceImpl implements OrganizationTransformSe
         return fhirOrganization;
     }
 
+    @Override
+    public org.hl7.fhir.r4.model.Location transformToFhirLocation(Organization organization) {
+        if (organization == null || organization.getFhirUuid() == null) {
+            return null;
+        }
+        org.hl7.fhir.r4.model.Location location = new org.hl7.fhir.r4.model.Location();
+        location.setId(organization.getFhirUuidAsString());
+        location.getMeta().setLastUpdated(organization.getLastupdated());
+        location.setName(organization.getOrganizationName());
+        location.setStatus(IActionConstants.NO.equals(organization.getIsActive())
+                ? org.hl7.fhir.r4.model.Location.LocationStatus.INACTIVE
+                : org.hl7.fhir.r4.model.Location.LocationStatus.ACTIVE);
+        location.setMode(org.hl7.fhir.r4.model.Location.LocationMode.INSTANCE);
+        location.setPhysicalType(new CodeableConcept()
+                .addCoding(new Coding("http://terminology.hl7.org/CodeSystem/location-physical-type", "si", "Site")));
+        location.setManagingOrganization(
+                common.createReferenceFor(ResourceType.Organization, organization.getFhirUuidAsString()));
+        return location;
+    }
+
     @Transactional(readOnly = true)
 
     @Override

@@ -31,18 +31,28 @@ const ENROLLMENTS = [
   { organizationId: 103, organizationName: "Lapsed Lab", status: "Withdrawn" },
 ];
 
-const renderWizard = () => {
+const SCHEME_TESTS = [
+  { id: 1, testId: 55, isActive: true },
+  { id: 2, testId: 56, isActive: true },
+  { id: 3, testId: 58, isActive: false },
+  { id: 4, testId: 99, isActive: true },
+];
+
+const renderWizard = (schemeTests = SCHEME_TESTS) => {
   getFromOpenElisServer.mockImplementation((url, cb) => {
     if (url === "/rest/eqa/programs/3")
       cb({ id: 3, name: "National HIV VL PT" });
     else if (url === "/rest/eqa/programs/3/enrollments") cb(ENROLLMENTS);
+    else if (url === "/rest/eqa/programs/3/tests") cb(schemeTests);
     // fetchTests: testable-tests narrows the whole catalog to the tests a
     // participant could order.
-    else if (url === "/rest/eqa/testable-tests") cb(["55", "56"]);
+    else if (url === "/rest/eqa/testable-tests") cb(["55", "56", "57", "58"]);
     else if (url === "/rest/displayList/ALL_TESTS")
       cb([
         { id: "55", name: "HIV Viral Load" },
         { id: "56", name: "HIV EID" },
+        { id: "57", name: "Malaria RDT" },
+        { id: "58", name: "CD4 count" },
         { id: "99", name: "Test with no analyte" },
       ]);
     else cb([]);
@@ -161,6 +171,32 @@ describe("CycleWizard", () => {
     // dead end the wizard must not offer (the in-house wizard's rule, same seam).
     expect(screen.getByText("HIV Viral Load")).toBeInTheDocument();
     expect(screen.queryByText("Test with no analyte")).not.toBeInTheDocument();
+  });
+
+  test("only the scheme's active tests are offered", () => {
+    renderWizard();
+    completeCycleStep();
+    next();
+
+    expect(screen.getByText("HIV Viral Load")).toBeInTheDocument();
+    expect(screen.getByText("HIV EID")).toBeInTheDocument();
+    expect(screen.queryByText("Malaria RDT")).not.toBeInTheDocument();
+    expect(screen.queryByText("CD4 count")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/This scheme has no tests a panel can use/),
+    ).not.toBeInTheDocument();
+  });
+
+  test("a scheme with no tests offers none and says so", () => {
+    renderWizard([]);
+    completeCycleStep();
+    next();
+
+    expect(screen.queryByText("HIV Viral Load")).not.toBeInTheDocument();
+    expect(screen.queryByText("Malaria RDT")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/This scheme has no tests a panel can use/),
+    ).toBeInTheDocument();
   });
 
   test("the panel step cannot be left until a panel name and a full sample exist", () => {

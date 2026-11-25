@@ -23,8 +23,10 @@ import "./ShipmentDashboard.css";
 import ShipmentNavigation from "./ShipmentNavigation";
 import { labNow } from "../utils/labClock";
 
+import useInAppNavigation from "../common/useInAppNavigation";
 const ShipmentSettings = () => {
   const intl = useIntl();
+  const navigate = useInAppNavigation();
   const { addNotification } = useContext(NotificationContext);
 
   const [boxLabelPrefix, setBoxLabelPrefix] = useState("");
@@ -463,6 +465,7 @@ const ShipmentSettings = () => {
 
             <ClickableTile
               href="/MasterListsPage/organizationManagement"
+              onClick={navigate("/MasterListsPage/organizationManagement")}
               style={{ marginBottom: "0.5rem" }}
             >
               <div
@@ -492,6 +495,7 @@ const ShipmentSettings = () => {
 
             <ClickableTile
               href="/MasterListsPage/userManagement"
+              onClick={navigate("/MasterListsPage/userManagement")}
               style={{ marginBottom: "0.5rem" }}
             >
               <div

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet id="128-analyzer-result-instrument-provenance" author="oe">
+        <comment>Keep what the instrument reported about a result (its flags, the assay and version, the operator) on the staged result, so the reviewer sees them as sent.</comment>
+        <addColumn schemaName="clinlims" tableName="analyzer_results">
+            <column name="instrument_flags" type="VARCHAR(255)"/>
+            <column name="assay_name" type="VARCHAR(255)"/>
+            <column name="assay_version" type="VARCHAR(64)"/>
+            <column name="instrument_operator" type="VARCHAR(255)"/>
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="analyzer_results" columnName="instrument_operator"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer_results" columnName="assay_version"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer_results" columnName="assay_name"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer_results" columnName="instrument_flags"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

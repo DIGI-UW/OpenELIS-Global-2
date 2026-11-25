@@ -2,6 +2,7 @@ package org.openelisglobal.analyzer.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -9,7 +10,6 @@ import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.log.LogEvent;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AnalyzerDeliveryIssueServiceImpl implements AnalyzerDeliveryIssueService {
@@ -26,15 +26,20 @@ public class AnalyzerDeliveryIssueServiceImpl implements AnalyzerDeliveryIssueSe
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<AnalyzerDeliveryIssue> getOpenIssues() {
-        Map<String, Analyzer> byConnection = analyzerService.getAllWithBindings().stream()
+        // The analyzer service completes its read transaction before Bridge I/O.
+        Map<String, Analyzer> byConnection = analyzerService.getAllWithMapping().stream()
                 .filter(analyzer -> analyzer.getBridgeConnectionId() != null).collect(
                         Collectors.toMap(Analyzer::getBridgeConnectionId, Function.identity(), (first, next) -> first));
-        List<AnalyzerDeliveryIssue> issues = new ArrayList<>();
-        outboxClient.list(DEAD_LETTERED).forEach(row -> issues.add(toIssue(row, byConnection)));
-        outboxClient.list(RETRYING).forEach(row -> issues.add(toIssue(row, byConnection)));
-        return issues;
+        Map<String, AnalyzerDeliveryIssue> issues = new LinkedHashMap<>();
+        for (String state : List.of(DEAD_LETTERED, RETRYING, "RECEIVED", "PENDING")) {
+            outboxClient.list(state).forEach(row -> {
+                AnalyzerDeliveryIssue issue = toIssue(row, byConnection);
+                // An entry can move between state-filtered reads. Show it once.
+                issues.put(issue.id(), issue);
+            });
+        }
+        return new ArrayList<>(issues.values());
     }
 
     @Override
@@ -43,7 +48,7 @@ public class AnalyzerDeliveryIssueServiceImpl implements AnalyzerDeliveryIssueSe
         // The Bridge records only OpenELIS's service account, so the person who asked
         // is recorded here.
         LogEvent.logInfo(getClass().getSimpleName(), "retry",
-                "Analyzer delivery " + outboxEntryId + " retried by user " + actor);
+                "Analyzer delivery " + outboxEntryId + " retry requested by user " + actor);
     }
 
     @Override
@@ -58,11 +63,13 @@ public class AnalyzerDeliveryIssueServiceImpl implements AnalyzerDeliveryIssueSe
         Analyzer analyzer = connectionId == null ? null : byConnection.get(connectionId);
         String state = text(row, "state");
         return new AnalyzerDeliveryIssue(text(row, "id"), state, analyzer == null ? null : analyzer.getId(),
-                analyzer == null ? null : analyzer.getName(), connectionId, text(row, "sourceId"),
+                analyzer == null ? null : analyzer.getName(), connectionId, text(row, "sourceId"), text(row, "sender"),
                 text(row, "protocol"), text(row, "accession"), row.path("attempts").asInt(0), text(row, "receivedAt"),
                 text(row, "failureReason"),
                 row.path("lastHttpStatus").isNumber() ? row.path("lastHttpStatus").asInt() : null,
-                text(row, "lastError"), DEAD_LETTERED.equals(state));
+                text(row, "lastError"), DEAD_LETTERED.equals(state),
+                row.path("listenerPort").isIntegralNumber() ? row.path("listenerPort").asInt() : null,
+                text(row, "transport"));
     }
 
     private static String text(JsonNode row, String field) {

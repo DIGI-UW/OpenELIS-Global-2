@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -16,6 +17,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -25,6 +27,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.eqa.controller.rest.EQAMyProgramsRestController;
+import org.openelisglobal.eqa.service.EQACycleService;
 import org.openelisglobal.eqa.service.EQALabProgramEnrollmentService;
 import org.openelisglobal.eqa.valueholder.EQALabEnrollmentLabUnit;
 import org.openelisglobal.eqa.valueholder.EQALabEnrollmentTestMap;
@@ -41,6 +44,9 @@ public class EQAMyProgramsRestControllerTest {
 
     @Mock
     private HttpServletRequest request;
+
+    @Mock
+    private EQACycleService cycleService;
 
     @InjectMocks
     private EQAMyProgramsRestController controller;
@@ -88,7 +94,7 @@ public class EQAMyProgramsRestControllerTest {
     public void testListMyPrograms() {
         when(enrollmentService.findAll()).thenReturn(List.of(enrollment1, enrollment2));
 
-        ResponseEntity<List<Map<String, Object>>> response = controller.listMyPrograms();
+        ResponseEntity<List<Map<String, Object>>> response = controller.listMyPrograms(false);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(2, response.getBody().size());
@@ -100,7 +106,7 @@ public class EQAMyProgramsRestControllerTest {
     public void testListMyPrograms_Empty() {
         when(enrollmentService.findAll()).thenReturn(new ArrayList<>());
 
-        ResponseEntity<List<Map<String, Object>>> response = controller.listMyPrograms();
+        ResponseEntity<List<Map<String, Object>>> response = controller.listMyPrograms(false);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertTrue(response.getBody().isEmpty());
@@ -303,5 +309,41 @@ public class EQAMyProgramsRestControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(3, response.getBody().size());
         assertEquals("CDC", response.getBody().get(0));
+    }
+
+    /** OGC-1483: order entry offers only the enrollments the lab takes part in. */
+    @Test
+    public void listMyPrograms_activeOnly_skipsSuspendedAndWithdrawn() {
+        when(enrollmentService.findActiveEnrollments()).thenReturn(List.of(enrollment1));
+
+        ResponseEntity<List<Map<String, Object>>> response = controller.listMyPrograms(true);
+
+        assertEquals(1, response.getBody().size());
+        assertEquals(1L, response.getBody().get(0).get("id"));
+        verify(enrollmentService, never()).findAll();
+    }
+
+    /** OGC-1483: an enrollment's open cycles, with deadline and panel codes. */
+    @Test
+    @SuppressWarnings("unchecked")
+    public void openCycles_listsTheSchemesOpenCyclesWithTheirPanelCodes() {
+        when(enrollmentService.getMatch("id", 1L)).thenReturn(Optional.of(enrollment1));
+        when(cycleService.findOpenCycles("Chemistry PT")).thenReturn(List.of(new EQACycleService.OpenCycle(31L,
+                "Chemistry 2026-1", 1, java.sql.Date.valueOf("2026-11-30"), List.of("CH-01", "CH-02"))));
+
+        ResponseEntity<?> response = controller.openCycles(1L);
+
+        List<Map<String, Object>> rows = (List<Map<String, Object>>) response.getBody();
+        assertEquals(1, rows.size());
+        assertEquals(31L, rows.get(0).get("id"));
+        assertEquals("2026-11-30", rows.get(0).get("deadline"));
+        assertEquals(List.of("CH-01", "CH-02"), rows.get(0).get("panelCodes"));
+    }
+
+    @Test
+    public void openCycles_ofAnUnknownEnrollment_is404() {
+        when(enrollmentService.getMatch("id", 99L)).thenReturn(Optional.empty());
+
+        assertEquals(HttpStatus.NOT_FOUND, controller.openCycles(99L).getStatusCode());
     }
 }

@@ -21,6 +21,7 @@ import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
 import DeliveryIssuesPanel from "./DeliveryIssuesPanel";
 
+import useInAppNavigation from "../common/useInAppNavigation";
 const EVENT_TYPE_MESSAGES = {
   AST_RESULT_AVAILABLE: "analyzer.importIssues.event.astResultAvailable",
   AST_QC_FAIL: "analyzer.importIssues.event.astQcFail",
@@ -96,6 +97,7 @@ const ImportIssuesTable = ({ headers, rows, title, description }) => (
 
 const ImportIssuesPanel = () => {
   const intl = useIntl();
+  const navigate = useInAppNavigation();
   const [issues, setIssues] = useState({ eventRows: [] });
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -156,6 +158,9 @@ const ImportIssuesPanel = () => {
     action: event.analyzerId ? (
       <Link
         href={`/AnalyzerResults?id=${encodeURIComponent(event.analyzerId)}`}
+        onClick={navigate(
+          `/AnalyzerResults?id=${encodeURIComponent(event.analyzerId)}`,
+        )}
       >
         {intl.formatMessage({ id: "analyzer.importIssues.openResults" })}
       </Link>

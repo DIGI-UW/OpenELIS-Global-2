@@ -443,7 +443,7 @@ button {
 }
 
 .requiredlabel {
-  color: #ff0000;
+  color: var(--cds-support-error, #da1e28);
 }
 
 .my-custom-table {

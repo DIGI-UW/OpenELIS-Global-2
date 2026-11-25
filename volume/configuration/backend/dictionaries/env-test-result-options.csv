@@ -1,31 +1,31 @@
-category,dictEntry,localAbbreviation,isActive,sortOrder,loincCode,localization:en,localization:fr,localization:es,localization:id
+category,dictEntry,localAbbreviation,isActive,sortOrder,loincCode,displayKey,localization:en,localization:fr,localization:es,localization:id
 # ============================================================================
 # ENVIRONMENTAL & VECTOR SURVEILLANCE - Test Result Dictionary Options
 # ============================================================================
 # Positif Negatif
-Positif Negatif,Positif,POSI,Y,1,,Positive,Positif,Positivo,Positif
-Positif Negatif,Negatif,NEGA,Y,2,,Negative,Négatif,Negativo,Negatif
+Positif Negatif,Positif,POSI,Y,1,,dictionary.positifNegatif.positif,Positive,Positif,Positivo,Positif
+Positif Negatif,Negatif,NEGA,Y,2,,dictionary.positifNegatif.negatif,Negative,Négatif,Negativo,Negatif
 # Water Clarity
-Water Clarity,Jernih,JERN,Y,1,,Clear,Clair,Claro,Jernih
-Water Clarity,Keruh,KERU,Y,2,,Turbid,Trouble,Turbio,Keruh
-Water Clarity,Agak Keruh,AGAK,Y,3,,Slightly Turbid,Légèrement Trouble,Ligeramente Turbio,Agak Keruh
+Water Clarity,Jernih,JERN,Y,1,,dictionary.waterClarity.jernih,Clear,Clair,Claro,Jernih
+Water Clarity,Keruh,KERU,Y,2,,dictionary.waterClarity.keruh,Turbid,Trouble,Turbio,Keruh
+Water Clarity,Agak Keruh,AGAK,Y,3,,dictionary.waterClarity.agakKeruh,Slightly Turbid,Légèrement Trouble,Ligeramente Turbio,Agak Keruh
 # Water Color
-Water Color,Tidak Berwarna,TIDA,Y,1,,Colorless,Incolore,Incoloro,Tidak Berwarna
-Water Color,Putih,PUTI,Y,2,,White,Blanc,Blanco,Putih
-Water Color,Hitam,HITA,Y,3,,Black,Noir,Negro,Hitam
-Water Color,Kuning,KUNI,Y,4,,Yellow,Jaune,Amarillo,Kuning
-Water Color,Cokelat,COKE,Y,5,,Brown,Brun,Marrón,Cokelat
-Water Color,Merah,MERA,Y,6,,Red,Rouge,Rojo,Merah
-Water Color,Biru,BIRU,Y,7,,Blue,Bleu,Azul,Biru
-Water Color,Hijau,HIJA,Y,8,,Green,Vert,Verde,Hijau
+Water Color,Tidak Berwarna,TIDA,Y,1,,dictionary.waterColor.tidakBerwarna,Colorless,Incolore,Incoloro,Tidak Berwarna
+Water Color,Putih,PUTI,Y,2,,dictionary.waterColor.putih,White,Blanc,Blanco,Putih
+Water Color,Hitam,HITA,Y,3,,dictionary.waterColor.hitam,Black,Noir,Negro,Hitam
+Water Color,Kuning,KUNI,Y,4,,dictionary.waterColor.kuning,Yellow,Jaune,Amarillo,Kuning
+Water Color,Cokelat,COKE,Y,5,,dictionary.waterColor.cokelat,Brown,Brun,Marrón,Cokelat
+Water Color,Merah,MERA,Y,6,,dictionary.waterColor.merah,Red,Rouge,Rojo,Merah
+Water Color,Biru,BIRU,Y,7,,dictionary.waterColor.biru,Blue,Bleu,Azul,Biru
+Water Color,Hijau,HIJA,Y,8,,dictionary.waterColor.hijau,Green,Vert,Verde,Hijau
 # Susceptibility Results
-Susceptibility Results,Sensitif,SENS,Y,1,,Sensitive,Sensible,Sensible,Sensitif
-Susceptibility Results,Resistan,RESI,Y,2,,Resistant,Résistant,Resistente,Resistan
-Susceptibility Results,Intermediate,INTE,Y,3,,Intermediate,Intermédiaire,Intermedio,Intermediate
+Susceptibility Results,Sensitif,SENS,Y,1,,dictionary.susceptibilityResults.sensitif,Sensitive,Sensible,Sensible,Sensitif
+Susceptibility Results,Resistan,RESI,Y,2,,dictionary.susceptibilityResults.resistan,Resistant,Résistant,Resistente,Resistan
+Susceptibility Results,Intermediate,INTE,Y,3,,dictionary.susceptibilityResults.intermediate,Intermediate,Intermédiaire,Intermedio,Intermediate
 # Detection Results
-Detection Results,Terdeteksi,TERD,Y,1,,Detected,Détecté,Detectado,Terdeteksi
-Detection Results,Tidak Terdeteksi,TTID,Y,2,,Not Detected,Non Détecté,No Detectado,Tidak Terdeteksi
-Detection Results,Tidak Meyakinkan,TMEY,Y,3,,Inconclusive,Non Concluant,Inconcluso,Tidak Meyakinkan
+Detection Results,Terdeteksi,TERD,Y,1,,dictionary.detectionResults.terdeteksi,Detected,Détecté,Detectado,Terdeteksi
+Detection Results,Tidak Terdeteksi,TTID,Y,2,,dictionary.detectionResults.tidakTerdeteksi,Not Detected,Non Détecté,No Detectado,Tidak Terdeteksi
+Detection Results,Tidak Meyakinkan,TMEY,Y,3,,dictionary.detectionResults.tidakMeyakinkan,Inconclusive,Non Concluant,Inconcluso,Tidak Meyakinkan
 # ============================================================================
 # Test-specific result option sets
 # ============================================================================

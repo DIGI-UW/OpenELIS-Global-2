@@ -1,6 +1,7 @@
 package org.openelisglobal.eqa.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,6 +13,7 @@ import org.openelisglobal.alert.valueholder.AlertStatus;
 import org.openelisglobal.alert.valueholder.AlertType;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -102,46 +104,62 @@ public class EQAAlertRestController extends ControllerUtills {
         return ResponseEntity.ok(summary);
     }
 
-    /**
-     * Dashboard acknowledge: acknowledges and, when a comment is supplied, resolves
-     * in one step. Lives under /alerts/dashboard so it can't collide with
-     * AlertRestController's generic ack-only PUT /alerts/{id}/acknowledge — the two
-     * previously shared a path and Spring's pick depended on the Accept header
-     * (OGC-1022).
-     */
+    @GetMapping(value = "/alerts/dashboard/types", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<String>> getAlertTypes() {
+        return ResponseEntity.ok(Arrays.stream(AlertType.values()).map(Enum::name).collect(Collectors.toList()));
+    }
+
+    // Under /alerts/dashboard so it can't collide with AlertRestController's PUT
+    // /alerts/{id}/acknowledge.
     @PutMapping(value = "/alerts/dashboard/{id}/acknowledge", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> acknowledgeAlert(@PathVariable Long id,
             @RequestBody(required = false) Map<String, String> body, HttpServletRequest request) {
-
-        Alert target;
-        try {
-            target = alertService.get(id);
-        } catch (Exception e) {
-            target = null;
-        }
-
+        Alert target = findAlert(id);
         if (target == null) {
             return ResponseEntity.notFound().build();
         }
-
-        // the dashboard sends the text under "notes"; older callers used "comment"
-        String comment = body != null ? (body.get("comment") != null ? body.get("comment") : body.get("notes")) : null;
-
-        if (target.getSeverity() == AlertSeverity.CRITICAL && (comment == null || comment.trim().isEmpty())) {
+        String notes = notes(body);
+        if (target.getSeverity() == AlertSeverity.CRITICAL && notes == null) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Resolution comment is required for critical alerts"));
+                    .body(Map.of("error", "A comment is required to acknowledge a critical alert"));
         }
+        try {
+            alertService.acknowledgeAlert(id, Integer.valueOf(getSysUserId(request)), notes);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
+        }
+        return ResponseEntity.ok(Map.of("status", AlertStatus.ACKNOWLEDGED.name()));
+    }
 
-        // acknowledgeAlert/resolveAlert resolve the user by id and NPE on null —
-        // the acknowledging user comes from the session, as in AlertRestController
-        Integer userId = Integer.valueOf(getSysUserId(request));
-        if (target.getStatus() == AlertStatus.OPEN) {
-            alertService.acknowledgeAlert(id, userId);
+    @PutMapping(value = "/alerts/dashboard/{id}/resolve", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> resolveAlert(@PathVariable Long id,
+            @RequestBody(required = false) Map<String, String> body, HttpServletRequest request) {
+        Alert target = findAlert(id);
+        if (target == null) {
+            return ResponseEntity.notFound().build();
         }
-        if (comment != null && !comment.trim().isEmpty()) {
-            alertService.resolveAlert(id, userId, comment);
+        if (target.getStatus() != AlertStatus.ACKNOWLEDGED) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "Only an acknowledged alert can be resolved"));
         }
+        String notes = notes(body);
+        if (notes == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "A resolution comment is required"));
+        }
+        alertService.resolveAlert(id, Integer.valueOf(getSysUserId(request)), notes);
+        return ResponseEntity.ok(Map.of("status", AlertStatus.RESOLVED.name()));
+    }
 
-        return ResponseEntity.ok(Map.of("status", "acknowledged"));
+    private Alert findAlert(Long id) {
+        try {
+            return alertService.get(id);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String notes(Map<String, String> body) {
+        String notes = body == null ? null : body.get("notes");
+        return notes == null || notes.isBlank() ? null : notes.trim();
     }
 }

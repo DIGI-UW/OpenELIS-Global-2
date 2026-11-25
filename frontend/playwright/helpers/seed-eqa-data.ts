@@ -382,12 +382,35 @@ export function seedProviderScheme(runTag: string): ProviderSchemeSeed {
         `DELETE FROM ${SCHEMA}.eqa_round WHERE cycle_id IN (${cycles})`,
         `DELETE FROM ${SCHEMA}.eqa_cycle_participant WHERE cycle_id IN (${cycles})`,
         `DELETE FROM ${SCHEMA}.eqa_cycle WHERE scheme_id = ${programId}`,
+        `DELETE FROM ${SCHEMA}.eqa_program_test WHERE eqa_program_id = ${programId}`,
       ]);
       // Test-created rows are gone; the seeded enrollments, scheme and
       // organizations unwind in reverse insert order.
       reportCleanupFailures([...failures, ...seeded.drain()]);
     },
   };
+}
+
+/**
+ * The first of the given tests that reports an analyte. A panel sample seals
+ * its target against the analyte its test reports, and the provider's intake
+ * dialog offers one row per sealed sample only for such a test; a test with no
+ * analyte would take its result in with no sample and no target to judge it.
+ */
+export function firstTestWithAnalyte(testIds: string[]): string {
+  const ids = testIds.map((id) => asInt(id, "test id"));
+  if (ids.length === 0) {
+    throw new Error("firstTestWithAnalyte needs at least one test id");
+  }
+  const picked = psql(
+    `SELECT t.id FROM ${SCHEMA}.test t WHERE t.id IN (${ids.join(",")})` +
+      ` AND EXISTS (SELECT 1 FROM ${SCHEMA}.test_analyte ta WHERE ta.test_id = t.id)` +
+      ` ORDER BY t.id LIMIT 1`,
+  );
+  if (picked === "") {
+    throw new Error("none of the testable tests reports an analyte");
+  }
+  return asInt(picked, "test with analyte");
 }
 
 /**

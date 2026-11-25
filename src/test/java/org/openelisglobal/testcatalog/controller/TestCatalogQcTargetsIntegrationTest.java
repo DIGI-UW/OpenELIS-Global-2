@@ -1,6 +1,7 @@
 package org.openelisglobal.testcatalog.controller;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -14,6 +15,7 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController;
+import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.OptionDto;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.ResultComponentDto;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.SampleResults;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogQcTargetsRestController;
@@ -39,6 +41,7 @@ public class TestCatalogQcTargetsIntegrationTest extends BaseWebContextSensitive
     private static final long TEST_ID = 95321L;
     private static final String LOT_ID = "qc-target-it-lot-0001";
     private static final String ANALYZER_NAME = "QcTargetIT";
+    private static final String CODED_ANSWER = "QcTargetIT positive";
 
     @Autowired
     private org.openelisglobal.testcatalog.service.TestQcTargetService targetService;
@@ -76,6 +79,8 @@ public class TestCatalogQcTargetsIntegrationTest extends BaseWebContextSensitive
     private org.openelisglobal.panelitem.service.PanelItemService panelItemService;
     @Autowired
     private javax.sql.DataSource dataSource;
+    @Autowired
+    private org.openelisglobal.testcatalog.service.TestQcPolicyService policyService;
 
     private TestCatalogQcTargetsRestController controller;
     private TestCatalogEditorRestController editor;
@@ -90,7 +95,7 @@ public class TestCatalogQcTargetsIntegrationTest extends BaseWebContextSensitive
         // The test context scans services and DAOs, not this controller package,
         // so the controllers are built directly (same as the other editor ITs).
         controller = new TestCatalogQcTargetsRestController(testService, componentService, testResultService,
-                targetService, controlLotService, dictionaryService, unitOfMeasureService);
+                targetService, controlLotService, dictionaryService, unitOfMeasureService, policyService);
         editor = new TestCatalogEditorRestController(testService, componentService, interpretationService,
                 testResultService, resultLimitService, coverageService, handlingService, analyzerService,
                 typeOfSampleService, typeOfSampleTestService, terminologyService, panelService, panelItemService);
@@ -121,12 +126,14 @@ public class TestCatalogQcTargetsIntegrationTest extends BaseWebContextSensitive
 
     private void cleanup() {
         jdbc.update("DELETE FROM clinlims.test_qc_target WHERE test_id = ?", TEST_ID);
+        jdbc.update("DELETE FROM clinlims.test_qc_policy WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM qc_control_lot WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM clinlims.analyzer WHERE name = ?", ANALYZER_NAME);
         // The component save materializes a test_result row per numeric component.
         jdbc.update("DELETE FROM clinlims.test_result WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM clinlims.test_result_component WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM clinlims.test WHERE id = ?", TEST_ID);
+        jdbc.update("DELETE FROM clinlims.dictionary WHERE dict_entry = ?", CODED_ANSWER);
     }
 
     private static MockHttpServletRequest authedRequest() {
@@ -149,6 +156,13 @@ public class TestCatalogQcTargetsIntegrationTest extends BaseWebContextSensitive
         dto.qcControlLotId = lotId;
         dto.expectedValue = BigDecimal.valueOf(expected);
         dto.uncertainty = BigDecimal.valueOf(uncertainty);
+        return dto;
+    }
+
+    private static TestCatalogQcTargetsRestController.QcPolicyDto policy(boolean required, String whenMissing) {
+        TestCatalogQcTargetsRestController.QcPolicyDto dto = new TestCatalogQcTargetsRestController.QcPolicyDto();
+        dto.controlRequired = required;
+        dto.controlWhenMissing = whenMissing;
         return dto;
     }
 
@@ -213,6 +227,38 @@ public class TestCatalogQcTargetsIntegrationTest extends BaseWebContextSensitive
         assertEquals("deactivated, never deleted", 2, controller.getTargets(testId()).getBody().targets.size());
     }
 
+    /**
+     * OGC-1200 FR-H1: the section's QC policy is saved with its targets; a policy
+     * that is neither Warn nor Hold is refused before anything is written, and a
+     * client that sends no policy leaves it as it was.
+     */
+    @org.junit.Test
+    public void thePolicyIsSavedWithTheTargets_aRefusedOneWritesNothing_andNoPolicyKeepsIt() {
+        QcTargets fresh = controller.getTargets(testId()).getBody();
+        assertFalse("a test requires no control until its policy says so", fresh.policy.controlRequired);
+        assertEquals("WARN", fresh.policy.controlWhenMissing);
+
+        QcTargets withPolicy = body(target("NORMAL", null, 5.5d, 0.4d));
+        withPolicy.policy = policy(true, "hold");
+        QcTargets saved = (QcTargets) controller.saveTargets(testId(), withPolicy, authedRequest()).getBody();
+        assertTrue(saved.policy.controlRequired);
+        assertEquals("HOLD", saved.policy.controlWhenMissing);
+
+        QcTargets refused = new QcTargets();
+        refused.targets = List.of(saved.targets.get(0));
+        saved.targets.get(0).expectedValue = BigDecimal.valueOf(9.9d);
+        refused.policy = policy(false, "SOMETIMES");
+        assertEquals(422, controller.saveTargets(testId(), refused, authedRequest()).getStatusCode().value());
+        QcTargets after = controller.getTargets(testId()).getBody();
+        assertTrue("the refused policy changed nothing", after.policy.controlRequired);
+        assertEquals(0, BigDecimal.valueOf(5.5d).compareTo(after.targets.get(0).expectedValue));
+
+        QcTargets noPolicy = new QcTargets();
+        noPolicy.targets = after.targets;
+        assertEquals(200, controller.saveTargets(testId(), noPolicy, authedRequest()).getStatusCode().value());
+        assertEquals("HOLD", controller.getTargets(testId()).getBody().policy.controlWhenMissing);
+    }
+
     @org.junit.Test
     public void rejectedTargets_are422_andWriteNothing() {
         assertEquals(422, controller.saveTargets(testId(), body(target("NORMAL", null, 5.5d, -0.1d)), authedRequest())
@@ -230,6 +276,156 @@ public class TestCatalogQcTargetsIntegrationTest extends BaseWebContextSensitive
                         body(target("NORMAL", null, 5.5d, 0.4d), target("NORMAL", null, 6d, 0.4d)), authedRequest())
                         .getStatusCode().value());
         assertTrue(controller.getTargets(testId()).getBody().targets.isEmpty());
+    }
+
+    private void insertTarget(String id, String level, Double expected, Double uncertainty, String dictId) {
+        jdbc.update(
+                "INSERT INTO clinlims.test_qc_target (id, test_id, control_level, expected_value, uncertainty,"
+                        + " expected_dict_result_id, is_active, last_updated) VALUES (?, ?, ?, ?, ?, ?, true, NOW())",
+                id, TEST_ID, level, expected, uncertainty, dictId == null ? null : Long.valueOf(dictId));
+    }
+
+    private boolean targetActive(String id) {
+        return jdbc.queryForObject("SELECT is_active FROM clinlims.test_qc_target WHERE id = ?", Boolean.class, id);
+    }
+
+    private void runUpgradeRetire() throws Exception {
+        String xml = new String(getClass().getClassLoader()
+                .getResourceAsStream("liquibase/3.5.x.x/137-qc-targets-retire-stale.xml").readAllBytes(),
+                java.nio.charset.StandardCharsets.UTF_8);
+        jdbc.update(xml.substring(xml.indexOf("<sql>") + 5, xml.indexOf("</sql>")));
+    }
+
+    /**
+     * OGC-1462: a test whose result type changed before the fix kept its old
+     * targets active; the upgrade retires them once, keeping their values, and
+     * leaves the targets that fit.
+     */
+    @org.junit.Test
+    public void theUpgradeRetiresTargetsOfTheOldShape_andKeepsTheirValues() throws Exception {
+        String answerId = makeCoded();
+        jdbc.update("DELETE FROM clinlims.test_qc_target WHERE test_id = ?", TEST_ID);
+        insertTarget("upgrade-numeric", "LOW", 5d, 1d, null);
+        insertTarget("upgrade-coded", "NORMAL", null, null, answerId);
+
+        runUpgradeRetire();
+
+        assertFalse("a numeric target on a coded test is retired", targetActive("upgrade-numeric"));
+        assertEquals(0,
+                new BigDecimal("5").compareTo(jdbc.queryForObject(
+                        "SELECT expected_value FROM clinlims.test_qc_target WHERE id = 'upgrade-numeric'",
+                        BigDecimal.class)));
+        assertTrue("a coded target on a coded test stays", targetActive("upgrade-coded"));
+
+        jdbc.update("UPDATE clinlims.test_result_component SET result_type = 'N' WHERE test_id = ? AND is_primary",
+                TEST_ID);
+        jdbc.update("UPDATE clinlims.test_qc_target SET is_active = true WHERE id = 'upgrade-numeric'");
+
+        runUpgradeRetire();
+
+        assertTrue("a numeric target on a numeric test stays", targetActive("upgrade-numeric"));
+        assertFalse("a coded target on a numeric test is retired", targetActive("upgrade-coded"));
+    }
+
+    /**
+     * OGC-1467: a value wider than numeric(15,5) and an expected answer that is not
+     * a dictionary entry are refused instead of failing the write with a 500.
+     */
+    @org.junit.Test
+    public void valuesTheColumnsCannotHold_andUnknownAnswers_are422() {
+        assertEquals(422,
+                controller.saveTargets(testId(), body(target("NORMAL", null, 12345678901d, 0.4d)), authedRequest())
+                        .getStatusCode().value());
+        assertEquals(422,
+                controller.saveTargets(testId(), body(target("NORMAL", null, 5.5d, 12345678901d)), authedRequest())
+                        .getStatusCode().value());
+        for (String answer : new String[] { "abc", "99999999" }) {
+            QcTargetDto coded = target("NORMAL", null, 5.5d, 0.4d);
+            coded.expectedDictResultId = answer;
+            assertEquals(answer, 422,
+                    controller.saveTargets(testId(), body(coded), authedRequest()).getStatusCode().value());
+        }
+        assertTrue(controller.getTargets(testId()).getBody().targets.isEmpty());
+
+        QcTargets widest = saved(target("NORMAL", null, 9999999999d, 0.4d));
+        assertEquals(0, new BigDecimal("9999999999").compareTo(widest.targets.get(0).expectedValue));
+    }
+
+    /** Switches the primary component to a coded result with one answer. */
+    private String makeCoded() {
+        SampleResults current = editor.getSampleResults(testId()).getBody();
+        ResultComponentDto primary = current.components.get(0);
+        primary.resultType = "D";
+        OptionDto answer = new OptionDto();
+        answer.value = CODED_ANSWER;
+        answer.valueName = CODED_ANSWER;
+        answer.freeText = true;
+        answer.resultType = "D";
+        answer.sortOrder = 1;
+        answer.normal = false;
+        primary.options = List.of(answer);
+        ResponseEntity<?> resp = editor.saveSampleResults(testId(), current, authedRequest());
+        assertEquals(String.valueOf(resp.getBody()), 200, resp.getStatusCode().value());
+        QcTargets loaded = controller.getTargets(testId()).getBody();
+        assertFalse("the test is coded now", loaded.quantitative);
+        return loaded.dictionaryOptions.get(0).id;
+    }
+
+    /** OGC-1462: a row added and switched off before it was filled. */
+    @org.junit.Test
+    public void aBlankTargetDeactivatedBeforeItWasFilled_savesAndStoresNothing() {
+        QcTargetDto blank = new QcTargetDto();
+        blank.controlLevel = "HIGH";
+        blank.active = false;
+
+        QcTargets after = saved(blank);
+
+        assertTrue(after.targets.isEmpty());
+    }
+
+    /**
+     * OGC-1462: changing the result type retires the targets of the old shape (so
+     * Results Entry stops prefilling them) and keeps their values; the section can
+     * then save targets of the new shape, sending the retired rows back empty.
+     */
+    @org.junit.Test
+    public void afterTheResultTypeChanges_oldTargetsAreRetired_andNewOnesSave() {
+        QcTargetDto numeric = saved(target("LOW", null, 5d, 1d)).targets.get(0);
+        assertEquals("LEVEL", effective("LOW", null).source);
+
+        String answerId = makeCoded();
+
+        QcTargetDto retired = controller.getTargets(testId()).getBody().targets.get(0);
+        assertEquals(numeric.id, retired.id);
+        assertFalse("a numeric target does not fit a coded test", retired.active);
+        assertEquals(0, new BigDecimal("5").compareTo(retired.expectedValue));
+        assertEquals("NONE", effective("LOW", null).source);
+
+        retired.expectedValue = null;
+        retired.uncertainty = null;
+        QcTargetDto coded = new QcTargetDto();
+        coded.controlLevel = "NORMAL";
+        coded.expectedDictResultId = answerId;
+        QcTargets after = saved(retired, coded);
+
+        QcTargetDto kept = after.targets.stream().filter(t -> numeric.id.equals(t.id)).findFirst().get();
+        assertFalse(kept.active);
+        assertEquals("a retired target keeps what it held", 0, new BigDecimal("5").compareTo(kept.expectedValue));
+        assertEquals(answerId, effective("NORMAL", null).target.expectedDictResultId);
+    }
+
+    /**
+     * OGC-1462: reactivating a retired target needs values of the current shape.
+     */
+    @org.junit.Test
+    public void aRetiredTargetReactivatedWithoutValuesOfTheNewShape_isRefused() {
+        saved(target("LOW", null, 5d, 1d));
+        makeCoded();
+        QcTargetDto retired = controller.getTargets(testId()).getBody().targets.get(0);
+        retired.active = true;
+
+        assertEquals(422, controller.saveTargets(testId(), body(retired), authedRequest()).getStatusCode().value());
+        assertFalse(controller.getTargets(testId()).getBody().targets.get(0).active);
     }
 
     @org.junit.Test

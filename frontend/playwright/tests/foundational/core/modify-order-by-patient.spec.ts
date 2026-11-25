@@ -120,7 +120,7 @@ test.describe("Modify Order by patient", () => {
       .getByRole("textbox", { name: "Last Name" })
       .fill(male.lastName);
     await page
-      .getByRole("group", { name: "Sex", exact: true })
+      .getByRole("group", { name: /^Sex( required)?$/ })
       .getByText("Male", { exact: true })
       .click();
     await expect(
@@ -175,10 +175,15 @@ test.describe("Modify Order by patient", () => {
     });
 
     await test.step("add a serum sample with the panel and submit", async () => {
+      // The existing Serum sample offers the same panel (OGC-1514), so the
+      // click is scoped to the new sample's block.
+      const newSample = page
+        .locator(".sampleType")
+        .filter({ has: page.locator("#sampleId_0") });
       await page.locator("#sampleId_0").selectOption({ label: "Serum" });
-      await page.getByText(PANEL, { exact: true }).click();
+      await newSample.getByText(PANEL, { exact: true }).click();
       await expect(
-        page.getByRole("checkbox", { name: PANEL, exact: true }),
+        newSample.getByRole("checkbox", { name: PANEL, exact: true }),
       ).toBeChecked();
       await page.getByRole("button", { name: "Next", exact: true }).click();
       await expect(

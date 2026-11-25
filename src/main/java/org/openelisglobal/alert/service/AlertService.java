@@ -64,9 +64,9 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
      *
      * @param alertId             Alert ID
      * @param userId              User ID who acknowledged the alert
-     * @param acknowledgmentNotes Free-text note; null or blank clears any note
-     *                            already recorded
+     * @param acknowledgmentNotes Free-text note; null or blank records none
      * @return Updated alert
+     * @throws IllegalStateException if the alert is not open
      */
     Alert acknowledgeAlert(Long alertId, Integer userId, String acknowledgmentNotes);
 
@@ -103,6 +103,9 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
      * @return List of alerts for the entity
      */
     List<Alert> getAlertsByEntityRef(String entityType, String entityRef);
+
+    /** Outstanding means OPEN or ACKNOWLEDGED. */
+    List<Alert> getOutstandingAlerts(String entityType, AlertType alertType);
 
     /**
      * Count active alerts (OPEN or ACKNOWLEDGED) for a specific entity.

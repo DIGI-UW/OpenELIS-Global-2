@@ -1,10 +1,11 @@
 package org.openelisglobal.microbiology.service;
 
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.microbiology.form.MicroAntibioticAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAdminForm;
-import org.openelisglobal.microbiology.form.MicroCultureSetupAdminForm;
 import org.openelisglobal.microbiology.form.MicroOrganismAdminForm;
+import org.openelisglobal.microbiology.form.MicroPanelCoverageForm;
 import org.openelisglobal.microbiology.form.MicroPatientOriginAdminForm;
 import org.openelisglobal.microbiology.form.MicroReferenceAdminPageForm;
 import org.openelisglobal.microbiology.form.MicroReferenceAdminQueryForm;
@@ -36,13 +37,15 @@ public interface MicrobiologyReferenceAdminService {
 
     MicroAstPanelAdminForm publishPanelVersion(String currentPanelId, MicroAstPanelAdminForm request, String actorId);
 
-    MicroReferenceAdminPageForm<MicroCultureSetupAdminForm> getCultureSetups(MicroReferenceAdminQueryForm query);
+    List<MicroPanelCoverageForm> getPanelOrganismCoverage(List<String> antibioticIds, String protocol);
+
+    /**
+     * Assigns each active organism its most specific claiming panel; panels in
+     * {@code lines} (id to file line) also fail on an unmatched entry.
+     */
+    void assignPanelDefaults(Map<String, Integer> lines, String actorId);
 
     MicroReferenceAdminPageForm<MicroPatientOriginAdminForm> getPatientOrigins(MicroReferenceAdminQueryForm query);
-
-    MicroCultureSetupAdminForm getCultureSetup(String id);
-
-    MicroCultureSetupAdminForm saveCultureSetup(String id, MicroCultureSetupAdminForm request, String actorId);
 
     List<MicroReferenceOptionForm> getOptions(String resource);
 }

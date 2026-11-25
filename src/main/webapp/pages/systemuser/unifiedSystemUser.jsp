@@ -1,3 +1,4 @@
+<%@ taglib prefix="enc" uri="/WEB-INF/taglib/output-encoding.tld" %>
 <%@ page language="java"
 	contentType="text/html; charset=UTF-8"
 	import="org.openelisglobal.common.action.IActionConstants,
@@ -225,7 +226,7 @@ function mySaveAction() {
 </script>
 
 <script>
-var userRolesData = JSON.parse('${form.userLabRoleData}' != '' ? '${form.userLabRoleData}' : '{}');
+var userRolesData = JSON.parse('${enc:js(form.userLabRoleData)}' != '' ? '${enc:js(form.userLabRoleData)}' : '{}');
 //console.log(userRolesData);
 
 // this dynamically Renders sets of Lab Unit Roles with data if user roles data exists			 
@@ -290,7 +291,7 @@ function renderUserRolesData() {
 <script>
 function makeSystemUserAutoComplete() {
 	jQuery('#systemUserToCopySelector').autocomplete({
-		source: JSON.parse('${form.systemUsers}') ,
+        source: JSON.parse('${enc:js(form.systemUsers)}') ,
 		focus: function(event, ui) {
 			event.preventDefault();
 			jQuery(this).val(ui.item.label);

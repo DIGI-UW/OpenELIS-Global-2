@@ -36,6 +36,13 @@ import LocationsPage, {
 import UserManagement from "./userManagement/UserManagement";
 import UserAddModify from "./userManagement/UserAddModify";
 import ManageMethod from "./testManagement/ManageMethod";
+import UnitsOfMeasure from "./testManagement/UnitsOfMeasure";
+import ViewTestCatalog from "./testManagement/ViewTestCatalog";
+import TestActivation from "./testManagementConfigMenu/TestActivation";
+import TestOrderability from "./testManagementConfigMenu/TestOrderability";
+import PanelOrder from "./testManagementConfigMenu/PanelOrder";
+import ResultSelectListAdd from "./testManagementConfigMenu/ResultSelectListAdd";
+import SelectListRenameEntry from "./testManagementConfigMenu/SelectListRenameEntry";
 import BatchTestReassignmentAndCancelation from "./BatchTestReassignmentAndCancellation/BatchTestReassignmentAndCancelation";
 import TestNotificationConfigMenu from "./testNotificationConfigMenu/TestNotificationConfigMenu";
 import TestNotificationConfigEdit from "./testNotificationConfigMenu/TestNotificationConfigEdit";
@@ -44,6 +51,7 @@ import SearchIndexManagement from "./searchIndexManagement/SearchIndexManagement
 import LoggingManagement from "./loggingManagement/LoggingManagement";
 import TestManagementConfigMenu from "./testManagementConfigMenu/TestManagementConfigMenu";
 import SampleTypeEditor from "./sampleTypeManagement/SampleTypeManagement.jsx";
+import ContainerTypes from "./containerTypes/ContainerTypes.jsx";
 import LabUnitManagement from "./labUnitManagement/LabUnitManagement.jsx";
 import ComplianceStandardsAdmin from "./complianceStandards/ComplianceStandardsAdmin";
 import {
@@ -56,14 +64,17 @@ import DatabaseCleaning from "./databaseCleaning/DatabaseCleaning";
 import VectorSurveillanceSetup from "./vectorSurveillance/VectorSurveillanceSetup";
 import SampleAcceptanceChecklistSetup from "./sampleAcceptance/SampleAcceptanceChecklistSetup";
 import AdminDashboard from "./AdminDashboard";
+import ModulesAdminPage from "../../modules/ModulesAdminPage";
 import StuckAnalyzerEvents from "./StuckAnalyzerEvents";
 import MicrobiologyReferenceAdmin from "./microbiologyReference/MicrobiologyReferenceAdmin";
+import MacroLibraryPage from "./textMacro/MacroLibraryPage";
 
 function Admin() {
   const { path } = useRouteMatch();
 
   return (
     <Switch>
+      <Route path={`${path}/MacroLibrary`} component={MacroLibraryPage} />
       <Route
         path={`${path}/MicrobiologyReference/:section/:detailId?`}
         component={MicrobiologyReferenceAdmin}
@@ -74,12 +85,7 @@ function Admin() {
       />
       <Route path={`${path}/reflex`} component={ReflexTestManagement} />
       <Route path={`${path}/calculatedValue`} component={CalculatedValue} />
-      {/* The legacy View Test Catalog page is gone; its address opens the list. */}
-      <Redirect
-        exact
-        from={`${path}/TestCatalog`}
-        to={`${path}/TestCatalogList`}
-      />
+      <Route exact path={`${path}/TestCatalog`} component={ViewTestCatalog} />
       <Route path={`${path}/TestCatalogList`} component={TestCatalogList} />
       <Route path={`${path}/CatalogImport`} component={CatalogImport} />
       <Route
@@ -101,6 +107,7 @@ function Admin() {
         component={TestCatalogEditor}
       />
       <Route path={`${path}/MethodManagement`} component={ManageMethod} />
+      <Route path={`${path}/UnitsOfMeasure`} component={UnitsOfMeasure} />
       <Route path={`${path}/labNumber`} component={LabNumberManagement} />
       <Route path={`${path}/labelPresets`} component={LabelPresetList} />
       {/* OGC-781: the Programs rework keeps the live /program URL so bookmarks
@@ -179,22 +186,21 @@ function Admin() {
         )}
       />
       <Route
+        path={[`${path}/TestModifyEntry`, `${path}/TestRenameEntry`]}
+        render={() => <Redirect to={`${path}/TestCatalogList`} />}
+      />
+      <Route
         path={[
-          `${path}/TestModifyEntry`,
-          `${path}/TestActivation`,
-          `${path}/TestOrderability`,
-          `${path}/TestRenameEntry`,
           `${path}/UomManagement`,
           `${path}/UomCreate`,
           `${path}/UomRenameEntry`,
         ]}
-        render={() => <Redirect to={`${path}/TestCatalogList`} />}
+        render={() => <Redirect to={`${path}/UnitsOfMeasure`} />}
       />
       <Route
         path={[
           `${path}/PanelManagement`,
           `${path}/PanelCreate`,
-          `${path}/PanelOrder`,
           `${path}/PanelTestAssign`,
           `${path}/PanelRenameEntry`,
         ]}
@@ -214,6 +220,7 @@ function Admin() {
         path={`${path}/SampleTypeEditor/:sampleTypeId?/:section?`}
         component={SampleTypeEditor}
       />
+      <Route path={`${path}/ContainerTypes`} component={ContainerTypes} />
       <Route
         path={[
           `${path}/TestSectionManagement`,
@@ -229,9 +236,16 @@ function Admin() {
         path={`${path}/LabUnitManagement/:labUnitId?/:section?`}
         component={LabUnitManagement}
       />
+      <Route path={`${path}/TestActivation`} component={TestActivation} />
+      <Route path={`${path}/TestOrderability`} component={TestOrderability} />
+      <Route path={`${path}/PanelOrder`} component={PanelOrder} />
       <Route
-        path={[`${path}/ResultSelectListAdd`, `${path}/SelectListRenameEntry`]}
-        render={() => <Redirect to={`${path}/DictionaryMenu`} />}
+        path={`${path}/ResultSelectListAdd`}
+        component={ResultSelectListAdd}
+      />
+      <Route
+        path={`${path}/SelectListRenameEntry`}
+        component={SelectListRenameEntry}
       />
       <Route
         path={[`${path}/MethodCreate`, `${path}/MethodRenameEntry`]}
@@ -339,7 +353,7 @@ function Admin() {
         component={TestNotificationConfigEdit}
       />
       <Route
-        path={`${path}/notificationTriggerConfig`}
+        path={`${path}/notificationTriggerConfig/:tab?`}
         component={NotificationTriggerConfig}
       />
       <Route path={`${path}/DictionaryMenu`} component={DictionaryManagement} />
@@ -365,6 +379,7 @@ function Admin() {
         path={`${path}/SampleAcceptanceChecklist`}
         component={SampleAcceptanceChecklistSetup}
       />
+      <Route path={`${path}/modules`} component={ModulesAdminPage} />
       <Route
         path={path}
         exact

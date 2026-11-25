@@ -89,6 +89,15 @@ describe("PatientSearchSection", () => {
     createFormProps.history = [];
   });
 
+  it("asks the shared search for exact and prefix name matches only (OGC-1443)", () => {
+    render(<Host />);
+
+    expect(searchFormProps.current.nameMatch).toBe("prefix");
+    expect(
+      screen.getByText(/Names match exactly or by their first letters/),
+    ).toBeVisible();
+  });
+
   it("gives the New Patient form the same blank patient on every render", async () => {
     let setOrderData;
     const user = userEvent.setup();

@@ -5,15 +5,14 @@ import {
 
 describe("MicrobiologyCaseState", () => {
   it.each([
-    [{ workflowType: "UNASSIGNED", stage: "RECEIVED" }, "case-info"],
-    [{ workflowType: "BACTERIOLOGY", stage: "RECEIVED" }, "setup"],
-    [{ workflowType: "BACTERIOLOGY", stage: "INCUBATING" }, "setup"],
-    [{ workflowType: "BACTERIOLOGY", stage: "GROWTH_DETECTED" }, "isolates"],
-    [{ workflowType: "BACTERIOLOGY", stage: "IDENTIFICATION" }, "isolates"],
-    [{ workflowType: "BACTERIOLOGY", stage: "AST_IN_PROGRESS" }, "ast"],
-    [{ workflowType: "BACTERIOLOGY", stage: "REVIEW_READY" }, "reports"],
-    [{ workflowType: "BACTERIOLOGY", stage: "FINAL_RELEASED" }, "reports"],
-    [{ workflowType: "BACTERIOLOGY", stage: "LOST_SPECIMEN" }, "case-info"],
+    [{ stage: "RECEIVED" }, "setup"],
+    [{ stage: "INCUBATING" }, "setup"],
+    [{ stage: "GROWTH_DETECTED" }, "isolates"],
+    [{ stage: "IDENTIFICATION" }, "isolates"],
+    [{ stage: "AST_IN_PROGRESS" }, "ast"],
+    [{ stage: "REVIEW_READY" }, "reports"],
+    [{ stage: "FINAL_RELEASED" }, "reports"],
+    [{ stage: "LOST_SPECIMEN" }, "case-info"],
   ])("maps %o to the authoritative current section", (detail, expected) => {
     expect(getMicrobiologyCurrentStepSection(detail)).toBe(expected);
     expect(getMicrobiologyCurrentStep(detail).section).toBe(expected);
@@ -22,7 +21,6 @@ describe("MicrobiologyCaseState", () => {
   it("focuses an open amendment before the persisted stage", () => {
     expect(
       getMicrobiologyCurrentStepSection({
-        workflowType: "BACTERIOLOGY",
         stage: "FINAL_RELEASED",
         finalReleaseState: "AMENDMENT_IN_PROGRESS",
       }),
@@ -48,12 +46,7 @@ describe("MicrobiologyCaseState", () => {
       "LOST_SPECIMEN_POSITIVE",
     ];
     stages.forEach((stage) =>
-      expect(
-        getMicrobiologyCurrentStepSection({
-          workflowType: "BACTERIOLOGY",
-          stage,
-        }),
-      ).not.toBe("timeline"),
+      expect(getMicrobiologyCurrentStepSection({ stage })).not.toBe("timeline"),
     );
   });
 });

@@ -65,6 +65,25 @@ public class AnalyzerResultsServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void setupCapturesRemainAvailableButDoNotCountAsAttention() {
+        AnalyzerResults captured = analyzerResultsService.get("1004");
+        captured.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_SETUP_CAPTURE);
+        analyzerResultsService.update(captured);
+        entityManager.flush();
+        entityManager.clear();
+
+        assertEquals(Map.of(), analyzerResultsService.countHeldResultsByAnalyzerIds(List.of("2001")));
+        assertEquals("POSITIVE", analyzerResultsService.get("1004").getRawResultValue());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_SETUP_CAPTURE,
+                analyzerResultsService.get("1004").getImportIssueReason());
+    }
+
+    @Test
+    public void unresolvedRoutineResultsStillCountAsAttention() {
+        assertEquals(Map.of("2001", 1L), analyzerResultsService.countHeldResultsByAnalyzerIds(List.of("2001", "2002")));
+    }
+
+    @Test
     public void readAnalyzerResults_ShouldReturnAnalyzerResults_UsingAnId() {
         AnalyzerResults analyzerResults = analyzerResultsService.readAnalyzerResults("1002");
         assertNotNull(analyzerResults);
@@ -104,6 +123,41 @@ public class AnalyzerResultsServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("QAN23L", persisted.get(0).getAccessionNumber());
         assertEquals("278", persisted.get(0).getResult());
         assertTrue("Insertion must record the real audit actor", historyCount(persisted.get(0).getId(), "I") > 0);
+    }
+
+    @Test
+    public void twoTubesOfOneOrderAreTwoResultsAndARerunOfOneTubeIsThatTubesDuplicate() {
+        analyzerResultsService.deleteAll(analyzerResultsService.getAll());
+
+        analyzerResultsService.insertAnalyzerResults(List.of(tube("QAN23L-1", "278"), tube("QAN23L-2", "301")),
+                TEST_SYS_USER_ID);
+        entityManager.flush();
+        entityManager.clear();
+        List<AnalyzerResults> staged = analyzerResultsService.getAll();
+        assertEquals("each tube's result is staged", 2, staged.size());
+        assertTrue("neither tube's result is read-only", staged.stream().noneMatch(AnalyzerResults::isReadOnly));
+        String firstTube = staged.stream().filter(row -> "278".equals(row.getResult())).findFirst().orElseThrow()
+                .getId();
+
+        analyzerResultsService.insertAnalyzerResults(List.of(tube("QAN23L-1", "290")), TEST_SYS_USER_ID);
+        entityManager.flush();
+        entityManager.clear();
+        AnalyzerResults rerun = analyzerResultsService.getAll().stream().filter(row -> "290".equals(row.getResult()))
+                .findFirst().orElseThrow();
+        assertTrue(rerun.isReadOnly());
+        assertEquals("a rerun of the first tube links to the first tube's result", firstTube,
+                rerun.getDuplicateAnalyzerResultId());
+    }
+
+    private static AnalyzerResults tube(String tubeId, String value) {
+        AnalyzerResults result = new AnalyzerResults();
+        result.setAnalyzerId("2001");
+        result.setTestName("Body mass");
+        result.setAccessionNumber("QAN23L");
+        result.setInstrumentSpecimenId(tubeId);
+        result.setResult(value);
+        result.setIsControl(false);
+        return result;
     }
 
     @Test
@@ -149,9 +203,7 @@ public class AnalyzerResultsServiceTest extends BaseWebContextSensitiveTest {
         note.setNoteType("G");
         note.setSubject("General Observation");
         note.setText("Patient shows signs of improvement.");
-        List<Note> noteList = new ArrayList<>();
-        noteList.add(note);
-        sampleGrouping.noteList = noteList;
+        sampleGrouping.noteList = List.of(List.of(note));
 
         Analysis analysis = new Analysis();
         analysis.setSampleItem(sampleItem);

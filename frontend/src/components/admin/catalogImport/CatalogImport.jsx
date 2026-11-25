@@ -94,14 +94,19 @@ const CatalogImport = () => {
     setPlan(null);
     setApplied(false);
     setFailure(null);
-    setStaged((previous) => [
-      ...previous,
-      ...addedFiles.map((file) => ({
-        file,
-        name: file.name,
-        domain: inferDomain(file.name, domains),
-      })),
-    ]);
+    setStaged((previous) => {
+      const byName = new Map(
+        previous.map((entry) => [entry.name.toLowerCase(), entry]),
+      );
+      addedFiles.forEach((file) => {
+        byName.set(file.name.toLowerCase(), {
+          file,
+          name: file.name,
+          domain: inferDomain(file.name, domains),
+        });
+      });
+      return Array.from(byName.values());
+    });
   };
 
   const removeFile = (name) => {
@@ -117,6 +122,7 @@ const CatalogImport = () => {
         entry.name === name ? { ...entry, domain } : entry,
       ),
     );
+    setPlan(null);
   };
 
   const notify = (kind, messageId) => {
@@ -406,13 +412,22 @@ const CatalogImport = () => {
                 {(plan.files || [])
                   .flatMap((file) =>
                     (file.rows || [])
-                      .filter((row) => row.outcome === "SKIPPED")
+                      .filter((row) =>
+                        ["SKIPPED", "UNCHANGED", "REMOVED", "WARNING"].includes(
+                          row.outcome,
+                        ),
+                      )
                       .map((row) => ({ file: file.fileName, ...row })),
                   )
                   .map((row) => (
-                    <div key={`${row.file}-${row.lineNumber}`}>
-                      <Tag type="red" size="sm">
-                        {row.file}:{row.lineNumber}
+                    <div key={`${row.file}-${row.lineNumber}-${row.reason}`}>
+                      <Tag
+                        type={row.outcome === "SKIPPED" ? "red" : "cool-gray"}
+                        size="sm"
+                      >
+                        {row.lineNumber
+                          ? `${row.file}:${row.lineNumber}`
+                          : row.file}
                       </Tag>
                       {row.reason}
                     </div>

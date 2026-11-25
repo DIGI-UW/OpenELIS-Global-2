@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+ <changeSet id="013-microbiology-v2-routing-catalog" author="openelisglobal">
+  <addColumn schemaName="clinlims" tableName="test">
+   <column name="opens_microbiology_case" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+   <column name="microbiology_case_role" type="varchar(20)" defaultValue="DIRECT"><constraints nullable="false"/></column>
+   <column name="collected_in_sets" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+  </addColumn>
+  <sql>ALTER TABLE clinlims.test ADD CONSTRAINT test_micro_case_role_check CHECK (microbiology_case_role IN ('CULTURE', 'DIRECT', 'CASE'));
+   ALTER TABLE clinlims.test ADD CONSTRAINT test_micro_sets_check CHECK (NOT collected_in_sets OR (opens_microbiology_case AND microbiology_case_role = 'CULTURE'));</sql>
+  <rollback>
+   <dropColumn schemaName="clinlims" tableName="test" columnName="collected_in_sets"/>
+   <dropColumn schemaName="clinlims" tableName="test" columnName="microbiology_case_role"/>
+   <dropColumn schemaName="clinlims" tableName="test" columnName="opens_microbiology_case"/>
+  </rollback>
+ </changeSet>
+ <changeSet id="013-orders-before-receipt" author="openelisglobal">
+  <dropNotNullConstraint schemaName="clinlims" tableName="sample" columnName="received_date" columnDataType="timestamp"/>
+  <rollback><addNotNullConstraint schemaName="clinlims" tableName="sample" columnName="received_date" columnDataType="timestamp"/></rollback>
+ </changeSet>
+</databaseChangeLog>

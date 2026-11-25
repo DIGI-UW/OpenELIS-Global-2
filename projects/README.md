@@ -14,7 +14,8 @@ runtime code.
 
 ### Current projects
 
-- `projects/analyzer-harness/` — the analyzer E2E parity stack (Compose files,
-  seeding and parity scripts) used by CI and local analyzer testing.
+- `projects/analyzer-harness/` — internal Compose configuration, scenario
+  seeding, and analyzer testing/recording tools. The public source-development
+  launcher is `scripts/dev-stack`; full local CI is `scripts/run-ci-checks.sh`.
 - `projects/reporting-uat/` — runtime qualification tools for the isolated
   reporting UAT deployment.

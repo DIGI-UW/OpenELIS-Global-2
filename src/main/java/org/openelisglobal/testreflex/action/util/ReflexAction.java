@@ -44,6 +44,13 @@ public abstract class ReflexAction {
     protected static final String INTERPERET_TYPE = "I";
 
     private Analysis generatedAnalysis;
+    private CaseWork generatedCaseWork;
+    private String actor;
+
+    public record CaseWork(org.openelisglobal.sample.valueholder.Sample order, String sampleTypeId, SampleItem sample,
+            Test test) {
+    }
+
     private boolean flagAction = false;
 
     private String flag;
@@ -61,8 +68,15 @@ public abstract class ReflexAction {
      * result. Points to the same sample, and sets parent child relationship.
      */
     public void handleReflex(TestReflex reflex, Result result, String actionSelectionId) {
+        handleReflex(reflex, result, actionSelectionId, result.getSysUserId());
+    }
+
+    public void handleReflex(TestReflex reflex, Result result, String actionSelectionId, String actor) {
         this.reflex = reflex;
         this.result = result;
+        this.actor = actor;
+        generatedAnalysis = null;
+        generatedCaseWork = null;
 
         String flag = reflex.getFlags();
         if (!GenericValidator.isBlankOrNull(flag)) {
@@ -93,21 +107,12 @@ public abstract class ReflexAction {
             Analysis currentAnalysis = result.getAnalysis();
             analysisService.getData(currentAnalysis);
 
-            // OGC-189 (M4, decision D5): a reflex must never file work into a
-            // deactivated lab unit. The rule is about WHERE THE WORK LANDS, and
-            // a reflexed analysis is filed under the PARENT's lab unit (see the
-            // note on setTestSection below) — so that is the unit to test, not
-            // the reflexed test's own configured one.
-            //
-            // Gating on the reflexed test's own unit instead would get both
-            // edge cases wrong: it would block a reflex that was going to land
-            // in a perfectly active parent unit, and let one through into a
-            // deactivated parent unit.
-            //
-            // The test's own active flag still applies — an inactive test is
-            // not orderable by any route.
+            // Gate the unit where the generated work will actually be filed.
+            // V2 case-opening tests use their catalog unit; ordinary reflexes
+            // retain the triggering analysis's unit.
             EffectiveTestStatusService effectiveTestStatus = SpringContext.getBean(EffectiveTestStatusService.class);
-            TestSection owningSection = currentAnalysis == null ? null : currentAnalysis.getTestSection();
+            TestSection owningSection = test.isOpensMicrobiologyCase() ? test.getTestSection()
+                    : currentAnalysis.getTestSection();
             boolean testItselfInactive = !"Y".equals(test.getIsActive());
             boolean owningSectionInactive = effectiveTestStatus.isLabUnitInactive(owningSection);
             if (testItselfInactive || owningSectionInactive) {
@@ -127,6 +132,15 @@ public abstract class ReflexAction {
                 return;
             }
 
+            boolean caseOnly = test.isOpensMicrobiologyCase() && "CASE".equals(test.getMicrobiologyCaseRole());
+            Target target = targetForGeneratedTest(test, currentAnalysis, !caseOnly);
+            SampleItem targetItem = target == null ? currentAnalysis.getSampleItem() : target.sample();
+            if (caseOnly) {
+                generatedCaseWork = new CaseWork(currentAnalysis.getSampleItem().getSample(),
+                        target == null ? currentAnalysis.getSampleItem().getTypeOfSampleId() : target.typeId(),
+                        targetItem, test);
+                return;
+            }
             generatedAnalysis = new Analysis();
             generatedAnalysis.setTest(test);
             generatedAnalysis.setIsReportable(currentAnalysis.getIsReportable());
@@ -137,7 +151,6 @@ public abstract class ReflexAction {
                     .setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted));
             generatedAnalysis.setParentAnalysis(currentAnalysis);
             generatedAnalysis.setParentResult(result);
-            SampleItem targetItem = sampleItemForGeneratedTest(test, currentAnalysis);
             if (targetItem != null) {
                 generatedAnalysis.setSampleItem(targetItem);
                 generatedAnalysis.setSampleTypeName(
@@ -146,12 +159,7 @@ public abstract class ReflexAction {
                 generatedAnalysis.setSampleItem(currentAnalysis.getSampleItem());
                 generatedAnalysis.setSampleTypeName(currentAnalysis.getSampleTypeName());
             }
-            // The generated analysis inherits the PARENT's lab unit rather than
-            // the reflexed test's own — pre-existing routing, deliberately
-            // unchanged. The gate above tests this same unit, so the check and
-            // the filing now agree: a reflex fires only when the unit it will
-            // actually land in is active (OGC-189 T159).
-            generatedAnalysis.setTestSection(currentAnalysis.getTestSection());
+            generatedAnalysis.setTestSection(owningSection);
         }
     }
 
@@ -163,7 +171,8 @@ public abstract class ReflexAction {
      * and that pairing is the lab's instruction about where the generated result
      * belongs: trigger on Respiratory Swab, report on DBS. The order is given that
      * specimen when it does not already hold one, because the generated test is the
-     * reason to have it.
+     * reason to have it. A Case-role target instead records requested work when its
+     * specimen has not been collected; it has no result analysis to create.
      *
      * <p>
      * Read from add_sample_type_id and never from sample_type_id - the latter
@@ -177,13 +186,12 @@ public abstract class ReflexAction {
      * test the order holds several eligible specimens for names no single one, and
      * the triggering specimen stays the safer choice over guessing between them.
      */
-    private SampleItem sampleItemForGeneratedTest(Test test, Analysis currentAnalysis) {
+    private Target targetForGeneratedTest(Test test, Analysis currentAnalysis, boolean createSample) {
         if (test == null || currentAnalysis == null || currentAnalysis.getSampleItem() == null) {
             return null;
         }
         if (reflex != null && !GenericValidator.isBlankOrNull(reflex.getAddedSampleTypeId())) {
-            return SpringContext.getBean(RuleResultScope.class).resolveOrCreateSampleItemForTarget(
-                    currentAnalysis.getSampleItem().getSample(), reflex.getAddedSampleTypeId(), result.getSysUserId());
+            return targetForType(currentAnalysis, reflex.getAddedSampleTypeId(), createSample);
         }
         List<TypeOfSample> configured = SpringContext.getBean(TypeOfSampleService.class)
                 .getTypeOfSampleForTest(test.getId());
@@ -207,10 +215,20 @@ public abstract class ReflexAction {
             }
         }
         if (match == null && configured.size() == 1) {
-            return SpringContext.getBean(RuleResultScope.class).resolveOrCreateSampleItemForTarget(
-                    currentAnalysis.getSampleItem().getSample(), configured.get(0).getId(), result.getSysUserId());
+            return targetForType(currentAnalysis, configured.get(0).getId(), createSample);
         }
-        return match;
+        return match == null ? null : new Target(match.getTypeOfSampleId(), match);
+    }
+
+    private Target targetForType(Analysis currentAnalysis, String typeId, boolean createSample) {
+        RuleResultScope scope = SpringContext.getBean(RuleResultScope.class);
+        SampleItem sample = createSample
+                ? scope.resolveOrCreateSampleItemForTarget(currentAnalysis.getSampleItem().getSample(), typeId, actor)
+                : scope.sampleItemForTarget(currentAnalysis.getSampleItem().getSample(), typeId);
+        return new Target(typeId, sample);
+    }
+
+    private record Target(String typeId, SampleItem sample) {
     }
 
     /*
@@ -236,6 +254,10 @@ public abstract class ReflexAction {
 
     public Analysis getNewAnalysis() {
         return generatedAnalysis;
+    }
+
+    public CaseWork getCaseWork() {
+        return generatedCaseWork;
     }
 
     public boolean isFlagAction() {

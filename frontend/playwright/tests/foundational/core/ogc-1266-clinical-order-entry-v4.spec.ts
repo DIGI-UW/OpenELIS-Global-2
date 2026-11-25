@@ -5,6 +5,7 @@ import {
   NAV_TIMEOUT,
   UI_TIMEOUT,
 } from "../../../helpers/timeouts";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 
 /**
  * OGC-1266 (Clinical Order Entry v4): the three-step clinical workflow with
@@ -53,9 +54,10 @@ async function enterNewPatient(page: Page, suffix: string) {
 
 async function chooseSerumWithOneTest(page: Page) {
   const sampleSection = page.getByTestId("order-sample-test-section");
-  await sampleSection
-    .getByLabel("Sample Type *")
-    .selectOption({ label: "Serum" });
+  await chooseCarbonOption(
+    sampleSection.getByRole("combobox", { name: /^Sample Type/ }),
+    "Serum",
+  );
   const firstTest = sampleSection.locator('label[for^="test-0-"]').first();
   await expect(firstTest).toBeVisible({ timeout: LONG_TIMEOUT });
   await firstTest.click();
@@ -147,13 +149,13 @@ test.describe("OGC-1266 clinical order entry", () => {
       timeout: LONG_TIMEOUT,
     });
     await expect(
-      page.getByRole("heading", { level: 2, name: "Prepare Samples" }),
+      page.getByRole("heading", { level: 1, name: "Prepare Samples" }),
     ).toBeVisible({ timeout: UI_TIMEOUT });
     const steps = page.locator(".order-stepper .cds--progress-label");
     await expect(steps).toHaveText(
       mode === "OFF"
         ? ["Enter Order", "Prepare Samples"]
-        : ["Enter Order", "Prepare Samples", "Sample check"],
+        : ["Enter Order", "Prepare Samples", "Sample Check"],
     );
 
     // OGC-1419: the collector is optional, so a sample with its collection
@@ -199,8 +201,17 @@ test.describe("OGC-1266 clinical order entry", () => {
     await expect(page).toHaveURL(/\/order\/clinical\/qa\?order=/, {
       timeout: LONG_TIMEOUT,
     });
+    // Save and next names the saved order here too (OGC-1598). Enter Order's
+    // save raised the same message moments earlier and may still be shown, so
+    // the newest toast is this step's.
     await expect(
-      page.getByRole("heading", { level: 2, name: "Sample check" }),
+      page
+        .locator(".cds--toast-notification")
+        .filter({ hasText: `Order ${labNumber} has been saved.` })
+        .last(),
+    ).toBeVisible({ timeout: UI_TIMEOUT });
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Sample Check" }),
     ).toBeVisible({ timeout: UI_TIMEOUT });
     await expect(
       page.getByRole("button", { name: "Return to Prepare Samples" }),

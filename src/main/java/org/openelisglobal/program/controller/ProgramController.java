@@ -48,6 +48,8 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping(value = "/rest")
 public class ProgramController extends BaseRestController {
+    @Autowired
+    private org.openelisglobal.microbiology.service.MicroReportingTrackService reportingTracks;
 
     @Autowired
     private QuestionnaireStorageService questionnaireStorageService;
@@ -71,10 +73,11 @@ public class ProgramController extends BaseRestController {
 
     /**
      * Creates or updates a program. Programs V2 fields ({@code domain},
-     * {@code active}, {@code labUnitIds}) are additive: a client that does not send
-     * one keeps the persisted value, so the legacy editor, the lifecycle flip and a
-     * partial payload can never silently reset a program to Clinical, reactivate
-     * it, drop its lab units or orphan its questionnaire.
+     * {@code active}, {@code labUnitIds}, {@code showOnMicroCase}) are additive: a
+     * client that does not send one keeps the persisted value, so the legacy
+     * editor, the lifecycle flip and a partial payload can never silently reset a
+     * program to Clinical, reactivate it, drop its lab units or orphan its
+     * questionnaire.
      */
     @PostMapping(value = "/program", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
@@ -104,6 +107,11 @@ public class ProgramController extends BaseRestController {
 
         program.setDomain(resolveDomain(form.getDomain(), existing));
         program.setIsActive(resolveActive(form.getActive(), existing));
+        program.setShowOnMicroCase(form.getShowOnMicroCase() == null ? existing != null && existing.isShowOnMicroCase()
+                : form.getShowOnMicroCase());
+        program.setReportingTrackId(
+                form.getReportingTrackId() == null ? existing == null ? null : existing.getReportingTrackId()
+                        : reportingTracks.validate(form.getReportingTrackId()));
         Set<TestSection> labUnits = resolveLabUnits(form, existing);
         program.setLabUnits(labUnits);
         program.setTestSection(ProgramPickerRules.firstLabUnit(labUnits));
@@ -248,6 +256,9 @@ public class ProgramController extends BaseRestController {
         form.setTestSectionId(program.getTestSection() == null ? null : program.getTestSection().getId());
         form.setDomain(Domain.normalize(program.getDomain()));
         form.setActive(ProgramPickerRules.isActive(program));
+        form.setShowOnMicroCase(program.isShowOnMicroCase());
+        form.setReportingTrackId(program.getReportingTrackId());
+        form.setReportingTracks(reportingTracks.options());
         form.setLabUnitIds(ProgramPickerRules.labUnitIds(program));
     }
 

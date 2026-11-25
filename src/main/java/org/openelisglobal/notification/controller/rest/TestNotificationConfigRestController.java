@@ -1,17 +1,25 @@
 package org.openelisglobal.notification.controller.rest;
 
 import jakarta.validation.Valid;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.controller.BaseController;
+import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.notification.form.TestNotificationConfigForm;
 import org.openelisglobal.notification.service.NotificationPayloadTemplateService;
+import org.openelisglobal.notification.service.NotificationPayloadTemplateServiceImpl.DisallowedFieldException;
 import org.openelisglobal.notification.service.TestNotificationConfigService;
+import org.openelisglobal.notification.valueholder.NotificationConfigOption;
+import org.openelisglobal.notification.valueholder.NotificationPayloadTemplate;
 import org.openelisglobal.notification.valueholder.NotificationPayloadTemplate.NotificationPayloadType;
 import org.openelisglobal.notification.valueholder.TestNotificationConfig;
 import org.openelisglobal.test.service.TestService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
@@ -69,24 +77,54 @@ public class TestNotificationConfigRestController extends BaseController {
         return configs;
     }
 
+    /**
+     * A template naming the patient is refused with the fields, like the shared
+     * templates, instead of surfacing as a server error.
+     */
     @PostMapping("/TestNotificationConfig")
-    public TestNotificationConfigForm updateNotificationConfig(@RequestBody @Valid TestNotificationConfigForm form,
+    public ResponseEntity<?> updateNotificationConfig(@RequestBody @Valid TestNotificationConfigForm form,
             BindingResult result) {
         if (result.hasErrors()) {
             // saveErrors(result);
             // return displayNotificationConfig(form.getConfig().getTest().getId());
             throw new RuntimeException("Validation errors occurred");
         }
+        if (hasSubjectWithoutMessage(form.getConfig())) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", MessageUtil.getMessage("testnotification.template.messageRequired")));
+        }
         String sysUserId = this.getSysUserId(request);
-        testNotificationConfigService.saveStatusAndMessages(form.getConfig(), sysUserId);
-        if (form.getEditSystemDefaultPayloadTemplate()) {
-            payloadTemplateService.updatePayloadTemplateMessagesAndSubject(form.getSystemDefaultPayloadTemplate(),
-                    sysUserId);
+        try {
+            testNotificationConfigService.saveStatusAndMessages(form.getConfig(), sysUserId);
+            if (form.getEditSystemDefaultPayloadTemplate()) {
+                payloadTemplateService.updatePayloadTemplateMessagesAndSubject(form.getSystemDefaultPayloadTemplate(),
+                        sysUserId);
+            }
+        } catch (DisallowedFieldException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage(), "disallowedFields", e.getFields()));
         }
         testNotificationConfigService.removeEmptyPayloadTemplates(form.getConfig(), sysUserId);
         // redirectAttributes.addFlashAttribute(FWD_SUCCESS, true);
         // return findForward(FWD_SUCCESS_INSERT, form);
-        return form;
+        return ResponseEntity.ok(form);
+    }
+
+    /**
+     * A template is kept only with a message, so a subject without one used to be
+     * dropped after a successful save.
+     */
+    private static boolean hasSubjectWithoutMessage(TestNotificationConfig config) {
+        if (config == null) {
+            return false;
+        }
+        List<NotificationPayloadTemplate> templates = new ArrayList<>();
+        templates.add(config.getDefaultPayloadTemplate());
+        for (NotificationConfigOption option : config.getOptions()) {
+            templates.add(option.getPayloadTemplate());
+        }
+        return templates.stream().filter(Objects::nonNull)
+                .anyMatch(t -> !GenericValidator.isBlankOrNull(t.getSubjectTemplate())
+                        && GenericValidator.isBlankOrNull(t.getMessageTemplate()));
     }
 
     @Override

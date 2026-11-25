@@ -2,6 +2,7 @@ package org.openelisglobal.inventory.service;
 
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
 import org.openelisglobal.inventory.valueholder.InventoryTransaction;
@@ -22,6 +23,13 @@ public interface InventoryTransactionService extends BaseObjectService<Inventory
      * Get transactions within a date range
      */
     List<InventoryTransaction> getByDateRange(Timestamp startDate, Timestamp endDate);
+
+    /** Get transactions of one type within a half-open date range. */
+    List<InventoryTransaction> getByTypeAndDateRange(TransactionType transactionType, Timestamp startDate,
+            Timestamp endDate);
+
+    /** Balance by lot id before {@code asOf}; a lot not yet logged is absent. */
+    Map<Long, Double> getQuantityOnHandAsOf(Timestamp asOf);
 
     /**
      * Get transactions by reference (e.g., test result ID)

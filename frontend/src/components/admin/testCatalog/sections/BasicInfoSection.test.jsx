@@ -28,7 +28,7 @@ vi.mock("../../../utils/Utils", async (importOriginal) => ({
 
 // ========== IMPORTS ==========
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -37,6 +37,7 @@ import BasicInfoSection from "./BasicInfoSection";
 import { NotificationContext } from "../../../layout/Layout";
 import {
   getFromOpenElisServer,
+  postToOpenElisServerFullResponse,
   postToOpenElisServerJsonResponse,
   putToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
@@ -70,7 +71,7 @@ beforeEach(() => {
         { id: "ENVIRONMENTAL", labelKey: "label.domain.ENVIRONMENTAL" },
         { id: "VECTOR", labelKey: "label.domain.VECTOR" },
       ]);
-    } else if (url.endsWith("/lab-units")) {
+    } else if (url.includes("/lab-units")) {
       cb([{ id: "7", name: "Chemistry" }]);
     } else if (url.endsWith("/sample-types")) {
       // Serum carries no domain (legacy shape) so domain-switch tests keep a
@@ -87,7 +88,6 @@ beforeEach(() => {
         domain: "CLINICAL",
         // OGC-1145: an active test must carry ≥1 sample type or Save disables
         sampleTypeIds: ["2"],
-        cultureWorkflowType: "",
         antimicrobialResistance: false,
         active: true,
         orderable: true,
@@ -152,21 +152,62 @@ describe("BasicInfoSection domain-switch modal", () => {
     ).toBe(true);
   });
 
-  it("persists the culture workflow selection", async () => {
+  it("persists case opening independently of the AMR flag", async () => {
     renderSection();
     await screen.findByLabelText("Clinical");
-
-    fireEvent.change(screen.getByLabelText("Culture workflow"), {
-      target: { value: "BACTERIOLOGY" },
+    expect(screen.queryByLabelText("Case role")).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("switch", { name: /Opens a Microbiology case/ }),
+    );
+    fireEvent.change(screen.getByLabelText("Case role"), {
+      target: { value: "CULTURE" },
     });
+    fireEvent.click(screen.getByRole("switch", { name: /Collected in sets/ }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-
     await waitFor(() =>
       expect(putToOpenElisServerJsonResponse).toHaveBeenCalled(),
     );
     expect(
       JSON.parse(putToOpenElisServerJsonResponse.mock.calls[0][1]),
-    ).toMatchObject({ cultureWorkflowType: "BACTERIOLOGY" });
+    ).toMatchObject({
+      opensMicrobiologyCase: true,
+      microbiologyCaseRole: "CULTURE",
+      collectedInSets: true,
+      antimicrobialResistance: false,
+    });
+    expect(screen.queryByLabelText("Culture workflow")).not.toBeInTheDocument();
+  });
+
+  it("clears collection in sets when changing a culture to a direct test", async () => {
+    renderSection();
+    await screen.findByLabelText("Clinical");
+    fireEvent.click(
+      screen.getByRole("switch", { name: /Opens a Microbiology case/ }),
+    );
+    fireEvent.change(screen.getByLabelText("Case role"), {
+      target: { value: "CULTURE" },
+    });
+    fireEvent.click(screen.getByRole("switch", { name: /Collected in sets/ }));
+    fireEvent.change(screen.getByLabelText("Case role"), {
+      target: { value: "DIRECT" },
+    });
+    expect(
+      screen.getByRole("switch", { name: /Collected in sets/ }),
+    ).not.toBeChecked();
+    expect(
+      screen.getByRole("switch", { name: /Collected in sets/ }),
+    ).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(putToOpenElisServerJsonResponse).toHaveBeenCalled(),
+    );
+    expect(
+      JSON.parse(putToOpenElisServerJsonResponse.mock.calls[0][1]),
+    ).toMatchObject({
+      opensMicrobiologyCase: true,
+      microbiologyCaseRole: "DIRECT",
+      collectedInSets: false,
+    });
   });
 
   it("persists the Active toggle (boolean → Y/N)", async () => {
@@ -212,7 +253,7 @@ describe("BasicInfoSection domain-switch modal", () => {
           { id: "ENVIRONMENTAL", labelKey: "label.domain.ENVIRONMENTAL" },
           { id: "VECTOR", labelKey: "label.domain.VECTOR" },
         ]);
-      } else if (url.endsWith("/lab-units")) {
+      } else if (url.includes("/lab-units")) {
         cb([{ id: "7", name: "Chemistry" }]);
       } else if (url.endsWith("/sample-types")) {
         cb([{ id: "2", name: "Serum" }]);
@@ -222,7 +263,6 @@ describe("BasicInfoSection domain-switch modal", () => {
           code: "GLU",
           description: "",
           domain: "CLINICAL",
-          cultureWorkflowType: "",
           antimicrobialResistance: false,
           active: false,
           orderable: true,
@@ -291,7 +331,7 @@ describe("BasicInfoSection domain-switch modal", () => {
     getFromOpenElisServer.mockImplementation((url, cb) => {
       if (url.endsWith("/domains")) {
         cb([{ id: "CLINICAL", labelKey: "label.domain.CLINICAL" }]);
-      } else if (url.endsWith("/lab-units")) {
+      } else if (url.includes("/lab-units")) {
         cb([{ id: "7", name: "Chemistry" }]);
       } else if (url.endsWith("/sample-types")) {
         cb([{ id: "2", name: "Serum" }]);
@@ -304,7 +344,6 @@ describe("BasicInfoSection domain-switch modal", () => {
           description: "",
           domain: "CLINICAL",
           sampleTypeIds: ["2"],
-          cultureWorkflowType: "",
           antimicrobialResistance: false,
           active: false,
           orderable: false,
@@ -354,7 +393,7 @@ describe("BasicInfoSection domain-switch modal", () => {
           { id: "ENVIRONMENTAL", labelKey: "label.domain.ENVIRONMENTAL" },
           { id: "VECTOR", labelKey: "label.domain.VECTOR" },
         ]);
-      } else if (url.endsWith("/lab-units")) {
+      } else if (url.includes("/lab-units")) {
         cb([
           { id: "7", name: "Chemistry" },
           { id: "8", name: "Hematology" },
@@ -427,6 +466,54 @@ describe("BasicInfoSection domain-switch modal", () => {
   });
 });
 
+// OGC-1460 review: the activation checklist reloads after a save, so a gap the
+// save closed (a sample type) no longer shows.
+describe("BasicInfoSection checklist after a save", () => {
+  it("drops a gap the save closed", async () => {
+    const gap = "The test has no sample type, so it cannot be ordered.";
+    let complete = false;
+    const loaded = getFromOpenElisServer.getMockImplementation();
+    getFromOpenElisServer.mockImplementation((url, cb, signal) => {
+      if (url.endsWith("/completeness")) {
+        cb(
+          complete ? { complete: true } : { complete: false, messages: [gap] },
+        );
+      } else {
+        loaded(url, (res) => cb({ ...res, active: false }), signal);
+      }
+    });
+    putToOpenElisServerJsonResponse.mockImplementation((url, payload, cb) => {
+      complete = true;
+      cb({ testId: "42" });
+    });
+    renderSection();
+    expect(await screen.findByText(gap)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(screen.queryByText(gap)).toBeNull());
+  });
+});
+
+// OGC-1458 review: the section's loads stop when it unmounts, so a late answer
+// never updates a screen the admin has left.
+describe("BasicInfoSection unmount", () => {
+  it("aborts its loads when it unmounts", async () => {
+    const { unmount } = renderSection();
+    await screen.findByDisplayValue("GLU");
+    const signals = getFromOpenElisServer.mock.calls
+      .filter((call) => String(call[0]).includes("/rest/test-catalog/"))
+      .map((call) => call[2]);
+    expect(signals.length).toBeGreaterThanOrEqual(4);
+
+    unmount();
+
+    await waitFor(() =>
+      expect(signals.every((signal) => signal && signal.aborted)).toBe(true),
+    );
+  });
+});
+
 describe("BasicInfoSection create mode (testId=new)", () => {
   beforeEach(() => {
     // Create mode fetches the Lab Unit + Sample type reference lists only.
@@ -447,6 +534,54 @@ describe("BasicInfoSection create mode (testId=new)", () => {
       "/rest/test-catalog/tests/new/basic-info",
       expect.anything(),
     );
+  });
+});
+
+// OGC-1459 review: a create refused because its lab unit was deactivated after
+// the form loaded marks the lab unit, not "Server error".
+describe("BasicInfoSection create refused on the lab unit (OGC-1459)", () => {
+  it("marks the lab unit picker with the inactive-unit message", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.includes("/lab-units")) {
+        cb([{ id: "7", name: "Chemistry", isActive: true }]);
+      } else if (url.endsWith("/sample-types")) {
+        cb([{ id: "2", name: "Serum" }]);
+      } else {
+        cb([]);
+      }
+    });
+    postToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb({
+        status: 422,
+        json: () => Promise.resolve({ invalidField: "labUnitId" }),
+      }),
+    );
+    renderSection("new");
+
+    fireEvent.change(
+      await screen.findByLabelText(messages["label.testCatalog.testName"]),
+      { target: { value: "Glucose new" } },
+    );
+    fireEvent.change(document.getElementById("basic-info-reporting-name"), {
+      target: { value: "Glucose new" },
+    });
+    fireEvent.change(document.getElementById("basic-info-code"), {
+      target: { value: "GLUN" },
+    });
+    fireEvent.click(screen.getByRole("combobox", { name: /Lab Unit/i }));
+    fireEvent.click(screen.getByText("Chemistry"));
+    const user = (await import("@testing-library/user-event")).default.setup();
+    await user.click(
+      document.querySelector("#basic-info-sample-types").querySelector("input"),
+    );
+    await user.click(await screen.findByRole("option", { name: /Serum/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(
+      await screen.findByText(
+        messages["error.testCatalog.basicInfo.labUnitInactive"],
+      ),
+    ).toBeInTheDocument();
   });
 });
 
@@ -487,6 +622,27 @@ describe("BasicInfoSection duplicate-description conflict (OGC-1180)", () => {
     expect(addNotification.mock.calls[0][0].kind).toBe("error");
     expect(addNotification.mock.calls[0][0].message).toBe(
       messages["error.testCatalog.description.inUse"],
+    );
+  });
+
+  /** OGC-1464: a code another test holds is refused on the code field. */
+  it("a 409 naming the code marks the code field", async () => {
+    putToOpenElisServerJsonResponse.mockImplementation((url, payload, cb) =>
+      cb({ status: 409, conflict: "code" }),
+    );
+    const addNotification = vi.fn();
+    renderWithNotificationSpy(addNotification);
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(addNotification).toHaveBeenCalled());
+    expect(addNotification.mock.calls[0][0].message).toBe(
+      messages["error.testCatalog.codeExists"],
+    );
+    expect(document.getElementById("basic-info-code")).toHaveAttribute(
+      "aria-invalid",
+      "true",
     );
   });
 
@@ -533,7 +689,7 @@ describe("BasicInfoSection lab unit chooser (OGC-189 M2)", () => {
     getFromOpenElisServer.mockImplementation((url, cb) => {
       if (url.endsWith("/domains")) {
         cb([{ id: "CLINICAL", labelKey: "label.domain.CLINICAL" }]);
-      } else if (url.endsWith("/lab-units")) {
+      } else if (url.includes("/lab-units")) {
         cb([
           { id: "7", name: "Chemistry", isActive: true },
           { id: "9", name: "Parasitology", isActive: false },
@@ -590,6 +746,59 @@ describe("BasicInfoSection lab unit chooser (OGC-189 M2)", () => {
       putToOpenElisServerJsonResponse.mock.calls[0][1],
     );
     expect(payload.labUnitId).toBe("9");
+  });
+
+  it("says the test's unit is inactive and what that means (OGC-1459)", async () => {
+    stubLabUnits("9");
+    renderSection();
+    await screen.findByLabelText("Clinical");
+
+    expect(
+      screen.getByText(
+        messages["label.testCatalog.basicInfo.labUnit.inactiveHelp"],
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("asks for the deactivated units too, so a test's own one can show", async () => {
+    stubLabUnits("9");
+    renderSection();
+    await screen.findByLabelText("Clinical");
+
+    expect(
+      getFromOpenElisServer.mock.calls.some(([url]) =>
+        url.includes("/lab-units?includeInactive=true"),
+      ),
+    ).toBe(true);
+  });
+
+  it("says nothing extra for an active unit", async () => {
+    stubLabUnits("7");
+    renderSection();
+    await screen.findByLabelText("Clinical");
+
+    expect(
+      screen.queryByText(
+        messages["label.testCatalog.basicInfo.labUnit.inactiveHelp"],
+      ),
+    ).toBeNull();
+  });
+
+  it("marks the lab unit when the server refuses an inactive one", async () => {
+    stubLabUnits("7");
+    putToOpenElisServerJsonResponse.mockImplementation((url, payload, cb) =>
+      cb({ status: 422, invalidField: "labUnitId" }),
+    );
+    renderSection();
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(
+      await screen.findByText(
+        messages["error.testCatalog.basicInfo.labUnitInactive"],
+      ),
+    ).toBeInTheDocument();
   });
 
   it("does not offer deactivated units as new choices", async () => {
@@ -665,6 +874,37 @@ describe("BasicInfoSection stale saves (OGC-1376)", () => {
     ).toBe("300");
   });
 
+  it("keeps Save disabled until the activation answers, so a save cannot race it with the old version", async () => {
+    const loaded = getFromOpenElisServer.getMockImplementation();
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      loaded(url, (res) =>
+        cb(
+          url.endsWith("/basic-info")
+            ? { ...res, active: false, lastupdated: "100" }
+            : res,
+        ),
+      ),
+    );
+    let answerActivation;
+    postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) => {
+      answerActivation = () =>
+        cb({ testId: "42", active: true, orderable: true, lastupdated: "300" });
+    });
+    renderSection();
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.click(screen.getByRole("switch", { name: /Active/ }));
+    await waitFor(() =>
+      expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1),
+    );
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+
+    act(() => answerActivation());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled(),
+    );
+  });
+
   it("the next save carries the version the last save returned", async () => {
     const loaded = getFromOpenElisServer.getMockImplementation();
     getFromOpenElisServer.mockImplementation((url, cb) =>
@@ -691,5 +931,104 @@ describe("BasicInfoSection stale saves (OGC-1376)", () => {
       ([, payload]) => JSON.parse(payload).lastupdated,
     );
     expect(sent).toEqual(["100", "200"]);
+  });
+});
+
+describe("BasicInfoSection holding time, report and QC fields", () => {
+  const savedBody = () =>
+    JSON.parse(putToOpenElisServerJsonResponse.mock.calls[0][1]);
+
+  it("saves the holding time and the in-lab-only and notify toggles", async () => {
+    renderSection();
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.change(screen.getByLabelText("SOP Max Holding Time (minutes)"), {
+      target: { value: "120" },
+    });
+    fireEvent.click(screen.getByRole("switch", { name: /In Lab Only/ }));
+    fireEvent.click(
+      screen.getByRole("switch", { name: /Notify Patient Of Results/ }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(putToOpenElisServerJsonResponse).toHaveBeenCalled(),
+    );
+    expect(savedBody()).toMatchObject({
+      timeHolding: "120",
+      inLabOnly: true,
+      notifyResults: true,
+    });
+  });
+
+  it("refuses a holding time that is not whole minutes before saving", async () => {
+    renderSection();
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.change(screen.getByLabelText("SOP Max Holding Time (minutes)"), {
+      target: { value: "1.5" },
+    });
+
+    expect(
+      screen.getByText("Enter a whole number of minutes, or leave blank."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
+  it("hides QC thresholds for a clinical test and shows them for environmental", async () => {
+    renderSection();
+    await screen.findByLabelText("Clinical");
+    expect(
+      screen.queryByTestId("basic-info-qc-thresholds"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText("Environmental"));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    fireEvent.change(screen.getByLabelText("RPD Threshold (%)"), {
+      target: { value: "20" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(putToOpenElisServerJsonResponse).toHaveBeenCalled(),
+    );
+    expect(savedBody()).toMatchObject({
+      domain: "ENVIRONMENTAL",
+      qcRpdThreshold: "20",
+    });
+  });
+
+  it("flags a negative QC threshold and disables Save", async () => {
+    renderSection();
+    await screen.findByLabelText("Clinical");
+    fireEvent.click(screen.getByLabelText("Environmental"));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+    fireEvent.change(screen.getByLabelText("Blank Threshold"), {
+      target: { value: "-1" },
+    });
+
+    expect(
+      screen.getByText(
+        "Enter a number of 0 or more (up to 5 decimal places), or leave blank.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
+  it("marks the field a refused save names", async () => {
+    putToOpenElisServerJsonResponse.mockImplementation((url, payload, cb) =>
+      cb({ status: 422, invalidField: "timeHolding" }),
+    );
+    renderSection();
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(
+      await screen.findByText(
+        "Enter a whole number of minutes, or leave blank.",
+      ),
+    ).toBeInTheDocument();
   });
 });

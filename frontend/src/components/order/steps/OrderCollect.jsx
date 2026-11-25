@@ -10,6 +10,7 @@ import SaveFailureNotice, { saveFailureMessage } from "../SaveFailureNotice";
 import { useOrderContext } from "../OrderContext";
 import PrepareStorageSection from "./sections/PrepareStorageSection";
 import OrderReferOutSection from "./referOut/OrderReferOutSection";
+import { isFullyReferred } from "./referralState";
 import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -25,10 +26,18 @@ import { getEnforcement } from "../api/sampleAcceptanceApi";
 import RequestedTestsSection from "./sections/RequestedTestsSection";
 import CollectTestPickerSection from "./sections/CollectTestPickerSection";
 import SamplesCollectionSection from "./sections/SamplesCollectionSection";
+import PrepareLabelsSection from "./sections/PrepareLabelsSection";
 import ConsentAccordionSection from "./sections/ConsentAccordionSection";
 import "../order-workflow.scss";
-import { isCollectionDateBeforeAdmissionDate } from "../dateUtils";
-import { prepareSamplesToContinue } from "./prepareSamplesChecklist";
+import {
+  prepareSamplesToContinue,
+  consentApplies,
+} from "./prepareSamplesChecklist";
+import { samplesFromPendingRequests } from "./pendingRequestSamples";
+import { sampleTimesValid } from "../dateUtils";
+import { proposeContainers } from "../api/containerProposalApi";
+import { applyProposals, proposalSignature } from "./containerProposals";
+import { orderSavedMessage } from "../orderSavedMessage";
 
 /**
  * OrderCollect - Step 2: Collect Sample
@@ -45,6 +54,9 @@ const OrderCollect = () => {
   const history = useHistory();
   const workflowPrefix = useWorkflowPrefix();
   const componentMounted = useRef(true);
+  // The Labels section registers its row printer here so a sample card's
+  // Print Labels button prints that tube's labels (FR-C6).
+  const printLabelsRowRef = useRef(null);
 
   const {
     orderId,
@@ -56,10 +68,12 @@ const OrderCollect = () => {
     markStepComplete,
     isReadOnly,
     isEditMode,
+    isLoading,
     testSampleAssignments,
     assignTestToSample,
     removeTestFromSample,
     updateSampleCollectionDetails,
+    fillSampleDefaults,
     setOrderData,
     labNumber,
     storageSkipped,
@@ -128,6 +142,79 @@ const OrderCollect = () => {
     };
   }, [workflowType]);
 
+  const [containerMessage, setContainerMessage] = useState("");
+  const [proposalFailed, setProposalFailed] = useState(false);
+  const proposalAnswered = useRef(false);
+  const proposalSamples = useRef(samples);
+  useEffect(() => {
+    proposalSamples.current = samples;
+  });
+  const proposalKey =
+    workflowType === "clinical" ? proposalSignature(samples) : "[]";
+  useEffect(() => {
+    if (proposalKey === "[]") {
+      return undefined;
+    }
+    let active = true;
+    proposeContainers(JSON.parse(proposalKey))
+      .then((views) => {
+        if (
+          !active ||
+          proposalSignature(proposalSamples.current) !== proposalKey
+        ) {
+          return;
+        }
+        const outcome = applyProposals(proposalSamples.current, views);
+        if (outcome.changed) {
+          seedSamples(outcome.samples);
+        }
+        if (
+          proposalAnswered.current &&
+          (outcome.added.length > 0 ||
+            outcome.joined.length > 0 ||
+            outcome.removed.length > 0)
+        ) {
+          setContainerMessage(
+            [
+              ...outcome.added.map((entry) =>
+                intl.formatMessage(
+                  { id: "collect.containers.added" },
+                  {
+                    count: entry.count,
+                    container: entry.name,
+                    tests: entry.testNames.join(", "),
+                  },
+                ),
+              ),
+              ...outcome.joined.map((entry) =>
+                intl.formatMessage(
+                  { id: "collect.containers.joined" },
+                  {
+                    container: entry.name,
+                    tests: entry.testNames.join(", "),
+                  },
+                ),
+              ),
+              ...outcome.removed.map((entry) =>
+                intl.formatMessage(
+                  { id: "collect.containers.removed" },
+                  { count: entry.count, container: entry.name },
+                ),
+              ),
+            ].join(" "),
+          );
+        }
+        proposalAnswered.current = true;
+        setProposalFailed(false);
+      })
+      .catch(() => {
+        if (active) setProposalFailed(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [proposalKey]);
+
   // Load pending sample type requests when orderId is available
   useEffect(() => {
     const loadPendingRequests = async () => {
@@ -142,28 +229,10 @@ const OrderCollect = () => {
         if (componentMounted.current && requests && requests.length > 0) {
           // Convert pending requests to samples array for the UI
           const samplesFromRequests = convertRequestsToSamples(requests);
-          // Merge with any existing sample data.
-          // collectionDate/Time are intentionally NOT preserved from existing:
-          // the backend stores the order entry date there, not an actual
-          // collection date. SampleCollectionCard will auto-fill them to
-          // today when they are empty. Only Step-2-specific fields (collector,
-          // conditions, receivedDate/Time) are preserved.
-          const mergedSamples = samplesFromRequests.map((reqSample, idx) => {
-            const existing = samples[idx];
-            if (existing && existing.sampleTypeId === reqSample.sampleTypeId) {
-              return {
-                ...reqSample,
-                collectorId: existing.collectorId || reqSample.collectorId,
-                collectionConditions:
-                  existing.collectionConditions ||
-                  reqSample.collectionConditions,
-                receivedDate: existing.receivedDate || reqSample.receivedDate,
-                receivedTime: existing.receivedTime || reqSample.receivedTime,
-              };
-            }
-            return reqSample;
-          });
-          seedSamples(mergedSamples);
+          const atLoad = samples;
+          seedSamples((current) =>
+            samplesFromPendingRequests(samplesFromRequests, atLoad, current),
+          );
         }
       } catch {
         // Failed to load pending requests
@@ -174,28 +243,23 @@ const OrderCollect = () => {
   }, [orderId]);
 
   // Two levels of required (FR-A7, FR-D7). Save and exit needs the save
-  // level: a sample with a sample type and no collection date before the
-  // admission date. Save and next needs the complete level as well (see
+  // level: a sample with a sample type. Save and next needs the complete
+  // level as well (see
   // prepareSamplesToContinue). Informed consent stays advisory by default (FRS
   // FR-5-001/FR-5-002); a site whose regulator requires it turns
   // consentRequiredForCollection on. Environmental and vector samples have no
-  // human subject, so consent never applies to them.
-  const admissionDate = orderData?.microbiologyOrderDetail?.admissionDate || "";
-  const hasCollectionDateConflict = samples.some((sample) =>
-    isCollectionDateBeforeAdmissionDate(sample.collectionDate, admissionDate),
-  );
+  // human subject, so consent never applies to them, and neither does an EQA
+  // proficiency sample, which has no person to consent (OGC-1483).
   // Published under the Property enum's name, the way REQUESTER_REQUIRED is.
-  const consentRequired =
-    configurationProperties.CONSENT_REQUIRED_FOR_COLLECTION === "true";
+  const consentRequired = consentApplies(configurationProperties, orderData);
   const consentSatisfied = !consentRequired || consentData.consentGiven;
   const canSave =
     samples?.length > 0 &&
     samples.some((s) => s.sampleTypeId) &&
-    !hasCollectionDateConflict;
+    samples.every(sampleTimesValid);
   const toContinue = prepareSamplesToContinue({
     samples,
     labNumber,
-    admissionDate,
     consentSatisfied,
     intl,
   });
@@ -216,7 +280,10 @@ const OrderCollect = () => {
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "save.order.success.msg" }),
+        message: orderSavedMessage(
+          intl,
+          labNumber || orderData?.sampleOrderItems?.labNo,
+        ),
       });
       setNotificationVisible(true);
       return true;
@@ -231,13 +298,26 @@ const OrderCollect = () => {
     }
   };
 
-  // Save and next opens Sample check when the laboratory uses it; otherwise
-  // this save finishes order entry (FR-K15) and the dashboard says so.
+  // Save and next opens Sample check when the laboratory uses it, with the
+  // same saved message as Save (OGC-1598); otherwise this save finishes order
+  // entry (FR-K15) and the dashboard says so. An
+  // order whose every tube is referred out has nothing for the in-house
+  // Sample check, so it finishes here too (OGC-1423).
+  const fullyReferred = isFullyReferred(samples);
   const handleSaveAndNext = async () => {
     try {
       await saveOrder(false, false, null, false, progressStep);
       markStepComplete("collect");
-      if (sampleCheckEnabled) {
+      if (sampleCheckEnabled && !fullyReferred) {
+        addNotification({
+          kind: NotificationKinds.success,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: orderSavedMessage(
+            intl,
+            labNumber || orderData?.sampleOrderItems?.labNo,
+          ),
+        });
+        setNotificationVisible(true);
         history.push(
           labNumber
             ? `${workflowPrefix}/qa?order=${encodeURIComponent(labNumber)}`
@@ -344,6 +424,15 @@ const OrderCollect = () => {
           removeTestFromSample={removeTestFromSample}
           sampleTypes={sampleTypes}
           isReadOnly={isReadOnly && !isEditMode}
+          labNumber={orderData?.sampleOrderItems?.labNo || labNumber || ""}
+          referringSite={
+            orderData?.sampleOrderItems?.referringSiteId
+              ? {
+                  id: orderData.sampleOrderItems.referringSiteId,
+                  name: orderData.sampleOrderItems.referringSiteName || "",
+                }
+              : null
+          }
         />
 
         {/* A: the collector could see the ordered tests but not add one. */}
@@ -375,6 +464,32 @@ const OrderCollect = () => {
           />
         )}
 
+        {proposalFailed && (
+          <InlineNotification
+            kind="warning"
+            data-testid="container-proposal-failed"
+            title={intl.formatMessage({
+              id: "collect.containers.failed.title",
+            })}
+            subtitle={intl.formatMessage({
+              id: "collect.containers.failed",
+            })}
+            hideCloseButton
+            lowContrast
+          />
+        )}
+
+        {containerMessage && (
+          <InlineNotification
+            kind="info"
+            data-testid="container-proposal-message"
+            title={intl.formatMessage({ id: "collect.containers.title" })}
+            subtitle={containerMessage}
+            onClose={() => setContainerMessage("")}
+            lowContrast
+          />
+        )}
+
         {/* Section 3: Samples Collection */}
         <SamplesCollectionSection
           samples={samples}
@@ -382,8 +497,27 @@ const OrderCollect = () => {
           sampleTypes={sampleTypes}
           unitOfMeasures={unitOfMeasures}
           updateSampleCollectionDetails={updateSampleCollectionDetails}
+          fillSampleDefaults={fillSampleDefaults}
           isReadOnly={isReadOnly && !isEditMode}
-          admissionDate={admissionDate}
+          printDisabled={isLoading}
+          workflowType={workflowType}
+          labNumber={orderData?.sampleOrderItems?.labNo || labNumber || ""}
+          onPrintLabels={(sampleIndex) => {
+            if (printLabelsRowRef.current) {
+              printLabelsRowRef.current(sampleIndex);
+            }
+          }}
+        />
+
+        {/* Labels for the order and every tube, from the presets and the test
+            catalog (FR-I2). The quantities travel with this step's save and
+            printing reads the saved rows (FR-I6, FR-I7). */}
+        <PrepareLabelsSection
+          isReadOnly={isReadOnly && !isEditMode}
+          onSaveBeforePrint={handleSave}
+          registerPrintRow={(printRow) => {
+            printLabelsRowRef.current = printRow;
+          }}
         />
 
         {/* Storage and referral, per sample, saved with this step (FR-E1,

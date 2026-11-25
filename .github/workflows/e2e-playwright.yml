@@ -42,7 +42,7 @@ jobs:
     steps:
       - name: Checkout scope script
         if: github.event_name == 'pull_request'
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           sparse-checkout: .github/scripts
           persist-credentials: false
@@ -52,7 +52,7 @@ jobs:
       - name: Decide E2E scope
         id: scope
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const scope = require('./.github/scripts/e2e-scope.cjs');
@@ -92,7 +92,7 @@ jobs:
       image_transfer: ${{ steps.transfer-mode.outputs.mode }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: recursive
           persist-credentials: false

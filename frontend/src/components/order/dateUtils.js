@@ -23,6 +23,19 @@ export const todayLocalIso = (now = labNow()) => format(now, "yyyy-MM-dd");
 /** The current wall-clock time at the site as `HH:mm`. */
 export const currentLocalTime = (now = labNow()) => format(now, "HH:mm");
 
+/**
+ * Whether a sample time reads as the server takes it: H:mm or HH:mm on a
+ * 24-hour clock. A blank time is allowed (it is optional). Free text such as
+ * "1430" or "25:99" was saved as a dropped date or the next day.
+ */
+export const isClockTime = (text) =>
+  !String(text ?? "").trim() ||
+  /^([01]?\d|2[0-3]):[0-5]\d$/.test(String(text).trim());
+
+/** Whether a sample's collection and received times both read as times. */
+export const sampleTimesValid = (sample) =>
+  isClockTime(sample?.collectionTime) && isClockTime(sample?.receivedTime);
+
 export const formatIsoDateForBackend = (isoDate, dateLocale) => {
   if (!isoDate) {
     return "";
@@ -58,13 +71,6 @@ export const normalizeDateForState = (dateValue, dateLocale) => {
   }
   return formatPickerDateForIso(dateValue, dateLocale);
 };
-
-export const isCollectionDateBeforeAdmissionDate = (
-  collectionDate,
-  admissionDate,
-) =>
-  Boolean(collectionDate && admissionDate) &&
-  collectionDate.slice(0, 10) < admissionDate.slice(0, 10);
 
 export const daysBetweenIsoDates = (startDate, endDate) => {
   if (!startDate || !endDate) {
@@ -117,14 +123,31 @@ export const holdingDeadline = (sample = {}, tests = []) => {
   return new Date(parsed.getTime() + minutes * 60 * 1000);
 };
 
-/** Renders a holding time in minutes as a short "36 h 30 m" style label. */
-export const formatHoldingMinutes = (minutes) => {
+/**
+ * Renders a holding time in minutes as a short "36 h 30 min" style label, in
+ * the reader's language when `intl` is given (OGC-1443).
+ */
+export const formatHoldingMinutes = (minutes, intl) => {
   if (!minutes) {
     return "";
   }
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
-  if (hours === 0) return `${rest} min`;
-  if (rest === 0) return `${hours} h`;
-  return `${hours} h ${rest} min`;
+  const say = (id, values, fallback) =>
+    intl ? intl.formatMessage({ id }, values) : fallback;
+  if (hours === 0) {
+    return say(
+      "sample.handling.holding.minutes",
+      { minutes: rest },
+      `${rest} min`,
+    );
+  }
+  if (rest === 0) {
+    return say("sample.handling.holding.hours", { hours }, `${hours} h`);
+  }
+  return say(
+    "sample.handling.holding.hoursMinutes",
+    { hours, minutes: rest },
+    `${hours} h ${rest} min`,
+  );
 };

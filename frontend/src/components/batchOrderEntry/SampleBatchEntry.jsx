@@ -28,6 +28,7 @@ import PatientInfo from "../addOrder/PatientInfo";
 import { createOrderEntryValidationSchema } from "../formModel/validationSchema/OrderEntryValidationSchema";
 import LabelsSection from "../barcodeWorkflow/LabelsSection";
 import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
+import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
 
 const normalizeQuantity = (value) => {
   const parsed = Number.parseInt(value, 10);
@@ -457,10 +458,11 @@ const SampleBatchEntry = (props) => {
                       onKeyPress={handleKeyPress}
                       labelText={
                         <>
-                          <FormattedMessage id="sample.label.labnumber" />{" "}
-                          <span className="requiredlabel">*</span>
+                          <FormattedMessage id="sample.label.labnumber" />
+                          <RequiredMarker />
                         </>
                       }
+                      {...requiredProps()}
                       id="labNo"
                     />
                     <Link
@@ -535,10 +537,11 @@ const SampleBatchEntry = (props) => {
                       onKeyPress={handleKeyPress}
                       labelText={
                         <>
-                          <FormattedMessage id="sample.label.labnumber" />{" "}
-                          <span className="requiredlabel">*</span>
+                          <FormattedMessage id="sample.label.labnumber" />
+                          <RequiredMarker />
                         </>
                       }
+                      {...requiredProps()}
                       id="labNo"
                     />
                     <FormattedMessage id="label.order.scan.text" />{" "}

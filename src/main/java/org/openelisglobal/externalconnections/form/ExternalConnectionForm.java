@@ -31,6 +31,20 @@ public class ExternalConnectionForm extends BaseForm {
 
     private List<ProgrammedConnection> programmedConnections;
 
+    /**
+     * Whether a password is stored for the basic authentication. The password
+     * itself never leaves the server; saving with a blank one keeps it.
+     */
+    private boolean passwordSet;
+
+    public boolean isPasswordSet() {
+        return passwordSet;
+    }
+
+    public void setPasswordSet(boolean passwordSet) {
+        this.passwordSet = passwordSet;
+    }
+
     public ExternalConnection getExternalConnection() {
         return externalConnection;
     }

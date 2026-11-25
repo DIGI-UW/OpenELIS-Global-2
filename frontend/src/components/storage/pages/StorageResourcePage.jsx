@@ -155,7 +155,7 @@ export default function StorageResourcePage({
   const effectiveHeaders = useMemo(
     () =>
       isGlobalAdmin
-        ? [...headers, { key: "menuActions", header: "" }]
+        ? [...headers, { key: "menuActions", header: "", isSortable: false }]
         : headers,
     [headers, isGlobalAdmin],
   );

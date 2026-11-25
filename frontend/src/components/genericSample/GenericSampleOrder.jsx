@@ -13,6 +13,7 @@ import PageBreadCrumb from "../common/PageBreadCrumb";
 import CustomDatePicker from "../common/CustomDatePicker";
 import CustomTimePicker from "../common/CustomTimePicker";
 import CustomSelect from "../common/CustomSelect";
+import SearchableSelect from "../common/SearchableSelect";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import Questionnaire from "../common/Questionnaire";
 import LabelsSection from "../barcodeWorkflow/LabelsSection";
@@ -22,6 +23,8 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../utils/Utils";
 
+import useInAppNavigation from "../common/useInAppNavigation";
+import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
 /**
  * GenericSampleOrder - Configurable sample order entry component
  *
@@ -74,6 +77,7 @@ export default function GenericSampleOrder({
   renderCustomContent,
 }) {
   const intl = useIntl();
+  const navigate = useInAppNavigation();
 
   // Extract notebook IDs from initialValues (these should NOT be in defaultForm)
   // Use useMemo to ensure these values update when initialValues changes
@@ -134,8 +138,8 @@ export default function GenericSampleOrder({
       });
     }
     if (showUom) {
-      getFromOpenElisServer("/rest/UomCreate", (res) => {
-        setUoms(res.existingUomList || []);
+      getFromOpenElisServer("/rest/uom", (res) => {
+        setUoms(Array.isArray(res) ? res : []);
       });
     }
     if (showNotebookSelection) {
@@ -475,10 +479,7 @@ export default function GenericSampleOrder({
                     defaultMessage="Create Another Sample"
                   />
                 </Button>
-                <Button
-                  kind="tertiary"
-                  onClick={() => (window.location.href = "/")}
-                >
+                <Button kind="tertiary" onClick={navigate("/")}>
                   <FormattedMessage id="button.home" defaultMessage="Home" />
                 </Button>
               </div>
@@ -571,9 +572,10 @@ export default function GenericSampleOrder({
                       id="sample.label.labnumber"
                       defaultMessage="Lab Number"
                     />
-                    {labNoRequired && <span style={{ color: "red" }}> *</span>}
+                    <RequiredMarker required={labNoRequired} />
                   </>
                 }
+                {...requiredProps(labNoRequired)}
                 value={defaultForm.labNo}
                 readOnly
                 placeholder={intl.formatMessage({
@@ -604,7 +606,7 @@ export default function GenericSampleOrder({
             </Column>
             {showSampleType && (
               <Column lg={8} md={8} sm={4}>
-                <CustomSelect
+                <SearchableSelect
                   id="sampleType"
                   labelText={
                     <FormattedMessage
@@ -618,7 +620,7 @@ export default function GenericSampleOrder({
                     id: s.id,
                     value: s.value,
                   }))}
-                  placeholder="Select sample type"
+                  placeholder={intl.formatMessage({ id: "sample.select.type" })}
                 />
               </Column>
             )}
@@ -647,7 +649,7 @@ export default function GenericSampleOrder({
               )}
               {showUom && (
                 <Column lg={8} md={8} sm={4}>
-                  <CustomSelect
+                  <SearchableSelect
                     id="sampleUnitOfMeasure"
                     labelText={
                       <FormattedMessage
@@ -660,7 +662,9 @@ export default function GenericSampleOrder({
                       updateDefaultField("sampleUnitOfMeasure", v)
                     }
                     options={uoms.map((u) => ({ id: u.id, value: u.value }))}
-                    placeholder="Select units"
+                    placeholder={intl.formatMessage({
+                      id: "sample.uom.search",
+                    })}
                   />
                 </Column>
               )}

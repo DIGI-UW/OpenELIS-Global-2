@@ -1,7 +1,7 @@
 package org.openelisglobal.program.controller.cytology;
 
-import java.util.Base64;
 import java.util.List;
+import org.openelisglobal.program.service.ClinicalAttachmentUpload;
 import org.openelisglobal.program.valueholder.cytology.CytologyDiagnosis;
 import org.openelisglobal.program.valueholder.cytology.CytologyReport;
 import org.openelisglobal.program.valueholder.cytology.CytologySample.CytologyStatus;
@@ -100,7 +100,7 @@ public class CytologySampleForm {
         this.reports = reports;
     }
 
-    public static class CytologySlideForm extends CytologySlide {
+    public static class CytologySlideForm extends CytologySlide implements ClinicalAttachmentUpload {
 
         private static final long serialVersionUID = 3142138533368581327L;
 
@@ -112,14 +112,10 @@ public class CytologySampleForm {
 
         public void setBase64Image(String base64Image) {
             this.base64Image = base64Image;
-            String[] imageInfo = base64Image.split(";base64,", 2);
-
-            setFileType(imageInfo[0]);
-            setImage(Base64.getDecoder().decode(imageInfo[1]));
         }
     }
 
-    public static class CytologyReportForm extends CytologyReport {
+    public static class CytologyReportForm extends CytologyReport implements ClinicalAttachmentUpload {
 
         private static final long serialVersionUID = 3142138533368581327L;
 
@@ -131,10 +127,6 @@ public class CytologySampleForm {
 
         public void setBase64Image(String base64Image) {
             this.base64Image = base64Image;
-            String[] imageInfo = base64Image.split(";base64,", 2);
-
-            setFileType(imageInfo[0]);
-            setImage(Base64.getDecoder().decode(imageInfo[1]));
         }
     }
 }

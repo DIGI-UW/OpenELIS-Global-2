@@ -13,13 +13,6 @@ import {
   createAndIdentifyMicrobiologyIsolate,
   openMicrobiologyCaseSection,
 } from "../../../helpers/microbiology-ui";
-import {
-  MICROBIOLOGY_CULTURE_METHOD_NAME,
-  MICROBIOLOGY_CULTURE_TEST_NAME,
-  seedMicrobiologyOrderCatalog,
-  selectMicrobiologyOrderTest,
-  startMicrobiologyOrder,
-} from "../../../helpers/microbiology-order-entry";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 async function attachViewportEvidence(
@@ -50,7 +43,7 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
     const accessionQuery = encodeURIComponent(seeded.accessionNumber);
 
     await page.goto(
-      `/Microbiology/worklist?workflow=BACTERIOLOGY&stage=ALL&urgency=ALL&due=ALL&q=${accessionQuery}&sort=accessionNumber%2Casc&page=1&pageSize=10`,
+      `/Microbiology/worklist?grain=cultures&stage=ALL&urgency=ALL&due=ALL&q=${accessionQuery}&sort=accessionNumber%2Casc&page=1&pageSize=10`,
       { waitUntil: "domcontentloaded" },
     );
     await expect(
@@ -67,17 +60,19 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
     );
     await expectNoWcag21AaViolations(page, testInfo, "microbiology-worklist");
 
-    await page.goto(`/Microbiology/cases/${seeded.caseId}`, {
+    await page.goto(`/Microbiology/cases/${seeded.caseId}?view=workbench`, {
       waitUntil: "domcontentloaded",
     });
-    await expect(
-      page.getByRole("heading", { name: "Microbiology case" }),
-    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    const caseHeading = page.getByRole("heading", {
+      level: 1,
+      name: `Case ${seeded.accessionNumber}`,
+    });
+    await expect(caseHeading).toBeVisible({ timeout: LONG_TIMEOUT });
     await attachViewportEvidence(
       page,
       testInfo,
       "microbiology-case-overview",
-      page.getByRole("heading", { name: "Microbiology case" }),
+      caseHeading,
     );
     await expectNoWcag21AaViolations(
       page,
@@ -92,13 +87,13 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
     const seeded = await seedReviewedMicrobiologyCase(page);
     const surfaces = [
       ["isolates", "Isolates", "microbiology-isolates"],
-      ["ast", "Manual AST", "microbiology-ast"],
+      ["ast", "AST / DST", "microbiology-ast"],
       [
         "critical-communication",
         "Critical communication",
         "microbiology-critical-communication",
       ],
-      ["reports", "Report readiness", "microbiology-reporting"],
+      ["reports", "Report and release", "microbiology-reporting"],
     ] as const;
 
     for (const [section, heading, evidenceName] of surfaces) {
@@ -107,61 +102,41 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
           `/Microbiology/cases/${seeded.caseId}?section=${section}`,
           { waitUntil: "domcontentloaded" },
         );
-        await expect(page.getByRole("heading", { name: heading })).toBeVisible({
+        await expect(
+          page.getByRole("heading", { name: heading, exact: true }),
+        ).toBeVisible({
           timeout: LONG_TIMEOUT,
         });
         await attachViewportEvidence(
           page,
           testInfo,
           evidenceName,
-          page.getByRole("heading", { name: heading }),
+          page.getByRole("heading", { name: heading, exact: true }),
         );
         await expectNoWcag21AaViolations(page, testInfo, evidenceName);
       });
     }
   });
 
-  test("shared reagent lot picker in culture and AST", async ({
-    page,
-  }, testInfo) => {
+  test("shared reagent lot picker in AST", async ({ page }, testInfo) => {
     const seeded = await seedMicrobiologyMvpCase(page);
-
-    await page.goto(`/Microbiology/cases/${seeded.caseId}?section=setup`, {
+    await page.goto(`/Microbiology/cases/${seeded.caseId}?view=workbench`, {
       waitUntil: "domcontentloaded",
     });
-    const setup = page.getByRole("region", { name: "Inoculation" });
-    await setup.getByRole("button", { name: "Start inoculation" }).click();
-    await expect(
-      setup.getByRole("searchbox", { name: "Scan or enter lot number" }),
-    ).toBeVisible({ timeout: LONG_TIMEOUT });
-    await expect(setup.getByText("FEFO - use first").first()).toBeVisible();
-    await expect(setup.getByText("QC passed").first()).toBeVisible();
-    await attachViewportEvidence(
-      page,
-      testInfo,
-      "microbiology-reagent-picker-culture",
-      setup.getByRole("searchbox", { name: "Scan or enter lot number" }),
-    );
-    await expectNoWcag21AaViolations(
-      page,
-      testInfo,
-      "microbiology-reagent-picker-culture",
-    );
-    await setup.getByRole("button", { name: "Cancel" }).click();
-
-    await createAndIdentifyMicrobiologyIsolate(page, seeded.organismId!);
+    await createAndIdentifyMicrobiologyIsolate(page, seeded);
     await openMicrobiologyCaseSection(page, "Manual AST");
-    const ast = page.getByTestId("microbiology-ast-card");
-    await expect(
-      ast.getByRole("searchbox", { name: "Scan or enter lot number" }),
-    ).toBeVisible({ timeout: LONG_TIMEOUT });
-    await expect(ast.getByText("FEFO - use first").first()).toBeVisible();
-    await expect(ast.getByText("QC passed").first()).toBeVisible();
+    await page.getByRole("button", { name: "Start AST run" }).click();
+    const lotSearch = page.getByRole("searchbox", {
+      name: "Scan or enter lot number",
+    });
+    await expect(lotSearch).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(page.getByText("FEFO - use first").first()).toBeVisible();
+    await expect(page.getByText("QC passed").first()).toBeVisible();
     await attachViewportEvidence(
       page,
       testInfo,
       "microbiology-reagent-picker-ast",
-      ast.getByRole("searchbox", { name: "Scan or enter lot number" }),
+      lotSearch,
     );
     await expectNoWcag21AaViolations(
       page,
@@ -180,43 +155,6 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
       { timeout: LONG_TIMEOUT },
     );
     await expectNoWcag21AaViolations(page, testInfo, "microbiology-amendment");
-  });
-
-  test("microbiology order-entry details", async ({ page }, testInfo) => {
-    const seeded = await seedMicrobiologyOrderCatalog(page);
-    await startMicrobiologyOrder(page, seeded);
-    await selectMicrobiologyOrderTest(page, MICROBIOLOGY_CULTURE_TEST_NAME);
-
-    const details = page.getByTestId("microbiology-order-entry-section");
-    await expect(details).toBeVisible({ timeout: LONG_TIMEOUT });
-    await expect(page.getByLabel("Patient Origin")).toBeVisible();
-    await expect(
-      details.getByText(MICROBIOLOGY_CULTURE_METHOD_NAME, { exact: true }),
-    ).toBeVisible();
-    await expect(page.getByLabel("Date of admission")).toBeVisible();
-    await expect(
-      page.getByRole("combobox", { name: "Culture Protocol" }),
-    ).toHaveCount(0);
-    await attachViewportEvidence(
-      page,
-      testInfo,
-      "microbiology-order-entry-details",
-      details,
-    );
-    if (testInfo.project.name.endsWith("-mobile")) {
-      const box = await details.boundingBox();
-      const viewport = page.viewportSize();
-      if (!box || !viewport) {
-        throw new Error("Expected order details inside an active viewport");
-      }
-      expect(box.x).toBeGreaterThanOrEqual(0);
-      expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
-    }
-    await expectNoWcag21AaViolations(
-      page,
-      testInfo,
-      "microbiology-order-entry-details",
-    );
   });
 
   test("reference and breakpoint administration", async ({
@@ -258,11 +196,6 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
         "/MasterListsPage/MicrobiologyReference/ast-panels?q=Gram%20negative%20AST%20panel%20%28UAT%29&status=ALL&sort=name&page=1&pageSize=20",
         "AST panels",
         "microbiology-reference-ast-panels",
-      ],
-      [
-        "/MasterListsPage/MicrobiologyReference/culture-setups?status=ALL&sort=name&page=1&pageSize=20",
-        "Culture methods",
-        "microbiology-reference-culture-setups",
       ],
       [
         `/MasterListsPage/MicrobiologyReference/breakpoints/${seeded.loadedBreakpointStandardId}?status=ALL&sort=name&page=1&pageSize=20`,

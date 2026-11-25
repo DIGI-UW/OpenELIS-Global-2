@@ -79,7 +79,7 @@ describe("StorageManagementPage", () => {
 
     expect(screen.getByText("Home")).toBeInTheDocument();
     expect(container.querySelector(".orderLegendBody")).toBeInTheDocument();
-    expect(container.querySelector(".orderLegendBody h2")).toHaveTextContent(
+    expect(container.querySelector(".orderLegendBody h1")).toHaveTextContent(
       "Storage Management",
     );
   });

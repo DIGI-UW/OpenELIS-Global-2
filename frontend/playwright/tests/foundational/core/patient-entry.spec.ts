@@ -58,7 +58,7 @@ function resultRowFor(page: Page, nationalId: string) {
 
 async function chooseSearchSex(page: Page, sex: "Male" | "Female") {
   await page
-    .getByRole("group", { name: "Sex", exact: true })
+    .getByRole("group", { name: /^Sex( required)?$/ })
     .getByText(sex, { exact: true })
     .click();
   await expect(
@@ -98,16 +98,16 @@ test.describe("Add or modify patient", () => {
     await test.step("fill and save the New Patient form", async () => {
       await openNewPatientForm(page);
       await page
-        .getByRole("textbox", { name: "National ID*" })
+        .getByRole("textbox", { name: "National ID", exact: true })
         .fill(nationalId);
       await page.getByRole("textbox", { name: "Last Name" }).fill(lastName);
       await page.getByRole("textbox", { name: "First Name" }).fill(firstName);
       await page
-        .getByRole("group", { name: "Sex *" })
+        .getByRole("group", { name: /^Sex( required)?$/ })
         .getByText("Male", { exact: true })
         .click();
       await page
-        .getByRole("textbox", { name: "Date of Birth *" })
+        .getByRole("textbox", { name: "Date of Birth", exact: true })
         .fill(birthDate);
       await expect(
         page.getByRole("spinbutton", { name: "Age/Years" }),
@@ -128,7 +128,7 @@ test.describe("Add or modify patient", () => {
     await test.step("the saved patient reopens with what was entered", async () => {
       await expect(page).toHaveURL(/\/PatientManagement\/\d+$/);
       await expect(
-        page.getByRole("textbox", { name: "National ID*" }),
+        page.getByRole("textbox", { name: "National ID", exact: true }),
       ).toHaveValue(nationalId);
       await expect(
         page.getByRole("textbox", { name: "Last Name" }),
@@ -137,7 +137,7 @@ test.describe("Add or modify patient", () => {
         page.getByRole("textbox", { name: "First Name" }),
       ).toHaveValue(firstName);
       await expect(
-        page.getByRole("textbox", { name: "Date of Birth *" }),
+        page.getByRole("textbox", { name: "Date of Birth", exact: true }),
       ).toHaveValue(birthDate);
       await expect(
         page.getByRole("radio", { name: "Male", exact: true }),
@@ -159,16 +159,22 @@ test.describe("Add or modify patient", () => {
     page,
   }) => {
     await openNewPatientForm(page);
-    const nationalId = page.getByRole("textbox", { name: "National ID*" });
+    const nationalId = page.getByRole("textbox", {
+      name: "National ID",
+      exact: true,
+    });
     const lastName = page.getByRole("textbox", { name: "Last Name" });
     const firstName = page.getByRole("textbox", { name: "First Name" });
-    const birthDate = page.getByRole("textbox", { name: "Date of Birth *" });
+    const birthDate = page.getByRole("textbox", {
+      name: "Date of Birth",
+      exact: true,
+    });
     const female = page.getByRole("radio", { name: "Female", exact: true });
     await nationalId.fill(`PE${Date.now()}${letters(4)}`);
     await lastName.fill(`Clearlast${letters(6)}`);
     await firstName.fill(`Clearfirst${letters(6)}`);
     await page
-      .getByRole("group", { name: "Sex *" })
+      .getByRole("group", { name: /^Sex( required)?$/ })
       .getByText("Female", { exact: true })
       .click();
     await birthDate.fill("03/03/1975");

@@ -83,4 +83,12 @@ public interface LabelPresetService {
      * @return normalized form
      */
     String normalizeName(String input);
+
+    /**
+     * The content field keys of the system preset with this name (case and
+     * surrounding whitespace ignored), in display order, or {@code null} when no
+     * system preset carries that name. The legacy label renderers read this to
+     * print what the administrator chose on the preset (OGC-1218).
+     */
+    java.util.Set<String> systemPresetFieldKeys(String systemPresetName);
 }

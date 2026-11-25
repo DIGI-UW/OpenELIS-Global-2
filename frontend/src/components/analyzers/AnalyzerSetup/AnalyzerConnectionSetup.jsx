@@ -4,7 +4,12 @@ import { useIntl } from "react-intl";
 
 import {
   activateAnalyzer,
+  deactivateAnalyzer,
+  startAnalyzerSetupReception,
   getAnalyzerActivationReadiness,
+  getAnalyzerDeliveryIssues,
+  retryAnalyzerDelivery,
+  resetAnalyzerProfile,
   testConnection,
   updateAnalyzer,
 } from "../../../services/analyzerService";
@@ -13,6 +18,8 @@ import AnalyzerConnectionFields, {
   invalidConnectionFields,
   serializeConnectionValues,
 } from "./AnalyzerConnectionFields";
+import AnalyzerSetupReception from "./AnalyzerSetupReception";
+import AnalyzerReceivedSources from "./AnalyzerReceivedSources";
 
 const EMPTY_FIELDS = [];
 
@@ -157,6 +164,12 @@ export const needsMappingVerification = (readiness) =>
     readiness?.blockers?.some((blocker) => MAPPING_BLOCKERS.has(blocker.code)),
   );
 
+// What the Bridge set aside on this connection; its own detail text is not shown.
+const BRIDGE_DEGRADED_BLOCKERS = new Set([
+  "analyzer.connection.readiness.profileUnavailable",
+  "analyzer.connection.readiness.restoreFailed",
+]);
+
 const formatActivationBlocker = (intl, blocker) => {
   const id = blocker?.code;
   return intl.formatMessage(
@@ -170,12 +183,35 @@ const formatActivationBlocker = (intl, blocker) => {
   );
 };
 
+const MAX_RECEIVED_SENDERS = 5;
+
+/**
+ * Sender fields of messages the Bridge holds that no other analyzer owns, so
+ * setup can name this instrument by what it actually sends.
+ */
+export const receivedSenders = (rows = [], connectionId) =>
+  [
+    ...new Set(
+      rows
+        .filter(
+          (row) =>
+            row.sender &&
+            (!row.connectionId ||
+              String(row.connectionId) === String(connectionId)),
+        )
+        .map((row) => row.sender),
+    ),
+  ].slice(0, MAX_RECEIVED_SENDERS);
+
 const AnalyzerConnectionSetup = ({
   candidate,
   onCandidateChange,
   onClose,
   onVerifyMappings,
   onReadinessChange,
+  onProfileReset,
+  onContinue,
+  protocol,
 }) => {
   const intl = useIntl();
   const fields = candidate?.connection?.fields || EMPTY_FIELDS;
@@ -192,10 +228,39 @@ const AnalyzerConnectionSetup = ({
     Boolean(candidate?.id),
   );
   const [activationError, setActivationError] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetRefusal, setResetRefusal] = useState(null);
+
+  const [sourceQueued, setSourceQueued] = useState(false);
+  const [senders, setSenders] = useState([]);
+  const [receptionBlockers, setReceptionBlockers] = useState([]);
+  const asksForSender = fields.some((field) => field.key === "senderId");
+
+  useEffect(() => {
+    if (!asksForSender || onContinue) {
+      return undefined;
+    }
+    const controller = new AbortController();
+    getAnalyzerDeliveryIssues((response) => {
+      setSenders(
+        receivedSenders(response?.data?.rows, candidate?.bridgeConnectionId),
+      );
+    }, controller.signal);
+    return () => controller.abort();
+  }, [asksForSender, candidate?.bridgeConnectionId, onContinue]);
 
   const submitting = action !== null;
+  // A connection the Bridge could not restart is not running, so an analyzer
+  // still marked active is offered activation again, not only a save.
+  const restoreFailed = Boolean(
+    candidate?.connection?.readiness?.blockers?.some(
+      (blocker) =>
+        blocker.messageKey === "analyzer.connection.readiness.restoreFailed",
+    ),
+  );
   const alreadyActive =
-    candidate?.status === "ACTIVE" || readiness?.activated === true;
+    !restoreFailed &&
+    (candidate?.status === "ACTIVE" || readiness?.activated === true);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -235,6 +300,21 @@ const AnalyzerConnectionSetup = ({
     });
   };
 
+  const resetProfile = () => {
+    setResetting(true);
+    setResetRefusal(null);
+    resetAnalyzerProfile(candidate.id, (result) => {
+      setResetting(false);
+      if (result?.ok) {
+        onProfileReset?.();
+        return;
+      }
+      setResetRefusal(
+        result?.messageKey || "analyzer.setup.connect.reset.failed",
+      );
+    });
+  };
+
   const updateSetting = (field, value) => {
     setSettings((previous) => ({ ...previous, [field.key]: value }));
     if (field.inputKind === "SECRET") {
@@ -250,31 +330,27 @@ const AnalyzerConnectionSetup = ({
     setActivationError(false);
   };
 
-  const validate = () =>
+  const validate = (values = settings) =>
     Boolean(candidate?.id && candidate?.connection) &&
-    invalidConnectionFields(fields, settings, changedSecrets).length === 0;
+    invalidConnectionFields(fields, values, changedSecrets).length === 0;
 
-  const connectionPayload = () => ({
+  const connectionPayload = (values = settings) => ({
     name: candidate.name,
     profileId: candidate.profileId,
     profileRevision: candidate.profileRevision,
     testUnitIds: candidate.testUnitIds,
-    connectionValues: serializeConnectionValues(
-      fields,
-      settings,
-      changedSecrets,
-    ),
+    connectionValues: serializeConnectionValues(fields, values, changedSecrets),
   });
 
-  const saveCandidate = (nextAction, onSaved) => {
+  const saveCandidate = (nextAction, onSaved, values = settings) => {
     setSubmitAttempted(true);
     setError(false);
-    if (!validate()) {
+    if (!validate(values)) {
       return;
     }
 
     setAction(nextAction);
-    updateAnalyzer(candidate.id, connectionPayload(), (saved) => {
+    updateAnalyzer(candidate.id, connectionPayload(values), (saved) => {
       if (isApiError(saved) || !saved.connection) {
         setAction(null);
         setError(true);
@@ -331,6 +407,85 @@ const AnalyzerConnectionSetup = ({
     });
   };
 
+  const startReception = (source = null) => {
+    setSourceQueued(false);
+    const values = source
+      ? {
+          ...settings,
+          senderId: source.sender,
+          host: source.sourceId,
+          port: source.listenerPort,
+        }
+      : settings;
+    setReceptionBlockers([]);
+    saveCandidate(
+      "reception",
+      (saved) => {
+        startAnalyzerSetupReception(saved.id, (result) => {
+          setAction(null);
+          if (
+            !result?.receiving ||
+            String(result.analyzerId) !== String(saved.id) ||
+            result.status !== "VALIDATION"
+          ) {
+            setReceptionBlockers(
+              result?.blockers?.length
+                ? result.blockers
+                : [{ code: "analyzer.setup.reception.startError" }],
+            );
+            return;
+          }
+          onCandidateChange?.({
+            ...saved,
+            status: "VALIDATION",
+            active: false,
+            connection: {
+              ...saved.connection,
+              actualRuntimeState: "ACTIVE",
+              receptionPurpose: "SETUP",
+            },
+          });
+          if (source) {
+            setAction("adopt");
+            retryAnalyzerDelivery(source.id, (response) => {
+              setAction(null);
+              const queued =
+                response?.status === "accepted" &&
+                response.id === source.id &&
+                response.state === "QUEUED";
+              setSourceQueued(queued);
+              if (!queued)
+                setReceptionBlockers([
+                  { code: "analyzer.setup.sources.retryError" },
+                ]);
+            });
+          }
+        });
+      },
+      values,
+    );
+  };
+
+  const stopReception = () => {
+    setAction("stop");
+    deactivateAnalyzer(candidate.id, (result) => {
+      setAction(null);
+      if (
+        !result?.deactivated ||
+        String(result.analyzerId) !== String(candidate.id)
+      ) {
+        setReceptionBlockers([{ code: "analyzer.setup.reception.stopError" }]);
+        return;
+      }
+      onCandidateChange?.({
+        ...candidate,
+        status: "INACTIVE",
+        active: false,
+        connection: { ...candidate.connection, actualRuntimeState: "INACTIVE" },
+      });
+    });
+  };
+
   if (!candidate?.id || !candidate?.connection) {
     return (
       <InlineNotification
@@ -344,12 +499,31 @@ const AnalyzerConnectionSetup = ({
 
   return (
     <div className="analyzer-setup__connect">
+      {onContinue &&
+        !alreadyActive &&
+        asksForSender &&
+        settings.connectionRole === "SERVER" &&
+        protocol && (
+          <AnalyzerReceivedSources
+            protocol={protocol}
+            busy={submitting}
+            onAdopt={startReception}
+          />
+        )}
+      {sourceQueued && (
+        <InlineNotification
+          kind="info"
+          hideCloseButton
+          title={intl.formatMessage({ id: "analyzer.setup.sources.queued" })}
+        />
+      )}
       <AnalyzerConnectionFields
         fields={fields}
         values={settings}
         changedSecrets={changedSecrets}
         submitAttempted={submitAttempted}
         onChange={updateSetting}
+        suggestions={{ senderId: senders }}
       />
 
       <div className="analyzer-setup__connect-actions">
@@ -402,85 +576,151 @@ const AnalyzerConnectionSetup = ({
         </section>
       )}
 
-      <section
-        className="analyzer-setup__activation-readiness"
-        aria-labelledby="analyzer-setup-activation-readiness-title"
-      >
-        <h4 id="analyzer-setup-activation-readiness-title">
-          {intl.formatMessage({
-            id: "analyzer.setup.connect.activation.readiness",
-          })}
-        </h4>
-        {readinessLoading && (
-          <Loading
-            small
-            withOverlay={false}
-            description={intl.formatMessage({
-              id: "analyzer.setup.connect.activation.loading",
-            })}
-          />
-        )}
-        {activationError && (
+      {onContinue && !alreadyActive && (
+        <AnalyzerSetupReception
+          candidate={candidate}
+          busy={submitting}
+          onStart={() => startReception()}
+          onStop={stopReception}
+          blockers={receptionBlockers}
+        />
+      )}
+      {(candidate?.connection?.readiness?.blockers || [])
+        .filter((blocker) => BRIDGE_DEGRADED_BLOCKERS.has(blocker.messageKey))
+        .map((blocker) => (
           <InlineNotification
-            kind="error"
-            lowContrast
-            hideCloseButton
-            title={intl.formatMessage({
-              id: "analyzer.setup.connect.activation.error",
-            })}
-          />
-        )}
-        {readiness?.ready && (
-          <InlineNotification
-            kind="success"
-            lowContrast
-            hideCloseButton
-            title={intl.formatMessage({
-              id: readiness.activated
-                ? "analyzer.setup.connect.activation.active"
-                : "analyzer.setup.connect.activation.ready",
-            })}
-          />
-        )}
-        {readiness?.blockers.map((blocker, index) => (
-          <InlineNotification
-            key={`${blocker.code}-${index}`}
+            key={blocker.key}
             kind="warning"
             lowContrast
             hideCloseButton
-            title={formatActivationBlocker(intl, blocker)}
+            title={intl.formatMessage(
+              { id: blocker.messageKey },
+              {
+                profileId: candidate.connection.profileRef?.profileId,
+                revision: candidate.connection.profileRef?.revision,
+              },
+            )}
           />
         ))}
-        {onVerifyMappings && needsMappingVerification(readiness) && (
+      {onProfileReset &&
+        (candidate?.connection?.readiness?.blockers || []).some(
+          (blocker) =>
+            blocker.messageKey ===
+            "analyzer.connection.readiness.profileUnavailable",
+        ) && (
           <Button
             type="button"
             kind="tertiary"
             size="sm"
-            disabled={submitting}
-            onClick={onVerifyMappings}
+            disabled={submitting || resetting}
+            onClick={resetProfile}
           >
-            {intl.formatMessage({
-              id: "analyzer.setup.connect.activation.verifyMappings",
-            })}
+            {intl.formatMessage({ id: "analyzer.setup.connect.reset" })}
           </Button>
         )}
-      </section>
+      {resetRefusal && (
+        <InlineNotification
+          kind="error"
+          lowContrast
+          hideCloseButton
+          title={intl.formatMessage({ id: resetRefusal })}
+        />
+      )}
+      {!onContinue && (
+        <section
+          className="analyzer-setup__activation-readiness"
+          aria-labelledby="analyzer-setup-activation-readiness-title"
+        >
+          <h4 id="analyzer-setup-activation-readiness-title">
+            {intl.formatMessage({
+              id: "analyzer.setup.connect.activation.readiness",
+            })}
+          </h4>
+          {readinessLoading && (
+            <Loading
+              small
+              withOverlay={false}
+              description={intl.formatMessage({
+                id: "analyzer.setup.connect.activation.loading",
+              })}
+            />
+          )}
+          {activationError && (
+            <InlineNotification
+              kind="error"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({
+                id: "analyzer.setup.connect.activation.error",
+              })}
+            />
+          )}
+          {readiness?.ready && (
+            <InlineNotification
+              kind="success"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({
+                id: readiness.activated
+                  ? "analyzer.setup.connect.activation.active"
+                  : "analyzer.setup.connect.activation.ready",
+              })}
+            />
+          )}
+          {readiness?.blockers
+            .filter((blocker) => !BRIDGE_DEGRADED_BLOCKERS.has(blocker.code))
+            .map((blocker, index) => (
+              <InlineNotification
+                key={`${blocker.code}-${index}`}
+                kind="warning"
+                lowContrast
+                hideCloseButton
+                title={formatActivationBlocker(intl, blocker)}
+              />
+            ))}
+          {onVerifyMappings && needsMappingVerification(readiness) && (
+            <Button
+              type="button"
+              kind="tertiary"
+              size="sm"
+              disabled={submitting}
+              onClick={onVerifyMappings}
+            >
+              {intl.formatMessage({
+                id: "analyzer.setup.connect.activation.verifyMappings",
+              })}
+            </Button>
+          )}
+        </section>
+      )}
 
       <div className="analyzer-setup__completion-actions">
         <Button
           type="button"
           disabled={submitting}
-          onClick={alreadyActive ? saveAndFinishLater : finishAndActivate}
+          onClick={
+            onContinue && !alreadyActive
+              ? () =>
+                  saveCandidate("continue", (saved) => {
+                    setAction(null);
+                    onContinue(saved);
+                  })
+              : alreadyActive
+                ? saveAndFinishLater
+                : finishAndActivate
+          }
         >
           {intl.formatMessage({
             id:
-              action === "activate"
-                ? "analyzer.setup.connect.activation.activating"
-                : action === "save"
-                  ? "analyzer.setup.connect.activation.saving"
-                  : alreadyActive
-                    ? "analyzer.setup.connect.activation.saveChanges"
-                    : "analyzer.setup.connect.activation.finish",
+              onContinue && !alreadyActive
+                ? "analyzer.setup.connect.continue"
+                : action === "activate"
+                  ? "analyzer.setup.connect.activation.activating"
+                  : action === "save"
+                    ? "analyzer.setup.connect.activation.saving"
+                    : alreadyActive
+                      ? "analyzer.setup.connect.activation.saveChanges"
+                      : "analyzer.setup.connect.activation.finish",
           })}
         </Button>
         {!alreadyActive && (

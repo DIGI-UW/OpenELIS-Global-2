@@ -5,6 +5,7 @@ import {
   UI_TIMEOUT,
 } from "../../../helpers/timeouts";
 import { apiPost } from "../../../helpers/admin-ui";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 import { csrfToken } from "../../../helpers/api-session";
 import {
   letters,
@@ -16,7 +17,8 @@ import {
  * Batch Order Entry (/SampleBatchEntrySetup): the setup screen's gating, then
  * one order saved per barcode in On Demand and Pre-Printed modes, for the
  * routine form and the EID study form. Each saved order is read back on Modify
- * Order.
+ * Order. The sample type, panels and tests are searched by typing (OGC-1515),
+ * and changing the sample type drops the tests chosen for the previous one.
  */
 
 const API = "/api/OpenELIS-Global/rest";
@@ -90,10 +92,13 @@ async function chooseRoutineSerum(
   panels: string[],
   tests: string[],
 ) {
-  await page.getByRole("combobox", { name: "Form:*" }).selectOption("routine");
   await page
-    .getByRole("combobox", { name: "Sample Type" })
-    .selectOption({ label: "Serum" });
+    .getByRole("combobox", { name: "Form:", exact: true })
+    .selectOption("routine");
+  await chooseCarbonOption(
+    page.getByRole("combobox", { name: "Sample Type" }),
+    "Serum",
+  );
   for (const label of [...panels, ...tests]) await tick(page, label);
 }
 
@@ -178,15 +183,17 @@ async function pickExistingPatient(page: Page, patient: SeededPatient) {
     .fill(patient.lastName);
   await main(page).getByRole("button", { name: "Search", exact: true }).click();
   await page.locator(`label[for="${patient.patientPK}"]`).click();
-  await expect(page.getByRole("textbox", { name: "National ID*" })).toHaveValue(
-    patient.nationalId,
-    { timeout: UI_TIMEOUT },
-  );
+  await expect(
+    page.getByRole("textbox", { name: "National ID", exact: true }),
+  ).toHaveValue(patient.nationalId, { timeout: UI_TIMEOUT });
 }
 
 /** Generates the pre-printed lab number, which saves the order; returns it. */
 async function generateAndSave(page: Page): Promise<string> {
-  const labNumberField = page.getByRole("textbox", { name: "Lab Number *" });
+  const labNumberField = page.getByRole("textbox", {
+    name: "Lab Number",
+    exact: true,
+  });
   await main(page).getByRole("link", { name: "Generate", exact: true }).click();
   await expect(labNumberField).not.toHaveValue("", { timeout: UI_TIMEOUT });
   const labNumber = await labNumberField.inputValue();
@@ -220,11 +227,44 @@ test.describe("Batch order entry", () => {
     await expect(next).toBeDisabled();
   });
 
+  test("the lists narrow to what is typed, and a new sample type drops the previous tests", async ({
+    page,
+  }) => {
+    await openSetup(page);
+    await chooseRoutineSerum(page, [], []);
+    await page
+      .getByRole("combobox", { name: "Methods" })
+      .selectOption({ label: "On Demand" });
+    const next = main(page).getByRole("button", { name: "Next", exact: true });
+
+    await main(page)
+      .getByRole("searchbox", { name: "Search panels" })
+      .fill("SÉROLOGIE");
+    await expect(checkbox(page, "Serologie VIH")).toBeVisible();
+    await expect(main(page).locator('input[id^="panel_"]')).toHaveCount(1);
+    await main(page)
+      .getByRole("searchbox", { name: "Search tests" })
+      .fill("ALAT");
+    await tick(page, "GPT/ALAT");
+    await expect(next).toBeEnabled();
+
+    await chooseCarbonOption(
+      page.getByRole("combobox", { name: "Sample Type" }),
+      "Whole Blood",
+    );
+    await expect(main(page).locator('input[id^="test_"]:checked')).toHaveCount(
+      0,
+    );
+    await expect(next).toBeDisabled();
+  });
+
   test("the EID form offers its specimens and enables Next once DNA PCR is ticked", async ({
     page,
   }) => {
     await openSetup(page);
-    await page.getByRole("combobox", { name: "Form:*" }).selectOption("EID");
+    await page
+      .getByRole("combobox", { name: "Form:", exact: true })
+      .selectOption("EID");
     await page
       .getByRole("combobox", { name: "Methods" })
       .selectOption({ label: "Pre-Printed" });
@@ -298,7 +338,7 @@ test.describe("Batch order entry", () => {
     await test.step("enter a new patient and generate the first barcode", async () => {
       await main(page).getByRole("button", { name: "New Patient" }).click();
       await page
-        .getByRole("textbox", { name: "National ID*" })
+        .getByRole("textbox", { name: "National ID", exact: true })
         .fill(patient.nationalId);
       await page
         .getByRole("textbox", { name: "Last Name" })
@@ -308,15 +348,16 @@ test.describe("Batch order entry", () => {
         .fill(patient.firstName);
       await page.getByRole("spinbutton", { name: "Age/Years" }).fill("30");
       await page
-        .getByRole("group", { name: "Sex *" })
+        .getByRole("group", { name: /^Sex( required)?$/ })
         .getByText("Female", { exact: true })
         .click();
       await expect(
-        page.getByRole("textbox", { name: "Date of Birth *" }),
+        page.getByRole("textbox", { name: "Date of Birth", exact: true }),
       ).not.toHaveValue("");
 
       const labNumberField = page.getByRole("textbox", {
-        name: "Lab Number *",
+        name: "Lab Number",
+        exact: true,
       });
       await expect(labNumberField).toHaveValue("");
       await page
@@ -335,7 +376,7 @@ test.describe("Batch order entry", () => {
     await test.step("Next Label clears the lab number for the next order", async () => {
       await page.getByRole("button", { name: "Next Label" }).click();
       await expect(
-        page.getByRole("textbox", { name: "Lab Number *" }),
+        page.getByRole("textbox", { name: "Lab Number", exact: true }),
       ).toHaveValue("");
       await expect(
         page.getByRole("button", { name: "Next Label" }),
@@ -437,7 +478,10 @@ test.describe("Batch order entry", () => {
       await pickExistingPatient(page, patient);
     });
 
-    const labNumberField = page.getByRole("textbox", { name: "Lab Number *" });
+    const labNumberField = page.getByRole("textbox", {
+      name: "Lab Number",
+      exact: true,
+    });
     const save = main(page).getByRole("button", { name: "Save", exact: true });
 
     await test.step("typing the lab number saves nothing", async () => {
@@ -536,7 +580,9 @@ test.describe("Batch order entry", () => {
 
     await test.step("set up a pre-printed EID batch with a dry tube and DNA PCR", async () => {
       await openSetup(page);
-      await page.getByRole("combobox", { name: "Form:*" }).selectOption("EID");
+      await page
+        .getByRole("combobox", { name: "Form:", exact: true })
+        .selectOption("EID");
       await page
         .getByRole("combobox", { name: "Methods" })
         .selectOption({ label: "Pre-Printed" });

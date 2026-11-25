@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    A macroscopic description is paragraphs of findings, not a line, so the
+    gross and microscopic exam columns, which held at most 255 characters and
+    refused any longer description at save time, become unbounded text.
+
+    Whether a specimen needs decalcifying before processing (FR-3.2) is what
+    makes the DECALCIFICATION bench stage apply to a case (FR-4.1), so it is a
+    stored fact about the case and not something derived from the stage. It
+    defaults to false: most specimens are soft tissue.
+
+    The tissue a cassette was cut from is a dictionary category, like the
+    other pathology vocabularies, that the laboratory fills with its own
+    entries under Admin > Dictionary or through a dictionary CSV. The category
+    is created empty because no universal list of tissue types exists.
+    -->
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <changeSet id="OGC-264-pathology-decalcification-flag" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="pathology_sample"/>
+                <not>
+                    <columnExists schemaName="clinlims" tableName="pathology_sample" columnName="decalcification_required"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>Record whether a specimen needs decalcifying, defaulting to false for every case already on file</comment>
+        <addColumn schemaName="clinlims" tableName="pathology_sample">
+            <column name="decalcification_required" type="BOOLEAN" defaultValueBoolean="false"/>
+        </addColumn>
+        <addNotNullConstraint schemaName="clinlims" tableName="pathology_sample"
+            columnName="decalcification_required" columnDataType="BOOLEAN" defaultNullValue="false"/>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="pathology_sample" columnName="decalcification_required"/>
+        </rollback>
+    </changeSet>
+
+    <!-- A case standing at DECALCIFICATION on upgrade day is being
+         decalcified, so its specimen needs it. Left false, the case would read
+         "not required" once it moved on, which says something false about its
+         own history. Self-guarding through the where clause, so it needs no
+         precondition. -->
+    <changeSet id="OGC-264-pathology-decalcification-backfill" author="OGC">
+        <comment>Flag the specimen of every case already standing at the decalcification stage</comment>
+        <update schemaName="clinlims" tableName="pathology_sample">
+            <column name="decalcification_required" valueBoolean="true"/>
+            <where>status = 'DECALCIFICATION' AND decalcification_required = false</where>
+        </update>
+        <!-- Clearing the flags again would bring back the false reading this
+             changeSet removes, and the rows it touched can no longer be told
+             from cases flagged at the bench since. -->
+        <rollback>
+            <empty/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-gross-exam-text" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                select count(*) from information_schema.columns
+                where table_schema = 'clinlims' and table_name = 'pathology_sample'
+                and column_name = 'gross_exam' and data_type = 'character varying'
+            </sqlCheck>
+        </preConditions>
+        <comment>Let the macroscopic description run to any length instead of 255 characters</comment>
+        <modifyDataType schemaName="clinlims" tableName="pathology_sample" columnName="gross_exam" newDataType="TEXT"/>
+        <!-- Plain SQL, because modifyDataType writes a USING cast on Postgres
+             and an explicit cast to varchar(255) cuts a longer value without a
+             word. Without USING the narrowing fails on a description longer
+             than 255 characters, which is the right outcome: a description is
+             clinical record and is never cut to fit a column. -->
+        <rollback>
+            <sql>ALTER TABLE clinlims.pathology_sample ALTER COLUMN gross_exam TYPE VARCHAR(255)</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-microscopy-exam-text" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                select count(*) from information_schema.columns
+                where table_schema = 'clinlims' and table_name = 'pathology_sample'
+                and column_name = 'microscopy_exam' and data_type = 'character varying'
+            </sqlCheck>
+        </preConditions>
+        <comment>Let the microscopic description run to any length instead of 255 characters</comment>
+        <modifyDataType schemaName="clinlims" tableName="pathology_sample" columnName="microscopy_exam" newDataType="TEXT"/>
+        <!-- Plain SQL for the same reason as gross_exam: the narrowing must
+             fail, not truncate, on a description longer than 255 characters. -->
+        <rollback>
+            <sql>ALTER TABLE clinlims.pathology_sample ALTER COLUMN microscopy_exam TYPE VARCHAR(255)</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-tissue-type-category" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="dictionary_category"/>
+                <sqlCheck expectedResult="0">
+                    select count(*) from clinlims.dictionary_category
+                    where name = 'pathology_tissue_types'
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <comment>Add the dictionary category a laboratory fills with the tissue types it cuts cassettes from</comment>
+        <insert schemaName="clinlims" tableName="dictionary_category">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value="Pathology - Tissue Types"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="PathTissue"/>
+            <column name="name" value="pathology_tissue_types"/>
+        </insert>
+        <!-- Deleting the category fails on the foreign key once an
+             administrator has added an entry to it, which is the right
+             outcome: those entries are the laboratory's own data. -->
+        <rollback>
+            <delete schemaName="clinlims" tableName="dictionary_category">
+                <where>name = 'pathology_tissue_types'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

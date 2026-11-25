@@ -1,0 +1,620 @@
+import React from "react";
+import { vi } from "vitest";
+import { render, screen, fireEvent, within } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
+import { IntlProvider } from "react-intl";
+import messages from "../../../languages/en.json";
+import CaseIsolateWorkspace from "../CaseIsolateWorkspace";
+
+vi.mock("../OrganismSearch", () => ({
+  searchOrganisms: vi
+    .fn()
+    .mockResolvedValue([{ id: "o1", label: "Escherichia coli" }]),
+  getOrganism: vi.fn().mockResolvedValue(null),
+  organismText: (organism) => organism?.label || "",
+}));
+
+const isolate = {
+  id: "i1",
+  label: "ISO-1",
+  cultureId: "r1",
+  cultureLabel: "PLATE-1",
+  significance: "UNKNOWN",
+  status: "PENDING",
+  sourceSampleItemId: "s1",
+  canIdentify: true,
+  canReidentify: false,
+  canAcknowledge: false,
+  version: "v1",
+  history: [],
+};
+const options = {
+  methods: [{ id: "m1", value: "Biochemical identification" }],
+  sampleTypes: [{ id: "isolate-type", value: "Configured isolate specimen" }],
+  sources: [{ id: "s1", value: "SOURCE-1", sampleTypeId: "specimen" }],
+  tests: [],
+  organizations: [],
+  referralOrganizations: [],
+  reasons: [],
+};
+const api = (rows = [isolate]) => ({
+  getIsolates: vi
+    .fn()
+    .mockResolvedValue({ isolates: rows, referrals: [], referred: false }),
+  getIsolateOptions: vi.fn().mockResolvedValue(options),
+  getCultures: vi.fn().mockResolvedValue([
+    {
+      id: "r1",
+      containerIdentifier: "PLATE-1",
+      outcome: "GROWTH",
+      sourceSampleItemId: "s1",
+    },
+  ]),
+  pickIsolate: vi
+    .fn()
+    .mockResolvedValue({ isolates: rows, referrals: [], referred: false }),
+  isolateAction: vi
+    .fn()
+    .mockResolvedValue({ isolates: rows, referrals: [], referred: false }),
+});
+const show = (service, canWrite = true, amendmentOpen = false) =>
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseIsolateWorkspace
+        detail={{ id: "c1", labUnitId: "unit1", canWrite, amendmentOpen }}
+        service={service}
+      />
+    </IntlProvider>,
+  );
+it("requires a growth culture and sends the technician's isolate observations", async () => {
+  const service = api([]);
+  show(service);
+  fireEvent.click(await screen.findByRole("button", { name: "Pick isolate" }));
+  const dialog = screen.getByRole("dialog");
+  const save = within(dialog).getByRole("button", {
+    name: "Save",
+    exact: true,
+  });
+  expect(save).toBeDisabled();
+  fireEvent.change(within(dialog).getByLabelText("Source culture row"), {
+    target: { value: "r1" },
+  });
+  fireEvent.change(
+    within(dialog).getByLabelText(messages["microbiology.isolate.gramStain"]),
+    { target: { value: "Gram-negative rods" } },
+  );
+  fireEvent.change(within(dialog).getByLabelText("Colony morphology"), {
+    target: { value: "Smooth colonies" },
+  });
+  fireEvent.click(save);
+  await waitFor(() =>
+    expect(service.pickIsolate).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({
+        cultureId: "r1",
+        gramStain: "Gram-negative rods",
+        colonyMorphology: "Smooth colonies",
+      }),
+    ),
+  );
+});
+it("renders history for an outside reader without mutation controls", async () => {
+  const service = api([
+    {
+      ...isolate,
+      canIdentify: false,
+      status: "FINAL",
+      organismName: "Escherichia coli",
+      history: [
+        {
+          id: "h1",
+          organismName: "Escherichia coli",
+          status: "PRELIMINARY",
+          method: "Biochemical",
+          by: "42",
+          reason: "Initial local identification",
+          at: "2026-01-01T10:00:00Z",
+          identifiedAt: "2026-01-01T09:00:00Z",
+        },
+      ],
+    },
+  ]);
+  show(service, false);
+  await screen.findByRole("heading", { name: /ISO-1/ });
+  expect(
+    screen.queryByRole("button", { name: "Pick isolate" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Identify organism" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Refer isolate out" }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Identification history" }),
+  );
+  expect(screen.getByText("Initial local identification")).toBeVisible();
+});
+it("a validator must provide a reason to acknowledge the sender mismatch", async () => {
+  const service = api([
+    {
+      ...isolate,
+      received: true,
+      mismatch: true,
+      canIdentify: false,
+      canAcknowledge: true,
+      status: "FINAL",
+    },
+  ]);
+  show(service, false);
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: "Acknowledge identification mismatch",
+    }),
+  );
+  const dialog = screen.getByRole("dialog");
+  const save = within(dialog).getByRole("button", {
+    name: "Save",
+    exact: true,
+  });
+  expect(save).toBeDisabled();
+  fireEvent.change(within(dialog).getByLabelText(/Re-identification reason/), {
+    target: { value: "Reviewed sending laboratory report" },
+  });
+  fireEvent.click(save);
+  await waitFor(() =>
+    expect(service.isolateAction).toHaveBeenCalledWith(
+      "c1",
+      "i1",
+      "acknowledge",
+      expect.objectContaining({
+        reason: "Reviewed sending laboratory report",
+        version: "v1",
+      }),
+    ),
+  );
+});
+
+it("keeps a failed pick open and shows the error inside the active dialog", async () => {
+  const service = api([]);
+  service.pickIsolate.mockRejectedValue(new Error("Save failed"));
+  show(service);
+  fireEvent.click(await screen.findByRole("button", { name: "Pick isolate" }));
+  const dialog = screen.getByRole("dialog");
+  fireEvent.change(within(dialog).getByLabelText("Source culture row"), {
+    target: { value: "r1" },
+  });
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Save", exact: true }),
+  );
+  expect(
+    await within(dialog).findByText(
+      messages["microbiology.isolateWorkspace.saveError"],
+    ),
+  ).toBeVisible();
+  expect(within(dialog).getByLabelText("Source culture row")).toHaveValue("r1");
+  expect(
+    within(dialog).getByRole("button", { name: "Save", exact: true }),
+  ).toBeEnabled();
+});
+
+it("says the server did not answer when a pick gets no response", async () => {
+  const service = api([]);
+  service.pickIsolate.mockRejectedValue(
+    Object.assign(new Error("request failed"), { response: { status: 0 } }),
+  );
+  show(service);
+  fireEvent.click(await screen.findByRole("button", { name: "Pick isolate" }));
+  const dialog = screen.getByRole("dialog");
+  fireEvent.change(within(dialog).getByLabelText("Source culture row"), {
+    target: { value: "r1" },
+  });
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Save", exact: true }),
+  );
+  expect(
+    await within(dialog).findByText(
+      "The server did not answer, and the change may not be saved. Check the connection, then reload the case before you try again.",
+    ),
+  ).toBeVisible();
+  expect(
+    within(dialog).queryByText(
+      messages["microbiology.isolateWorkspace.saveError"],
+    ),
+  ).not.toBeInTheDocument();
+});
+
+const identify = async () => {
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Identify organism" }),
+  );
+  const fields = within(screen.getByRole("dialog"));
+  fireEvent.change(
+    fields.getByRole("combobox", {
+      name: messages["microbiology.isolate.organism"],
+    }),
+    { target: { value: "Escherichia" } },
+  );
+  fireEvent.click(
+    await fields.findByRole("option", { name: "Escherichia coli" }),
+  );
+  fireEvent.change(
+    fields.getByLabelText(
+      messages["microbiology.isolate.identificationMethod"],
+    ),
+    { target: { value: "m1" } },
+  );
+  return fields;
+};
+
+it("a first identification during an amendment requires a reason", async () => {
+  show(api(), true, true);
+  const fields = await identify();
+  const reason = fields.getByLabelText(/Re-identification reason/);
+  const save = fields.getByRole("button", { name: "Save", exact: true });
+  expect(reason).toHaveAttribute("aria-required", "true");
+  expect(save).toBeDisabled();
+  fireEvent.change(reason, { target: { value: "Amended after sequencing" } });
+  expect(save).toBeEnabled();
+});
+
+it("shows why the server refused an identification", async () => {
+  const service = api();
+  service.isolateAction.mockRejectedValue({
+    response: { status: 400, message: "REIDENTIFICATION_REASON_REQUIRED" },
+  });
+  show(service);
+  const fields = await identify();
+  expect(fields.getByLabelText(/Re-identification reason/)).not.toHaveAttribute(
+    "aria-required",
+  );
+  fireEvent.click(fields.getByRole("button", { name: "Save", exact: true }));
+  expect(
+    await fields.findByText(
+      "Give a reason for this identification. Re-identifying an isolate, or identifying one during an amendment, needs a reason.",
+    ),
+  ).toBeVisible();
+});
+
+it("requires a reason and valid confidence before submitting a versioned reidentification", async () => {
+  const service = api([
+    {
+      ...isolate,
+      organismId: "o1",
+      status: "FINAL",
+      method: "Biochemical identification",
+      confidence: 98,
+      canIdentify: false,
+      canReidentify: true,
+    },
+  ]);
+  show(service);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Reidentify", exact: true }),
+  );
+  const dialog = screen.getByRole("dialog");
+  const fields = within(dialog);
+  const save = fields.getByRole("button", { name: "Save", exact: true });
+  const reason = fields.getByLabelText(/Re-identification reason/);
+  expect(save).toBeDisabled();
+  fireEvent.change(reason, { target: { value: "   " } });
+  expect(save).toBeDisabled();
+  fireEvent.change(reason, {
+    target: { value: "Corrected after confirmatory panel" },
+  });
+  fireEvent.change(fields.getByLabelText("ID confidence (%)"), {
+    target: { value: "101" },
+  });
+  expect(save).toBeDisabled();
+  fireEvent.change(fields.getByLabelText("ID confidence (%)"), {
+    target: { value: "99.5" },
+  });
+  fireEvent.change(fields.getByLabelText("Clinical significance"), {
+    target: { value: "COLONIZER" },
+  });
+  fireEvent.change(fields.getByLabelText("Identification performed at"), {
+    target: { value: "2026-01-15T09:30" },
+  });
+  expect(save).toBeEnabled();
+  fireEvent.click(save);
+  await waitFor(() =>
+    expect(service.isolateAction).toHaveBeenCalledWith(
+      "c1",
+      "i1",
+      "reidentify",
+      expect.objectContaining({
+        organismId: "o1",
+        identificationStatus: "FINAL",
+        identificationMethod: "m1",
+        confidence: 99.5,
+        significance: "COLONIZER",
+        identifiedAt: new Date("2026-01-15T09:30").toISOString(),
+        version: "v1",
+        reason: "Corrected after confirmatory panel",
+      }),
+    ),
+  );
+});
+
+it("reidentifies with the stored method when the lab's method list lacks it", async () => {
+  const service = api([
+    {
+      ...isolate,
+      organismId: "o1",
+      status: "FINAL",
+      method: "MALDI_TOF",
+      canIdentify: false,
+      canReidentify: true,
+    },
+  ]);
+  show(service);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Reidentify", exact: true }),
+  );
+  const fields = within(screen.getByRole("dialog"));
+  expect(
+    fields.getByLabelText(
+      messages["microbiology.isolate.identificationMethod"],
+    ),
+  ).toHaveValue("MALDI_TOF");
+  fireEvent.change(fields.getByLabelText(/Re-identification reason/), {
+    target: { value: "Corrected after confirmatory panel" },
+  });
+  fireEvent.click(fields.getByRole("button", { name: "Save", exact: true }));
+  await waitFor(() =>
+    expect(service.isolateAction).toHaveBeenCalledWith(
+      "c1",
+      "i1",
+      "reidentify",
+      expect.objectContaining({ identificationMethod: "MALDI_TOF" }),
+    ),
+  );
+});
+
+it("offers real growth cultures but excludes the automatic received-isolate row", async () => {
+  const service = api();
+  const received = {
+    id: "received-row",
+    containerIdentifier: "RECEIVED-1",
+    outcome: "GROWTH",
+    sourceSampleItemId: "s1",
+    receivedIsolate: true,
+  };
+  service.getCultures.mockResolvedValue([received]);
+  show(service);
+  expect(
+    await screen.findByRole("button", { name: "Pick isolate" }),
+  ).toBeDisabled();
+});
+
+it("never offers a received-isolate row in a mixed growth picker", async () => {
+  const service = api();
+  service.getCultures.mockResolvedValue([
+    {
+      id: "received-row",
+      containerIdentifier: "RECEIVED-1",
+      outcome: "GROWTH",
+      sourceSampleItemId: "s1",
+      receivedIsolate: true,
+    },
+    {
+      id: "r1",
+      containerIdentifier: "PLATE-1",
+      outcome: "GROWTH",
+      sourceSampleItemId: "s1",
+    },
+  ]);
+  show(service);
+  fireEvent.click(await screen.findByRole("button", { name: "Pick isolate" }));
+  const picker = within(screen.getByRole("dialog")).getByLabelText(
+    "Source culture row",
+  );
+  expect(
+    within(picker).getByRole("option", { name: "PLATE-1" }),
+  ).toBeInTheDocument();
+  expect(
+    within(picker).queryByRole("option", { name: "RECEIVED-1" }),
+  ).not.toBeInTheDocument();
+});
+
+it("submits the shared specimen referral with only a receiving lab and scoped test", async () => {
+  const service = api([]);
+  service.getIsolateOptions.mockResolvedValue({
+    ...options,
+    organizations: [{ id: "site1", value: "Collection site" }],
+    referralOrganizations: [{ id: "lab1", value: "Reference facility" }],
+    tests: [
+      { id: "test1", name: "Confirmatory PCR", sampleTypeIds: ["specimen"] },
+    ],
+  });
+  service.referSpecimen = vi
+    .fn()
+    .mockResolvedValue({ isolates: [], referrals: [], referred: true });
+  show(service);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Refer specimen out" }),
+  );
+  const dialog = screen.getByRole("dialog");
+  const fields = within(dialog);
+  fireEvent.change(fields.getByLabelText("Isolate or specimen item"), {
+    target: { value: "s1" },
+  });
+  fireEvent.change(
+    fields.getByLabelText("Requested referral or confirmatory test"),
+    { target: { value: "test1" } },
+  );
+  fireEvent.change(fields.getByRole("combobox", { name: "Reference lab" }), {
+    target: { value: "Reference facility" },
+  });
+  fireEvent.click(
+    await fields.findByRole("option", { name: "Reference facility" }),
+  );
+  expect(fields.getByRole("combobox", { name: "Reference lab" })).toHaveValue(
+    "Reference facility",
+  );
+  expect(fields.getByLabelText("Isolate or specimen item")).toHaveValue("s1");
+  expect(
+    fields.getByLabelText("Requested referral or confirmatory test"),
+  ).toHaveValue("test1");
+  expect(fields.getByRole("button", { name: "Save Referral" })).toBeEnabled();
+  fireEvent.click(fields.getByRole("button", { name: "Save Referral" }));
+  await waitFor(() =>
+    expect(service.referSpecimen).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({
+        sampleItemId: "s1",
+        testId: "test1",
+        referral: expect.objectContaining({
+          referredInstituteId: "lab1",
+          referralReasonId: "",
+          referredSendDate: "",
+          subcontractNotes: "",
+        }),
+      }),
+    ),
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  expect(
+    screen.getByText(messages["label.results.history.event.REFERRAL"]),
+  ).toBeVisible();
+});
+
+it("explains a refused referral for a test that is already referred", async () => {
+  const service = api([]);
+  service.getIsolateOptions.mockResolvedValue({
+    ...options,
+    referralOrganizations: [{ id: "lab1", value: "Reference facility" }],
+    tests: [
+      { id: "test1", name: "Confirmatory PCR", sampleTypeIds: ["specimen"] },
+    ],
+  });
+  service.referSpecimen = vi.fn().mockRejectedValue(
+    Object.assign(new Error("request failed"), {
+      response: {
+        status: 400,
+        error: "MICROBIOLOGY_VALIDATION_ERROR",
+        message: "MICROBIOLOGY_ISOLATE_REFERRAL_EXISTS",
+      },
+    }),
+  );
+  show(service);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Refer specimen out" }),
+  );
+  const fields = within(screen.getByRole("dialog"));
+  fireEvent.change(fields.getByLabelText("Isolate or specimen item"), {
+    target: { value: "s1" },
+  });
+  fireEvent.change(
+    fields.getByLabelText("Requested referral or confirmatory test"),
+    { target: { value: "test1" } },
+  );
+  fireEvent.change(fields.getByRole("combobox", { name: "Reference lab" }), {
+    target: { value: "Reference facility" },
+  });
+  fireEvent.click(
+    await fields.findByRole("option", { name: "Reference facility" }),
+  );
+  fireEvent.click(fields.getByRole("button", { name: "Save Referral" }));
+  expect(
+    await fields.findByText(
+      messages[
+        "microbiology.isolateWorkspace.MICROBIOLOGY_ISOLATE_REFERRAL_EXISTS"
+      ],
+    ),
+  ).toBeVisible();
+});
+
+it("closes a committed pick before a failing options refresh can invite a duplicate save", async () => {
+  const service = api([]);
+  service.getIsolateOptions
+    .mockResolvedValueOnce(options)
+    .mockRejectedValueOnce(new Error("refresh failed"));
+  show(service);
+  fireEvent.click(await screen.findByRole("button", { name: "Pick isolate" }));
+  const dialog = screen.getByRole("dialog");
+  fireEvent.change(within(dialog).getByLabelText("Source culture row"), {
+    target: { value: "r1" },
+  });
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Save", exact: true }),
+  );
+  await screen.findByText(messages["microbiology.isolateWorkspace.loadError"]);
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(service.pickIsolate).toHaveBeenCalledTimes(1);
+});
+
+it("shows a preopened pick load failure and lets the user close it", async () => {
+  const service = api([]);
+  service.getIsolateOptions.mockRejectedValue(new Error("load failed"));
+  const close = vi.fn();
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseIsolateWorkspace
+        detail={{ id: "c1", labUnitId: "unit1", canWrite: true }}
+        service={service}
+        initialCultureId="r1"
+        onClosePick={close}
+      />
+    </IntlProvider>,
+  );
+  await screen.findByText(messages["microbiology.isolateWorkspace.loadError"]);
+  fireEvent.click(
+    screen.getByRole("button", { name: messages["label.button.cancel"] }),
+  );
+  expect(close).toHaveBeenCalledTimes(1);
+});
+it("moves keyboard focus into the pick dialog and back to Pick isolate after saving", async () => {
+  show(api([]));
+  const trigger = await screen.findByRole("button", { name: "Pick isolate" });
+  trigger.focus();
+  fireEvent.click(trigger);
+  const dialog = screen.getByRole("dialog");
+  const culture = within(dialog).getByLabelText("Source culture row");
+  expect(culture).toHaveFocus();
+  fireEvent.change(culture, { target: { value: "r1" } });
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Save", exact: true }),
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: "Pick isolate" })).toHaveFocus(),
+  );
+});
+it("lets keyboard users focus and scroll the referrals table", async () => {
+  show(api());
+  expect(
+    await screen.findByRole("table", {
+      name: messages["microbiology.isolateWorkspace.referrals"],
+    }),
+  ).toHaveAttribute("tabindex", "0");
+});
+it("keeps the isolate Save disabled and says why while the browser is offline", async () => {
+  const onLine = vi
+    .spyOn(window.navigator, "onLine", "get")
+    .mockReturnValue(false);
+  try {
+    show(api([]));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Pick isolate" }),
+    );
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText("Source culture row"), {
+      target: { value: "r1" },
+    });
+    expect(
+      within(dialog).getByRole("button", { name: "Save", exact: true }),
+    ).toBeDisabled();
+    expect(
+      within(dialog).getByText(
+        "Working offline; refresh when network returns.",
+      ),
+    ).toBeVisible();
+  } finally {
+    onLine.mockRestore();
+  }
+});

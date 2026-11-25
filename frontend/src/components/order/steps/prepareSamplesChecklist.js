@@ -1,17 +1,20 @@
-import { isCollectionDateBeforeAdmissionDate } from "../dateUtils";
+import { isPlausibleTemperature } from "./sections/handlingRules";
+import { sampleTimesValid } from "../dateUtils";
 
 /**
  * The complete level of Prepare Samples (FR-A7, FR-D7): what the "To
  * continue" checklist lists before Save and next. A sample type on the order;
- * for every sample still live (typed, not rejected) a collection date and
- * time not before the admission date; and consent where the laboratory
+ * for every sample still live (typed, not rejected) at least one test or
+ * panel (the server refuses a sample without, OGC-1443), a container when the
+ * catalog names containers for its tests (OGC-1611 FR-G8), and a collection date
+ * and time not before the admission date, sample times that read hh:mm
+ * (OGC-1657); and consent where the laboratory
  * requires it. The collector is optional (OGC-1419): many tubes arrive with no
  * name on them, so it never holds the step.
  */
 export function prepareSamplesToContinue({
   samples = [],
   labNumber,
-  admissionDate,
   consentSatisfied,
   intl,
 }) {
@@ -30,19 +33,44 @@ export function prepareSamplesToContinue({
     .filter(({ sample }) => sample.sampleTypeId && !sample.sampleRejected)
     .forEach((entry) => {
       const { sample, index } = entry;
-      if (
-        isCollectionDateBeforeAdmissionDate(
-          sample.collectionDate,
-          admissionDate,
-        )
-      ) {
+      if (!isPlausibleTemperature(sample.arrivalTemperature)) {
         items.push({
-          id: `collectionConflict-${index}`,
+          id: `arrivalTemperature-${index}`,
           label: intl.formatMessage(
-            { id: "order.continue.item.collectionConflict" },
+            { id: "order.continue.item.arrivalTemperature" },
             { sample: sampleName(entry) },
           ),
-          targetId: `collectionDate-${index}`,
+          targetId: `arrivalTemperature-${index}`,
+        });
+      }
+      if (!sample.tests?.length && !sample.panels?.length) {
+        items.push({
+          id: `noTests-${index}`,
+          label: intl.formatMessage(
+            { id: "order.continue.item.noTestsOnSample" },
+            { sample: sampleName(entry) },
+          ),
+          targetId: `sampleType-${index}`,
+        });
+      }
+      if (sample.containerRequired && !sample.containerTypeId) {
+        items.push({
+          id: `container-${index}`,
+          label: intl.formatMessage(
+            { id: "order.continue.item.container" },
+            { sample: sampleName(entry) },
+          ),
+          targetId: `containerType-${index}`,
+        });
+      }
+      if (!sampleTimesValid(sample)) {
+        items.push({
+          id: `sampleTimes-${index}`,
+          label: intl.formatMessage(
+            { id: "order.continue.item.sampleTimes" },
+            { sample: sampleName(entry) },
+          ),
+          targetId: `collectionTime-${index}`,
         });
       }
       if (!sample.collectionDate || !sample.collectionTime) {
@@ -64,4 +92,17 @@ export function prepareSamplesToContinue({
     });
   }
   return items;
+}
+
+/**
+ * Whether the laboratory's consent rule applies to this order. A site whose
+ * regulator requires consent turns CONSENT_REQUIRED_FOR_COLLECTION on; an EQA
+ * proficiency sample has no person to consent, so it is never held for it
+ * (OGC-1483).
+ */
+export function consentApplies(configurationProperties = {}, orderData = {}) {
+  return (
+    configurationProperties.CONSENT_REQUIRED_FOR_COLLECTION === "true" &&
+    !orderData?.sampleOrderItems?.isEQASample
+  );
 }

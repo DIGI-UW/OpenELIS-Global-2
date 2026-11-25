@@ -42,17 +42,25 @@ public class TestCatalogNumericIdGuard implements HandlerInterceptor, WebMvcConf
     public static final String GUARDED_PATH_PATTERN = "/rest/test-catalog/**";
 
     /**
+     * The catalog's other REST spaces: the sample type and lab unit editors and a
+     * test's methods take the same ids and failed the same way (OGC-1467).
+     */
+    public static final String[] GUARDED_PATH_PATTERNS = { GUARDED_PATH_PATTERN, "/rest/sample-types/**",
+            "/rest/lab-units-management/**", "/rest/test/*/methods/**", "/rest/test/*/methods" };
+
+    /**
      * Path-variable names that name a {@code NUMERIC(10)} entity id, and so must
      * parse as a non-negative int before any DAO sees them.
      */
-    public static final Set<String> NUMERIC_ID_PATH_VARIABLES = Set.of("testId", "sourceId", "sampleTypeId", "panelId");
+    public static final Set<String> NUMERIC_ID_PATH_VARIABLES = Set.of("testId", "sourceId", "sampleTypeId", "panelId",
+            "dictionaryId", "labUnitId");
 
     /** {@code NUMERIC(10)} — 2147483647 is the widest id the user type can bind. */
     private static final int MAX_ID_DIGITS = 10;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(this).addPathPatterns(GUARDED_PATH_PATTERN);
+        registry.addInterceptor(this).addPathPatterns(GUARDED_PATH_PATTERNS);
     }
 
     @Override

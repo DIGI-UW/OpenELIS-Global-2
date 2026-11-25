@@ -75,3 +75,13 @@ test("a late response from a replaced request cannot overwrite retry results", (
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   expect(screen.getByText("127")).toBeVisible();
 });
+
+test("tile counts are text under their tile title, not headings", () => {
+  openDashboard();
+  act(() => requests[0].callback({ ordersInProgress: 127 }));
+  const tile = screen.getByText("In Progress").closest(".dashboard-tile");
+  expect(within(tile).getByText("127").tagName).toBe("P");
+  expect(
+    screen.queryByRole("heading", { name: "127" }),
+  ).not.toBeInTheDocument();
+});

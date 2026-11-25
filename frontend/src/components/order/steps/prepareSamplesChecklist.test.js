@@ -3,7 +3,10 @@
  * collector is optional: many tubes arrive with no name on them, so a sample
  * with a type and a collection date and time can move on without one.
  */
-import { prepareSamplesToContinue } from "./prepareSamplesChecklist";
+import {
+  prepareSamplesToContinue,
+  consentApplies,
+} from "./prepareSamplesChecklist";
 
 const intl = {
   formatMessage: ({ id }, values) =>
@@ -17,6 +20,7 @@ const serum = (fields = {}) => ({
   collectionTime: "09:30",
   collectorId: "",
   labPerformedSampling: false,
+  tests: [{ id: "7", name: "Glucose" }],
   ...fields,
 });
 
@@ -24,7 +28,6 @@ const itemsFor = (samples, options = {}) =>
   prepareSamplesToContinue({
     samples,
     labNumber: "DEV0126",
-    admissionDate: "",
     consentSatisfied: true,
     intl,
     ...options,
@@ -58,14 +61,109 @@ describe("prepareSamplesToContinue (OGC-1419)", () => {
     ]);
   });
 
-  it("skips rejected samples and flags a collection before admission", () => {
+  it("skips rejected samples", () => {
     expect(
       itemsFor([serum({ collectionTime: "", sampleRejected: true })]),
     ).toEqual([]);
+  });
+});
+
+describe("prepareSamplesToContinue measured temperature (OGC-1424)", () => {
+  it("lists a measured temperature that cannot be stored and points at its field", () => {
+    const items = itemsFor([serum({ arrivalTemperature: "999" })]);
+
+    expect(items).toEqual([
+      expect.objectContaining({
+        id: "arrivalTemperature-0",
+        targetId: "arrivalTemperature-0",
+      }),
+    ]);
+  });
+
+  it("lets a blank or plausible temperature continue", () => {
     expect(
-      itemsFor([serum({ collectionDate: "2026-10-01" })], {
-        admissionDate: "2026-10-02",
-      }).map((item) => item.id),
-    ).toEqual(["collectionConflict-0"]);
+      itemsFor([
+        serum({ arrivalTemperature: "" }),
+        serum({ arrivalTemperature: "4,5" }),
+      ]),
+    ).toEqual([]);
+  });
+});
+
+describe("prepareSamplesToContinue — a sample with no tests (OGC-1443)", () => {
+  it("names the sample that has no tests, since the server refuses to save it", () => {
+    expect(itemsFor([serum(), serum({ tests: [] })])).toEqual([
+      {
+        id: "noTests-1",
+        label:
+          'order.continue.item.noTestsOnSample:{"sample":"DEV0126-2 Serum"}',
+        targetId: "sampleType-1",
+      },
+    ]);
+  });
+
+  it("accepts a sample carrying a panel instead of single tests", () => {
+    expect(itemsFor([serum({ tests: [], panels: [{ id: "3" }] })])).toEqual([]);
+  });
+
+  it("leaves out a rejected sample", () => {
+    expect(
+      itemsFor([serum(), serum({ tests: [], sampleRejected: true })]),
+    ).toEqual([]);
+  });
+});
+
+describe("a container the catalog asks for (OGC-1611 FR-G8)", () => {
+  it("holds a sample whose tests name containers until one is chosen", () => {
+    expect(
+      itemsFor([serum({ containerRequired: true, containerTypeId: "" })]).map(
+        (item) => [item.id, item.targetId],
+      ),
+    ).toEqual([["container-0", "containerType-0"]]);
+    expect(
+      itemsFor([serum({ containerRequired: true, containerTypeId: "11" })]),
+    ).toEqual([]);
+  });
+
+  it("never holds a sample whose tests name no container, or a rejected one", () => {
+    expect(itemsFor([serum({ containerRequired: false })])).toEqual([]);
+    expect(
+      itemsFor([serum({ containerRequired: true, sampleRejected: true })]),
+    ).toEqual([]);
+  });
+});
+
+describe("consentApplies (OGC-1483)", () => {
+  const required = { CONSENT_REQUIRED_FOR_COLLECTION: "true" };
+
+  it("holds a clinical order where the laboratory requires consent", () => {
+    expect(consentApplies(required, { sampleOrderItems: {} })).toBe(true);
+  });
+
+  it("never holds an EQA order, which has no person to consent", () => {
+    expect(
+      consentApplies(required, { sampleOrderItems: { isEQASample: true } }),
+    ).toBe(false);
+  });
+
+  it("holds nothing where consent is advisory", () => {
+    expect(consentApplies({}, { sampleOrderItems: {} })).toBe(false);
+  });
+});
+
+// OGC-1657 review: a bad sample time held both saves with only the field's
+// own mark, so the checklist names it.
+describe("prepareSamplesToContinue sample times (OGC-1657)", () => {
+  it.each([[{ collectionTime: "1430" }], [{ receivedTime: "25:99" }]])(
+    "names a sample whose time is not hh:mm (%j)",
+    (fields) => {
+      expect(itemsFor([serum(fields)]).map((item) => item.id)).toEqual([
+        "sampleTimes-0",
+      ]);
+    },
+  );
+
+  it("names nothing for times on the clock", () => {
+    expect(itemsFor([serum({ receivedTime: "14:20" })])).toEqual([]);
   });
 });

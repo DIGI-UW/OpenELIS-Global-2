@@ -4,8 +4,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.openelisglobal.microbiology.form.MicroAntibioticAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAdminForm;
-import org.openelisglobal.microbiology.form.MicroCultureSetupAdminForm;
 import org.openelisglobal.microbiology.form.MicroOrganismAdminForm;
+import org.openelisglobal.microbiology.form.MicroPanelCoverageForm;
 import org.openelisglobal.microbiology.form.MicroPatientOriginAdminForm;
 import org.openelisglobal.microbiology.form.MicroReferenceAdminPageForm;
 import org.openelisglobal.microbiology.form.MicroReferenceAdminQueryForm;
@@ -99,6 +99,14 @@ public class MicrobiologyReferenceAdminRestController extends MicrobiologyRestCo
         return ResponseEntity.ok(service.getAstPanels(query));
     }
 
+    @GetMapping("/ast-panels/organism-coverage")
+    public ResponseEntity<List<MicroPanelCoverageForm>> getPanelOrganismCoverage(
+            @RequestParam(name = "antibioticId", required = false) List<String> antibioticIds,
+            @RequestParam(defaultValue = "GENERAL") String protocol) {
+        return ResponseEntity
+                .ok(service.getPanelOrganismCoverage(antibioticIds == null ? List.of() : antibioticIds, protocol));
+    }
+
     @GetMapping("/ast-panels/{id}")
     public ResponseEntity<MicroAstPanelAdminForm> getAstPanel(@PathVariable String id) {
         return ResponseEntity.ok(service.getAstPanel(id));
@@ -116,33 +124,10 @@ public class MicrobiologyReferenceAdminRestController extends MicrobiologyRestCo
         return ResponseEntity.ok(service.publishPanelVersion(id, panel, authenticatedUserId(request)));
     }
 
-    @GetMapping("/culture-setups")
-    public ResponseEntity<MicroReferenceAdminPageForm<MicroCultureSetupAdminForm>> getCultureSetups(
-            @ModelAttribute MicroReferenceAdminQueryForm query) {
-        return ResponseEntity.ok(service.getCultureSetups(query));
-    }
-
     @GetMapping("/patient-origins")
     public ResponseEntity<MicroReferenceAdminPageForm<MicroPatientOriginAdminForm>> getPatientOrigins(
             @ModelAttribute MicroReferenceAdminQueryForm query) {
         return ResponseEntity.ok(service.getPatientOrigins(query));
-    }
-
-    @GetMapping("/culture-setups/{id}")
-    public ResponseEntity<MicroCultureSetupAdminForm> getCultureSetup(@PathVariable String id) {
-        return ResponseEntity.ok(service.getCultureSetup(id));
-    }
-
-    @PostMapping("/culture-setups")
-    public ResponseEntity<MicroCultureSetupAdminForm> createCultureSetup(HttpServletRequest request,
-            @RequestBody MicroCultureSetupAdminForm setup) {
-        return ResponseEntity.ok(service.saveCultureSetup(null, setup, authenticatedUserId(request)));
-    }
-
-    @PutMapping("/culture-setups/{id}")
-    public ResponseEntity<MicroCultureSetupAdminForm> updateCultureSetup(@PathVariable String id,
-            HttpServletRequest request, @RequestBody MicroCultureSetupAdminForm setup) {
-        return ResponseEntity.ok(service.saveCultureSetup(id, setup, authenticatedUserId(request)));
     }
 
     @GetMapping("/options/{resource}")

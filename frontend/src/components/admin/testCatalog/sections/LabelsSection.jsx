@@ -87,8 +87,8 @@ const LabelsSection = ({ testId }) => {
     load();
   }, [load]);
 
-  // Full-replace PUT of the whole config (toggle + links). Optimistic: callers
-  // update local state first; on failure we reload from the server.
+  // Full-replace PUT of the whole config (toggle + links). A failed save keeps the
+  // edits on screen so the admin can retry or Cancel back to the baseline.
   const configOf = (nextLinks, nextAllowOverride) => ({
     allowOrderEntryOverride: nextAllowOverride,
     links: (nextLinks || []).map((l) => ({
@@ -161,7 +161,6 @@ const LabelsSection = ({ testId }) => {
               id: "label.testCatalog.labels.saveError",
             }),
           });
-          load();
         }
       },
     );

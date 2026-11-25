@@ -249,7 +249,9 @@ function UserManagement() {
           loginName: item.loginName,
           expDate: item.expDate,
           locked: item.locked,
-          disabled: item.disabled,
+          // Carbon reads row.disabled as "this row cannot be selected"; the
+          // account's Disabled column has its own key.
+          accountDisabled: item.disabled,
           active: item.active,
           timeout: item.timeout,
         };
@@ -515,7 +517,7 @@ function UserManagement() {
                       }),
                     },
                     {
-                      key: "disabled",
+                      key: "accountDisabled",
                       header: intl.formatMessage({
                         id: "login.account.disabled",
                       }),

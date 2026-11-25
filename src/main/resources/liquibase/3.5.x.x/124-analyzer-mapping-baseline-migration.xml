@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <!-- One-time move to analyzer-owned mappings. Before anything is dropped,
+         the shared profile and site bindings, their revisions, rows and
+         confirmations (whether or not an analyzer still uses them), which analyzer
+         was pinned to which revision, and which revision and confirmation each
+         activation record ran under, are written as one JSON document into a configuration_import_run row
+         (source ANALYZER_MAPPING, status EXPORTED). Every analyzer that
+         was pinned keeps its id, name, lab units, Bridge connection and
+         activation history, is left INACTIVE with no mapping, and stays that way
+         until a person verifies it under the baseline profile. Export, clearing
+         and drops are one transaction. A database that never had the shared
+         tables writes nothing and changes nothing. -->
+    <changeSet id="124-analyzer-mapping-baseline-migration" author="oe">
+        <sql splitStatements="false"><![CDATA[
+            DO $$
+            DECLARE
+                shared_tables text[] := ARRAY[
+                    'analyzer_site_binding_confirmation', 'analyzer_site_binding_result',
+                    'analyzer_site_binding_test', 'analyzer_site_binding_revision',
+                    'analyzer_site_binding', 'analyzer_profile_binding'];
+                doc jsonb := '{}'::jsonb;
+                part jsonb;
+                t text;
+            BEGIN
+                -- Everything about to be cleared or dropped goes into the export first: every
+                -- row of every shared table (pinned or not), which analyzer was pinned to which
+                -- revision, and which revision and confirmation each activation ran under.
+                IF to_regclass('analyzer_site_binding_revision') IS NOT NULL THEN
+                    SELECT jsonb_agg(jsonb_build_object(
+                               'id', a.id, 'name', a.name, 'bridge_connection_id', a.bridge_connection_id,
+                               'was_active', a.is_active, 'status', a.status,
+                               'site_binding_revision_id', a.site_binding_revision_id) ORDER BY a.id)
+                      INTO part
+                      FROM analyzer a
+                     WHERE a.site_binding_revision_id IS NOT NULL;
+                    IF part IS NOT NULL THEN
+                        doc := jsonb_build_object('analyzers', part);
+                    END IF;
+                END IF;
+                FOREACH t IN ARRAY shared_tables LOOP
+                    IF to_regclass(t) IS NOT NULL THEN
+                        EXECUTE format('SELECT jsonb_agg(to_jsonb(r)) FROM %I r', t) INTO part;
+                        IF part IS NOT NULL THEN
+                            doc := doc || jsonb_build_object(t, part);
+                        END IF;
+                    END IF;
+                END LOOP;
+                IF to_regclass('analyzer_activation_record') IS NOT NULL AND EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                         WHERE table_schema = ANY (current_schemas(false))
+                           AND table_name = 'analyzer_activation_record'
+                           AND column_name = 'site_binding_revision_id') THEN
+                    EXECUTE 'SELECT jsonb_agg(jsonb_build_object(''id'', r.id, ''analyzer_id'', r.analyzer_id,'
+                         || ' ''site_binding_revision_id'', r.site_binding_revision_id,'
+                         || ' ''verification_confirmation_id'', r.verification_confirmation_id) ORDER BY r.id)'
+                         || ' FROM analyzer_activation_record r'
+                         || ' WHERE r.site_binding_revision_id IS NOT NULL'
+                         || ' OR r.verification_confirmation_id IS NOT NULL' INTO part;
+                    IF part IS NOT NULL THEN
+                        doc := doc || jsonb_build_object('analyzer_activation_record', part);
+                    END IF;
+                END IF;
+                IF doc <> '{}'::jsonb THEN
+                    INSERT INTO configuration_import_run (id, source, status, started_at, finished_at, summary)
+                    VALUES (gen_random_uuid()::text, 'ANALYZER_MAPPING', 'EXPORTED', now(), now(), jsonb_pretty(doc));
+                END IF;
+
+                IF to_regclass('analyzer_site_binding_revision') IS NOT NULL THEN
+                    UPDATE analyzer
+                       SET is_active = false, status = 'INACTIVE', site_binding_revision_id = NULL
+                     WHERE site_binding_revision_id IS NOT NULL;
+                END IF;
+
+                -- The activation record keeps its history but no longer points at the shared rows.
+                IF to_regclass('analyzer_activation_record') IS NOT NULL THEN
+                    ALTER TABLE analyzer_activation_record
+                        DROP CONSTRAINT IF EXISTS fk_analyzer_activation_record_binding_revision,
+                        DROP CONSTRAINT IF EXISTS fk_analyzer_activation_record_confirmation;
+                    IF EXISTS (SELECT 1 FROM information_schema.columns
+                                WHERE table_schema = ANY (current_schemas(false))
+                                  AND table_name = 'analyzer_activation_record'
+                                  AND column_name = 'site_binding_revision_id') THEN
+                        UPDATE analyzer_activation_record
+                           SET site_binding_revision_id = NULL, verification_confirmation_id = NULL;
+                        ALTER TABLE analyzer_activation_record
+                            RENAME COLUMN site_binding_revision_id TO mapping_id;
+                    END IF;
+                    ALTER TABLE analyzer_activation_record
+                        ADD CONSTRAINT fk_analyzer_activation_record_mapping FOREIGN KEY (mapping_id)
+                            REFERENCES analyzer_mapping (id),
+                        ADD CONSTRAINT fk_analyzer_activation_record_confirmation FOREIGN KEY
+                            (verification_confirmation_id) REFERENCES analyzer_mapping_confirmation (id);
+                END IF;
+
+                ALTER TABLE analyzer DROP COLUMN IF EXISTS site_binding_revision_id CASCADE;
+                FOREACH t IN ARRAY shared_tables LOOP
+                    EXECUTE format('DROP TABLE IF EXISTS %I CASCADE', t);
+                END LOOP;
+                DROP SEQUENCE IF EXISTS analyzer_site_binding_confirmation_seq, analyzer_site_binding_revision_seq,
+                    analyzer_site_binding_seq, analyzer_profile_binding_seq CASCADE;
+                DELETE FROM reference_tables
+                 WHERE LOWER(name) IN ('analyzer_site_binding_revision', 'analyzer_site_binding_confirmation');
+            END
+            $$;
+        ]]></sql>
+
+        <rollback>
+            <sql splitStatements="false"><![CDATA[
+                DO $$
+                BEGIN
+                    RAISE EXCEPTION 'Moving analyzers to their own mappings is not reversible in place. The shared bindings are in configuration_import_run (source ANALYZER_MAPPING); restore the pre-upgrade backup to get the tables back.';
+                END
+                $$;
+            ]]></sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

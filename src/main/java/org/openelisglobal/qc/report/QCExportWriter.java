@@ -1,15 +1,5 @@
 package org.openelisglobal.qc.report;
 
-import com.itextpdf.text.BaseColor;
-import com.itextpdf.text.Chunk;
-import com.itextpdf.text.Document;
-import com.itextpdf.text.DocumentException;
-import com.itextpdf.text.Font;
-import com.itextpdf.text.Image;
-import com.itextpdf.text.PageSize;
-import com.itextpdf.text.Paragraph;
-import com.itextpdf.text.Phrase;
-import com.itextpdf.text.pdf.PdfPTable;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.geom.Ellipse2D;
@@ -49,6 +39,14 @@ import org.openelisglobal.qc.service.QCChartDataService.QCExportModel;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCRuleViolation;
 import org.openelisglobal.qc.valueholder.QCStatistics;
+import org.openpdf.text.Chunk;
+import org.openpdf.text.Document;
+import org.openpdf.text.DocumentException;
+import org.openpdf.text.Font;
+import org.openpdf.text.Image;
+import org.openpdf.text.Paragraph;
+import org.openpdf.text.Phrase;
+import org.openpdf.text.pdf.PdfPTable;
 import org.springframework.context.i18n.LocaleContextHolder;
 
 /**
@@ -148,14 +146,14 @@ public final class QCExportWriter {
         DateFormat sdf = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT,
                 LocaleContextHolder.getLocale());
         try {
-            Document document = new Document(PageSize.A4, 36, 36, 42, 42);
+            Document document = new Document(PdfExportSupport.pageSize(), 36, 36, 42, 42);
             PdfExportSupport.openWithPageNumbers(document, out, "export.page");
 
-            Font titleFont = new Font(Font.FontFamily.HELVETICA, 15, Font.BOLD);
-            Font metaFont = new Font(Font.FontFamily.HELVETICA, 9);
-            Font sectionFont = new Font(Font.FontFamily.HELVETICA, 11, Font.BOLD);
-            Font headerFont = new Font(Font.FontFamily.HELVETICA, 8, Font.BOLD, BaseColor.WHITE);
-            Font cellFont = new Font(Font.FontFamily.HELVETICA, 8);
+            Font titleFont = new Font(Font.HELVETICA, 15, Font.BOLD);
+            Font metaFont = new Font(Font.HELVETICA, 9);
+            Font sectionFont = new Font(Font.HELVETICA, 11, Font.BOLD);
+            Font headerFont = new Font(Font.HELVETICA, 8, Font.BOLD, Color.WHITE);
+            Font cellFont = new Font(Font.HELVETICA, 8);
 
             PdfExportSupport.addHeading(document, m("qc.export.title"), titleFont, metaFont,
                     m("export.labName") + ": " + labName + "\n",
@@ -183,7 +181,7 @@ public final class QCExportWriter {
             }
 
             if (model.truncated()) {
-                Font warnFont = new Font(Font.FontFamily.HELVETICA, 9, Font.BOLD, BaseColor.RED);
+                Font warnFont = new Font(Font.HELVETICA, 9, Font.BOLD, Color.RED);
                 document.add(Chunk.NEWLINE);
                 document.add(
                         new Phrase(m("qc.export.truncated") + " (" + PdfExportSupport.MAX_EXPORT_ROWS + ")", warnFont));

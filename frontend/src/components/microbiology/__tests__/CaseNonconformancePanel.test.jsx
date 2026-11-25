@@ -45,17 +45,45 @@ const renderPanel = (props = {}) => {
   return { service, onComplete };
 };
 
+const chooseReportingUnit = async (user, name) => {
+  const unit = screen.getByRole("combobox", { name: /^Reporting unit/ });
+  await user.type(unit, name.slice(0, 5).toLowerCase());
+  await user.click(screen.getByRole("option", { name }));
+};
+
 describe("CaseNonconformancePanel", () => {
+  it("marks the fields Report NCE needs and finds the reporting unit by typing", async () => {
+    const user = userEvent.setup();
+    renderPanel();
+
+    const category = await screen.findByLabelText(/^Category/);
+    expect(category).toHaveAttribute("aria-required", "true");
+    expect(screen.getByLabelText(/^Description/)).toHaveAttribute(
+      "aria-required",
+      "true",
+    );
+    const unit = screen.getByRole("combobox", { name: /^Reporting unit/ });
+    expect(unit).toHaveAttribute("aria-required", "true");
+    expect(screen.getByText("Severity").parentElement).toHaveTextContent(
+      "Severity *",
+    );
+
+    await user.type(unit, "MICRO");
+    expect(screen.getAllByRole("option").map((o) => o.textContent)).toContain(
+      "Microbiology",
+    );
+  });
+
   it("reports a case NCE through labeled Carbon controls", async () => {
     const user = userEvent.setup();
     const { service, onComplete } = renderPanel();
 
-    expect(await screen.findByLabelText("Category")).toHaveValue("10");
+    expect(await screen.findByLabelText(/^Category/)).toHaveValue("10");
     await user.selectOptions(screen.getByLabelText("Type"), "12");
-    await user.selectOptions(screen.getByLabelText("Reporting unit"), "7");
+    await chooseReportingUnit(user, "Microbiology");
     await user.click(screen.getByRole("radio", { name: "Major" }));
     await user.type(
-      screen.getByLabelText("Description"),
+      screen.getByLabelText(/^Description/),
       "Container arrived cracked",
     );
     await user.click(screen.getByRole("radio", { name: "Flag only" }));
@@ -80,19 +108,76 @@ describe("CaseNonconformancePanel", () => {
     });
   });
 
+  it("finds the pre-analytical category and the specimen-lost type by key in any language", async () => {
+    const french = [
+      {
+        id: "3",
+        name: "Échantillon",
+        displayKey: "nce.category.sample",
+        types: [],
+      },
+      {
+        id: "10",
+        name: "Pré-analytique",
+        displayKey: "nce.category.preanalytical",
+        types: [
+          { id: "12", name: "Contenant incorrect" },
+          {
+            id: "11",
+            name: "Échantillon perdu",
+            displayKey: "microbiology.uat.nce.specimenLost",
+          },
+        ],
+      },
+    ];
+    renderPanel({
+      service: {
+        getNceCategories: vi.fn().mockResolvedValue(french),
+        getNceReportingUnits: vi.fn().mockResolvedValue([]),
+      },
+    });
+    expect(await screen.findByLabelText(/^Category/)).toHaveValue("10");
+  });
+
+  it("presets the French specimen-lost type by its key", async () => {
+    const french = [
+      {
+        id: "10",
+        name: "Pré-analytique",
+        displayKey: "nce.category.preanalytical",
+        types: [
+          {
+            id: "11",
+            name: "Échantillon perdu",
+            displayKey: "microbiology.uat.nce.specimenLost",
+          },
+        ],
+      },
+    ];
+    renderPanel({
+      mode: "mark-lost",
+      service: {
+        getNceCategories: vi.fn().mockResolvedValue(french),
+        getNceReportingUnits: vi.fn().mockResolvedValue([]),
+      },
+    });
+    expect(await screen.findByLabelText(/^Category/)).toHaveValue("10");
+    expect(screen.getByLabelText("Type")).toHaveValue("11");
+  });
+
   it("presets specimen loss and rejects the shared specimen", async () => {
     const user = userEvent.setup();
     const { service } = renderPanel({ mode: "mark-lost" });
 
-    expect(await screen.findByLabelText("Category")).toHaveValue("10");
+    expect(await screen.findByLabelText(/^Category/)).toHaveValue("10");
     expect(screen.getByLabelText("Type")).toHaveValue("11");
     expect(
       screen.getByRole("radio", { name: "Reject affected tests" }),
     ).toBeChecked();
-    await user.selectOptions(screen.getByLabelText("Reporting unit"), "7");
+    await chooseReportingUnit(user, "Microbiology");
     await user.click(screen.getByRole("radio", { name: "Major" }));
     await user.type(
-      screen.getByLabelText("Description"),
+      screen.getByLabelText(/^Description/),
       "Specimen cannot be located",
     );
     await user.click(screen.getByRole("button", { name: "Mark lost" }));
@@ -113,7 +198,6 @@ describe("CaseNonconformancePanel", () => {
   it("creates a scoped AST retest from an NCE disposition", async () => {
     const user = userEvent.setup();
     const { service } = renderPanel({
-      workflowType: "BACTERIOLOGY",
       isolates: [{ id: "iso-1", isolateLabel: "ISO-1" }],
     });
     service.getAstRunsForIsolate = vi.fn().mockResolvedValue([
@@ -128,12 +212,12 @@ describe("CaseNonconformancePanel", () => {
       .fn()
       .mockResolvedValue([{ id: "abx-2", label: "Meropenem" }]);
 
-    expect(await screen.findByLabelText("Category")).toHaveValue("10");
+    expect(await screen.findByLabelText(/^Category/)).toHaveValue("10");
     await user.selectOptions(screen.getByLabelText("Type"), "12");
-    await user.selectOptions(screen.getByLabelText("Reporting unit"), "7");
+    await chooseReportingUnit(user, "Microbiology");
     await user.click(screen.getByRole("radio", { name: "Major" }));
     await user.type(
-      screen.getByLabelText("Description"),
+      screen.getByLabelText(/^Description/),
       "Discordant carbapenem result",
     );
     await user.click(screen.getByRole("radio", { name: "Retest AST" }));

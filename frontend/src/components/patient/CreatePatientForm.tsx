@@ -38,7 +38,7 @@ import {
 } from "@carbon/react";
 import AddressSearch from "./AddressSearch";
 
-import { Formik, Field, ErrorMessage } from "formik";
+import { Formik, Field } from "formik";
 import CreatePatientFormValues from "../formModel/innitialValues/CreatePatientFormValues";
 import PatientFormObserver from "./PatientFormObserver";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
@@ -50,6 +50,7 @@ import IdentificationDocuments from "./IdentificationDocuments";
 import { getPhoneFormatHint } from "./phoneFormatHint";
 import type { AddressHierarchyLevel, PatientRecord, Nullable } from "./types";
 import { labNow } from "../utils/labClock";
+import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
 
 type ConfigurationItem = {
   id?: string;
@@ -66,6 +67,10 @@ interface CreatePatientFormProps {
     [key: string]: unknown;
   };
   setOrderFormValues?: React.Dispatch<
+    React.SetStateAction<Record<string, unknown>>
+  >;
+  /** Writes the form into the order without marking it changed (see PatientFormObserver). */
+  hydrateOrderFormValues?: React.Dispatch<
     React.SetStateAction<Record<string, unknown>>
   >;
   showActionsButton?: boolean;
@@ -213,6 +218,10 @@ function CreatePatientForm(props: CreatePatientFormProps) {
   const { configurationProperties } = useContext(ConfigurationContext);
 
   const intl = useIntl();
+  const validationText = (message) =>
+    message && intl.messages?.[message]
+      ? intl.formatMessage({ id: message })
+      : message;
   const nationalIdRequired =
     configurationProperties.PATIENT_NATIONAL_ID_REQUIRED !== "false";
   const patientSexRequired =
@@ -292,6 +301,7 @@ function CreatePatientForm(props: CreatePatientFormProps) {
     primaryPhone: { body: "", status: true },
     contactPhone: { body: "", status: true },
   });
+  const [saveAttempted, setSaveAttempted] = useState(false);
 
   const handlePhotoChange = (photo, setFieldValue) => {
     if (setFieldValue) {
@@ -299,23 +309,37 @@ function CreatePatientForm(props: CreatePatientFormProps) {
     }
   };
 
-  const handleDatePickerChange = (setFieldValue, date) => {
-    setFieldValue("birthDateForDisplay", date);
+  const handleDatePickerChange = (
+    setFieldValue,
+    date,
+    values,
+    validateForm,
+  ) => {
     const ageParts = computeAgePartsFromDob(
       date,
       configurationProperties.DEFAULT_DATE_LOCALE,
     );
-    setFieldValue("years", ageParts.years);
-    setFieldValue("months", ageParts.months);
-    setFieldValue("days", ageParts.days);
+    setFieldValue("birthDateForDisplay", date, false);
+    setFieldValue("years", ageParts.years, false);
+    setFieldValue("months", ageParts.months, false);
+    setFieldValue("days", ageParts.days, false);
+    if (saveAttempted && validateForm) {
+      validateForm({ ...values, birthDateForDisplay: date, ...ageParts });
+    }
   };
 
   // Single age-part change handler. Years/months/days live in Formik state;
   // typing into any of them writes that field and re-derives birthDateForDisplay
   // from the trio. Other parts remain whatever the user already typed.
-  const handleAgePartChange = (field, e, values, setFieldValue) => {
+  const handleAgePartChange = (
+    field,
+    e,
+    values,
+    setFieldValue,
+    validateForm,
+  ) => {
+    e.stopPropagation();
     const next = Math.max(0, Number(e.target.value));
-    setFieldValue(field, next);
     const dob = computeDobFromFormatter(
       {
         years: field === "years" ? next : values.years || 0,
@@ -324,7 +348,11 @@ function CreatePatientForm(props: CreatePatientFormProps) {
       },
       configurationProperties.DEFAULT_DATE_LOCALE,
     );
-    setFieldValue("birthDateForDisplay", dob);
+    setFieldValue(field, next, false);
+    setFieldValue("birthDateForDisplay", dob, false);
+    if (saveAttempted && validateForm) {
+      validateForm({ ...values, [field]: next, birthDateForDisplay: dob });
+    }
   };
   const handleRegionSelection = (e, values) => {
     const patient = values;
@@ -759,6 +787,7 @@ function CreatePatientForm(props: CreatePatientFormProps) {
           // component, so this is the only way the saved state shows.
           // The versions the save produced replace the loaded ones, or the
           // next save from this screen would be refused as stale.
+          setSaveAttempted(false);
           formikBag.resetForm({
             values: {
               ...values,
@@ -854,7 +883,7 @@ function CreatePatientForm(props: CreatePatientFormProps) {
         initialValues={initialValues}
         innerRef={formikRef}
         validationSchema={validationSchema}
-        validateOnChange={false}
+        validateOnChange={saveAttempted}
         validateOnBlur={true}
         onSubmit={handleSubmit}
       >
@@ -867,6 +896,7 @@ function CreatePatientForm(props: CreatePatientFormProps) {
           handleBlur,
           setFieldValue,
           submitForm,
+          validateForm,
           isSubmitting,
         }) => (
           <Form
@@ -878,6 +908,7 @@ function CreatePatientForm(props: CreatePatientFormProps) {
               <PatientFormObserver
                 orderFormValues={props.orderFormValues}
                 setOrderFormValues={props.setOrderFormValues}
+                hydrateOrderFormValues={props.hydrateOrderFormValues}
                 formAction={formAction}
                 selectedPatient={props.selectedPatient}
               />
@@ -998,24 +1029,19 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                               {intl.formatMessage({
                                 id: "patient.natioanalid",
                               })}
-                              {nationalIdRequired && (
-                                <span className="requiredlabel">*</span>
-                              )}
+                              <RequiredMarker required={nationalIdRequired} />
                             </>
                           }
+                          {...requiredProps(nationalIdRequired)}
                           id={field.name}
-                          invalid={
-                            props.error
-                              ? props.error("patientProperties.nationalId")
-                                ? true
-                                : false
-                              : false
-                          }
-                          invalidText={
-                            props.error
-                              ? props.error("patientProperties.nationalId")
-                              : ""
-                          }
+                          invalid={Boolean(
+                            (errors.nationalId && touched.nationalId) ||
+                            props.error?.("patientProperties.nationalId"),
+                          )}
+                          invalidText={validationText(
+                            errors.nationalId ||
+                              props.error?.("patientProperties.nationalId"),
+                          )}
                           onMouseOut={() => {
                             handleSubjectNoValidation(
                               "nationalId",
@@ -1029,9 +1055,6 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                         />
                       )}
                     </Field>
-                    <div className="error">
-                      <ErrorMessage name="nationalId"></ErrorMessage>
-                    </div>
                   </Column>
                   <Column lg={16} md={8} sm={4}>
                     {" "}
@@ -1148,14 +1171,11 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                           placeholder={intl.formatMessage({
                             id: "patient.information.email",
                           })}
-                          invalid={errors.email && touched.email}
-                          invalidText={errors.email}
+                          invalid={Boolean(errors.email && touched.email)}
+                          invalidText={validationText(errors.email)}
                         />
                       )}
                     </Field>
-                    <div className="error">
-                      <ErrorMessage name="email"></ErrorMessage>
-                    </div>
                   </Column>
                   <Column lg={16} md={8} sm={4}>
                     {" "}
@@ -1169,18 +1189,22 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                           legendText={
                             <>
                               {intl.formatMessage({ id: "patient.gender" })}
-                              {patientSexRequired && (
-                                <>
-                                  {" "}
-                                  <span className="requiredlabel">*</span>
-                                </>
-                              )}
+                              <RequiredMarker
+                                required={patientSexRequired}
+                                announce
+                              />
                             </>
                           }
                           name={field.name}
                           onChange={(value) => setFieldValue("gender", value)}
-                          invalid={errors.gender && touched.gender}
-                          invalidText={errors.gender}
+                          invalid={Boolean(
+                            (errors.gender && touched.gender) ||
+                            props.error?.("patientProperties.gender"),
+                          )}
+                          invalidText={validationText(
+                            errors.gender ||
+                              props.error?.("patientProperties.gender"),
+                          )}
                           id="create_patient_gender"
                         >
                           <RadioButton
@@ -1200,9 +1224,6 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                         </RadioButtonGroup>
                       )}
                     </Field>
-                    <div className="error">
-                      <ErrorMessage name="gender"></ErrorMessage>
-                    </div>
                   </Column>
                   <Column lg={4} md={4} sm={4}>
                     <Field name="birthDateForDisplay">
@@ -1214,21 +1235,33 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                               {intl.formatMessage({
                                 id: "patient.dob",
                               })}
-                              {patientAgeRequired && (
-                                <span className="requiredlabel">*</span>
-                              )}
+                              <RequiredMarker required={patientAgeRequired} />
                             </>
                           }
+                          {...requiredProps(patientAgeRequired)}
                           autofillDate={true}
                           value={values.birthDateForDisplay || ""}
                           onChange={(date) =>
-                            handleDatePickerChange(setFieldValue, date)
+                            handleDatePickerChange(
+                              setFieldValue,
+                              date,
+                              values,
+                              validateForm,
+                            )
                           }
-                          invalid={
-                            errors.birthDateForDisplay &&
-                            touched.birthDateForDisplay
-                          }
-                          invalidText={errors.birthDateForDisplay}
+                          invalid={Boolean(
+                            (errors.birthDateForDisplay &&
+                              touched.birthDateForDisplay) ||
+                            props.error?.(
+                              "patientProperties.birthDateForDisplay",
+                            ),
+                          )}
+                          invalidText={validationText(
+                            errors.birthDateForDisplay ||
+                              props.error?.(
+                                "patientProperties.birthDateForDisplay",
+                              ),
+                          )}
                           name={field.name}
                           disallowFutureDate={true}
                           futureDateText={intl.formatMessage({
@@ -1250,7 +1283,13 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                       type="number"
                       min="0"
                       onChange={(e) =>
-                        handleAgePartChange("years", e, values, setFieldValue)
+                        handleAgePartChange(
+                          "years",
+                          e,
+                          values,
+                          setFieldValue,
+                          validateForm,
+                        )
                       }
                       placeholder={intl.formatMessage({
                         id: "patient.information.age",
@@ -1267,7 +1306,13 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                       type="number"
                       min="0"
                       onChange={(e) =>
-                        handleAgePartChange("months", e, values, setFieldValue)
+                        handleAgePartChange(
+                          "months",
+                          e,
+                          values,
+                          setFieldValue,
+                          validateForm,
+                        )
                       }
                       id="months"
                       placeholder={intl.formatMessage({
@@ -1282,7 +1327,13 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                       type="number"
                       min="0"
                       onChange={(e) =>
-                        handleAgePartChange("days", e, values, setFieldValue)
+                        handleAgePartChange(
+                          "days",
+                          e,
+                          values,
+                          setFieldValue,
+                          validateForm,
+                        )
                       }
                       labelText={intl.formatMessage({ id: "patient.age.days" })}
                       id="days"
@@ -1290,9 +1341,6 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                         id: "patient.information.days",
                       })}
                     />
-                    <div className="error">
-                      <ErrorMessage name="birthDateForDisplay"></ErrorMessage>
-                    </div>
                   </Column>
                   <Column lg={16} md={8} sm={4}>
                     {" "}
@@ -1384,13 +1432,16 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                                   placeholder={intl.formatMessage({
                                     id: "patient.emergency.email",
                                   })}
+                                  invalid={Boolean(
+                                    errors.patientContact?.person?.email &&
+                                    touched.patientContact?.person?.email,
+                                  )}
+                                  invalidText={validationText(
+                                    errors.patientContact?.person?.email,
+                                  )}
                                 />
                               )}
                             </Field>
-                            <div className="error">
-                              <ErrorMessage name="patientContact.person.email"></ErrorMessage>
-                            </div>
-                            <div className="error"></div>
                           </Column>
                           <Column lg={8} md={4} sm={4}>
                             <Field name="patientContact.person.primaryPhone">
@@ -2029,7 +2080,10 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                             (item) => item.status === false,
                           )
                         }
-                        onClick={() => submitForm()}
+                        onClick={() => {
+                          setSaveAttempted(true);
+                          submitForm();
+                        }}
                       >
                         <FormattedMessage id="label.button.save" />
                       </Button>
@@ -2043,6 +2097,7 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                           // resetForm resets years/months/days alongside
                           // birthDateForDisplay — they're real Formik fields
                           // now, no parallel state to reset.
+                          setSaveAttempted(false);
                           resetForm({
                             values: defaultNationality
                               ? {

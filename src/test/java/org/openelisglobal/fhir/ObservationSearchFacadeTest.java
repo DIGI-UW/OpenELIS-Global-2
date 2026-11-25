@@ -33,7 +33,7 @@ public class ObservationSearchFacadeTest extends BaseWebContextSensitiveTest {
     private static final String ANALYSIS_1_UUID = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01";
     private static final String ANALYSIS_2_UUID = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b02";
     private static final String PATIENT_1_UUID = "550e8400-e29b-41d4-a716-446655440001";
-    private static final String PROVIDER_1_UUID = "550e8400-e29b-41d4-a716-446655441004";
+
     private static final String SAMPLE_ITEM_601_UUID = "68438220-5cef-44c4-9e6f-9f88e6b93270";
 
     @Autowired
@@ -95,7 +95,8 @@ public class ObservationSearchFacadeTest extends BaseWebContextSensitiveTest {
         assertEquals(List.of(SAMPLE_ITEM_601_UUID), idsOf(bundle, "Specimen"));
 
         bundle = search(RESULT_3_UUID, "_include", "Observation:performer");
-        assertEquals(List.of(PROVIDER_1_UUID), idsOf(bundle, "Practitioner"));
+        assertEquals("the ordering provider is not the performer, so nothing is included", List.of(),
+                idsOf(bundle, "Practitioner"));
 
         bundle = search(RESULT_4_UUID, "_revinclude", "DiagnosticReport:result");
         assertEquals(List.of(ANALYSIS_2_UUID), idsOf(bundle, "DiagnosticReport"));

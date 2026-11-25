@@ -1,14 +1,15 @@
 package org.openelisglobal.fhir;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.server.RestfulServer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Arrays;
+import javax.sql.DataSource;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -16,6 +17,7 @@ import org.openelisglobal.fhir.providers.SpecimenProvider;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockServletConfig;
@@ -31,6 +33,9 @@ public class SpecimenFacadeTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private MockServletContext servletContext;
+
+    @Autowired
+    private DataSource dataSource;
 
     @Autowired
     private FhirContext fhirContext;
@@ -91,237 +96,52 @@ public class SpecimenFacadeTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void createSpecimen_shouldReturnCreatedSpecimenResource() throws Exception {
-        cleanRowsInCurrentConnection(new String[] { "sample_item" });
+    public void readSpecimen_aUcumUnit_isSentWithTheUcumSystem() throws Exception {
+        String specimenUuid = specimenWithQuantity("g/L", null);
 
-        String accession = "DEV01260000000000002";
-        String typeCode = "BT";
-        String typeDisplay = "Complete Blood Count";
+        JsonNode quantity = readSpecimen(specimenUuid).get("container").get(0).get("specimenQuantity");
 
-        String jsonBody = """
-                {
-                  "resourceType": "Specimen",
-                  "status": "available",
-
-                  "accessionIdentifier": {
-                    "use": "usual",
-                    "system": "http://openelis-global.org/sampleItem_labNo",
-                    "value": "%s"
-                  },
-
-                  "type": {
-                    "coding": [
-                      {
-                        "system": "http://openelis-global.org/sampleType",
-                        "code": "%s",
-                        "display": "%s"
-                      }
-                    ]
-                  },
-
-                  "subject": {
-                    "reference": "Patient/123"
-                  },
-
-                  "receivedTime": "2026-05-04T10:30:00Z",
-
-                  "collection": {
-                    "collectedDateTime": "2026-05-04T09:45:00Z",
-
-                    "collector": {
-                      "display": "Edie Maphie"
-                    },
-
-                    "bodySite": {
-                      "coding": [
-                        {
-                          "system": "http://snomed.info/sct",
-                          "code": "368208006",
-                          "display": "Blood"
-                        }
-                      ]
-                    },
-
-                    "method": {
-                      "coding": [
-                        {
-                          "system": "http://snomed.info/sct",
-                          "code": "258580003",
-                          "display": "Venipuncture"
-                        }
-                      ]
-                    }
-                  },
-
-                  "container": [
-                    {
-                      "type": {
-                        "coding": [
-                          {
-                            "system": "http://snomed.info/sct",
-                            "code": "434711009",
-                            "display": "Specimen container"
-                          }
-                        ]
-                      },
-                      "specimenQuantity": {
-                        "value": 5,
-                        "unit": "g/L",
-                        "system": "http://unitsofmeasure.org",
-                        "code": "g/L"
-                      }
-                    }
-                  ],
-
-                  "note": [
-                    { "text": "Sample slightly hemolyzed" },
-                    { "text": "Patient was fasting" }
-                  ]
-                }
-                """.formatted(accession, typeCode, typeDisplay);
-
-        MockHttpServletRequest request = buildFhirRequest("POST", "/Specimen");
-        request.setContentType("application/json");
-        request.setContent(jsonBody.getBytes());
-
-        MockHttpServletResponse response = new MockHttpServletResponse();
-
-        fhirServlet.service(request, response);
-
-        assertEquals(201, response.getStatus());
-
-        JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
-
-        assertEquals("Specimen", jsonResponse.get("resourceType").asText());
-
-        // Optional (but useful)
-        assertEquals("available", jsonResponse.get("status").asText());
-
-        assertEquals(typeDisplay, jsonResponse.get("type").get("coding").get(0).get("display").asText());
+        assertEquals("g/L", quantity.get("unit").asText());
+        assertEquals("http://unitsofmeasure.org", quantity.get("system").asText());
+        assertEquals("g/L", quantity.get("code").asText());
     }
 
     @Test
-    public void updateSpecimen_shouldUpdateOnlyCollector() throws Exception {
+    public void readSpecimen_aLabTypedUnit_isSentAsTextOnly() throws Exception {
+        String specimenUuid = specimenWithQuantity("10^3/µl", null);
 
-        String accession = "DEV01260000000000001";
-        String typeCode = "BT";
-        String typeDisplay = "Complete Blood Count";
-        String specimenUUID = "68438220-5cef-44c4-9e6f-9f88e6b93270";
+        JsonNode quantity = readSpecimen(specimenUuid).get("container").get(0).get("specimenQuantity");
 
-        String jsonBody = """
-                {
-                  "resourceType": "Specimen",
-                  "id": "%s",
-                  "status": "available",
+        assertEquals("10^3/µl", quantity.get("unit").asText());
+        assertFalse("not a UCUM code, so no UCUM system", quantity.has("system"));
+        assertFalse(quantity.has("code"));
+    }
 
-                  "accessionIdentifier": {
-                    "use": "usual",
-                    "system": "http://openelis-global.org/sampleItem_labNo",
-                    "value": "%s"
-                  },
+    @Test
+    public void readSpecimen_aLabTypedUnitWithAUcumCode_sendsThatCode() throws Exception {
+        String specimenUuid = specimenWithQuantity("10^3/µl", "10*3/uL");
 
-                  "type": {
-                    "coding": [
-                      {
-                        "system": "http://openelis-global.org/sampleType",
-                        "code": "%s",
-                        "display": "%s"
-                      }
-                    ]
-                  },
+        JsonNode quantity = readSpecimen(specimenUuid).get("container").get(0).get("specimenQuantity");
 
-                  "subject": {
-                    "reference": "Patient/123"
-                  },
+        assertEquals("10^3/µl", quantity.get("unit").asText());
+        assertEquals("http://unitsofmeasure.org", quantity.get("system").asText());
+        assertEquals("10*3/uL", quantity.get("code").asText());
+    }
 
-                  "receivedTime": "2026-05-04T10:30:00Z",
+    private String specimenWithQuantity(String unitName, String ucumCode) {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        jdbc.update("INSERT INTO clinlims.unit_of_measure (id, name, description, ucum_code, is_active, lastupdated)"
+                + " VALUES (1400, ?, ?, ?, 'Y', now()) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name,"
+                + " ucum_code = EXCLUDED.ucum_code", unitName, unitName, ucumCode);
+        jdbc.update("UPDATE clinlims.sample_item SET quantity = 3, uom_id = 1400 WHERE id = 2");
+        return "68438220-5cef-44c4-9e6f-9f88e6b93271";
+    }
 
-                  "collection": {
-                    "collectedDateTime": "2026-05-04T09:45:00Z",
-
-                    "collector": {
-                      "display": "Emily Maphie"
-                    },
-
-                    "bodySite": {
-                      "coding": [
-                        {
-                          "system": "http://snomed.info/sct",
-                          "code": "368208006",
-                          "display": "Blood"
-                        }
-                      ]
-                    },
-
-                    "method": {
-                      "coding": [
-                        {
-                          "system": "http://snomed.info/sct",
-                          "code": "258580003",
-                          "display": "Venipuncture"
-                        }
-                      ]
-                    }
-                  },
-
-                  "container": [
-                    {
-                      "type": {
-                        "coding": [
-                          {
-                            "system": "http://snomed.info/sct",
-                            "code": "434711009",
-                            "display": "Specimen container"
-                          }
-                        ]
-                      },
-                      "specimenQuantity": {
-                        "value": 5,
-                        "unit": "g/L",
-                        "system": "http://unitsofmeasure.org",
-                        "code": "g/L"
-                      }
-                    }
-                  ],
-
-                  "note": [
-                    { "text": "Sample slightly hemolyzed" },
-                    { "text": "Patient was fasting" }
-                  ]
-                }
-                """.formatted(specimenUUID, accession, typeCode, typeDisplay);
-
-        MockHttpServletRequest request = buildFhirRequest("PUT", "/Specimen" + "/" + specimenUUID);
-        request.setContentType("application/json");
-        request.setContent(jsonBody.getBytes());
-
+    private JsonNode readSpecimen(String specimenUuid) throws Exception {
         MockHttpServletResponse response = new MockHttpServletResponse();
-
-        fhirServlet.service(request, response);
-
+        fhirServlet.service(buildFhirRequest("GET", "/Specimen/" + specimenUuid), response);
         assertEquals(200, response.getStatus());
-
-        JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
-
-        assertEquals("Specimen", jsonResponse.get("resourceType").asText());
-
-    }
-
-    @Test
-    public void deleteSpecimen_shouldReturn204() throws Exception {
-        SampleItem existingSampleItem = sampleItemService.get("1");
-        assertNotNull("Test specimen with id=1 must exist", existingSampleItem);
-        String specimenUuid = existingSampleItem.getFhirUuidAsString();
-
-        MockHttpServletRequest request = buildFhirRequest("DELETE", "/Specimen/" + specimenUuid);
-        MockHttpServletResponse response = new MockHttpServletResponse();
-
-        fhirServlet.service(request, response);
-
-        assertEquals(204, response.getStatus());
-        SampleItem sampleItem = sampleItemService.get("1");
-        assertTrue(sampleItem.isRejected());
-
+        return objectMapper.readTree(response.getContentAsString());
     }
 
 }

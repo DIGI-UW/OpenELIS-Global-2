@@ -6,13 +6,15 @@ import { MemoryRouter, Router } from "react-router-dom";
 import { createMemoryHistory } from "history";
 import messages from "../../../../languages/en.json";
 import MyCyclesPage from "../MyCyclesPage";
+import { ConfigurationContext } from "../../../layout/Layout";
 import { MOCK_CYCLES } from "./mockCycles";
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
 
-vi.mock("../../../utils/Utils", () => ({
+vi.mock("../../../utils/Utils", async (importOriginal) => ({
+  ...(await importOriginal()),
   getFromOpenElisServer: vi.fn(),
   postToOpenElisServerFullResponse: vi.fn(),
 }));
@@ -33,18 +35,33 @@ const UNCYCLED_ORDERS = [
   },
 ];
 
-const renderPage = (orders = UNCYCLED_ORDERS, cycles = MOCK_CYCLES) => {
+const chooseScheme = (name) => {
+  fireEvent.click(
+    screen.getByRole("combobox", { name: "Scheme (from My EQA Schemes)" }),
+  );
+  fireEvent.click(screen.getByRole("option", { name }));
+};
+
+const renderPage = (
+  orders = UNCYCLED_ORDERS,
+  cycles = MOCK_CYCLES,
+  enrollments = [{ id: 7, programName: "CPHL National HIV Viral Load EQA" }],
+) => {
   getFromOpenElisServer.mockImplementation((url, cb) => {
-    if (url.startsWith("/rest/eqa/cycles/mine")) cb(cycles);
+    if (url === "/rest/eqa/cycles/mine") cb(cycles);
     if (url.startsWith("/rest/eqa/orders")) cb(orders);
-    if (url.startsWith("/rest/eqa/my-programs"))
-      cb([{ id: 7, programName: "CPHL National HIV Viral Load EQA" }]);
+    if (url === "/rest/eqa/cycles/mine/enrollments") cb(enrollments);
+    if (url === "/rest/eqa/lab-performance/open-nce-count") cb({ open: 2 });
   });
   return render(
     <IntlProvider locale="en" messages={messages}>
-      <MemoryRouter>
-        <MyCyclesPage />
-      </MemoryRouter>
+      <ConfigurationContext.Provider
+        value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "fr-FR" } }}
+      >
+        <MemoryRouter>
+          <MyCyclesPage />
+        </MemoryRouter>
+      </ConfigurationContext.Provider>
     </IntlProvider>,
   );
 };
@@ -57,7 +74,7 @@ describe("MyCyclesPage", () => {
   test("KPI tiles derive counts from fixture data", () => {
     renderPage();
     // Fixtures: 4 active (planned, panel_received, testing, ready_to_submit),
-    // 1 ready_to_submit, 1 submitted, 1 with an open NCE.
+    // 1 ready_to_submit, 1 submitted. Open NCEs are Lab Performance's count.
     expect(
       within(screen.getByTestId("kpi-active")).getByText("4"),
     ).toBeTruthy();
@@ -65,7 +82,7 @@ describe("MyCyclesPage", () => {
     expect(
       within(screen.getByTestId("kpi-awaiting")).getByText("1"),
     ).toBeTruthy();
-    expect(within(screen.getByTestId("kpi-nce")).getByText("1")).toBeTruthy();
+    expect(within(screen.getByTestId("kpi-nce")).getByText("2")).toBeTruthy();
   });
 
   test("default Active bucket shows only in-flight cycles", () => {
@@ -86,6 +103,13 @@ describe("MyCyclesPage", () => {
       within(row).getByText("WHO AFRO HIV VL 2026-02"),
     ).toBeInTheDocument();
     expect(within(row).queryByText("Cycle 2026-02")).toBeNull();
+  });
+
+  test("the Deadline column reads day-first", () => {
+    renderPage();
+    const row = screen.getByTestId("cycle-row-1");
+    expect(within(row).getByText("02/05/2026")).toBeInTheDocument();
+    expect(within(row).queryByText("2026-05-02")).toBeNull();
   });
 
   test("Receive panel deep-links to Add Order with the cycle in the query string", () => {
@@ -117,14 +141,12 @@ describe("MyCyclesPage", () => {
   test("New cycle posts the enrolled programme, name and deadline, then confirms", async () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /New cycle/i }));
-    fireEvent.change(screen.getByLabelText("Scheme (from My EQA Schemes)"), {
-      target: { value: "CPHL National HIV Viral Load EQA" },
-    });
+    chooseScheme("CPHL National HIV Viral Load EQA");
     fireEvent.change(screen.getByLabelText("Cycle name"), {
       target: { value: "Round 9" },
     });
-    fireEvent.change(screen.getByLabelText("Submission deadline"), {
-      target: { value: "2026-09-30" },
+    fireEvent.input(screen.getByLabelText("Submission deadline"), {
+      target: { value: "30/09/2026" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Create cycle" }));
 
@@ -147,17 +169,46 @@ describe("MyCyclesPage", () => {
     expect(await screen.findByText(/Cycle created/)).toBeInTheDocument();
   });
 
+  test("New cycle says why when no enrollment can take a cycle", () => {
+    renderPage(UNCYCLED_ORDERS, MOCK_CYCLES, []);
+    fireEvent.click(screen.getByRole("button", { name: /New cycle/i }));
+
+    expect(
+      screen.getByText(/No active enrollment here matches a scheme/),
+    ).toBeInTheDocument();
+  });
+
+  test("New cycle dates use the date picker in the site's format", () => {
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /New cycle/i }));
+
+    for (const label of ["Distribution date", "Submission deadline"]) {
+      const input = screen.getByLabelText(label);
+      expect(input).toHaveAttribute("type", "text");
+      expect(input).toHaveAttribute("placeholder", "dd/mm/yyyy");
+    }
+  });
+
+  test("New cycle spaces the Cycle name field from the helper text above it", () => {
+    renderPage(UNCYCLED_ORDERS, MOCK_CYCLES, []);
+    fireEvent.click(screen.getByRole("button", { name: /New cycle/i }));
+    const cycleName = screen.getByLabelText("Cycle name");
+
+    expect(cycleName.style.marginTop).toBe("");
+    expect(cycleName.closest(".cds--stack-scale-5")).toContainElement(
+      screen.getByText(/No active enrollment here matches a scheme/),
+    );
+  });
+
   test("New cycle shows the server's refusal instead of a false success", async () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /New cycle/i }));
-    fireEvent.change(screen.getByLabelText("Scheme (from My EQA Schemes)"), {
-      target: { value: "CPHL National HIV Viral Load EQA" },
-    });
+    chooseScheme("CPHL National HIV Viral Load EQA");
     fireEvent.change(screen.getByLabelText("Cycle name"), {
       target: { value: "Round 9" },
     });
-    fireEvent.change(screen.getByLabelText("Submission deadline"), {
-      target: { value: "2026-09-30" },
+    fireEvent.input(screen.getByLabelText("Submission deadline"), {
+      target: { value: "30/09/2026" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Create cycle" }));
     const callback = postToOpenElisServerFullResponse.mock.calls[0][2];
@@ -222,6 +273,7 @@ describe("MyCyclesPage", () => {
       participantState: "READY_TO_SUBMIT",
       requiresCycleReview: false,
       submissionAttempts: 5,
+      autoSubmitReason: "RETRIES_SPENT",
       samples: [],
     };
     renderPage(UNCYCLED_ORDERS, [stuck]);
@@ -273,6 +325,7 @@ describe("MyCyclesPage", () => {
       participantState: "READY_TO_SUBMIT",
       requiresCycleReview: false,
       submissionAttempts: 2,
+      autoSubmitReason: "WAITING",
       samples: [],
     };
     renderPage(UNCYCLED_ORDERS, [trying]);
@@ -286,6 +339,37 @@ describe("MyCyclesPage", () => {
       screen.getByRole("button", { name: "Submit by hand" }),
     ).toBeInTheDocument();
   });
+
+  test.each([
+    [
+      "NO_CHANNEL",
+      null,
+      "This site has no automatic channel to the provider, so submit by hand.",
+    ],
+    [
+      "WAITING",
+      "2026-10-13 14:05:00.0",
+      "Sends automatically at 13/10/2026 14:05 unless you submit by hand now.",
+    ],
+  ])(
+    "a ready cycle says why it is not sent automatically (%s)",
+    (reason, dueAt, line) => {
+      const ready = {
+        ...MOCK_CYCLES[0],
+        id: 33,
+        status: "READY_TO_SUBMIT",
+        participantState: "READY_TO_SUBMIT",
+        requiresCycleReview: false,
+        autoSubmitReason: reason,
+        autoSubmitDueAt: dueAt,
+        samples: [],
+      };
+      renderPage(UNCYCLED_ORDERS, [ready]);
+      fireEvent.click(screen.getByTestId("cycle-row-33"));
+
+      expect(screen.getByTestId("auto-submit-33")).toHaveTextContent(line);
+    },
+  );
 
   test("row expansion reveals sample progress with result-entry deep links", () => {
     renderPage();
@@ -302,6 +386,22 @@ describe("MyCyclesPage", () => {
     // No review gate on this scheme, so no pre-submission summary columns
     expect(within(expanded).queryByText("Reported value")).toBeNull();
     expect(within(expanded).queryByText("Pre-submission summary")).toBeNull();
+  });
+
+  test("a validated sample reads Validated, one awaiting validation reads Entered", () => {
+    const cycle = {
+      ...MOCK_CYCLES[0],
+      samples: [
+        { ...MOCK_CYCLES[0].samples[0], entryStatus: "entered" },
+        { ...MOCK_CYCLES[0].samples[1], entryStatus: "validated" },
+      ],
+    };
+    renderPage(UNCYCLED_ORDERS, [cycle]);
+    fireEvent.click(screen.getByTestId("cycle-row-1"));
+    const expanded = screen.getByTestId("cycle-expanded-1");
+
+    expect(within(expanded).getByText("Entered")).toBeInTheDocument();
+    expect(within(expanded).getByText("Validated")).toBeInTheDocument();
   });
 
   test("review-gated cycle at ready_to_submit shows the pre-submission summary", () => {
@@ -356,6 +456,7 @@ describe("MyCyclesPage", () => {
       "/rest/eqa/orders",
       expect.any(Function),
     );
+    expect(within(table).getByText("02/05/2026")).toBeInTheDocument();
   });
 
   test("uncycled section hidden when no orders", () => {

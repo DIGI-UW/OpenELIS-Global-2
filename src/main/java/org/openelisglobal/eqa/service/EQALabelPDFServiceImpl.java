@@ -1,14 +1,5 @@
 package org.openelisglobal.eqa.service;
 
-import com.itextpdf.text.Document;
-import com.itextpdf.text.DocumentException;
-import com.itextpdf.text.Font;
-import com.itextpdf.text.PageSize;
-import com.itextpdf.text.Phrase;
-import com.itextpdf.text.pdf.BaseFont;
-import com.itextpdf.text.pdf.ColumnText;
-import com.itextpdf.text.pdf.PdfContentByte;
-import com.itextpdf.text.pdf.PdfWriter;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
@@ -22,6 +13,15 @@ import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
 import org.openelisglobal.eqa.valueholder.EQAPanel;
 import org.openelisglobal.eqa.valueholder.EQAPanelSample;
 import org.openelisglobal.eqa.valueholder.EQAPanelStatus;
+import org.openpdf.text.Document;
+import org.openpdf.text.DocumentException;
+import org.openpdf.text.Font;
+import org.openpdf.text.PageSize;
+import org.openpdf.text.Phrase;
+import org.openpdf.text.pdf.BaseFont;
+import org.openpdf.text.pdf.ColumnText;
+import org.openpdf.text.pdf.PdfContentByte;
+import org.openpdf.text.pdf.PdfWriter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,8 +52,8 @@ public class EQALabelPDFServiceImpl implements EQALabelPDFService {
     private static final Set<EQAPanelStatus> PRINTABLE_STATES = EnumSet.of(EQAPanelStatus.SEALED,
             EQAPanelStatus.DISTRIBUTED);
 
-    private static final Font CODE_FONT = new Font(Font.FontFamily.HELVETICA, 16, Font.BOLD);
-    private static final Font META_FONT = new Font(Font.FontFamily.HELVETICA, 8, Font.NORMAL);
+    private static final Font CODE_FONT = new Font(Font.HELVETICA, 16, Font.BOLD);
+    private static final Font META_FONT = new Font(Font.HELVETICA, 8, Font.NORMAL);
 
     @Autowired
     private EQAPanelService panelService;

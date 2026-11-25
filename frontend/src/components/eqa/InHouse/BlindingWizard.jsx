@@ -43,6 +43,7 @@ import {
   modeBlockers,
   prepBlockers,
 } from "./blindingRules";
+import SearchableSelect from "../../common/SearchableSelect";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -110,16 +111,32 @@ const BlindingWizard = () => {
 
   useEffect(() => {
     fetchInHouseSchemes(setSchemes);
-    fetchTests(setTests);
     fetchLabUsers(setLabUsers);
   }, []);
 
   useEffect(() => {
+    setRoster([]);
+    setTests([]);
     if (!cycle.schemeId) {
-      setRoster([]);
       return;
     }
-    fetchAnalysts(cycle.schemeId, setRoster);
+    let current = true;
+    fetchAnalysts(cycle.schemeId, (rows) => current && setRoster(rows));
+    fetchTests(cycle.schemeId, (schemeTests) => {
+      if (!current) {
+        return;
+      }
+      const offered = new Set(schemeTests.map((test) => String(test.id)));
+      setTests(schemeTests);
+      setSamples((rows) =>
+        rows.map((row) =>
+          offered.has(String(row.testId)) ? row : { ...row, testId: "" },
+        ),
+      );
+    });
+    return () => {
+      current = false;
+    };
   }, [cycle.schemeId]);
 
   const step1Ready = cycle.schemeId && cycle.unblindDate;
@@ -383,21 +400,18 @@ const BlindingWizard = () => {
 
         {step === 0 && (
           <Column lg={16} md={8} sm={4}>
-            <Select
+            <SearchableSelect
               id="inhouse-scheme"
               labelText={intl.formatMessage({ id: "eqa.inhouse.scheme" })}
+              options={schemes.map((scheme) => ({
+                id: String(scheme.id),
+                value: scheme.name,
+              }))}
               value={cycle.schemeId}
-              onChange={(e) => setCycle({ ...cycle, schemeId: e.target.value })}
-            >
-              <SelectItem value="" text="" />
-              {schemes.map((scheme) => (
-                <SelectItem
-                  key={scheme.id}
-                  value={scheme.id}
-                  text={scheme.name}
-                />
-              ))}
-            </Select>
+              onChange={(schemeId) =>
+                setCycle((current) => ({ ...current, schemeId }))
+              }
+            />
             <TextInput
               id="inhouse-cycle-name"
               labelText={intl.formatMessage({ id: "eqa.inhouse.cycleName" })}
@@ -439,6 +453,17 @@ const BlindingWizard = () => {
                 { count: samples.length },
               )}
             </p>
+            {tests.length === 0 && (
+              <InlineNotification
+                kind="warning"
+                lowContrast
+                hideCloseButton
+                title={intl.formatMessage({
+                  id: "eqa.wizard.noSchemeTests",
+                  defaultMessage: "This scheme has no tests a panel can use.",
+                })}
+              />
+            )}
             <Table size="sm">
               <TableHead>
                 <TableRow>
