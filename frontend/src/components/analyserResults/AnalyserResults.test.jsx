@@ -428,6 +428,27 @@ describe("AnalyserResults", () => {
     );
   });
 
+  it("shows a value held for a missing required control with its own reason and the run (OGC-1200 slice 8)", async () => {
+    renderResults([
+      {
+        ...heldResult,
+        testId: "301",
+        heldRunId: 12,
+        readOnly: true,
+        importIssueReason: "run_qc_missing",
+      },
+    ]);
+    expect(
+      await screen.findByText(
+        "This test requires a control on every run, and none is recorded in this run, so the value is held and cannot be saved here.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open the run" })).toHaveAttribute(
+      "href",
+      "/Results?run=12",
+    );
+  });
+
   it("explains why an off-scale control cannot be charted as an exact measurement", async () => {
     renderResults([
       {

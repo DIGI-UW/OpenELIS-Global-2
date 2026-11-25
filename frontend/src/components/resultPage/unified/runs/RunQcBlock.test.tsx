@@ -541,6 +541,37 @@ describe("RunQcBlock under the test's QC policy (OGC-1200 slice 8)", () => {
     );
     expect(screen.queryByRole("button", { name: "Retest" })).toBeNull();
   });
+
+  it("does not offer acceptance on a run that is no longer open", () => {
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <RunQcBlock
+          runId={7}
+          active={false}
+          onRecorded={vi.fn()}
+          qc={{
+            overall: "NO_CONTROL",
+            tests: [
+              {
+                testId: "11",
+                testName: "Glucose",
+                verdict: "NO_CONTROL",
+                controls: [],
+                holdCause: null,
+                whenMissing: "WARN",
+              },
+            ],
+          }}
+        />
+      </IntlProvider>,
+    );
+    expect(screen.getByTestId("run-qc-missing-11")).toHaveTextContent(
+      "none was recorded on this one.",
+    );
+    expect(screen.getByTestId("run-qc-missing-11")).not.toHaveTextContent(
+      "can still be accepted",
+    );
+  });
 });
 
 describe("WaitingTag on a held row (FR-D4)", () => {

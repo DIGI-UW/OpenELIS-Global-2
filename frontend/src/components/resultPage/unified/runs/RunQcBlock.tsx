@@ -70,6 +70,8 @@ interface RunQcBlockProps {
   qc: RunQc;
   onRecorded: (qc: RunQc) => void;
   onOpenRun?: (runId: number) => void;
+  /** Whether the run still takes values (Open or Held). */
+  active?: boolean;
 }
 
 type Kind = "measured" | "controlLine";
@@ -111,6 +113,7 @@ const RunQcBlock: React.FC<RunQcBlockProps> = ({
   qc,
   onRecorded,
   onOpenRun,
+  active = true,
 }) => {
   const intl = useIntl();
   const { pattern } = useSiteDateFormat();
@@ -252,7 +255,9 @@ const RunQcBlock: React.FC<RunQcBlockProps> = ({
                     id={
                       test.holdCause === "QC_MISSING"
                         ? "run.qc.missingHold"
-                        : "run.qc.missingWarn"
+                        : active
+                          ? "run.qc.missingWarn"
+                          : "run.qc.missingWarnClosed"
                     }
                   />
                 </p>

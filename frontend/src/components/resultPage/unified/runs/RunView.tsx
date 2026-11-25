@@ -503,6 +503,7 @@ const RunView: React.FC<RunViewProps> = ({
             <RunQcBlock
               runId={header.id}
               qc={header.qc}
+              active={header.state === "OPEN" || header.state === "HELD"}
               onOpenRun={onOpenRun}
               onRecorded={(qc) => {
                 setHeader((current) =>
