@@ -87,6 +87,23 @@ describe("AlertsSection", () => {
     expect(document.getElementById("enabled-rule-1")).toBeInTheDocument();
   });
 
+  it("does not call a disabled rule Enabled beside its switch", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => cb(RULES));
+    renderSection();
+    await screen.findByText("Positive Email");
+
+    const disabled = document.getElementById("enabled-rule-2");
+    expect(disabled).toHaveAttribute("aria-checked", "false");
+    expect(disabled).toHaveAccessibleName(
+      messages["label.testCatalog.alerts.col.enabled"],
+    );
+    expect(
+      within(screen.getByTestId("alert-row-rule-2")).queryByText(
+        messages["label.testCatalog.alerts.col.enabled"],
+      ),
+    ).toBeNull();
+  });
+
   it("shows the empty state when no rules exist", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) => cb([]));
     renderSection();

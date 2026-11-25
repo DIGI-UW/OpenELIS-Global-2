@@ -11,6 +11,7 @@ public class MicroCriticalCommunicationForm {
     public String recipient;
     public String recipientContact;
     public String communicationMethod;
+    public String outcome;
     public String message;
     public Timestamp communicatedAt;
     public String communicatedBy;

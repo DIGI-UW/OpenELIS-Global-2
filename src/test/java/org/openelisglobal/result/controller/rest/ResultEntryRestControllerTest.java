@@ -16,6 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.After;
 import org.junit.Before;
@@ -34,8 +35,14 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.valueholder.MicroCase;
+import org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis;
+import org.openelisglobal.microbiology.valueholder.MicroCaseRole;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.resultrun.service.RunQcService;
+import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.test.service.TestSectionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -67,6 +74,10 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
     private javax.sql.DataSource dataSource;
     @Autowired
     private RunQcService runQcService;
+    @Autowired
+    private MicroCaseDAO microCases;
+    @Autowired
+    private MicroCaseAnalysisDAO microCaseAnalyses;
 
     private JdbcTemplate jdbc;
     private MockHttpSession session;
@@ -95,11 +106,11 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
         // grant user 1 the Results role (id 5 in result.xml) on all lab units
         jdbc.update("INSERT INTO clinlims.user_lab_unit_roles (system_user_id, last_updated) VALUES (1, NOW())"
                 + " ON CONFLICT (system_user_id) DO NOTHING");
-        jdbc.update("INSERT INTO clinlims.lab_unit_role_map (lab_unit_role_map_id, lab_unit) VALUES (9301,"
+        jdbc.update("INSERT INTO clinlims.lab_unit_role_map (lab_unit_role_map_id, lab_unit) VALUES (-9301,"
                 + " 'AllLabUnits') ON CONFLICT (lab_unit_role_map_id) DO NOTHING");
-        jdbc.update("INSERT INTO clinlims.lab_unit_roles (system_user_id, lab_unit_role_map_id) VALUES (1, 9301)"
+        jdbc.update("INSERT INTO clinlims.lab_unit_roles (system_user_id, lab_unit_role_map_id) VALUES (1, -9301)"
                 + " ON CONFLICT DO NOTHING");
-        jdbc.update("INSERT INTO clinlims.lab_roles (lab_unit_role_map_id, role) VALUES (9301, '5')"
+        jdbc.update("INSERT INTO clinlims.lab_roles (lab_unit_role_map_id, role) VALUES (-9301, '5')"
                 + " ON CONFLICT DO NOTHING");
         statusService.refreshCache();
         session = buildAuthenticatedSession("admin");
@@ -770,7 +781,7 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
                     .andExpect(jsonPath("$.testResult[0].analysisNotes[0].text").value("panel note"))
                     .andExpect(jsonPath("$.testResult[0].analysisNotes[0].noteType").value("I"))
                     .andExpect(jsonPath("$.testResult[0].analysisNotes[0].subject").value("Result Note"))
-                    .andExpect(jsonPath("$.testResult[0].analysisNotes[0].author").value("Doe,John"));
+                    .andExpect(jsonPath("$.testResult[0].analysisNotes[0].author").value("John Doe"));
         } finally {
             reset(displayList);
         }
@@ -994,6 +1005,73 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
 
         assertEquals(MessageUtil.getMessage("result.critical.defaultMessage"), jdbc.queryForObject(
                 "SELECT message FROM clinlims.result_entry_acknowledgement WHERE analysis_id = 1", String.class));
+    }
+
+    @Test
+    public void save_criticalCodedAnswer_isRefusedUntilAcknowledged_thenRaisesTheCriticalAlert() throws Exception {
+        String detected = codedAnswer("OGC1610 Detected", true);
+        String notDetected = codedAnswer("OGC1610 Not detected", false);
+        storeCodedAnswer(notDetected);
+        try {
+            mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                    .content(codedSaveBody(detected, "")).session(session)).andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.acknowledgementRequired[0].kind").value("CRITICAL"))
+                    .andExpect(jsonPath("$.acknowledgementRequired[0].value").value("OGC1610 Detected"));
+            assertEquals(notDetected, resultService.get("3").getValue());
+
+            mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                    .content(codedSaveBody(detected, ",\"criticalAcknowledged\":true")).session(session))
+                    .andExpect(status().isOk());
+            assertEquals(detected, resultService.get("3").getValue());
+            assertEquals(Integer.valueOf(1), acknowledgementCount());
+            assertEquals("OGC1610 Detected",
+                    jdbc.queryForObject(
+                            "SELECT context_data->>'value' FROM clinlims.alert WHERE alert_type ="
+                                    + " 'CRITICAL_RESULT' AND alert_entity_type = 'ANALYSIS' AND alert_entity_id = 1",
+                            String.class));
+
+            mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                    .content(codedSaveBody(detected, "")).session(session)).andExpect(status().isOk());
+            assertEquals("the stored answer was acknowledged when it was saved", Integer.valueOf(1),
+                    acknowledgementCount());
+        } finally {
+            jdbc.update("DELETE FROM clinlims.dictionary WHERE dict_entry LIKE 'OGC1610 %'");
+        }
+    }
+
+    @Test
+    public void save_codedAnswerNotMarkedCritical_owesNothing() throws Exception {
+        String notDetected = codedAnswer("OGC1610 Not detected", false);
+        storeCodedAnswer(codedAnswer("OGC1610 Detected", true));
+        try {
+            mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                    .content(codedSaveBody(notDetected, "")).session(session)).andExpect(status().isOk());
+            assertEquals(notDetected, resultService.get("3").getValue());
+            assertEquals(Integer.valueOf(0), jdbc.queryForObject(
+                    "SELECT count(*) FROM clinlims.alert WHERE alert_type = 'CRITICAL_RESULT'", Integer.class));
+        } finally {
+            jdbc.update("DELETE FROM clinlims.dictionary WHERE dict_entry LIKE 'OGC1610 %'");
+        }
+    }
+
+    private String codedAnswer(String entry, boolean critical) {
+        String id = jdbc.queryForObject("SELECT nextval('clinlims.dictionary_seq')::text", String.class);
+        jdbc.update("INSERT INTO clinlims.dictionary (id, dict_entry, is_active, lastupdated) VALUES (?::numeric, ?,"
+                + " 'Y', NOW())", id, entry);
+        jdbc.update("INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, value, sort_order, is_active,"
+                + " is_critical, lastupdated) VALUES (nextval('clinlims.test_result_seq'), 1, 'D', ?, 1, true, ?,"
+                + " NOW())", id, critical);
+        return id;
+    }
+
+    private void storeCodedAnswer(String answer) {
+        jdbc.update("UPDATE clinlims.result SET result_type = 'D', value = ?, test_result_id = (SELECT id FROM"
+                + " clinlims.test_result WHERE test_id = 1 AND value = ?) WHERE id = 3", answer, answer);
+    }
+
+    private String codedSaveBody(String answer, String extras) {
+        return saveBodyWithExtras("1", "3", "1", answer, currentToken("1"), "\"note\":\"\"" + extras)
+                .replace("\"resultType\":\"N\"", "\"resultType\":\"D\"");
     }
 
     /**
@@ -1539,5 +1617,65 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
         } finally {
             reset(displayList);
         }
+    }
+
+    private static final String RELEASED_CASE_REFUSAL = "This test belongs to a microbiology case whose final report"
+            + " has been released. Amend the case to change it.";
+
+    @Test
+    public void save_onAFinallyReleasedMicrobiologyCase_isRefusedWithAMessage() throws Exception {
+        String valueBefore = resultService.get("3").getValue();
+        String caseId = releasedCaseLinkedTo("1");
+        try {
+            mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                    .content(saveBody("1", "3", "1", "90.0", currentToken("1"))).session(session))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.error").value(RELEASED_CASE_REFUSAL));
+        } finally {
+            removeCase(caseId);
+        }
+        assertEquals(valueBefore, resultService.get("3").getValue());
+    }
+
+    @Test
+    public void bulkSave_onAFinallyReleasedMicrobiologyCase_isRefusedWithAMessage() throws Exception {
+        String valueBefore = resultService.get("3").getValue();
+        String caseId = releasedCaseLinkedTo("1");
+        List<List<TestResultItem>> pages = new ArrayList<>();
+        pages.add(new ArrayList<>(List.of(new TestResultItem())));
+        session.setAttribute(IActionConstants.RESULTS_SESSION_CACHE, pages);
+        String single = saveBody("1", "3", "1", "90.0", currentToken("1"));
+        String item = single.substring("{\"testResult\":".length(), single.length() - 1);
+        try {
+            mockMvc.perform(post("/rest/LogbookResults").contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"testResult\":[" + item + "],\"paging\":{\"currentPage\":\"1\",\"totalPages\":\"1\"}}")
+                    .session(session)).andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.error").value(RELEASED_CASE_REFUSAL));
+        } finally {
+            removeCase(caseId);
+        }
+        assertEquals(valueBefore, resultService.get("3").getValue());
+    }
+
+    private String releasedCaseLinkedTo(String analysisId) {
+        MicroCase microCase = new MicroCase();
+        microCase.setSampleId("1");
+        microCase.setSampleItemId("601");
+        microCase.setLabUnitId("1");
+        microCase.setCreatedBy("1");
+        microCase.setFinalReleaseState("FINAL_RELEASED");
+        microCases.insert(microCase);
+        MicroCaseAnalysis link = new MicroCaseAnalysis();
+        link.setCaseId(microCase.getId());
+        link.setAnalysisId(analysisId);
+        link.setCaseRole(MicroCaseRole.DIRECT);
+        link.setPlacement("INITIAL");
+        microCaseAnalyses.insert(link);
+        return microCase.getId();
+    }
+
+    private void removeCase(String caseId) {
+        jdbc.update("DELETE FROM clinlims.micro_case_analysis WHERE case_id = ?", caseId);
+        jdbc.update("DELETE FROM clinlims.micro_case WHERE id = ?", caseId);
     }
 }

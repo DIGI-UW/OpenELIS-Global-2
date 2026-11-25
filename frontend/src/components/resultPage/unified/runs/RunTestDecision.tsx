@@ -59,13 +59,20 @@ const RunTestDecision: React.FC<RunTestDecisionProps> = ({
       </span>
     );
   }
-  if (test.verdict !== "FAIL") {
+  if (!test.holdCause) {
     return null;
   }
+  const missing = test.holdCause === "QC_MISSING";
 
   const confirm = () => {
     if (action === "ACCEPT_DESPITE" && !reason.trim()) {
-      setError(intl.formatMessage({ id: "run.decision.reasonRequired" }));
+      setError(
+        intl.formatMessage({
+          id: missing
+            ? "run.decision.reasonRequiredMissing"
+            : "run.decision.reasonRequired",
+        }),
+      );
       return;
     }
     setBusy(true);
@@ -118,7 +125,12 @@ const RunTestDecision: React.FC<RunTestDecisionProps> = ({
         <div className="runQcDecideForm">
           <p>
             {intl.formatMessage(
-              { id: `run.decision.explain.${action}` },
+              {
+                id:
+                  missing && action === "ACCEPT_DESPITE"
+                    ? "run.decision.explainMissing.ACCEPT_DESPITE"
+                    : `run.decision.explain.${action}`,
+              },
               { test: test.testName },
             )}
           </p>

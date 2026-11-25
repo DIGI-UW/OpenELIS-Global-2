@@ -327,3 +327,52 @@ describe("SampleCollectionCard print labels while the order loads (OGC-1423)", (
     expect(onUpdate).not.toHaveBeenCalled();
   });
 });
+
+// OGC-1657 review: the clinical card's time boxes took free text, which saved
+// as a dropped receipt date or the next day.
+describe("SampleCollectionCard sample times", () => {
+  const renderWithTimes = (collectionTime, receivedTime) =>
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <ConfigurationContext.Provider
+          value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "en-US" } }}
+        >
+          <SampleCollectionCard
+            sample={{
+              sampleTypeId: "5",
+              sampleTypeName: "Blood",
+              collectionDate: "2026-08-13",
+              collectionTime,
+              receivedDate: "2026-08-13",
+              receivedTime,
+              tests: [],
+              panels: [],
+            }}
+            sampleIndex={0}
+            sampleTypes={[]}
+            unitOfMeasures={[]}
+            serverReceivedDate="2026-08-13"
+            serverReceivedTime="10:00"
+            onUpdate={vi.fn()}
+            onRemove={vi.fn()}
+            onPrintLabels={vi.fn()}
+            isReadOnly={false}
+            canRemove={false}
+          />
+        </ConfigurationContext.Provider>
+      </IntlProvider>,
+    );
+  const message = "Enter the time as hh:mm, from 00:00 to 23:59.";
+
+  it("marks a time that is no time", () => {
+    renderWithTimes("1430", "25:99");
+
+    expect(screen.getAllByText(message)).toHaveLength(2);
+  });
+
+  it("takes times on the clock", () => {
+    renderWithTimes("09:15", "14:20");
+
+    expect(screen.queryByText(message)).toBeNull();
+  });
+});

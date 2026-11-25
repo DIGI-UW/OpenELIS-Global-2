@@ -37,6 +37,7 @@ import {
   toLocalIsoDate,
 } from "../../utils/Utils";
 import { labNow } from "../../utils/labClock";
+import { format } from "date-fns";
 import useSiteDateFormat from "../../common/useSiteDateFormat";
 
 const STATUS_TAG_TYPE = {
@@ -65,6 +66,12 @@ function statusTag(status, statusLabels) {
 export default function LaporanHasilReport() {
   const intl = useIntl();
   const siteDate = useSiteDateFormat();
+  const shownDateTime = (value) => {
+    const when = new Date(value);
+    return Number.isNaN(when.getTime())
+      ? String(value)
+      : format(when, `${siteDate.pattern} HH:mm`);
+  };
 
   const generationStatusItems = [
     { id: "all", text: intl.formatMessage({ id: "laporanHasil.filter.all" }) },
@@ -214,7 +221,7 @@ export default function LaporanHasilReport() {
           a.download = `LH-${safeLabel}.pdf`;
           a.click();
           URL.revokeObjectURL(url);
-          const now = labNow().toLocaleString();
+          const now = labNow();
           setReportData((prev) => {
             if (!prev) return prev;
             const firstTime = !prev.orders.find((o) => o.sampleId === sampleId)
@@ -280,7 +287,7 @@ export default function LaporanHasilReport() {
         a.click();
         URL.revokeObjectURL(url);
 
-        const now = labNow().toLocaleString();
+        const now = labNow();
         setReportData((prev) => {
           if (!prev) return prev;
           return {
@@ -311,11 +318,11 @@ export default function LaporanHasilReport() {
     standardName: order.regulationNumber
       ? `${order.regulationNumber}`
       : (order.standardName ?? "–"),
-    collectionDate: order.collectionDate || "–",
+    collectionDate: siteDate.formatIsoDateTime(order.collectionDate) || "–",
     testCount: order.testCount ?? 0,
     complianceStatus: order.complianceStatus || "NONE",
     lastGenerated: order.lastGenerated
-      ? new Date(order.lastGenerated).toLocaleString()
+      ? shownDateTime(order.lastGenerated)
       : intl.formatMessage({ id: "laporanHasil.filter.notGenerated" }),
     actions: order.sampleId,
     _order: order,
@@ -691,6 +698,7 @@ export default function LaporanHasilReport() {
 
 function OrderDetail({ order, statusLabels }) {
   const intl = useIntl();
+  const siteDate = useSiteDateFormat();
   const certificate = order.reportKind !== "RESULTS";
   const resultHeaders = [
     "laporanHasil.detail.sample",
@@ -712,7 +720,10 @@ function OrderDetail({ order, statusLabels }) {
             {[
               ["laporanHasil.detail.site", order.siteName || order.siteCode],
               ["laporanHasil.detail.gps", order.gpsCoordinates],
-              ["laporanHasil.detail.collectionDateTime", order.collectionDate],
+              [
+                "laporanHasil.detail.collectionDateTime",
+                siteDate.formatIsoDateTime(order.collectionDate),
+              ],
               ["laporanHasil.detail.collectionMethod", order.collectionMethod],
               ["laporanHasil.detail.ppNo", order.regulationNumber],
               ["laporanHasil.detail.standard", order.standardName],
@@ -888,6 +899,7 @@ function OrderDetail({ order, statusLabels }) {
 }
 
 function SignatureCard({ sig, defaultRole }) {
+  const siteDate = useSiteDateFormat();
   return (
     <Tile>
       <p style={{ fontWeight: "600", marginBottom: "0.25rem" }}>
@@ -900,7 +912,7 @@ function SignatureCard({ sig, defaultRole }) {
             {sig.signerRole || "–"}
           </p>
           <p style={{ fontSize: "0.75rem", color: "#525252" }}>
-            {sig.signedAt || "–"}
+            {siteDate.formatIsoDateTime(sig.signedAt) || "–"}
           </p>
         </>
       ) : (

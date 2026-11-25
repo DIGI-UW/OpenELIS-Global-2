@@ -635,7 +635,7 @@ const OrderDashboardContent = () => {
         </span>
       </div>
     ),
-    lastUpdated: order.lastUpdated || "---",
+    lastUpdated: siteDate.formatIsoDateTime(order.lastUpdated) || "---",
     actions: (
       <div className="order-actions">
         {order.returnedFromQA ? (

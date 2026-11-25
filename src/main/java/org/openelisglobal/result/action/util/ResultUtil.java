@@ -350,6 +350,8 @@ public class ResultUtil {
 
             Analysis analysis = resolveModifiedAnalysis(actionDataSet, testResultItem.getAnalysisId());
             analysis.setStatusId(getStatusForTestResult(testResultItem, alwaysValidate, analysis));
+            actionDataSet.statusDecidedAtEntry(analysis,
+                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
             analysis.setSysUserId(actionDataSet.getCurrentUserId());
             if (!GenericValidator.isBlankOrNull(testResultItem.getTestMethod())) {
                 analysis.setMethod(methodService.get(testResultItem.getTestMethod()));

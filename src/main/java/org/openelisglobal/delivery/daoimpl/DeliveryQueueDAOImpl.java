@@ -179,6 +179,10 @@ public class DeliveryQueueDAOImpl implements DeliveryQueueDAO {
 
     private String where(DeliveryQueueSearch search, Map<String, Object> params) {
         List<String> clauses = new ArrayList<>();
+        if (search.getMessageId() != null) {
+            clauses.add("nl.id = :messageId");
+            params.put("messageId", search.getMessageId());
+        }
         if (search.getProduct() != null) {
             clauses.add("nl.product = :product");
             params.put("product", search.getProduct());

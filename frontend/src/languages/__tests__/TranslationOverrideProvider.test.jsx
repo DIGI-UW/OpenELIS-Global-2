@@ -1,5 +1,5 @@
 import React from "react";
-import { render, cleanup, screen } from "@testing-library/react";
+import { act, render, cleanup, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { FormattedMessage, IntlProvider } from "react-intl";
 
@@ -98,5 +98,49 @@ describe("the override, as wired into the app", () => {
 
     expect(screen.getByTestId("save")).toHaveTextContent("Save");
     expect(screen.getByTestId("submit")).toHaveTextContent("Submit");
+  });
+
+  it("keeps the children mounted when the override arrives", async () => {
+    const mounts = vi.fn();
+    const Probe = () => {
+      React.useEffect(() => {
+        mounts();
+      }, []);
+      return <FormattedMessage id="a.save" />;
+    };
+    global.fetch = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: () => "application/json" },
+      json: async () => ({ "a.save": "Keep" }),
+    }));
+    render(
+      <Ctx.Provider
+        value={{
+          configurationProperties: { OVERRIDE_DEFAULT_TRANSLATION: "true" },
+        }}
+      >
+        <IntlProvider locale="en" defaultLocale="en" messages={BUNDLED}>
+          <TranslationOverrideProvider>
+            <p data-testid="probe">
+              <Probe />
+            </p>
+          </TranslationOverrideProvider>
+        </IntlProvider>
+      </Ctx.Provider>,
+    );
+    // The override lands in a state update outside React's batching; act
+    // flushes the passive effects of the render it causes, which is where a
+    // remounted child would register its second mount.
+    await act(async () => {
+      await flush();
+      await flush();
+    });
+
+    expect(screen.getByTestId("probe")).toHaveTextContent("Keep");
+    expect(
+      mounts,
+      "the page under the provider mounted once",
+    ).toHaveBeenCalledTimes(1);
   });
 });

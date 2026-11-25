@@ -213,7 +213,7 @@ export const getCaseReadiness = (caseId) =>
   });
 
 export const getWorklistRows = (query = {}) =>
-  new Promise((resolve) => {
+  new Promise((resolve, reject) => {
     const params = new URLSearchParams();
     [
       "grain",
@@ -238,7 +238,10 @@ export const getWorklistRows = (query = {}) =>
     const search = params.toString();
     getFromOpenElisServer(
       `/rest/microbiology/worklist${search ? `?${search}` : ""}`,
-      resolve,
+      (response) =>
+        response === undefined
+          ? reject(new Error("Worklist could not be loaded"))
+          : resolve(response),
     );
   });
 
@@ -277,21 +280,6 @@ export const logCriticalCommunication = (caseId, payload) =>
       `/rest/microbiology/cases/${caseId}/critical-communications`,
       JSON.stringify(payload),
       settleJsonResponse(resolve, reject),
-    );
-  });
-
-export const acknowledgeCriticalCommunication = (communicationId) =>
-  new Promise((resolve) => {
-    putToOpenElisServerFullResponse(
-      `/rest/microbiology/critical-communications/${communicationId}/acknowledge`,
-      JSON.stringify({}),
-      (response) => {
-        if (!response) {
-          resolve({ status: 0 });
-          return;
-        }
-        response.json().then(resolve);
-      },
     );
   });
 
@@ -450,7 +438,6 @@ const MicrobiologyService = {
   getWorklistRows,
   getCriticalCommunications,
   logCriticalCommunication,
-  acknowledgeCriticalCommunication,
   closeCriticalCommunication,
   getNceCategories,
   getNceReportingUnits,

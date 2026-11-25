@@ -2,8 +2,12 @@ package org.openelisglobal.compliance.controller.rest;
 
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.PdfExportSupport;
 import org.openelisglobal.compliance.service.ComplianceEvaluationResult;
 import org.openelisglobal.compliance.service.EnvironmentalReportRow;
@@ -35,6 +39,9 @@ final class EnvironmentalReportPdf {
     }
 
     private static final Color HEADER = new Color(33, 82, 149);
+
+    /** How the report DTO carries its times (ComplianceReportRestController). */
+    private static final DateTimeFormatter STORED_DATE_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     private final Font titleFont = CertificateFonts.bold(14);
     private final Font sectionFont = CertificateFonts.bold(11);
@@ -72,12 +79,13 @@ final class EnvironmentalReportPdf {
         if (certificate) {
             document.add(new Phrase(text("envReport.standard", safe(dto.getStandardName())) + "\n", cellFont));
         }
-        document.add(new Phrase(text("envReport.collectionDate", safe(dto.getCollectionDate())) + "\n", cellFont));
+        document.add(
+                new Phrase(text("envReport.collectionDate", shownDateTime(dto.getCollectionDate())) + "\n", cellFont));
 
         List<String[]> site = new ArrayList<>();
         site.add(new String[] { text("envReport.site.site"), safe(dto.getSiteName()) });
         site.add(new String[] { text("envReport.site.gps"), safe(dto.getGpsCoordinates()) });
-        site.add(new String[] { text("envReport.site.collectedAt"), safe(dto.getCollectionDate()) });
+        site.add(new String[] { text("envReport.site.collectedAt"), shownDateTime(dto.getCollectionDate()) });
         site.add(new String[] { text("envReport.site.collectionMethod"), safe(dto.getCollectionMethod()) });
         if (certificate) {
             site.add(new String[] { text("envReport.site.regulation"), safe(dto.getRegulationNumber()) });
@@ -220,7 +228,7 @@ final class EnvironmentalReportPdf {
         if (signature != null) {
             cell.addElement(new Phrase(safe(signature.getSignerName()), labelFont));
             cell.addElement(new Phrase(safe(signature.getSignerRole()), cellFont));
-            cell.addElement(new Phrase(safe(signature.getSignedAt()), cellFont));
+            cell.addElement(new Phrase(shownDateTime(signature.getSignedAt()), cellFont));
         } else {
             cell.addElement(new Phrase(role + "\n–", cellFont));
         }
@@ -233,6 +241,25 @@ final class EnvironmentalReportPdf {
 
     private static String text(String key, String... args) {
         return args.length == 0 ? MessageUtil.getMessage(key) : MessageUtil.getMessage(key, (Object[]) args);
+    }
+
+    private static String shownDateTime(String stored) {
+        return shownDateTime(stored, DateUtil.getDateTimeFormat());
+    }
+
+    /**
+     * A time the DTO carries as yyyy-MM-dd HH:mm, in the site's date format;
+     * anything else is printed as it came.
+     */
+    static String shownDateTime(String stored, String sitePattern) {
+        if (stored == null || stored.isBlank()) {
+            return safe(null);
+        }
+        try {
+            return LocalDateTime.parse(stored, STORED_DATE_TIME).format(DateTimeFormatter.ofPattern(sitePattern));
+        } catch (DateTimeParseException e) {
+            return stored;
+        }
     }
 
     private static String safe(String value) {

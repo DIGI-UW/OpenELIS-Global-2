@@ -5,6 +5,8 @@ import {
   labTimeZone,
 } from "./MicrobiologyTime";
 import ContainerLabelButton from "./ContainerLabelButton";
+import OrganismPicker, { OrganismName } from "./OrganismPicker";
+import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
 import React, { useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
 import {
@@ -34,9 +36,13 @@ import {
 } from "@carbon/react";
 import ReferralStatusTag from "../order/steps/referOut/referralStatusTag";
 import OrderReferOutForm from "../order/steps/referOut/OrderReferOutForm";
+import { MODAL_FIRST_FIELD, useReturnFocus } from "./returnFocus";
+import OfflineNotice, { useOnline } from "./OfflineNotice";
+import { serverUnreachable } from "../utils/requestOutcome";
 
 const labels = {
   referred: "label.results.history.event.REFERRAL",
+  unreachable: "microbiology.case.serverUnreachable",
 
   title: "microbiology.case.isolates",
   gramStain: "microbiology.isolate.gramStain",
@@ -68,16 +74,23 @@ function IsolateAction({
   cultures,
   saving,
   error,
+  amendmentOpen,
   onSave,
   onClose,
 }) {
   const intl = useIntl();
+  const online = useOnline();
+  useReturnFocus();
   const t = (key, values) =>
     intl.formatMessage(
       { id: labels[key] || `microbiology.isolateWorkspace.${key}` },
       values,
     );
   const isolate = action.isolate;
+  const methods =
+    isolate?.method && !options.methods.some((m) => m.value === isolate.method)
+      ? [...options.methods, { id: isolate.method, value: isolate.method }]
+      : options.methods;
   const [draft, setDraft] = useState(() => ({
     cultureId: action.cultureId || "",
     gramStain: "",
@@ -86,7 +99,7 @@ function IsolateAction({
     organismId: isolate?.organismId || "",
     identificationStatus: isolate?.status === "FINAL" ? "FINAL" : "PRELIMINARY",
     identificationMethod:
-      options.methods.find((m) => m.value === isolate?.method)?.id || "",
+      methods.find((m) => m.value === isolate?.method)?.id || "",
     confidence: isolate?.confidence ?? "",
     identifiedAt: localTime(),
     reason: "",
@@ -150,6 +163,15 @@ function IsolateAction({
       onChange={({ selectedItem }) => set(key, selectedItem?.id || "")}
     />
   );
+  const organism = (key) => (
+    <OrganismPicker
+      id={`isolate-${key}`}
+      key={key}
+      titleText={t(key)}
+      value={draft[key]}
+      onChange={(id) => set(key, id)}
+    />
+  );
   const needsSample =
     isolate &&
     !isolate.sampleItemId &&
@@ -163,6 +185,9 @@ function IsolateAction({
     .filter((test) => test.sampleTypeIds.includes(specimenType))
     .map((test) => ({ id: test.id, value: test.name }));
   const isIdentification = ["identify", "reidentify"].includes(action.kind);
+  const reasonRequired =
+    ["reidentify", "acknowledge"].includes(action.kind) ||
+    (action.kind === "identify" && !!amendmentOpen);
   const valid =
     action.kind === "pick"
       ? !!draft.cultureId
@@ -174,7 +199,7 @@ function IsolateAction({
             (Number.isFinite(Number(draft.confidence)) &&
               Number(draft.confidence) >= 0 &&
               Number(draft.confidence) <= 100)) &&
-          (action.kind !== "reidentify" || !!draft.reason.trim())
+          (!reasonRequired || !!draft.reason.trim())
         : action.kind === "received-origin"
           ? !!draft.originalSpecimenTypeId &&
             !!draft.sendingOrganizationId &&
@@ -206,7 +231,8 @@ function IsolateAction({
       passiveModal={referral}
       primaryButtonText={t("save")}
       secondaryButtonText={t("cancel")}
-      primaryButtonDisabled={!valid || saving}
+      primaryButtonDisabled={!valid || saving || !online}
+      selectorPrimaryFocus={MODAL_FIRST_FIELD}
       onRequestSubmit={submit}
       onRequestClose={() => {
         if (!saving) onClose();
@@ -214,6 +240,7 @@ function IsolateAction({
       preventCloseOnClickOutside
     >
       <Stack gap={5}>
+        <OfflineNotice />
         {error && (
           <InlineNotification kind="error" title={t(error)} hideCloseButton />
         )}
@@ -246,8 +273,8 @@ function IsolateAction({
         )}
         {isIdentification && (
           <>
-            {combo("organismId", options.organisms)}
-            {select("identificationMethod", options.methods)}
+            {organism("organismId")}
+            {select("identificationMethod", methods)}
             {select(
               "identificationStatus",
               ["PRELIMINARY", "FINAL"].map((id) => ({ id, value: t(id) })),
@@ -269,7 +296,13 @@ function IsolateAction({
         {["identify", "reidentify", "acknowledge"].includes(action.kind) && (
           <TextArea
             id="isolate-reason"
-            labelText={t("reason")}
+            labelText={
+              <>
+                {t("reason")}
+                <RequiredMarker required={reasonRequired} />
+              </>
+            }
+            {...requiredProps(reasonRequired)}
             maxLength={2000}
             value={draft.reason}
             onChange={(e) => set("reason", e.target.value)}
@@ -282,7 +315,7 @@ function IsolateAction({
               options.originalSpecimenTypes || [],
             )}
             {combo("sendingOrganizationId", options.organizations)}
-            {combo("reportedOrganismId", options.organisms)}
+            {organism("reportedOrganismId")}
             {input("reportedOrganismText")}
           </>
         )}
@@ -399,7 +432,16 @@ export default function CaseIsolateWorkspace({
       }
     } catch (failure) {
       if (!mounted.current) return;
-      setError(failure.response?.status === 409 ? "conflict" : "saveError");
+      const code = failure.response?.message;
+      setError(
+        intl.messages[`microbiology.isolateWorkspace.${code}`]
+          ? code
+          : failure.response?.status === 409
+            ? "conflict"
+            : serverUnreachable(failure.response)
+              ? "unreachable"
+              : "saveError",
+      );
     } finally {
       if (mounted.current) setSaving(false);
     }
@@ -509,11 +551,12 @@ export default function CaseIsolateWorkspace({
                       </dd>
                       <dt>{t("reportedOrganismText")}</dt>
                       <dd>
-                        {options.organisms.find(
-                          (o) => o.id === isolate.reportedOrganismId,
-                        )?.value ||
-                          isolate.reportedOrganismText ||
-                          t("notAvailable")}
+                        <OrganismName
+                          id={isolate.reportedOrganismId}
+                          fallback={
+                            isolate.reportedOrganismText || t("notAvailable")
+                          }
+                        />
                       </dd>
                     </dl>
                   </>
@@ -675,7 +718,7 @@ export default function CaseIsolateWorkspace({
             </Tile>
           ))}
           <TableContainer title={t("referrals")}>
-            <Table aria-label={t("referrals")}>
+            <Table tabIndex={0} aria-label={t("referrals")}>
               <TableHead>
                 <TableRow>
                   {[
@@ -718,6 +761,7 @@ export default function CaseIsolateWorkspace({
               cultures={cultures}
               saving={saving}
               error={error}
+              amendmentOpen={detail.amendmentOpen}
               onSave={save}
               onClose={close}
             />
