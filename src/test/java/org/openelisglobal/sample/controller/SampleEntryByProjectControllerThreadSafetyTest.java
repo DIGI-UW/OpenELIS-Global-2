@@ -18,24 +18,14 @@ import org.openelisglobal.sample.form.SampleEntryByProjectForm;
 
 public class SampleEntryByProjectControllerThreadSafetyTest {
 
-    private static final Set<String> FORBIDDEN_STATE_FIELDS = Set.of(
-            "task",
-            "requesterPerson",
-            "collector",
-            "referringOrganization",
-            "location",
-            "serviceRequest",
-            "specimen",
-            "fhirPatient",
-            "encounter"
-    );
+    private static final Set<String> FORBIDDEN_STATE_FIELDS = Set.of("task", "requesterPerson", "collector",
+            "referringOrganization", "location", "serviceRequest", "specimen", "fhirPatient", "encounter");
 
     @Test
     public void testSampleEntryByProjectControllerHasNoPerRequestStateFields() {
         List<Field> stateFields = Arrays.stream(SampleEntryByProjectController.class.getDeclaredFields())
                 .filter(f -> !Modifier.isStatic(f.getModifiers()))
-                .filter(f -> FORBIDDEN_STATE_FIELDS.contains(f.getName()))
-                .collect(Collectors.toList());
+                .filter(f -> FORBIDDEN_STATE_FIELDS.contains(f.getName())).collect(Collectors.toList());
 
         assertTrue("SampleEntryByProjectController must not have per-request mutable FHIR fields: " + stateFields,
                 stateFields.isEmpty());
@@ -45,8 +35,7 @@ public class SampleEntryByProjectControllerThreadSafetyTest {
     public void testSampleTbEntryControllerHasNoPerRequestStateFields() {
         List<Field> stateFields = Arrays.stream(SampleTbEntryController.class.getDeclaredFields())
                 .filter(f -> !Modifier.isStatic(f.getModifiers()))
-                .filter(f -> FORBIDDEN_STATE_FIELDS.contains(f.getName()))
-                .collect(Collectors.toList());
+                .filter(f -> FORBIDDEN_STATE_FIELDS.contains(f.getName())).collect(Collectors.toList());
 
         assertTrue("SampleTbEntryController must not have per-request mutable FHIR fields: " + stateFields,
                 stateFields.isEmpty());
@@ -61,7 +50,9 @@ public class SampleEntryByProjectControllerThreadSafetyTest {
         try {
             controller.loadDataInForm(form, fhirPatient, null, null, null);
         } catch (Exception e) {
-            org.junit.Assert.fail("loadDataInForm must not throw exception when task, encounter, or requesterPerson are null: " + e.getMessage());
+            org.junit.Assert
+                    .fail("loadDataInForm must not throw exception when task, encounter, or requesterPerson are null: "
+                            + e.getMessage());
         }
 
         assertNotNull(form.getObservations());
