@@ -576,23 +576,25 @@ export const AttachmentsSection: React.FC<
           >
             <FormattedMessage id="label.results.attachments.download" />
           </Button>
-          {editable !== false && (
-            <Button
-              kind="ghost"
-              size="sm"
-              hasIconOnly
-              renderIcon={TrashCan}
-              iconDescription={intl.formatMessage({
-                id: "order.attachment.action.delete",
-                defaultMessage: "Delete attachment",
-              })}
-              data-testid={`attachment-delete-${file.id}`}
-              onClick={() => {
-                setError("");
-                setDeleteTarget(file);
-              }}
-            />
-          )}
+          {editable !== false &&
+            Boolean(file.analysisId) &&
+            (!analysisId || String(file.analysisId) === String(analysisId)) && (
+              <Button
+                kind="ghost"
+                size="sm"
+                hasIconOnly
+                renderIcon={TrashCan}
+                iconDescription={intl.formatMessage({
+                  id: "order.attachment.action.delete",
+                  defaultMessage: "Delete attachment",
+                })}
+                data-testid={`attachment-delete-${file.id}`}
+                onClick={() => {
+                  setError("");
+                  setDeleteTarget(file);
+                }}
+              />
+            )}
         </div>
       ))}
       {count === 0 && (

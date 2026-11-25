@@ -865,6 +865,9 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           accessionNumber={row.accessionNumber}
           analysisId={row.analysisId as string | undefined}
           componentId={row.testResultComponentId as string | undefined}
+          // Non-finalized saved rows still allow managing attachments without
+          // entering result edit mode; finalized/released rows ("6") are read-only.
+          editable={String(row.analysisStatusId || "") !== "6"}
         />
 
         <HistorySection

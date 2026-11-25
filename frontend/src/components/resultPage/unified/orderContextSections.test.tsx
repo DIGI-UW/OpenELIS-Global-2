@@ -789,6 +789,37 @@ describe("orderContextSections (FR-C3/C5)", () => {
       });
       expect(screen.queryByRole("dialog")).toBeNull();
     });
+
+    it("9. order-level attachments cannot be deleted from a result row", () => {
+      const orderAttachment = {
+        id: 99,
+        fileName: "requisition.pdf",
+        fileSizeBytes: 1024,
+        analysisId: "",
+      };
+      getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
+        if (
+          typeof url === "string" &&
+          url.includes("/attachments") &&
+          typeof cb === "function"
+        ) {
+          cb([orderAttachment, sampleAttachment]);
+        }
+      });
+      wrap(
+        <AttachmentsSection
+          open={true}
+          onToggle={() => {}}
+          accessionNumber="DEV1"
+          analysisId="28"
+          componentId="comp-A"
+        />,
+      );
+      expect(screen.getByText("requisition.pdf")).toBeInTheDocument();
+      expect(screen.getByText("wrong-file.pdf")).toBeInTheDocument();
+      expect(screen.queryByTestId("attachment-delete-99")).toBeNull();
+      expect(screen.getByTestId("attachment-delete-42")).toBeInTheDocument();
+    });
   });
 });
 
