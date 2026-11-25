@@ -6,6 +6,7 @@ import org.openelisglobal.storage.dao.StorageRackDAO;
 import org.openelisglobal.storage.dao.StorageRoomDAO;
 import org.openelisglobal.storage.dao.StorageShelfDAO;
 import org.openelisglobal.storage.valueholder.StorageDevice;
+import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageRoom;
 import org.openelisglobal.storage.valueholder.StorageShelf;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -118,8 +119,6 @@ public class CodeValidationServiceImpl implements CodeValidationService {
 
         case "shelf":
             // Shelf: unique within parent device
-            // TODO: Add findByCodeAndParentDevice method to StorageShelfDAO in
-            // implementation phase
             if (StringUtils.isBlank(parentId)) {
                 return CodeValidationResult.invalid("Parent device ID is required for shelf code validation");
             }
@@ -127,16 +126,15 @@ public class CodeValidationServiceImpl implements CodeValidationService {
             if (parentDevice == null) {
                 return CodeValidationResult.invalid("Parent device not found");
             }
-            // Placeholder: Will be implemented when DAO method is added
-            // StorageShelf existingShelf =
-            // storageShelfDAO.findByCodeAndParentDevice(normalized, parentDevice);
-            // For now, skip uniqueness check for shelf (will be added in implementation)
+            StorageShelf existingShelf = storageShelfDAO.findByCodeAndParentDevice(normalized, parentDevice);
+            if (existingShelf != null && !String.valueOf(existingShelf.getId()).equals(locationId)) {
+                return CodeValidationResult.invalid(
+                        String.format("Code '%s' already exists for another shelf in this device", normalized));
+            }
             break;
 
         case "rack":
             // Rack: unique within parent shelf
-            // TODO: Add findByCodeAndParentShelf method to StorageRackDAO in implementation
-            // phase
             if (StringUtils.isBlank(parentId)) {
                 return CodeValidationResult.invalid("Parent shelf ID is required for rack code validation");
             }
@@ -144,10 +142,11 @@ public class CodeValidationServiceImpl implements CodeValidationService {
             if (parentShelf == null) {
                 return CodeValidationResult.invalid("Parent shelf not found");
             }
-            // Placeholder: Will be implemented when DAO method is added
-            // StorageRack existingRack =
-            // storageRackDAO.findByCodeAndParentShelf(normalized, parentShelf);
-            // For now, skip uniqueness check for rack (will be added in implementation)
+            StorageRack existingRack = storageRackDAO.findByCodeAndParentShelf(normalized, parentShelf);
+            if (existingRack != null && !String.valueOf(existingRack.getId()).equals(locationId)) {
+                return CodeValidationResult
+                        .invalid(String.format("Code '%s' already exists for another rack in this shelf", normalized));
+            }
             break;
 
         default:
