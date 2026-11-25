@@ -42,7 +42,6 @@ import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
-import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 
@@ -322,8 +321,8 @@ public class DiagnosticReportAndObservationInterpretationTest {
 
     @Test
     public void testObservationNote_WithoutPassedNotes_QueriesNoteService() {
-        Note compNote = createNote("n1", Note.EXTERNAL, "Interpretation",
-                "Component finding loaded via note service", "comp-001", 1700000100000L);
+        Note compNote = createNote("n1", Note.EXTERNAL, "Interpretation", "Component finding loaded via note service",
+                "comp-001", 1700000100000L);
         when(noteService.getNotes(analysis)).thenReturn(Collections.singletonList(compNote));
 
         Observation obs = observationTransformService.transformResultToObservation(result);
