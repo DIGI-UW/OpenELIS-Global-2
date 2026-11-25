@@ -18,6 +18,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,6 +31,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/rest/order")
+@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS', 'VALIDATION', 'ADMIN')")
 public class OrderAttachmentRestController extends BaseRestController {
 
     @Autowired
@@ -118,6 +120,7 @@ public class OrderAttachmentRestController extends BaseRestController {
                 .contentLength(fileContent.length).body(resource);
     }
 
+    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @DeleteMapping(value = "/attachments/{attachmentId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> deleteAttachment(@PathVariable Integer attachmentId, HttpServletRequest request) {
         OrderAttachment attachment = orderAttachmentService.get(attachmentId);
