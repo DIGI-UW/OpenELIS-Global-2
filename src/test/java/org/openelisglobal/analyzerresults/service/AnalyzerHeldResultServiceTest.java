@@ -2,10 +2,12 @@ package org.openelisglobal.analyzerresults.service;
 
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -53,6 +55,36 @@ public class AnalyzerHeldResultServiceTest {
         assertThrows(IllegalStateException.class, () -> service.dismiss("9002", "17"));
 
         verify(analyzerResultsService, never()).delete(any(String.class), any(String.class));
+    }
+
+    /**
+     * OGC-1662: removing a test from review removed its main row only; its
+     * component rows stayed held and the test came straight back.
+     */
+    @Test
+    public void aHeldTestLeavesReviewWithItsComponentRowsOnTheSameTube() {
+        AnalyzerResults main = rowOfTest("9101", null, AnalyzerResults.IMPORT_ISSUE_AWAITING_PLACEMENT);
+        AnalyzerResults part = rowOfTest("9102", null, AnalyzerResults.IMPORT_ISSUE_AWAITING_PLACEMENT);
+        AnalyzerResults otherTube = rowOfTest("9103", "ACC-9-2", AnalyzerResults.IMPORT_ISSUE_AWAITING_PLACEMENT);
+        AnalyzerResults waiting = rowOfTest("9104", null, null);
+        when(analyzerResultsService.get("9101")).thenReturn(main);
+        when(analyzerResultsService.getAllMatching(anyMap())).thenReturn(List.of(main, part, otherTube, waiting));
+
+        service.dismiss("9101", "17");
+
+        verify(analyzerResultsService).delete("9101", "17");
+        verify(analyzerResultsService).delete("9102", "17");
+        verify(analyzerResultsService, never()).delete("9103", "17");
+        verify(analyzerResultsService, never()).delete("9104", "17");
+    }
+
+    private static AnalyzerResults rowOfTest(String id, String tube, String reason) {
+        AnalyzerResults row = row(id, false, reason);
+        row.setAnalyzerId("11");
+        row.setAccessionNumber("ACC-9");
+        row.setTestId("380");
+        row.setInstrumentSpecimenId(tube);
+        return row;
     }
 
     private static AnalyzerResults row(String id, boolean held, String reason) {

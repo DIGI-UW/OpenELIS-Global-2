@@ -7,6 +7,7 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { putToOpenElisServerFullResponse } from "../../../utils/Utils";
+import StaleSaveNotice from "../../../common/StaleSaveNotice";
 import {
   useInvalidateServerData,
   useServerData,
@@ -16,6 +17,7 @@ import ValidationPolicyEditor, {
   levelRolesUrl,
   policyError,
   policyOutcomes,
+  refusalOf,
   roleNamesOf,
   sameDraft,
   toDraft,
@@ -74,7 +76,10 @@ export default function ValidationPolicySection({ policy: loaded }) {
     setNotice(null);
     putToOpenElisServerFullResponse(
       VALIDATION_POLICY_API,
-      JSON.stringify(draftPayload(draft)),
+      JSON.stringify({
+        ...draftPayload(draft),
+        lastupdated: policy.lastupdated,
+      }),
       async (response) => {
         setSaving(false);
         if (response && response.ok) {
@@ -85,16 +90,12 @@ export default function ValidationPolicySection({ policy: loaded }) {
           setNotice({ kind: "success", code: "saved" });
           return;
         }
-        let body;
-        try {
-          body = (await response?.json()) || {};
-        } catch {
-          body = {};
-        }
-        setNotice({
-          kind: "error",
-          code: `refused.${body.code || "saveFailed"}`,
-        });
+        const refusal = await refusalOf(response);
+        setNotice(
+          refusal.stale
+            ? { kind: "stale", ...refusal }
+            : { kind: "error", code: `refused.${refusal.code}` },
+        );
       },
     );
   };
@@ -153,7 +154,16 @@ export default function ValidationPolicySection({ policy: loaded }) {
               </p>
             </div>
           )}
-          {notice && (
+          {notice && notice.kind === "stale" && (
+            <StaleSaveNotice
+              testId="validation-policy-stale"
+              message={message("refused.stale", {
+                who: notice.modifiedBy,
+                when: notice.modifiedAt,
+              })}
+            />
+          )}
+          {notice && notice.kind !== "stale" && (
             <InlineNotification
               kind={notice.kind}
               lowContrast

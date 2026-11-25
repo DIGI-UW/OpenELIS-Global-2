@@ -17,6 +17,8 @@ public interface MicroCaseSearchDAO {
 
     List<String> referralAttentionCases();
 
+    List<String> openReferralCases();
+
     List<String> questionnaireCases(MicroCaseSearchForm query, Set<String> units);
 
     long count(MicroCaseSearchForm query, Set<String> labUnitIds);

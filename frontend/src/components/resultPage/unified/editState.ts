@@ -39,15 +39,18 @@ export type RowEditEvent =
   | { type: "SAVE_REJECTED_STALE" };
 
 /**
- * Initial state from the loaded row: saved value present ⇒ SAVED; otherwise
- * WAITING when a run holds its analyzer value, else EMPTY.
+ * Initial state from the loaded row: saved value present ⇒ SAVED, unless the
+ * run it came from holds its test undecided (FR-C4: held rows offer no edit),
+ * which is WAITING; otherwise WAITING when a run holds its analyzer value, else
+ * EMPTY.
  */
 export function initialRowState(
   hasSavedValue: boolean,
   waitingInRun = false,
+  heldInRun = false,
 ): RowEditState {
   if (hasSavedValue) {
-    return "SAVED";
+    return heldInRun ? "WAITING" : "SAVED";
   }
   return waitingInRun ? "WAITING" : "EMPTY";
 }

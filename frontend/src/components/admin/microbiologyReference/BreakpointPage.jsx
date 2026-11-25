@@ -45,6 +45,7 @@ import {
   saveBreakpointRule,
 } from "./api";
 import BreakpointRuleModal from "./BreakpointRuleModal";
+import OrganismPicker from "../../microbiology/OrganismPicker";
 import { buildReferenceQuery, buildReferenceRequestQuery } from "./queryState";
 import { sectionPath } from "./sectionConfig";
 import useModalFocusReturn from "./useModalFocusReturn";
@@ -74,11 +75,14 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
   const [savingRule, setSavingRule] = useState(false);
   const { rememberReturnFocus, restoreReturnFocus } = useModalFocusReturn();
   const [options, setOptions] = useState({
-    organisms: [],
     organismGroups: [],
     antibiotics: [],
     specimenTypes: [],
   });
+  // One filter value names either an organism group or a single organism.
+  const filtersByGroup = options.organismGroups.some(
+    (group) => group.id === query.organism,
+  );
 
   const ruleEditId = query.edit?.startsWith("rule:")
     ? query.edit.slice("rule:".length)
@@ -126,13 +130,12 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
     if (!standardId) return undefined;
     const controller = new AbortController();
     Promise.all([
-      getReferenceOptions("organisms", controller.signal),
-      getReferenceOptions("organism-groups", controller.signal),
+      getReferenceOptions("lab-organism-groups", controller.signal),
       getReferenceOptions("antibiotics", controller.signal),
       getReferenceOptions("specimen-types", controller.signal),
     ])
-      .then(([organisms, organismGroups, antibiotics, specimenTypes]) =>
-        setOptions({ organisms, organismGroups, antibiotics, specimenTypes }),
+      .then(([organismGroups, antibiotics, specimenTypes]) =>
+        setOptions({ organismGroups, antibiotics, specimenTypes }),
       )
       .catch((requestError) => {
         if (requestError.name !== "AbortError") setError(requestError.message);
@@ -218,6 +221,12 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
       {
         key: "method",
         header: intl.formatMessage({ id: "microbiology.admin.field.method" }),
+      },
+      {
+        key: "diskContent",
+        header: intl.formatMessage({
+          id: "microbiology.admin.astPanels.diskContent",
+        }),
       },
       {
         key: "susceptible",
@@ -378,11 +387,31 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
     effectiveDate: standard.effectiveDate || "—",
     actions: standard.id,
   }));
+  const inactiveRuleIds = new Set(
+    rules.rows.filter((rule) => rule.active === false).map((rule) => rule.id),
+  );
   const ruleRows = rules.rows.map((rule) => ({
     id: rule.id,
-    organism: rule.organismName || rule.organismGroup,
+    organism: [
+      rule.organismName ||
+        rule.organismGroup ||
+        (rule.organismCodeType
+          ? intl.formatMessage(
+              {
+                id: `microbiology.admin.breakpoints.whonetLevel.${rule.organismCodeType.replace("+", "_")}`,
+              },
+              { code: rule.organismCode },
+            )
+          : intl.formatMessage({
+              id: "microbiology.admin.astRules.anyOrganism",
+            })),
+      rule.siteOfInfection,
+    ]
+      .filter(Boolean)
+      .join(", "),
     antibiotic: `${rule.antibioticName || ""} (${rule.antibioticCode || ""})`,
     method: rule.method,
+    diskContent: rule.diskContent || "—",
     susceptible: rule.susceptibleValue ?? "—",
     intermediate:
       rule.intermediateLowerValue == null && rule.intermediateUpperValue == null
@@ -695,11 +724,11 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
                 </TableToolbar>
                 <div className="microbiology-admin__filters">
                   <Select
-                    id="microbiology-breakpoint-organism"
+                    id="microbiology-breakpoint-organism-group"
                     labelText={intl.formatMessage({
-                      id: "microbiology.admin.breakpoints.organism",
+                      id: "microbiology.admin.breakpoints.organismGroup",
                     })}
-                    value={query.organism}
+                    value={filtersByGroup ? query.organism : ""}
                     onChange={(event) =>
                       setQuery({ organism: event.target.value })
                     }
@@ -722,14 +751,15 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
                         )}
                       />
                     ))}
-                    {options.organisms.map((item) => (
-                      <SelectItem
-                        key={item.id}
-                        value={item.id}
-                        text={item.label}
-                      />
-                    ))}
                   </Select>
+                  <OrganismPicker
+                    id="microbiology-breakpoint-organism"
+                    titleText={intl.formatMessage({
+                      id: "microbiology.isolate.organism",
+                    })}
+                    value={filtersByGroup ? "" : query.organism}
+                    onChange={(organism) => setQuery({ organism })}
+                  />
                   <Select
                     id="microbiology-breakpoint-antibiotic"
                     labelText={intl.formatMessage({
@@ -819,15 +849,24 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
                         {row.cells.map((cell) => (
                           <TableCell key={cell.id}>
                             {cell.info.header === "source" ? (
-                              <Tag
-                                type={
-                                  cell.value === "LOCAL" ? "purple" : "cyan"
-                                }
-                              >
-                                {intl.formatMessage({
-                                  id: `microbiology.admin.breakpoints.source.${cell.value.toLowerCase()}`,
-                                })}
-                              </Tag>
+                              <>
+                                <Tag
+                                  type={
+                                    cell.value === "LOCAL" ? "purple" : "cyan"
+                                  }
+                                >
+                                  {intl.formatMessage({
+                                    id: `microbiology.admin.breakpoints.source.${cell.value.toLowerCase()}`,
+                                  })}
+                                </Tag>
+                                {inactiveRuleIds.has(row.id) && (
+                                  <Tag type="gray">
+                                    {intl.formatMessage({
+                                      id: "microbiology.admin.status.inactive",
+                                    })}
+                                  </Tag>
+                                )}
+                              </>
                             ) : cell.info.header === "actions" ? (
                               canEditRules && (
                                 <OverflowMenu
@@ -877,7 +916,6 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
 
       <BreakpointRuleModal
         value={ruleDraft}
-        organisms={options.organisms}
         organismGroups={options.organismGroups}
         antibiotics={options.antibiotics}
         specimenTypes={options.specimenTypes}

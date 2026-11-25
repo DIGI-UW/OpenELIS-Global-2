@@ -13,7 +13,6 @@ import {
   Select,
   SelectItem,
   MultiSelect,
-  DatePicker,
   DatePickerInput,
   InlineLoading,
   DataTable,
@@ -27,7 +26,9 @@ import {
   Pagination,
   Tag,
 } from "@carbon/react";
+import { DatePicker } from "../common/DatePicker";
 import { LineChart, SimpleBarChart } from "@carbon/charts-react";
+import { format } from "date-fns";
 import "@carbon/charts/styles.css";
 import { FormattedMessage, useIntl } from "react-intl";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
@@ -35,6 +36,7 @@ import { ConfigurationContext } from "../layout/Layout";
 import { getFromOpenElisServer, toLocalIsoDate } from "../utils/Utils";
 import { generateCompliancePdf } from "./utils/compliancePdfGenerator";
 import { labNow } from "../utils/labClock";
+import useSiteDateFormat from "../common/useSiteDateFormat";
 
 const KPI_KEYS = [
   { key: "totalOrders", i18n: "compliance.dashboard.kpi.totalOrders" },
@@ -60,6 +62,7 @@ export default function EnvironmentalDashboard() {
   const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const { configurationProperties } = useContext(ConfigurationContext) || {};
+  const siteDate = useSiteDateFormat();
 
   const excHeaders = [
     {
@@ -304,10 +307,26 @@ export default function EnvironmentalDashboard() {
       const resolvedSiteName =
         (siteParams && siteParams.siteName) || singleSite;
       await generateCompliancePdf(
-        { summary, trend, siteParams, comparison, exceedances },
+        {
+          summary,
+          trend,
+          siteParams,
+          comparison,
+          exceedances: exceedances && {
+            ...exceedances,
+            items: (exceedances.items || []).map((item) => ({
+              ...item,
+              date: siteDate.formatIsoDate(item.date),
+            })),
+          },
+        },
         {
           labName,
-          period: startDate + " – " + endDate,
+          period:
+            siteDate.formatIsoDate(startDate) +
+            " – " +
+            siteDate.formatIsoDate(endDate),
+          generatedAt: format(labNow(), `${siteDate.pattern} HH:mm`),
           standard:
             (standards.find((s) => String(s.id) === standardId) || {}).name ||
             intl.formatMessage({
@@ -329,7 +348,7 @@ export default function EnvironmentalDashboard() {
     exceedances && exceedances.items ? exceedances.items : []
   ).map((item, i) => ({
     id: String(i),
-    date: item.date,
+    date: siteDate.formatIsoDate(item.date),
     labNumber: item.labNumber,
     siteName: item.siteName,
     parameter: item.parameter,
@@ -354,8 +373,9 @@ export default function EnvironmentalDashboard() {
         <Column lg={3} md={4} sm={4}>
           <DatePicker
             datePickerType="single"
-            dateFormat="Y-m-d"
-            value={startDate}
+            dateFormat={siteDate.dateFormat}
+            parseDate={siteDate.parseDate}
+            value={siteDate.formatIsoDate(startDate)}
             onChange={([s]) => {
               if (s) setStartDate(toLocalIsoDate(s));
             }}
@@ -366,15 +386,16 @@ export default function EnvironmentalDashboard() {
                 id: "compliance.dashboard.filter.dateRange",
                 defaultMessage: "Start date",
               })}
-              placeholder="yyyy-mm-dd"
+              placeholder={siteDate.placeholder}
             />
           </DatePicker>
         </Column>
         <Column lg={3} md={4} sm={4}>
           <DatePicker
             datePickerType="single"
-            dateFormat="Y-m-d"
-            value={endDate}
+            dateFormat={siteDate.dateFormat}
+            parseDate={siteDate.parseDate}
+            value={siteDate.formatIsoDate(endDate)}
             onChange={([e]) => {
               if (e) setEndDate(toLocalIsoDate(e));
             }}
@@ -385,7 +406,7 @@ export default function EnvironmentalDashboard() {
                 id: "compliance.dashboard.filter.dateRangeEnd",
                 defaultMessage: "End date",
               })}
-              placeholder="yyyy-mm-dd"
+              placeholder={siteDate.placeholder}
             />
           </DatePicker>
         </Column>

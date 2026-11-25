@@ -25,4 +25,13 @@ public interface QcViolationNceService {
      * the QC result.
      */
     NcEvent createNceForFailedControl(QCResult qcResult);
+
+    /**
+     * OGC-1200 FR-C5, FR-G6: the non-conformity a decision on a held test in a run
+     * files (mandatory for Accept despite, offered on Reject), pre-populated from
+     * the run and linked to the test's analyses in it. Its trigger is the decision,
+     * so it never counts as a second QC hold.
+     */
+    NcEvent createNceForRunDecision(String decisionId, String title, String description,
+            java.util.Collection<String> analysisIds, String sysUserId);
 }

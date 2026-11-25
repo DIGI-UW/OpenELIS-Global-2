@@ -58,4 +58,45 @@ describe("DisposeLotModal", () => {
     expect(unmountedWarnings).toEqual([]);
     consoleError.mockRestore();
   });
+
+  it("lists the disposal reasons in the reader language and still sends the reason code", async () => {
+    InventoryLotAPI.dispose.mockResolvedValue({});
+    const french = {
+      ...messages,
+      "disposal.reason.EXPIRED": "Périmé",
+      "disposal.reason.DAMAGED": "Endommagé",
+      "disposal.reason.CONTAMINATED": "Contaminé",
+      "disposal.reason.RECALLED": "Rappel du fabricant",
+      "disposal.reason.QC_FAILED": "Échec du contrôle qualité",
+      "disposal.reason.OTHER": "Autre",
+    };
+    render(
+      <IntlProvider locale="fr" messages={french}>
+        <DisposeLotModal open lot={lot} onClose={vi.fn()} onSave={vi.fn()} />
+      </IntlProvider>,
+    );
+
+    fireEvent.click(
+      screen.getByRole("combobox", { name: messages["disposal.reason"] }),
+    );
+    expect(
+      screen.getAllByRole("option").map((option) => option.textContent),
+    ).toEqual([
+      "Périmé",
+      "Endommagé",
+      "Contaminé",
+      "Rappel du fabricant",
+      "Échec du contrôle qualité",
+      "Autre",
+    ]);
+
+    fireEvent.click(
+      screen.getByRole("option", { name: "Rappel du fabricant" }),
+    );
+    fireEvent.click(screen.getByText(messages["button.dispose"]));
+
+    await waitFor(() =>
+      expect(InventoryLotAPI.dispose).toHaveBeenCalledWith(4, "RECALLED", ""),
+    );
+  });
 });

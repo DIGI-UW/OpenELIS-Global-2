@@ -24,6 +24,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/rest/microbiology/reference")
 @PreAuthorize(MicrobiologyRestControllerSupport.BENCH_ACCESS)
 public class MicrobiologyReferenceRestController extends BaseRestController {
+    private static final int ORGANISM_PAGE = 20;
+    private static final int MAX_ORGANISMS = 50;
 
     private final MicrobiologyReferenceService referenceService;
     private final MicroBreakpointService breakpointService;
@@ -53,13 +55,20 @@ public class MicrobiologyReferenceRestController extends BaseRestController {
         return ResponseEntity.ok(forms);
     }
 
+    /**
+     * The organism list is too long to send whole: a picker asks for the matches to
+     * what was typed, or for the organisms it already holds by id.
+     */
     @GetMapping("/organisms")
-    public ResponseEntity<List<MicroReferenceOptionForm>> getOrganisms() {
-        List<MicroReferenceOptionForm> forms = new ArrayList<>();
-        for (MicroOrganism organism : referenceService.getActiveOrganisms()) {
-            forms.add(toOrganismForm(organism));
+    public ResponseEntity<List<MicroReferenceOptionForm>> getOrganisms(@RequestParam(required = false) String q,
+            @RequestParam(required = false) List<String> id,
+            @RequestParam(defaultValue = "" + ORGANISM_PAGE) int limit) {
+        if (id != null && !id.isEmpty()) {
+            return ResponseEntity.ok(referenceService.getOrganisms(id.stream().limit(MAX_ORGANISMS).toList()).stream()
+                    .map(organism -> toOrganismForm(organism, null)).toList());
         }
-        return ResponseEntity.ok(forms);
+        return ResponseEntity.ok(referenceService.searchOrganisms(q, Math.max(1, Math.min(limit, MAX_ORGANISMS)))
+                .stream().map(match -> toOrganismForm(match.organism(), match.formerName())).toList());
     }
 
     @GetMapping("/breakpoint-standards")
@@ -112,11 +121,12 @@ public class MicrobiologyReferenceRestController extends BaseRestController {
         return form;
     }
 
-    private MicroReferenceOptionForm toOrganismForm(MicroOrganism organism) {
+    private MicroReferenceOptionForm toOrganismForm(MicroOrganism organism, String formerName) {
         MicroReferenceOptionForm form = new MicroReferenceOptionForm();
         form.id = organism.getId();
         form.label = organism.getDisplayName();
         form.code = organism.getWhonetCode();
+        form.formerName = formerName;
         return form;
     }
 }

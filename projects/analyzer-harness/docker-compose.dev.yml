@@ -133,6 +133,10 @@ services:
     volumes:
       - ../../frontend/src:/app/src
       - ../../frontend/public:/app/public
+      # The module SDK (the shell's shared list, the contract version) from the
+      # checkout, so an edit reaches the running shell and a published image
+      # built before the package existed still resolves it.
+      - ../../frontend/packages:/app/packages
       - ../../volume/translation:/app/public/translation
 
   proxy:

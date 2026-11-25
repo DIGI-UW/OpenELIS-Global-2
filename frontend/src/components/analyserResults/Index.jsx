@@ -150,10 +150,10 @@ const Index = () => {
   };
 
   // A test's action checkboxes are shown on its head row, which changes when a
-  // held row is recovered; a restored action moves with it.
-  const moveTestActionsToHeads = (rows, serverRows, applied) => {
+  // held row is recovered; a restored action moves with it. Every row of the
+  // test takes it, as the server accepts a test when any of its rows is ticked.
+  const moveTestActionsToHeads = (rows, applied) => {
     const { headIdByKey } = groupTestParts(rows);
-    const serverById = new Map(serverRows.map((row) => [String(row.id), row]));
     const actionsByTest = new Map();
     rows.forEach((row) => {
       const edits = applied[String(row.id)] ?? {};
@@ -174,11 +174,10 @@ const Index = () => {
       const moved = { ...row };
       const edits = { ...applied[id] };
       Object.entries(actions).forEach(([field, value]) => {
+        moved[field] = value;
         if (isHead) {
-          moved[field] = value;
           edits[field] = value;
-        } else if (Object.prototype.hasOwnProperty.call(edits, field)) {
-          moved[field] = serverById.get(id)?.[field];
+        } else {
           delete edits[field];
         }
       });
@@ -220,7 +219,7 @@ const Index = () => {
           })
         : data.resultList;
       const resultList = editsToRestore
-        ? moveTestActionsToHeads(restoredList, data.resultList, applied)
+        ? moveTestActionsToHeads(restoredList, applied)
         : restoredList;
       setRestoredEdits(applied);
       setResults({ ...data, resultList });

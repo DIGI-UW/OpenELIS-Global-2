@@ -11,7 +11,6 @@ import {
   InlineNotification,
   Button,
   Column,
-  DatePicker,
   DatePickerInput,
   Grid,
   Heading,
@@ -28,6 +27,7 @@ import {
   TableRow,
   Tag,
 } from "@carbon/react";
+import { DatePicker } from "../../common/DatePicker";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   displayDateToIso,
@@ -207,11 +207,15 @@ interface SaveResponse {
  */
 export interface RunEntry {
   runId: number;
-  runRowId: string;
+  /**
+   * The staged analyzer value being accepted; absent for a workplan batch's row,
+   * which has no analyzer value and records into its run when saved (FR-D5).
+   */
+  runRowId?: string | null;
   testId?: string | null;
   componentId?: string | null;
   /** The value the row is prefilled with: for a dictionary test, the choice's id. */
-  value: string;
+  value?: string | null;
   /** What the instrument sent, shown once the value is edited. */
   reported?: string | null;
   units?: string | null;
@@ -234,6 +238,17 @@ export const isRunEntryRow = (
   !row.resultValue &&
   (!row.multiSelectResultValues || row.multiSelectResultValues === "{}");
 
+/**
+ * OGC-1200 FR-D5: a row batched in a workplan run is entered here and records
+ * into its run, so only a held batch, or a value waiting in an analyzer run,
+ * keeps the row from being entered.
+ */
+export const isBatchedRun = (run?: WaitingRun | null): boolean =>
+  run?.source === "WORKPLAN";
+
+export const blocksEntry = (run?: WaitingRun | null): boolean =>
+  Boolean(run) && (!isBatchedRun(run) || Boolean(run?.held));
+
 /** FR-E10: the unit check, made only when both sides name a unit. */
 export const unitsDiffer = (
   analyzerUnits?: string | null,
@@ -246,6 +261,10 @@ export const unitsDiffer = (
 
 export interface UnifiedResultsProps {
   accessionNumber?: string;
+  /**
+   * Shown inside another page (a run, a notebook, a case), which shows the
+   * notifications, so an embedded worklist does not show them a second time.
+   */
   embedded?: boolean;
   includeFinished?: boolean;
   /** Opens a run on /Results (OGC-1200); absent where runs are not offered. */
@@ -281,6 +300,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
   );
   const [showPatientSearch, setShowPatientSearch] = useState<boolean>(false);
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [showHeld, setShowHeld] = useState(true);
   const [rows, setRows] = useState<WorklistRow[]>([]);
   const [rowStates, setRowStates] = useState<Record<string, RowEditState>>({});
   const [staleInfo, setStaleInfo] = useState<
@@ -459,7 +479,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
           .slice(0, 1)
           .map((row) => ({
             ...row,
-            resultValue: entry.value,
+            resultValue: entry.value ?? row.resultValue,
             analyzerId: entry.analyzerId || row.analyzerId,
           }));
       }
@@ -502,7 +522,8 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
               row.multiSelectResultValues &&
               row.multiSelectResultValues !== "{}",
             ),
-          Boolean(row.waitingRun),
+          blocksEntry(row.waitingRun),
+          Boolean(row.waitingRun?.held),
         );
         if (unsaved[worklistRowKey(row)]) {
           states[worklistRowKey(row)] =
@@ -729,12 +750,17 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
     return counts;
   }, [rows]);
 
+  const heldCount = useMemo(
+    () => rows.filter((row) => row.waitingRun?.held).length,
+    [rows],
+  );
   const filteredRows = useMemo(
     () =>
-      statusFilter === "ALL"
+      (statusFilter === "ALL"
         ? rows
-        : rows.filter((row) => row.analysisStatusId === statusFilter),
-    [rows, statusFilter],
+        : rows.filter((row) => row.analysisStatusId === statusFilter)
+      ).filter((row) => showHeld || !row.waitingRun?.held),
+    [rows, statusFilter, showHeld],
   );
 
   const pagedRows = filteredRows;
@@ -1273,7 +1299,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
       postToOpenElisServerJsonResponse(
         `/rest/results-entry/analysis/${row.analysisId}/result`,
         JSON.stringify(
-          entry
+          entry?.runRowId
             ? { testResult: item, runRowId: entry.runRowId }
             : { testResult: item },
         ),
@@ -1546,7 +1572,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
 
   return (
     <>
-      <AlertDialog />
+      {!embedded && <AlertDialog />}
       {!embedded && <PageBreadCrumb breadcrumbs={breadcrumbs} />}
       {loading && (
         <Loading
@@ -1767,6 +1793,17 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                   {status.value} ({statusCounts[status.id]})
                 </Tag>
               ))}
+            {(heldCount > 0 || !showHeld) && (
+              <Tag
+                type={showHeld ? "blue" : "gray"}
+                onClick={() => setShowHeld((shown) => !shown)}
+                className="unifiedResultsChip"
+                data-testid="held-chip"
+                aria-pressed={showHeld}
+              >
+                <FormattedMessage id="run.filter.held" /> ({heldCount})
+              </Tag>
+            )}
           </Column>
         )}
 
@@ -1914,12 +1951,14 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                               <FormattedMessage id="label.results.referredOut" />
                             </Tag>
                           )}
-                          {state === "WAITING" && row.waitingRun && (
-                            <WaitingTag
-                              run={row.waitingRun}
-                              onOpenRun={onOpenRun}
-                            />
-                          )}
+                          {row.waitingRun &&
+                            (state === "WAITING" ||
+                              isBatchedRun(row.waitingRun)) && (
+                              <WaitingTag
+                                run={row.waitingRun}
+                                onOpenRun={onOpenRun}
+                              />
+                            )}
                         </TableCell>
                         <TableCell className="unifiedResultsSmallCell">
                           {methods.find((m) => m.id === row.testMethod)
@@ -1964,7 +2003,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                               }
                             />
                           </span>
-                          {runEntry &&
+                          {runEntry?.runRowId &&
                             showSave(state) &&
                             (row.resultValue === runEntry.value ? (
                               <Tag
@@ -1988,7 +2027,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                                 />
                               </Tag>
                             ))}
-                          {runEntry &&
+                          {runEntry?.runRowId &&
                             showSave(state) &&
                             unitsDiffer(runEntry.units, row.unitsOfMeasure) && (
                               <Tag
@@ -2068,6 +2107,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                               domain={domain}
                               editable={isRowEditable(state)}
                               editing={isModifyingSavedResult(state)}
+                              inRun={state === "WAITING"}
                               testSectionId={selectedLabUnit || undefined}
                               loadedAnalyzerId={loadedAnalyzers[key]}
                               methods={methods}

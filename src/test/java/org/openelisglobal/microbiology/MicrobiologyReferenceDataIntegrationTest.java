@@ -136,8 +136,7 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
     public void reviewedScenarioCanReleaseWithoutBypassingFinalRequirements() {
         String actor = scenarioActor;
         var scenario = uatScenarioService.provision(scenarioRequest("AST_REVIEWED"), actor);
-        var corrected = referenceService.getActiveOrganisms().stream().filter(o -> "KPNUAT".equals(o.getWhonetCode()))
-                .findFirst().orElseThrow();
+        var corrected = referenceService.searchOrganisms("KPNUAT", 1).get(0).organism();
         var panel = referenceService.getActiveAstPanels(null).stream()
                 .filter(p -> p.getId().equals(scenario.astPanelId)).findFirst().orElseThrow();
         org.openelisglobal.microbiology.service.MicroAstPanelAssignmentService.requireCompatible(corrected, panel);
@@ -160,9 +159,7 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
     @Test
     public void activeReferenceLookupsReturnTheFixtureData() {
         assertEquals(referenceData.organism().getDisplayName(),
-                referenceService.getActiveOrganisms().stream()
-                        .filter(organism -> organism.getId().equals(referenceData.organism().getId())).findFirst()
-                        .orElseThrow().getDisplayName());
+                referenceService.getOrganisms(List.of(referenceData.organism().getId())).get(0).getDisplayName());
         assertEquals(referenceData.antibiotic().getDisplayName(),
                 referenceService.getActiveAntibiotics().stream()
                         .filter(antibiotic -> antibiotic.getId().equals(referenceData.antibiotic().getId())).findFirst()
@@ -176,13 +173,13 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
     @Test
     public void breakpointLookupReturnsBestRuleAndNullWhenMissing() {
         MicroBreakpointRule rule = breakpointService.findBreakpointRule(referenceData.standard().getId(),
-                referenceData.organism().getId(), "Enterobacterales", referenceData.antibiotic().getId(), "MIC", null,
+                referenceData.organism().getId(), java.util.Set.of(), referenceData.antibiotic().getId(), "MIC", null,
                 "MIC");
 
         assertEquals(referenceData.rule().getId(), rule.getId());
         assertEquals(new BigDecimal("8.0000"), rule.getSusceptibleValue());
         assertNull(breakpointService.findBreakpointRule(referenceData.standard().getId(),
-                referenceData.organism().getId(), "Enterobacterales", "missing", "MIC", null, "MIC"));
+                referenceData.organism().getId(), java.util.Set.of(), "missing", "MIC", null, "MIC"));
     }
 
     @Test
@@ -294,8 +291,8 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
         report.initializeReport(form);
         String text = org.openelisglobal.testsupport.PdfText.of(report.runReport()).replaceAll("\\s+", " ");
         assertTrue(text, text.contains("ISO-1: Escherichia coli (UAT)"));
-        assertTrue(text, text.contains("Ciprofloxacin (UAT) 4 ug/mL Resistant CLSI 2026"));
-        assertTrue(text, text.contains("Gentamicin (UAT) 4 ug/mL Susceptible CLSI 2026"));
+        assertTrue(text, text.contains("Ciprofloxacin (UAT) 4 mg/L Resistant CLSI 2026"));
+        assertTrue(text, text.contains("Gentamicin (UAT) 4 mg/L Susceptible CLSI 2026"));
     }
 
     private MicroAntibiotic uatAntibiotic(String whonetCode) {
