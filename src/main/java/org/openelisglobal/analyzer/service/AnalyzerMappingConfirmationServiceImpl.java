@@ -133,13 +133,22 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
     @Override
     @Transactional(readOnly = true)
     public AnalyzerMappingVerificationAssessment assessCurrent(AnalyzerMappingSnapshot candidate) {
+        return assessCurrent(candidate, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AnalyzerMappingVerificationAssessment assessCurrent(AnalyzerMappingSnapshot candidate,
+            AnalyzerMappingCatalogState catalog) {
         CandidateContext context = requireCandidate(candidate);
         Optional<AnalyzerMappingConfirmation> stored = confirmationDAO.findByMappingId(candidate.mapping().getId());
         if (stored.isEmpty()) {
             return AnalyzerMappingVerificationAssessment.unconfirmed();
         }
         AnalyzerMappingConfirmation confirmation = stored.get();
-        boolean mappingsCurrent = isCurrent(candidate, context, confirmation) && hasCurrentCatalogBindings(candidate)
+        boolean mappingsCurrent = isCurrent(candidate, context, confirmation)
+                && hasCurrentCatalogBindings(candidate,
+                        catalog == null ? AnalyzerMappingCatalogState.load(mappingCatalogService) : catalog)
                 && hasExactSavedRows(candidate, confirmation);
         return new AnalyzerMappingVerificationAssessment(mappingsCurrent, confirmation);
     }
@@ -207,8 +216,11 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
     }
 
     private boolean hasCurrentCatalogBindings(AnalyzerMappingSnapshot candidate) {
-        AnalyzerMappingCatalogState.Validation catalog = AnalyzerMappingCatalogState.load(mappingCatalogService)
-                .validate(candidate);
+        return hasCurrentCatalogBindings(candidate, AnalyzerMappingCatalogState.load(mappingCatalogService));
+    }
+
+    private boolean hasCurrentCatalogBindings(AnalyzerMappingSnapshot candidate, AnalyzerMappingCatalogState state) {
+        AnalyzerMappingCatalogState.Validation catalog = state.validate(candidate);
         return candidate.tests().stream()
                 .allMatch(row -> row.getMappingState() == AnalyzerMappingState.UNRESOLVED
                         || catalog.isCurrentTest(AnalyzerMappingRowKey.of(row)))

@@ -220,10 +220,10 @@ public class TestModifyEntryRestController extends BaseController {
             bean.setUom(testService.getUOM(test, false));
             if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(resultType)
                     && testResultService.getAllActiveTestResultsPerTest(test).size() != 0) {
-                bean.setSignificantDigits(
-                        testResultService.getAllActiveTestResultsPerTest(test).get(0).getSignificantDigits());
+                bean.setReportingDecimalPlaces(
+                        testResultService.getAllActiveTestResultsPerTest(test).get(0).getReportingDecimalPlaces());
                 bean.setHasLimitValues(true);
-                bean.setResultLimits(getResultLimits(test, bean.getSignificantDigits()));
+                bean.setResultLimits(getResultLimits(test, bean.getReportingDecimalPlaces()));
             }
             bean.setHasDictionaryValues(
                     TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(bean.getResultType()));
@@ -264,7 +264,7 @@ public class TestModifyEntryRestController extends BaseController {
         return beanList;
     }
 
-    private List<ResultLimitBean> getResultLimits(Test test, String significantDigits) {
+    private List<ResultLimitBean> getResultLimits(Test test, String reportingDecimalPlaces) {
         List<ResultLimitBean> limitBeans = new ArrayList<>();
 
         List<ResultLimit> resultLimitList = SpringContext.getBean(ResultLimitService.class).getResultLimits(test);
@@ -279,13 +279,13 @@ public class TestModifyEntryRestController extends BaseController {
         for (ResultLimit limit : resultLimitList) {
             ResultLimitBean bean = new ResultLimitBean();
             bean.setNormalRange(SpringContext.getBean(ResultLimitService.class).getDisplayReferenceRange(limit,
-                    significantDigits, "-"));
+                    reportingDecimalPlaces, "-"));
             bean.setValidRange(SpringContext.getBean(ResultLimitService.class).getDisplayValidRange(limit,
-                    significantDigits, "-"));
+                    reportingDecimalPlaces, "-"));
             bean.setReportingRange(SpringContext.getBean(ResultLimitService.class).getDisplayReportingRange(limit,
-                    significantDigits, "-"));
+                    reportingDecimalPlaces, "-"));
             bean.setCriticalRange(SpringContext.getBean(ResultLimitService.class).getDisplayCriticalRange(limit,
-                    significantDigits, "-"));
+                    reportingDecimalPlaces, "-"));
             bean.setGender(limit.getGender());
             bean.setAgeRange(SpringContext.getBean(ResultLimitService.class).getDisplayAgeRange(limit, "-"));
             limitBeans.add(bean);
@@ -576,7 +576,7 @@ public class TestModifyEntryRestController extends BaseController {
         }
     }
 
-    private void createTestResults(ArrayList<TestResult> testResults, String significantDigits,
+    private void createTestResults(ArrayList<TestResult> testResults, String reportingDecimalPlaces,
             TestAddParams testAddParams) {
         TypeOfTestResultServiceImpl.ResultType type = SpringContext.getBean(TypeOfTestResultService.class)
                 .getResultTypeById(testAddParams.resultTypeId);
@@ -587,7 +587,7 @@ public class TestModifyEntryRestController extends BaseController {
             testResult.setTestResultType(type.getCharacterValue());
             testResult.setSortOrder("1");
             testResult.setIsActive(true);
-            testResult.setSignificantDigits(significantDigits);
+            testResult.setReportingDecimalPlaces(reportingDecimalPlaces);
             testResults.add(testResult);
         } else if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(type.getCharacterValue())) {
             int sortOrder = 10;
@@ -622,7 +622,7 @@ public class TestModifyEntryRestController extends BaseController {
         Double highReportingRange = null;
         Double lowCritical = null;
         Double highCritical = null;
-        String significantDigits = testAddParams.significantDigits;
+        String reportingDecimalPlaces = testAddParams.reportingDecimalPlaces;
         boolean numericResults = TypeOfTestResultServiceImpl.ResultType.isNumericById(testAddParams.resultTypeId);
         boolean dictionaryResults = TypeOfTestResultServiceImpl.ResultType
                 .isDictionaryVarientById(testAddParams.resultTypeId);
@@ -686,7 +686,7 @@ public class TestModifyEntryRestController extends BaseController {
             testSet.sampleTypeTest = typeOfSampleTest;
 
             createPanelItems(testSet.panelItems, testAddParams);
-            createTestResults(testSet.testResults, significantDigits, testAddParams);
+            createTestResults(testSet.testResults, reportingDecimalPlaces, testAddParams);
             if (numericResults) {
                 testSet.resultLimits = createResultLimits(lowValid, highValid, lowReportingRange, highReportingRange,
                         testAddParams, highCritical, lowCritical);
@@ -777,7 +777,7 @@ public class TestModifyEntryRestController extends BaseController {
                 testAddParams.highReportingRange = obj.get("highReportingRange").toString();
                 testAddParams.lowCritical = obj.get("lowCritical").toString();
                 testAddParams.highCritical = obj.get("highCritical").toString();
-                testAddParams.significantDigits = obj.get("significantDigits").toString();
+                testAddParams.reportingDecimalPlaces = obj.get("reportingDecimalPlaces").toString();
                 extractLimits(obj, parser, testAddParams);
             } else if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVarientById(testAddParams.resultTypeId)) {
                 JSONArray dictionaryArray = (JSONArray) obj.get("dictionary");

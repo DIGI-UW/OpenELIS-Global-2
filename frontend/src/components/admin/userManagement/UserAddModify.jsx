@@ -16,6 +16,7 @@ import {
   PasswordInput,
   Checkbox,
   FormGroup,
+  InlineNotification,
   Modal,
 } from "@carbon/react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
@@ -72,6 +73,9 @@ function UserAddModify() {
   const intl = useIntl();
 
   const [saveButton, setSaveButton] = useState(true);
+  // The server's refusal of the login, shown under the field (OGC-1593): the
+  // site's userNameCharset can be stricter than the pattern checked here.
+  const [loginNameRefusal, setLoginNameRefusal] = useState(null);
   const [validation, setValidation] = useState({
     validatepassword: false,
     password: false,
@@ -405,6 +409,9 @@ function UserAddModify() {
       reloadUser.current = true;
       invalidateServerData();
     } else {
+      if (res?.errorKey === "errors.loginName.charset" && res?.error) {
+        setLoginNameRefusal(res.error);
+      }
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -422,6 +429,7 @@ function UserAddModify() {
   }
 
   function handleUserLoginNameChange(e) {
+    setLoginNameRefusal(null);
     const value = e.target.value.trim();
     const isValid = loginNameRegex.test(value);
 
@@ -856,6 +864,21 @@ function UserAddModify() {
     );
   }
 
+  if (readUserFailed && ID !== "0") {
+    return (
+      <div className="adminPageContent">
+        <PageBreadCrumb breadcrumbs={breadcrumbs} />
+        <InlineNotification
+          kind="error"
+          lowContrast
+          hideCloseButton
+          data-testid="user-not-found"
+          title={intl.formatMessage({ id: "user.notFound" })}
+        />
+      </div>
+    );
+  }
+
   return (
     <>
       {notificationVisible === true ? <AlertDialog /> : ""}
@@ -903,15 +926,19 @@ function UserAddModify() {
                         id: "login.login.name",
                       })}
                       invalid={
+                        !!loginNameRefusal ||
                         !!(
                           userDataShow &&
                           userDataShow.userLoginName &&
                           !loginNameRegex.test(userDataShow.userLoginName)
                         )
                       }
-                      invalidText={intl.formatMessage({
-                        id: "notification.invalid.loginName",
-                      })}
+                      invalidText={
+                        loginNameRefusal ||
+                        intl.formatMessage({
+                          id: "notification.invalid.loginName",
+                        })
+                      }
                       required={true}
                       value={
                         userDataShow && userDataShow.userLoginName
@@ -1278,7 +1305,7 @@ function UserAddModify() {
                     <FormattedMessage id="systemuserrole.instruction.2" />
                     <br />
                     <br />
-                    <FormattedMessage id="systemuserrole.instruction.3" />
+                    <FormattedMessage id="systemuserrole.instruction.labUnitRoles" />
                     <br />
                     <br />
                     <FormattedMessage id="systemuserrole.instruction.4" />

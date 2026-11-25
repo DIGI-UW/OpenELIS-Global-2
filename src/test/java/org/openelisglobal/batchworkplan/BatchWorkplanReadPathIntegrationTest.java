@@ -19,6 +19,7 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.batchworkplan.dao.BatchWorkplanDAO;
+import org.openelisglobal.batchworkplan.form.PendingTestsQuery;
 import org.openelisglobal.batchworkplan.valueholder.BatchWorkplan;
 import org.openelisglobal.batchworkplan.valueholder.BatchWorkplanStatus;
 import org.openelisglobal.sample.service.SampleService;
@@ -87,6 +88,8 @@ public class BatchWorkplanReadPathIntegrationTest extends BaseWebContextSensitiv
     private List<String> ambientPending = new ArrayList<>();
     private String testInUnitA;
     private String testInUnitB;
+    private String unitA;
+    private String unitB;
     private final List<String> createdAnalysisIds = new ArrayList<>();
     private final List<String> createdSampleItemIds = new ArrayList<>();
     private final List<String> createdSampleIds = new ArrayList<>();
@@ -113,8 +116,6 @@ public class BatchWorkplanReadPathIntegrationTest extends BaseWebContextSensitiv
         // Two tests from two different lab units, resolved from the fixture rather
         // than hardcoded: FK ids differ between a fresh container and an upgraded one.
         List<TestSection> sections = testSectionService.getAllActiveTestSections();
-        String unitA = null;
-        String unitB = null;
         for (TestSection section : sections) {
             List<org.openelisglobal.test.valueholder.Test> tests = testService
                     .getTestsByTestSectionIds(Collections.singletonList(section.getId()));
@@ -241,6 +242,91 @@ public class BatchWorkplanReadPathIntegrationTest extends BaseWebContextSensitiv
         assertEquals(Collections.emptyList(), page);
     }
 
+    /**
+     * OGC-1588: Pending Tests held only the 500 oldest analyses, and its filters
+     * and search ran inside those. The page, the total, the filters and the search
+     * are all answered by the query now.
+     */
+    @Test
+    public void aLaterPageAndTheTotalComeFromTheQuery() {
+        List<String> ordered = new ArrayList<>();
+        for (int i = 1; i <= 5; i++) {
+            ordered.add(createPendingAnalysis(String.format("ITBW4%04d", i), testInUnitA));
+        }
+
+        PendingTestsQuery second = query(2, 2, null, List.of(), null, null, true);
+
+        assertEquals(Arrays.asList(ordered.get(2), ordered.get(3)), pendingIds(second, testInUnitA));
+        assertEquals(5, countPending(second, testInUnitA));
+    }
+
+    @Test
+    public void theSearchReachesALabNumberPastTheFirstPage() {
+        for (int i = 1; i <= 5; i++) {
+            createPendingAnalysis(String.format("ITBW5%04d", i), testInUnitA);
+        }
+        String last = createPendingAnalysis("ITBW59999", testInUnitA);
+
+        PendingTestsQuery search = query(1, 2, "itbw5-9999", List.of(), null, null, true);
+
+        assertEquals(List.of(last), pendingIds(search, testInUnitA));
+        assertEquals(1, countPending(search, testInUnitA));
+    }
+
+    @Test
+    public void theLabUnitFilterIsAppliedInTheQuery() {
+        createPendingAnalysis("ITBW60001", testInUnitA);
+        String other = createPendingAnalysis("ITBW60002", testInUnitB);
+
+        PendingTestsQuery unit = query(1, 20, null, List.of(unitB), null, null, true);
+
+        assertEquals(List.of(other), pendingIds(unit, testInUnitA, testInUnitB));
+    }
+
+    @Test
+    public void theOrderDateFilterAndTheSortDirectionAreApplied() {
+        String first = createPendingAnalysis("ITBW70001", testInUnitA);
+        String second = createPendingAnalysis("ITBW70002", testInUnitA);
+        java.time.LocalDate today = java.time.LocalDate.now();
+
+        assertEquals(Arrays.asList(second, first),
+                pendingIds(query(1, 20, null, List.of(), today, today, false), testInUnitA));
+        assertEquals(Collections.emptyList(),
+                pendingIds(query(1, 20, null, List.of(), today.plusDays(1), null, true), testInUnitA));
+    }
+
+    /**
+     * The filters offer every pending test's values, not only the loaded page's.
+     */
+    @Test
+    public void filterValuesCoverTheWholePool() {
+        createPendingAnalysis("ITBW80001", testInUnitA);
+        createPendingAnalysis("ITBW80002", testInUnitB);
+
+        List<String> units = batchWorkplanDAO
+                .getPendingFilterValues(Collections.singletonList(pendingStatusId),
+                        Arrays.asList(testInUnitA, testInUnitB), ambientPending, "unit")
+                .stream().map(row -> String.valueOf(row[0])).collect(Collectors.toList());
+
+        assertTrue(units.toString(), units.containsAll(Arrays.asList(unitA, unitB)));
+    }
+
+    private PendingTestsQuery query(int page, int pageSize, String search, List<String> units, java.time.LocalDate from,
+            java.time.LocalDate to, boolean ascending) {
+        return new PendingTestsQuery(page, pageSize, search, List.of(), List.of(), units, List.of(), from, to,
+                "accessionNumber", ascending);
+    }
+
+    private List<String> pendingIds(PendingTestsQuery query, String... testIds) {
+        return batchWorkplanDAO.getPendingAnalysisIds(Collections.singletonList(pendingStatusId),
+                Arrays.asList(testIds), ambientPending, query);
+    }
+
+    private long countPending(PendingTestsQuery query, String... testIds) {
+        return batchWorkplanDAO.countPendingAnalyses(Collections.singletonList(pendingStatusId), Arrays.asList(testIds),
+                ambientPending, query);
+    }
+
     @Test
     public void theBatchListShowsOnlyTheCallersOwnBatches() {
         Long mine = createBatch("Mine", 1, BatchWorkplanStatus.DRAFT);
@@ -341,7 +427,9 @@ public class BatchWorkplanReadPathIntegrationTest extends BaseWebContextSensitiv
 
         Analysis analysis = new Analysis();
         analysis.setSampleItem(sampleItemService.get(sampleItemId));
-        analysis.setTest(testService.get(testId));
+        org.openelisglobal.test.valueholder.Test test = testService.get(testId);
+        analysis.setTest(test);
+        analysis.setTestSection(test.getTestSection());
         analysis.setStatusId(pendingStatusId);
         analysis.setAnalysisType("MANUAL");
         analysis.setRevision("1");

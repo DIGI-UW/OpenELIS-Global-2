@@ -40,13 +40,13 @@
 
     <result id="2001" sort_order="1" result_type="N" value="85.0"
         is_reportable="Y" lastupdated="2025-04-04 14:00:00" min_normal="70.0"
-        max_normal="100.0" significant_digits="1" grouping="0"
+        max_normal="100.0" reporting_decimal_places="1" grouping="0"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440003" />
 
     <result id="2002" sort_order="2" result_type="N" value="14.5"
         is_reportable="Y" lastupdated="2025-07-07 14:00:00" min_normal="12.0"
-        max_normal="16.0" parent_id="2001" significant_digits="1" grouping="0"
-        fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />
+        max_normal="16.0" parent_id="2001" reporting_decimal_places="1"
+        grouping="0" fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />
 
     <referral_type id="201" name="Confirmation"
         description="Sent out to confirm result"

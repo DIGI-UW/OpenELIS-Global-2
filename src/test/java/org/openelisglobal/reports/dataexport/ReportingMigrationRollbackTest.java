@@ -16,6 +16,7 @@ import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.Test;
+import org.openelisglobal.IsolatedDatabase;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.MountableFile;
 
@@ -23,6 +24,7 @@ import org.testcontainers.utility.MountableFile;
  * Executes the shipped migrations on dedicated databases, never the shared test
  * application.
  */
+@IsolatedDatabase
 public class ReportingMigrationRollbackTest {
     private static final String ALL = "liquibase/reporting-mvp-rollback.xml";
     private static final String M1 = "liquibase/3.6.x.x/003-configurable-reporting.xml";

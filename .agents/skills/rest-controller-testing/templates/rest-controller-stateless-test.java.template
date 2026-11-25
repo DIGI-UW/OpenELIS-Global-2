@@ -1,0 +1,44 @@
+package org.openelisglobal.${module}.controller;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.login.valueholder.UserSessionData;
+import org.springframework.mock.web.MockHttpSession;
+
+/**
+ * Stateless controller tests for ${ControllerName} — no database seeding
+ * required; exercises routing, validation, and computed responses only.
+ */
+public class ${ControllerName}Test extends BaseWebContextSensitiveTest {
+
+    private MockHttpSession session;
+
+    @Before
+    @Override
+    public void setUp() throws Exception {
+        super.setUp();
+        UserSessionData usd = new UserSessionData();
+        usd.setSytemUserId(1);
+        session = new MockHttpSession();
+        session.setAttribute(IActionConstants.USER_SESSION_DATA, usd);
+    }
+
+    @Test
+    public void get_knownEndpoint_returns200() throws Exception {
+        mockMvc.perform(get("${endpoint}").session(session))
+                .andExpect(status().isOk());
+                // TODO: add jsonPath assertions on response shape
+    }
+
+    @Test
+    public void get_withInvalidParam_returns400() throws Exception {
+        mockMvc.perform(get("${endpoint}?param=INVALID").session(session))
+                .andExpect(status().isBadRequest());
+    }
+}

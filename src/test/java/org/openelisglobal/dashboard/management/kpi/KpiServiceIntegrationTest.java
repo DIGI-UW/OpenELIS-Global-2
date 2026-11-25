@@ -7,8 +7,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -19,9 +17,6 @@ import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.qaevent.qiconfig.dto.QiConfigView;
 import org.openelisglobal.qaevent.qiconfig.service.QiConfigService;
-import org.openelisglobal.reports.tat.bean.TATCalculationMode;
-import org.openelisglobal.reports.tat.bean.TATSegment;
-import org.openelisglobal.reports.tat.service.TATReportService;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -37,9 +32,6 @@ public class KpiServiceIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private KpiService kpiService;
-
-    @Autowired
-    private TATReportService tatReportService;
 
     @Autowired
     private AnalysisService analysisService;
@@ -101,16 +93,17 @@ public class KpiServiceIntegrationTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void onTimeByLabUnitKeysLikeTheTatBreakdown() {
-        Map<String, BigDecimal> byUnit = kpiService.onTimeByLabUnit(JUNE_2024);
+    public void tatFiguresLeaveOutTheDaysBetweenThePriorPeriodAndTheScope() {
+        // Released 2025-07-07 at 13:00 and 14:00; sample 1 arrives in the gap.
+        jdbcTemplate.update("UPDATE clinlims.sample SET received_date = '2025-07-06 10:00' WHERE id = 1");
+        jdbcTemplate.update("UPDATE clinlims.sample SET received_date = '2025-07-04 14:00' WHERE id = 2");
+        ScopeRange scope = new ScopeRange(LocalDate.of(2025, 7, 7), LocalDate.of(2025, 7, 8), LocalDate.of(2025, 7, 3),
+                LocalDate.of(2025, 7, 4));
 
-        assertEquals(
-                tatReportService
-                        .getSummary(JUNE_2024.from(), JUNE_2024.to(), TATSegment.RECEIPT_TO_VALIDATION,
-                                TATCalculationMode.CALENDAR, null, null, null, null, null, null, false, "LAB_UNIT")
-                        .getBreakdown().stream().map(row -> row.getDimensionValue()).collect(Collectors.toSet()),
-                byUnit.keySet());
-        byUnit.values().forEach(percent -> assertEquals(0, BigDecimal.ZERO.compareTo(percent)));
+        ManagementKpis kpis = kpiService.getKpis(scope);
+
+        assertNull(kpis.medianTat().value());
+        assertEquals(0, BigDecimal.valueOf(72).compareTo(kpis.medianTat().prior()));
     }
 
     @Test

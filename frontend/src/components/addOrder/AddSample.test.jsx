@@ -4,7 +4,8 @@
  * never leave tests in the order, and Back never brings them back.
  */
 import React, { useState } from "react";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../languages/en.json";
@@ -411,5 +412,40 @@ describe("AddSample when a request fails or is slow (OGC-1389)", () => {
         "The referral reasons or laboratories could not be loaded. Everything you entered is kept; press Retry to refer a test.",
       ),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("AddSample unit of measure (OGC-1515)", () => {
+  test("the unit is searched by typing and stored with the sample", async () => {
+    utilsMock.getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === "/rest/uom") {
+        callback([
+          { id: "1", value: "mL" },
+          { id: "2", value: "µL" },
+          { id: "3", value: "Tube" },
+          { id: "4", value: "Millimètre" },
+        ]);
+        return;
+      }
+      answerImmediately(url, callback);
+    });
+    render(<Harness initialSamples={[emptySample()]} />);
+    const unit = screen.getByRole("combobox", {
+      name: "Sample Unit Of Measure",
+    });
+
+    await userEvent.type(unit, "MILLIMETRE");
+    const units = within(
+      document.getElementById(unit.getAttribute("aria-controls")),
+    );
+    expect(units.getAllByRole("option").map((o) => o.textContent)).toEqual([
+      "Millimètre",
+    ]);
+    await userEvent.clear(unit);
+    await userEvent.type(unit, "ml");
+    await userEvent.click(units.getByRole("option", { name: "mL" }));
+
+    expect(unit).toHaveValue("mL");
+    expect(latestSamples[0].sampleXML.uom).toBe("1");
   });
 });

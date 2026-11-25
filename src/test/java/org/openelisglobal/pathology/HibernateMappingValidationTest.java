@@ -30,8 +30,12 @@ import org.openelisglobal.program.valueholder.pathology.PathologyConclusion;
 import org.openelisglobal.program.valueholder.pathology.PathologyReport;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
+import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
+import org.openelisglobal.program.valueholder.pathology.PathologyStageEvent;
 import org.openelisglobal.program.valueholder.pathology.PathologyTechnique;
+import org.openelisglobal.program.valueholder.pathology.StageDirection;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 
 /**
  * Builds the pathology mappings without a database, well inside five seconds,
@@ -56,6 +60,7 @@ public class HibernateMappingValidationTest {
         sources.addAnnotatedClass(PathologyTechnique.class);
         sources.addAnnotatedClass(PathologyConclusion.class);
         sources.addAnnotatedClass(PathologyReport.class);
+        sources.addAnnotatedClass(PathologyStageEvent.class);
 
         // The programme, sample and staff a case points at, and everything their
         // own mappings reach.
@@ -86,7 +91,7 @@ public class HibernateMappingValidationTest {
 
         for (Class<?> entity : Arrays.asList(ProgramSample.class, PathologySample.class, PathologyBlock.class,
                 PathologySlide.class, PathologyRequest.class, PathologyTechnique.class, PathologyConclusion.class,
-                PathologyReport.class)) {
+                PathologyReport.class, PathologyStageEvent.class)) {
             assertNotNull(entity.getSimpleName() + " is registered in the metamodel",
                     sessionFactory.getMetamodel().entity(entity));
         }
@@ -140,6 +145,20 @@ public class HibernateMappingValidationTest {
     }
 
     /**
+     * A slide records when its label was checked against its block and by whom, as
+     * two plain columns, so the row the case view posts back carries no user.
+     */
+    @Test
+    public void pathologySlide_mapsItsLabelVerification() {
+        EntityType<PathologySlide> slide = sessionFactory.getMetamodel().entity(PathologySlide.class);
+
+        assertEquals("the verifier is a plain column, not an association", Attribute.PersistentAttributeType.BASIC,
+                slide.getAttribute("labelVerifiedBy").getPersistentAttributeType());
+        assertColumn(PathologySlide.class, "labelVerifiedAt", "label_verified_at");
+        assertColumn(PathologySlide.class, "labelVerifiedBy", "label_verified_by");
+    }
+
+    /**
      * Dropping a block or slide from its collection must not delete the row, which
      * 42 CFR 493.1105 requires the laboratory to retain.
      */
@@ -158,6 +177,54 @@ public class HibernateMappingValidationTest {
             assertTrue("PathologySample." + collection + " still cascades all, so a child saves with its case",
                     property.getCascade().contains("all"));
         }
+    }
+
+    /**
+     * A case is flagged for decalcification or it is not; the column is NOT NULL.
+     */
+    @Test
+    public void pathologySample_mapsTheDecalcificationFlag() {
+        EntityType<PathologySample> pathologySample = sessionFactory.getMetamodel().entity(PathologySample.class);
+
+        assertEquals("decalcificationRequired is a primitive boolean, so it is never unknown", boolean.class,
+                pathologySample.getAttribute("decalcificationRequired").getJavaType());
+        assertColumn(PathologySample.class, "decalcificationRequired", "decalcification_required");
+    }
+
+    /**
+     * A stage event records the stage, the direction and the operators as the
+     * schema declares them; the operators are users, read with the event.
+     */
+    @Test
+    public void pathologyStageEvent_mapsItsColumns() {
+        EntityType<PathologyStageEvent> event = sessionFactory.getMetamodel().entity(PathologyStageEvent.class);
+
+        assertEquals("stage is the PathologyStatus enum", PathologyStatus.class,
+                event.getAttribute("stage").getJavaType());
+        assertEquals("direction is the StageDirection enum", StageDirection.class,
+                event.getAttribute("direction").getJavaType());
+        assertEquals("the case is a plain id, so the case's own save never cascades onto its events", Integer.class,
+                event.getAttribute("pathologySampleId").getJavaType());
+        assertEquals("the case id is a basic attribute, not an association", Attribute.PersistentAttributeType.BASIC,
+                event.getAttribute("pathologySampleId").getPersistentAttributeType());
+        for (String operator : Arrays.asList("enteredBy", "completedBy")) {
+            assertEquals(operator + " is a user", SystemUser.class, event.getAttribute(operator).getJavaType());
+            assertEquals(operator + " is a many-to-one join to system_user",
+                    Attribute.PersistentAttributeType.MANY_TO_ONE,
+                    event.getAttribute(operator).getPersistentAttributeType());
+        }
+
+        assertColumn(PathologyStageEvent.class, "pathologySampleId", "pathology_sample_id");
+        assertColumn(PathologyStageEvent.class, "stage", "stage");
+        assertColumn(PathologyStageEvent.class, "enteredAt", "entered_at");
+        assertColumn(PathologyStageEvent.class, "enteredBy", "entered_by");
+        assertColumn(PathologyStageEvent.class, "completedAt", "completed_at");
+        assertColumn(PathologyStageEvent.class, "completedBy", "completed_by");
+        assertColumn(PathologyStageEvent.class, "direction", "direction");
+        assertColumn(PathologyStageEvent.class, "reason", "reason");
+        assertColumn(PathologyStageEvent.class, "runReference", "run_reference");
+        assertColumn(PathologyStageEvent.class, "notes", "notes");
+        assertColumn(PathologyStageEvent.class, "lastupdated", "last_updated");
     }
 
     /**

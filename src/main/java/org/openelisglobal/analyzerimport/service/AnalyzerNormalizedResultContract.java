@@ -25,7 +25,14 @@ import org.openelisglobal.common.util.BoundedDecimal;
  */
 public record AnalyzerNormalizedResultContract(String messageId, String bridgeConnectionId, String profileId,
         int profileRevision, String sourceProtocol, List<Result> results, List<String> sampleFlags,
-        String profileFingerprint) {
+        String profileFingerprint, String deliveryPurpose) {
+
+    public AnalyzerNormalizedResultContract(String messageId, String bridgeConnectionId, String profileId,
+            int profileRevision, String sourceProtocol, List<Result> results, List<String> sampleFlags,
+            String profileFingerprint) {
+        this(messageId, bridgeConnectionId, profileId, profileRevision, sourceProtocol, results, sampleFlags,
+                profileFingerprint, "ROUTINE");
+    }
 
     /** A delivery whose profile content the Bridge did not state. */
     public AnalyzerNormalizedResultContract(String messageId, String bridgeConnectionId, String profileId,
@@ -42,6 +49,7 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
     private static final String PROFILE_REVISION = EXTENSION_ROOT + "analyzer-profile-revision";
     private static final String PROFILE_FINGERPRINT = EXTENSION_ROOT + "analyzer-profile-fingerprint";
     private static final String CONTRACT_VERSION = EXTENSION_ROOT + "analyzer-contract-version";
+    private static final String DELIVERY_PURPOSE = EXTENSION_ROOT + "analyzer-delivery-purpose";
     private static final String RESULT_PART = EXTENSION_ROOT + "analyzer-result-part";
     private static final String CANONICAL_ANSWER = EXTENSION_ROOT + "analyzer-canonical-answer";
     private static final String SOURCE_PROTOCOL = EXTENSION_ROOT + "analyzer-source-protocol";
@@ -50,7 +58,6 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
     private static final String RAW_VALUE = EXTENSION_ROOT + "analyzer-raw-value";
     private static final String SOURCE_TRANSPORT = EXTENSION_ROOT + "analyzer-source-transport";
     private static final String PATIENT_SOURCE = EXTENSION_ROOT + "analyzer-patient-source";
-    private static final String LOT_NUMBER = "http://openelis-global.org/fhir/qc/lot-number";
     private static final String CONTROL_LEVEL = "http://openelis-global.org/fhir/qc/control-level";
     private static final String V2_SUBID = "http://hl7.org/fhir/StructureDefinition/observation-v2-subid";
     private static final String ORIGINAL_SUB_IDENTIFIER = "original-sub-identifier";
@@ -96,8 +103,15 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
         }
 
         String version = optionalExtensionText(device, CONTRACT_VERSION);
-        if (version != null && !"1.0".equals(version) && !"1.1".equals(version)) {
+        if (version != null && !"1.0".equals(version) && !"1.1".equals(version) && !"1.2".equals(version)) {
             throw new IllegalArgumentException("Unsupported analyzer result contract version: " + version);
+        }
+        String purpose = optionalExtensionText(device, DELIVERY_PURPOSE);
+        if ("1.2".equals(version) && purpose == null) {
+            throw new IllegalArgumentException("Version 1.2 requires the receipt-time delivery purpose");
+        }
+        if (purpose != null && !Set.of("SETUP", "ROUTINE").contains(purpose)) {
+            throw new IllegalArgumentException("Analyzer delivery purpose must be SETUP or ROUTINE");
         }
         String profileId = requireExtensionText(device, PROFILE_ID,
                 "Normalized analyzer traffic requires a profile ID");
@@ -139,7 +153,8 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
             throw new IllegalArgumentException("Normalized analyzer traffic requires at least one Observation");
         }
         return new AnalyzerNormalizedResultContract(messageId, connectionIds.get(0), profileId, profileRevision,
-                sourceProtocol, results, sampleFlags, optionalExtensionText(device, PROFILE_FINGERPRINT));
+                sourceProtocol, results, sampleFlags, optionalExtensionText(device, PROFILE_FINGERPRINT),
+                purpose == null ? "ROUTINE" : purpose);
     }
 
     /**
@@ -167,7 +182,7 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
 
     static Result parseResult(Observation observation, Map<String, String> specimens,
             Map<String, InstrumentPatient> patients, String deviceReference, FhirContext fhirContext, String version) {
-        if ("1.1".equals(version)) {
+        if ("1.1".equals(version) || "1.2".equals(version)) {
             for (var interpretation : observation.getInterpretation()) {
                 requireText(optionalExtensionText(interpretation, RESULT_PART),
                         "Version 1.1 interpretations require an explicit call or flag role");
@@ -253,7 +268,6 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
         Timestamp completed = observation.hasEffectiveDateTimeType()
                 ? new Timestamp(observation.getEffectiveDateTimeType().getValue().getTime())
                 : null;
-        String lotNumber = optionalExtensionText(observation, LOT_NUMBER);
         String controlLevel = optionalExtensionText(observation, CONTROL_LEVEL);
         Observation retained = observation.copy();
         if (version != null) {
@@ -268,9 +282,9 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
                 .collect(java.util.stream.Collectors.joining("\n"));
 
         return new Result(accessionNumber, rawCodes.get(0), rawValue, units, resultType, classification,
-                sourceTransport, recognitionMode, recognitionOutcome, recognitionFingerprint, lotNumber, controlLevel,
-                completed, sourcePayload, patient == null ? null : patient.identifier(),
-                patient == null ? null : patient.name(), note.isEmpty() ? null : note,
+                sourceTransport, recognitionMode, recognitionOutcome, recognitionFingerprint, controlLevel, completed,
+                sourcePayload, patient == null ? null : patient.identifier(), patient == null ? null : patient.name(),
+                note.isEmpty() ? null : note,
                 observation.hasDataAbsentReason() && observation.getDataAbsentReason().getCoding().stream()
                         .anyMatch(coding -> "http://terminology.hl7.org/CodeSystem/data-absent-reason"
                                 .equals(coding.getSystem()) && "error".equals(coding.getCode())),
@@ -490,11 +504,10 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
      */
     public record Result(String accessionNumber, String rawTestCode, String rawValue, String units, String resultType,
             String classification, String sourceTransport, String recognitionMode, String recognitionOutcome,
-            String recognitionFingerprint, String lotNumber, String controlLevel, Timestamp completeDate,
-            String sourcePayload, String instrumentPatientId, String instrumentPatientName, String note,
-            boolean runFailed, String comparator, String subIdentity, String number, String call, String flags,
-            String assayName, String assayVersion, String operator,
-            List<org.openelisglobal.terminology.Coding> testCodings,
+            String recognitionFingerprint, String controlLevel, Timestamp completeDate, String sourcePayload,
+            String instrumentPatientId, String instrumentPatientName, String note, boolean runFailed, String comparator,
+            String subIdentity, String number, String call, String flags, String assayName, String assayVersion,
+            String operator, List<org.openelisglobal.terminology.Coding> testCodings,
             List<org.openelisglobal.terminology.Coding> answerCodings) {
 
         /**

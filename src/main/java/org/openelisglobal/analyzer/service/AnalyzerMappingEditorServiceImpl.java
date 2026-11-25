@@ -138,7 +138,7 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
         current.tests().keySet().forEach(key -> records.putIfAbsent(key, ReportedRecord.undeclared(key)));
         List<AnalyzerMappingView.TestRow> rows = records.entrySet().stream()
                 .map(entry -> composeTestRow(entry.getKey(), entry.getValue(), current.tests().get(entry.getKey()),
-                        current.results(), observedHeldValues, activeTests, activeTestsById))
+                        current.results(), observedHeldValues, activeTests, activeTestsById, observed))
                 .toList();
         AnalyzerMappingConfirmationView confirmation = snapshot == null ? AnalyzerMappingConfirmationView.unconfirmed()
                 : confirmationService.getStatus(snapshot);
@@ -151,14 +151,8 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
     }
 
     private static String deliveredAnswer(AnalyzerResults row) {
-        if (row.getSourcePayload() != null && !row.getSourcePayload().isBlank()) {
-            var observation = FHIR.newJsonParser().parseResource(org.hl7.fhir.r4.model.Observation.class,
-                    row.getSourcePayload());
-            return org.openelisglobal.analyzerimport.service.AnalyzerNormalizedResultContract
-                    .deliveredAnswer(observation);
-        }
-        // Older staged rows keep their delivered value separately from raw audit text.
-        return "N".equals(row.getResultType()) ? null : row.getResult();
+        return receivedValues(row).stream().filter(value -> "TEXT".equals(value.kind()))
+                .map(AnalyzerMappingView.ReceivedValue::value).filter(Objects::nonNull).findFirst().orElse(null);
     }
 
     private static void validateConfirmable(AnalyzerMappingView view) {
@@ -249,7 +243,7 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
     private AnalyzerMappingView.TestRow composeTestRow(AnalyzerMappingRowKey key, ReportedRecord record,
             CurrentTest current, Map<ResultSourceKey, CurrentResult> currentResults,
             Set<ResultSourceKey> observedHeldValues, List<AnalyzerMappingCatalogService.TestOption> activeTests,
-            Map<String, AnalyzerMappingCatalogService.TestOption> activeTestsById) {
+            Map<String, AnalyzerMappingCatalogService.TestOption> activeTestsById, List<AnalyzerResults> observed) {
         BridgeAnalyzerProfile.TestDefinition definition = record.test();
         AnalyzerMappingState state = current == null ? AnalyzerMappingState.UNRESOLVED : current.state();
         AnalyzerMappingOrigin origin = current == null ? AnalyzerMappingOrigin.DEFAULT : current.origin();
@@ -312,7 +306,39 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
                 definition.aliases(), definition.testNameHint(), definition.loinc(), record.unit(), record.resultType(),
                 definition.codings(), state, origin, testId, componentId, selected, suggested, testReason, results,
                 key.subIdentity(), callComponentId, record.componentCode(),
-                key.subIdentity().isEmpty() ? definition.callComponent() : null, current != null && current.enabled());
+                key.subIdentity().isEmpty() ? definition.callComponent() : null, current != null && current.enabled(),
+                observed.stream().filter(row -> key.equals(recordOf(row))).flatMap(row -> receivedValues(row).stream())
+                        .distinct().toList());
+    }
+
+    private static List<AnalyzerMappingView.ReceivedValue> receivedValues(AnalyzerResults row) {
+        String raw = row.getRawResultValue();
+        if (row.getSourcePayload() != null && !row.getSourcePayload().isBlank()) {
+            try {
+                var observation = FHIR.newJsonParser().parseResource(org.hl7.fhir.r4.model.Observation.class,
+                        row.getSourcePayload());
+                List<AnalyzerMappingView.ReceivedValue> values = new ArrayList<>();
+                if (observation.hasValueQuantity() && observation.getValueQuantity().hasValue()) {
+                    var quantity = observation.getValueQuantity();
+                    String value = (quantity.hasComparator() ? quantity.getComparator().toCode() : "")
+                            + quantity.getValue().toPlainString();
+                    values.add(new AnalyzerMappingView.ReceivedValue(raw, value, "NUMBER", quantity.getUnit()));
+                }
+                String answer = org.openelisglobal.analyzerimport.service.AnalyzerNormalizedResultContract
+                        .deliveredAnswer(observation);
+                if (answer != null)
+                    values.add(new AnalyzerMappingView.ReceivedValue(raw, answer, "TEXT", null));
+                if (values.isEmpty())
+                    values.add(new AnalyzerMappingView.ReceivedValue(raw, null, "NO_VALUE", null));
+                return values;
+            } catch (ca.uhn.fhir.parser.DataFormatException | IllegalArgumentException exception) {
+                // A damaged historical payload must not hide the remaining mapping evidence.
+                // The staged value and raw instrument text remain available below.
+            }
+        }
+        return List.of(new AnalyzerMappingView.ReceivedValue(raw, row.getResult(),
+                row.getResult() == null ? "NO_VALUE" : "N".equals(row.getResultType()) ? "NUMBER" : "TEXT",
+                row.getUnits()));
     }
 
     private static AnalyzerMappingRowKey recordOf(AnalyzerResults staged) {

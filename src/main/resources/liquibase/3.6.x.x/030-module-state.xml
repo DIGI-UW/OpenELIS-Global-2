@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+ <!-- OGC-1579: the module system records each installed module's version and last outcome here; module
+      changesets themselves share databasechangelog with ids prefixed by the module id -->
+ <changeSet id="030-module-state" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <not>
+    <tableExists schemaName="clinlims" tableName="module_state"/>
+   </not>
+  </preConditions>
+  <createTable schemaName="clinlims" tableName="module_state">
+   <column name="id" type="VARCHAR(64)">
+    <constraints primaryKey="true" nullable="false" primaryKeyName="pk_module_state"/>
+   </column>
+   <column name="version" type="VARCHAR(64)"/>
+   <column name="status" type="VARCHAR(32)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="core_version" type="VARCHAR(64)"/>
+   <column name="installed_at" type="TIMESTAMP" defaultValueComputed="now()">
+    <constraints nullable="false"/>
+   </column>
+   <column name="last_started_at" type="TIMESTAMP"/>
+   <column name="last_error" type="VARCHAR(1000)"/>
+  </createTable>
+  <rollback>
+   <dropTable schemaName="clinlims" tableName="module_state"/>
+  </rollback>
+ </changeSet>
+</databaseChangeLog>

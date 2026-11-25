@@ -28,6 +28,7 @@ import CustomCheckBox from "../common/CustomCheckBox";
 import CustomDatePicker from "../common/CustomDatePicker";
 import { NotificationKinds } from "../common/CustomNotification";
 import CustomSelect from "../common/CustomSelect";
+import SearchableSelect from "../common/SearchableSelect";
 import CustomTextInput from "../common/CustomTextInput";
 import CustomTimePicker from "../common/CustomTimePicker";
 import { sampleTypeTestsStructure } from "../data/SampleEntryTestsForTypeProvider";
@@ -683,11 +684,11 @@ const SampleType = (props) => {
             })}
           />
 
-          <CustomSelect
+          <SearchableSelect
             id={"uomId_" + index}
             labelText={intl.formatMessage({ id: "sample.uom.label" })}
+            placeholder={intl.formatMessage({ id: "sample.uom.search" })}
             options={uomList}
-            disabled={false}
             value={sampleXml.uom}
             onChange={(value) => handleUom(value)}
           />

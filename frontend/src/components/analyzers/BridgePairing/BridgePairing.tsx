@@ -193,9 +193,12 @@ const BridgePairing = () => {
             id: "analyzer.bridgePairing.unpaired.title",
           })}
           subtitle={intl.formatMessage({
-            id: status.pairsAutomatically
-              ? "analyzer.bridgePairing.automatic"
-              : "analyzer.bridgePairing.unpaired.subtitle",
+            id:
+              status.clientKeyReadable === false
+                ? "analyzer.bridgePairing.keyUnreadable.subtitle"
+                : status.pairsAutomatically
+                  ? "analyzer.bridgePairing.automatic"
+                  : "analyzer.bridgePairing.unpaired.subtitle",
           })}
         />
         {form}

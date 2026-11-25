@@ -2,6 +2,7 @@ import { createIntl } from "react-intl";
 import messages from "../../languages/en.json";
 import { PATHOLOGY_STAGES } from "./pathologyStages";
 import { SECTION_STATE } from "../caseView/sectionState";
+import { embeddingSummary } from "./pathologyRows";
 import {
   PATHOLOGY_SECTIONS,
   grossingComplete,
@@ -13,6 +14,19 @@ import {
   deriveCaseSections,
   railCurrentIndex,
   deriveRailItems,
+  outstandingLabel,
+  embeddingStatement,
+  stageApplies,
+  decalcificationFlagFrozen,
+  advanceLabelKey,
+  addSlideLock,
+  advanceBlockedReason,
+  returnBlockedReason,
+  rowActionLock,
+  scanVerificationRequired,
+  switchedOn,
+  verifyLabelLock,
+  sectionIdOfStage,
 } from "./pathologySections";
 
 const intl = createIntl({ locale: "en", messages });
@@ -54,6 +68,27 @@ describe("isStageEnabled", () => {
     ).toBe(true);
   });
 
+  // The server trims the stored value and ignores its case when it picks the
+  // next and previous stage, so the sections read it the same way.
+  it.each([
+    ["false", false],
+    ["False", false],
+    ["FALSE", false],
+    [" FALSE ", false],
+    ["\tfalse\n", false],
+    ["true", true],
+    [" True ", true],
+    ["", true],
+    ["no", true],
+    ["falsey", true],
+  ])("reads a switch stored as %j as enabled: %s", (value, enabled) => {
+    expect(
+      isStageEnabled("COVERSLIPPING", {
+        PATHOLOGY_STAGE_COVERSLIPPING_ENABLED: value,
+      }),
+    ).toBe(enabled);
+  });
+
   it("enables an optional stage the served configuration says nothing about", () => {
     expect(isStageEnabled("COVERSLIPPING", {})).toBe(true);
   });
@@ -74,6 +109,39 @@ describe("isStageEnabled", () => {
   });
 });
 
+describe("switchedOn", () => {
+  // One reading for every served switch: only an explicit false turns it off.
+  it.each([
+    [undefined, true],
+    [null, true],
+    ["", true],
+    ["true", true],
+    ["no", true],
+    ["false", false],
+    [" FALSE ", false],
+    ["False", false],
+  ])("reads %j as on: %s", (value, expected) => {
+    expect(switchedOn(value)).toBe(expected);
+  });
+});
+
+describe("scanVerificationRequired", () => {
+  // Scanning is the default, as the server's; only an explicit false, read
+  // as the stage switches are read, turns it into the typed confirmation.
+  it.each([
+    [undefined, true],
+    [{}, true],
+    [{ PATHOLOGY_SCAN_VERIFICATION_REQUIRED: "true" }, true],
+    [{ PATHOLOGY_SCAN_VERIFICATION_REQUIRED: "" }, true],
+    [{ PATHOLOGY_SCAN_VERIFICATION_REQUIRED: "no" }, true],
+    [{ PATHOLOGY_SCAN_VERIFICATION_REQUIRED: "false" }, false],
+    [{ PATHOLOGY_SCAN_VERIFICATION_REQUIRED: " FALSE " }, false],
+    [{ PATHOLOGY_SCAN_VERIFICATION_REQUIRED: "False" }, false],
+  ])("reads %j as scanning: %s", (configurationProperties, expected) => {
+    expect(scanVerificationRequired(configurationProperties)).toBe(expected);
+  });
+});
+
 describe("stageEnablementProperty", () => {
   it("names the exact configuration key a stage is switched off with", () => {
     expect(stageEnablementProperty("COVERSLIPPING")).toBe(
@@ -83,10 +151,13 @@ describe("stageEnablementProperty", () => {
 });
 
 describe("deriveCaseSections at GROSSING for a technician", () => {
+  // Flagged for decalcification, so every section ahead is locked by the
+  // stage order alone.
   const sections = deriveCaseSections({
     intl,
     status: "GROSSING",
     isPathologist: false,
+    decalcificationRequired: true,
   });
 
   it("shows Case Information read-only and opens the grossing and reports sections", () => {
@@ -225,7 +296,6 @@ describe("a stage a laboratory has switched off", () => {
     const coverslipping = byId(sections, "pathology-section-coverslipping");
     expect(coverslipping.state).toBe(SECTION_STATE.DISABLED);
     expect(coverslipping.lockedHintKey).toBe("pathology.locked.stageDisabled");
-    expect(coverslipping.stageDisabled).toBe(true);
 
     const railItems = deriveRailItems(sections, {
       intl,
@@ -258,7 +328,6 @@ describe("a stage a laboratory has switched off", () => {
 
     const coverslipping = byId(sections, "pathology-section-coverslipping");
     expect(coverslipping.state).toBe(SECTION_STATE.OPEN);
-    expect(coverslipping.stageDisabled).toBe(false);
 
     const railItems = deriveRailItems(sections, {
       intl,
@@ -278,13 +347,19 @@ describe("a stage a laboratory has switched off", () => {
 });
 
 describe("deriveRailItems", () => {
-  const grossed = { grossExam: "Firm tan nodule, 20mm", blocks: [{ id: "1" }] };
+  // Embedded too, so the embedding step's own rule is met and every step the
+  // case has passed reads complete.
+  const grossed = {
+    grossExam: "Firm tan nodule, 20mm",
+    blocks: [{ id: "1", cassetteState: "BLOCK" }],
+  };
 
   it("marks each section complete once the case has moved past every stage it spans, and leaves the current and later ones not complete", () => {
     const sections = deriveCaseSections({
       intl,
       status: "MICROTOMY",
       isPathologist: true,
+      decalcificationRequired: true,
     });
 
     const items = deriveRailItems(sections, {
@@ -543,12 +618,11 @@ describe("sectionBadge", () => {
     expect(sectionBadge(microtomy, { caseInfo: { slides: [] } })).toBeNull();
   });
 
-  // Every stage between grossing and the reading is one OpenELIS records no
-  // work at yet, so none of them has a completion rule to satisfy.
+  // These stages between grossing and the reading are ones OpenELIS records
+  // no work at yet, so none of them has a completion rule to satisfy.
   it.each([
     "pathology-section-decalcification",
     "pathology-section-processing",
-    "pathology-section-embedding",
     "pathology-section-staining",
   ])("badges %s with nothing however far the case has gone", (id) => {
     const section = byId(sectionsAt("READY_PATHOLOGIST"), id);
@@ -698,6 +772,7 @@ describe("a status this build does not recognize", () => {
       intl,
       status,
       isPathologist: true,
+      decalcificationRequired: true,
     });
 
     sections
@@ -786,5 +861,945 @@ describe("counting badges over rows in use", () => {
     expect(microtomy([{ id: "1", active: false }]).complete).toBe(false);
     expect(microtomy([{ blockId: "1", location: "" }]).complete).toBe(false);
     expect(microtomy([{ id: "1", active: true }]).complete).toBe(true);
+  });
+});
+
+describe("decalcification and the grossing flag", () => {
+  const DECALCIFICATION = "pathology-section-decalcification";
+
+  const derive = (status, decalcificationRequired, configurationProperties) =>
+    deriveCaseSections({
+      intl,
+      status,
+      isPathologist: true,
+      configurationProperties,
+      decalcificationRequired,
+    });
+
+  const railItem = (sections, status) =>
+    deriveRailItems(sections, {
+      intl,
+      status,
+      reportCount: 0,
+      openRequestNames: [],
+    }).find((item) => item.id === DECALCIFICATION);
+
+  it("locks decalcification as not required on a specimen grossing did not flag, and marks its rail step not applicable", () => {
+    const sections = derive("GROSSING", false);
+    const decalcification = byId(sections, DECALCIFICATION);
+
+    expect(decalcification.state).toBe(SECTION_STATE.DISABLED);
+    expect(decalcification.lockedHintKey).toBe(
+      "pathology.locked.decalcNotRequired",
+    );
+    expect(railItem(sections, "GROSSING").notApplicable).toBe(true);
+  });
+
+  it("never ticks the step of a decalcification the specimen did not need, however far the case has gone", () => {
+    const sections = derive("MICROTOMY", false);
+    const item = railItem(sections, "MICROTOMY");
+
+    expect(item.notApplicable).toBe(true);
+    expect(item.complete).toBe(false);
+  });
+
+  it("locks a flagged specimen's decalcification by the stage order instead, and ticks it once the case is past", () => {
+    const atGrossing = derive("GROSSING", true);
+    const decalcification = byId(atGrossing, DECALCIFICATION);
+
+    expect(decalcification.state).toBe(SECTION_STATE.DISABLED);
+    expect(decalcification.lockedHintKey).toBe("caseView.locked.awaitingStage");
+    expect(decalcification.lockedHintValues.stage).toBe(
+      messages["pathology.stage.decalcification"],
+    );
+    expect(railItem(atGrossing, "GROSSING").notApplicable).toBe(false);
+
+    expect(railItem(derive("MICROTOMY", true), "MICROTOMY").complete).toBe(
+      true,
+    );
+  });
+
+  it("opens decalcification for a case standing at it even when grossing did not flag the specimen", () => {
+    const sections = derive("DECALCIFICATION", false);
+    const decalcification = byId(sections, DECALCIFICATION);
+
+    expect(decalcification.state).toBe(SECTION_STATE.OPEN);
+    expect(railItem(sections, "DECALCIFICATION").notApplicable).toBe(false);
+  });
+
+  it("says a stage the laboratory does not track is untracked before saying the specimen does not need it", () => {
+    const sections = derive("GROSSING", false, {
+      PATHOLOGY_STAGE_DECALCIFICATION_ENABLED: "false",
+    });
+
+    expect(byId(sections, DECALCIFICATION).lockedHintKey).toBe(
+      "pathology.locked.stageDisabled",
+    );
+    expect(railItem(sections, "GROSSING").notApplicable).toBe(true);
+  });
+});
+
+describe("stageApplies", () => {
+  it("applies decalcification only to a specimen grossing flagged as needing it", () => {
+    expect(
+      stageApplies("DECALCIFICATION", { decalcificationRequired: false }),
+    ).toBe(false);
+    expect(
+      stageApplies("DECALCIFICATION", { decalcificationRequired: true }),
+    ).toBe(true);
+  });
+
+  it("turns down a stage the laboratory does not track, however the specimen is flagged", () => {
+    const configurationProperties = {
+      PATHOLOGY_STAGE_DECALCIFICATION_ENABLED: "false",
+      PATHOLOGY_STAGE_COVERSLIPPING_ENABLED: "false",
+    };
+
+    expect(
+      stageApplies("DECALCIFICATION", {
+        configurationProperties,
+        decalcificationRequired: true,
+      }),
+    ).toBe(false);
+    expect(
+      stageApplies("COVERSLIPPING", {
+        configurationProperties,
+        decalcificationRequired: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("lets the flag decide no stage but decalcification", () => {
+    [
+      "ACCESSIONED",
+      "GROSSING",
+      "PROCESSING",
+      "EMBEDDING",
+      "MICROTOMY",
+      "STAINING",
+      "COVERSLIPPING",
+      "READY_PATHOLOGIST",
+      "UNDER_REVIEW",
+      "COMPLETED",
+    ].forEach((stageId) => {
+      expect(stageApplies(stageId, { decalcificationRequired: false })).toBe(
+        true,
+      );
+      expect(stageApplies(stageId, { decalcificationRequired: true })).toBe(
+        true,
+      );
+    });
+  });
+});
+
+describe("decalcificationFlagFrozen", () => {
+  it("leaves the flag editable up to and at decalcification", () => {
+    ["ACCESSIONED", "GROSSING", "DECALCIFICATION"].forEach((stored) => {
+      expect(decalcificationFlagFrozen(stored)).toBe(false);
+    });
+  });
+
+  it("freezes the flag at every stage after decalcification", () => {
+    [
+      "PROCESSING",
+      "EMBEDDING",
+      "MICROTOMY",
+      "STAINING",
+      "COVERSLIPPING",
+      "READY_PATHOLOGIST",
+      "UNDER_REVIEW",
+      "COMPLETED",
+    ].forEach((stored) => {
+      expect(decalcificationFlagFrozen(stored)).toBe(true);
+    });
+  });
+
+  // The server judges by the stored stage too, so a stage it has and this
+  // build lacks is left for the server to decide rather than guessed at.
+  it("freezes nothing for a case not yet loaded or at a stage this build does not know", () => {
+    expect(decalcificationFlagFrozen(null)).toBe(false);
+    expect(decalcificationFlagFrozen("SOME_LATER_STAGE")).toBe(false);
+  });
+});
+
+describe("embedding, read from the cassettes", () => {
+  const sectionsAt = (status) =>
+    deriveCaseSections({
+      intl,
+      status,
+      isPathologist: true,
+      decalcificationRequired: true,
+    });
+  const embeddingSection = (status) =>
+    byId(sectionsAt(status), "pathology-section-embedding");
+  const railStep = (status, blocks, configurationProperties) =>
+    deriveRailItems(
+      deriveCaseSections({
+        intl,
+        status,
+        isPathologist: true,
+        decalcificationRequired: true,
+        configurationProperties,
+      }),
+      {
+        intl,
+        status,
+        reportCount: 0,
+        openRequestNames: [],
+        caseInfo: { blocks },
+      },
+    ).find((item) => item.id === "pathology-section-embedding");
+
+  const cassette = (id, designation, overrides = {}) => ({
+    id,
+    designation,
+    cassetteState: "CASSETTE",
+    active: true,
+    ...overrides,
+  });
+  const block = (id, designation) =>
+    cassette(id, designation, { cassetteState: "BLOCK" });
+
+  const oneOfThree = [block(1, "A1"), cassette(2, "A2"), cassette(3, "A3")];
+  const allThree = [block(1, "A1"), block(2, "A2"), block(3, "A3")];
+
+  it("badges the section with nothing while no cassette has been cut", () => {
+    expect(
+      sectionBadge(embeddingSection("EMBEDDING"), { caseInfo: { blocks: [] } }),
+    ).toBeNull();
+  });
+
+  it("badges the section with how many cassettes are embedded while any is outstanding", () => {
+    expect(
+      sectionBadge(embeddingSection("EMBEDDING"), {
+        caseInfo: { blocks: oneOfThree },
+      }),
+    ).toEqual({
+      kind: "partial",
+      textKey: "pathology.badge.embeddedOf",
+      values: { embedded: 1, total: 3 },
+    });
+  });
+
+  it("badges the section Complete once every cassette in use is a block", () => {
+    expect(
+      sectionBadge(embeddingSection("EMBEDDING"), {
+        caseInfo: {
+          blocks: [...allThree, cassette(4, "A4", { active: false })],
+        },
+      }),
+    ).toEqual({ kind: "complete", textKey: "common.complete" });
+  });
+
+  // The badge reports the record, not the bench position: a case moved on
+  // with a cassette still unembedded keeps saying so, and one embedded early
+  // already reads Complete.
+  it("follows the rows and not the stage the case stands at", () => {
+    expect(
+      sectionBadge(embeddingSection("STAINING"), {
+        caseInfo: { blocks: oneOfThree },
+      }).kind,
+    ).toBe("partial");
+    expect(
+      sectionBadge(embeddingSection("EMBEDDING"), {
+        caseInfo: { blocks: allThree },
+      }).kind,
+    ).toBe("complete");
+  });
+
+  // Before the case reaches embedding nothing waits at that bench, so the
+  // rail names nothing there yet; from the stage on it names every cassette.
+  it("names the outstanding cassettes on the rail once the case has reached embedding, and not before", () => {
+    expect(railStep("GROSSING", oneOfThree).pendingLabel).toBeUndefined();
+
+    const atEmbedding = railStep("EMBEDDING", oneOfThree);
+    const sentence = intl.formatMessage(
+      { id: "pathology.badge.outstanding" },
+      { designations: "A2, A3" },
+    );
+    expect(atEmbedding.pendingLabel).toBe(sentence);
+    expect(atEmbedding.pendingTitle).toBe(sentence);
+
+    expect(railStep("STAINING", oneOfThree).pendingLabel).toBe(sentence);
+  });
+
+  it("names nothing on the rail when the laboratory does not track embedding", () => {
+    const step = railStep("STAINING", oneOfThree, {
+      PATHOLOGY_STAGE_EMBEDDING_ENABLED: "false",
+    });
+
+    expect(step.notApplicable).toBe(true);
+    expect(step.pendingLabel).toBeUndefined();
+  });
+
+  it("completes the rail step only once the case has passed embedding with every cassette a block", () => {
+    expect(railStep("STAINING", allThree).complete).toBe(true);
+    expect(railStep("STAINING", oneOfThree).complete).toBe(false);
+    expect(railStep("EMBEDDING", allThree).complete).toBe(false);
+    expect(railStep("STAINING", []).complete).toBe(false);
+  });
+
+  it("names two outstanding cassettes in one sentence", () => {
+    const sentence = messages["pathology.badge.outstanding"].replace(
+      "{designations}",
+      "A2, A3",
+    );
+    expect(outstandingLabel(intl, ["A2", "A3"])).toEqual({
+      visible: sentence,
+      full: sentence,
+    });
+  });
+
+  it("names two of three outstanding cassettes and counts the third, with all three in full", () => {
+    expect(outstandingLabel(intl, ["A2", "A3", "A4"])).toEqual({
+      visible: intl.formatMessage(
+        { id: "pathology.badge.outstandingMore" },
+        { designations: "A2, A3", count: 1 },
+      ),
+      full: intl.formatMessage(
+        { id: "pathology.badge.outstanding" },
+        { designations: "A2, A3, A4" },
+      ),
+    });
+  });
+});
+
+// The summary's line follows the rail: not applicable where the stage is not
+// tracked, and the outstanding cassettes named only once the case is there.
+describe("embeddingStatement", () => {
+  const cassette = (id, designation, cassetteState = "CASSETTE") => ({
+    id,
+    designation,
+    cassetteState,
+    active: true,
+  });
+  const oneOfThree = embeddingSummary([
+    cassette(1, "A1", "BLOCK"),
+    cassette(2, "A2"),
+    cassette(3, "A3"),
+  ]);
+
+  it("reads not applicable where the laboratory does not track embedding", () => {
+    expect(
+      embeddingStatement(intl, {
+        summary: oneOfThree,
+        status: "EMBEDDING",
+        configurationProperties: { PATHOLOGY_STAGE_EMBEDDING_ENABLED: "false" },
+      }),
+    ).toEqual({ value: messages["caseView.badge.notApplicable"] });
+  });
+
+  it("reads nothing before a cassette has been saved", () => {
+    expect(
+      embeddingStatement(intl, {
+        summary: embeddingSummary([]),
+        status: "EMBEDDING",
+      }),
+    ).toEqual({ value: null });
+  });
+
+  it("counts the embedded cassettes and names the outstanding ones once the case is at embedding", () => {
+    expect(
+      embeddingStatement(intl, { summary: oneOfThree, status: "EMBEDDING" }),
+    ).toEqual({
+      value: intl.formatMessage(
+        { id: "pathology.badge.embeddedOf" },
+        { embedded: 1, total: 3 },
+      ),
+      title: intl.formatMessage(
+        { id: "pathology.badge.outstanding" },
+        { designations: "A2, A3" },
+      ),
+    });
+  });
+
+  it("counts the embedded cassettes but names none before the case reaches embedding", () => {
+    expect(
+      embeddingStatement(intl, { summary: oneOfThree, status: "GROSSING" }),
+    ).toEqual({
+      value: intl.formatMessage(
+        { id: "pathology.badge.embeddedOf" },
+        { embedded: 1, total: 3 },
+      ),
+      title: undefined,
+    });
+  });
+});
+
+describe("advanceLabelKey", () => {
+  it.each([
+    ["GROSSING", "pathology.action.beginGrossing"],
+    ["DECALCIFICATION", "pathology.action.sendForDecalc"],
+    ["PROCESSING", "pathology.action.sendForProcessing"],
+    ["EMBEDDING", "pathology.action.sendForEmbedding"],
+    ["MICROTOMY", "pathology.action.sendToMicrotomy"],
+    ["STAINING", "pathology.action.sendForStaining"],
+    ["COVERSLIPPING", "pathology.action.sendForCoverslip"],
+    ["READY_PATHOLOGIST", "pathology.action.sendToPathologist"],
+  ])("labels a move to %s with a key the bundle holds", (stageId, key) => {
+    expect(advanceLabelKey(stageId)).toBe(key);
+    expect(messages[key]).toBeTruthy();
+  });
+
+  it("labels nothing an advance never reaches", () => {
+    ["ACCESSIONED", "UNDER_REVIEW", "COMPLETED", "SOMETHING_NEW"].forEach(
+      (stageId) => expect(advanceLabelKey(stageId)).toBeNull(),
+    );
+  });
+});
+
+describe("advanceBlockedReason", () => {
+  const grossed = {
+    grossExam: "Skin ellipse",
+    blocks: [{ id: 1, designation: "A1", cassetteState: "CASSETTE" }],
+  };
+
+  it("says to wait while a save or a move is out, before unsaved work or any stage rule", () => {
+    expect(
+      advanceBlockedReason(
+        intl,
+        {},
+        { storedStatus: "EMBEDDING", saving: true, dirty: true },
+      ),
+    ).toEqual({ key: "pathology.locked.requestInFlight" });
+    expect(
+      advanceBlockedReason(intl, grossed, {
+        storedStatus: "GROSSING",
+        moving: true,
+      }),
+    ).toEqual({ key: "pathology.locked.requestInFlight" });
+  });
+
+  it("says to save first while the form holds unsaved work, before any stage rule", () => {
+    expect(
+      advanceBlockedReason(intl, {}, { storedStatus: "GROSSING", dirty: true }),
+    ).toEqual({ key: "pathology.locked.saveBeforeTransition" });
+  });
+
+  it("holds grossing until the specimen is described and cut", () => {
+    expect(
+      advanceBlockedReason(
+        intl,
+        { ...grossed, grossExam: "  " },
+        { storedStatus: "GROSSING" },
+      ),
+    ).toEqual({ key: "pathology.locked.grossingIncomplete" });
+    expect(
+      advanceBlockedReason(
+        intl,
+        { ...grossed, blocks: [] },
+        { storedStatus: "GROSSING" },
+      ),
+    ).toEqual({ key: "pathology.locked.grossingIncomplete" });
+    expect(
+      advanceBlockedReason(intl, grossed, { storedStatus: "GROSSING" }),
+    ).toBe(null);
+  });
+
+  it("holds embedding until every cassette in use is a block, naming the outstanding ones", () => {
+    const blocks = [
+      { id: 1, designation: "A1", cassetteState: "BLOCK" },
+      { id: 2, designation: "A2", cassetteState: "CASSETTE" },
+      { id: 3, designation: "A3", cassetteState: "CASSETTE" },
+      { id: 4, designation: "A4", cassetteState: "CASSETTE", active: false },
+    ];
+
+    expect(
+      advanceBlockedReason(intl, { blocks }, { storedStatus: "EMBEDDING" }),
+    ).toEqual({
+      key: "pathology.locked.embeddingIncomplete",
+      values: {
+        outstanding: intl.formatMessage(
+          { id: "pathology.badge.outstanding" },
+          { designations: "A2, A3" },
+        ),
+      },
+    });
+    expect(
+      advanceBlockedReason(
+        intl,
+        {
+          blocks: blocks.map((block) => ({ ...block, cassetteState: "BLOCK" })),
+        },
+        { storedStatus: "EMBEDDING" },
+      ),
+    ).toBe(null);
+  });
+
+  // The rail's cap: a case with many cassettes must not stretch the bar.
+  it("names two outstanding cassettes and counts the rest, as the rail does", () => {
+    const blocks = ["A1", "A2", "A3", "A4"].map((designation, index) => ({
+      id: index + 1,
+      designation,
+      cassetteState: "CASSETTE",
+    }));
+
+    expect(
+      advanceBlockedReason(intl, { blocks }, { storedStatus: "EMBEDDING" })
+        .values,
+    ).toEqual({
+      outstanding: intl.formatMessage(
+        { id: "pathology.badge.outstandingMore" },
+        { designations: "A1, A2", count: 2 },
+      ),
+    });
+  });
+
+  it("holds embedding on a case with no cassette at all, naming the way out", () => {
+    expect(
+      advanceBlockedReason(intl, { blocks: [] }, { storedStatus: "EMBEDDING" }),
+    ).toEqual({ key: "pathology.locked.embeddingNoCassettes" });
+  });
+
+  it("holds microtomy until at least one slide in use is saved", () => {
+    expect(
+      advanceBlockedReason(intl, { slides: [] }, { storedStatus: "MICROTOMY" }),
+    ).toEqual({ key: "pathology.locked.microtomyIncomplete" });
+    expect(
+      advanceBlockedReason(intl, {}, { storedStatus: "MICROTOMY" }),
+    ).toEqual({ key: "pathology.locked.microtomyIncomplete" });
+  });
+
+  it("counts neither a retired slide nor one not yet saved towards microtomy", () => {
+    expect(
+      advanceBlockedReason(
+        intl,
+        { slides: [{ id: 5, blockId: 1, active: false }] },
+        { storedStatus: "MICROTOMY" },
+      ),
+    ).toEqual({ key: "pathology.locked.microtomyIncomplete" });
+    expect(
+      advanceBlockedReason(
+        intl,
+        { slides: [{ blockId: 1, level: "" }] },
+        { storedStatus: "MICROTOMY" },
+      ),
+    ).toEqual({ key: "pathology.locked.microtomyIncomplete" });
+  });
+
+  it("lets a case with one saved slide in use leave microtomy, one slide for the whole case", () => {
+    expect(
+      advanceBlockedReason(
+        intl,
+        {
+          blocks: [
+            { id: 1, cassetteState: "BLOCK" },
+            { id: 2, cassetteState: "BLOCK" },
+          ],
+          slides: [{ id: 5, blockId: 1, active: true }],
+          labelVerifications: { 5: { verifiedAt: "x", verifiedBy: "y" } },
+        },
+        { storedStatus: "MICROTOMY" },
+      ),
+    ).toBe(null);
+  });
+
+  it("says to save first at microtomy too, before the slide rule", () => {
+    expect(
+      advanceBlockedReason(
+        intl,
+        { slides: [] },
+        { storedStatus: "MICROTOMY", dirty: true },
+      ),
+    ).toEqual({ key: "pathology.locked.saveBeforeTransition" });
+  });
+
+  describe("at microtomy, the slide labels (FR-7.5)", () => {
+    const blocks = [
+      { id: 1, designation: "A1", cassetteState: "BLOCK" },
+      { id: 2, designation: "A2", cassetteState: "BLOCK" },
+    ];
+    const slides = [
+      { id: 5, designation: "1", blockId: 1, active: true },
+      { id: 6, designation: "2", blockId: 1, active: true },
+      { id: 7, designation: "1", blockId: 2, active: true },
+    ];
+    const verified = (...ids) =>
+      Object.fromEntries(
+        ids.map((id) => [id, { verifiedAt: "x", verifiedBy: "y" }]),
+      );
+    const unverifiedReason = (outstanding) => ({
+      key: "pathology.locked.slidesUnverified",
+      values: { outstanding },
+    });
+
+    // In flight, unsaved work, no slide, then the labels: each row of the
+    // order on a case that would also fail every later rule.
+    it.each([
+      [
+        "a request in flight first",
+        { slides },
+        { saving: true, dirty: true },
+        { key: "pathology.locked.requestInFlight" },
+      ],
+      [
+        "unsaved work next",
+        { slides },
+        { dirty: true },
+        { key: "pathology.locked.saveBeforeTransition" },
+      ],
+      [
+        "no slide in use before any label",
+        { slides: [{ id: 5, blockId: 1, active: false }] },
+        {},
+        { key: "pathology.locked.microtomyIncomplete" },
+      ],
+      [
+        "every unchecked slide, named under its block, in list order",
+        { slides, labelVerifications: verified(6) },
+        {},
+        unverifiedReason("A1.1, A2.1 outstanding"),
+      ],
+      [
+        "nothing once every label is checked",
+        { slides, labelVerifications: verified(5, 6, 7) },
+        {},
+        null,
+      ],
+    ])("says %s", (_, caseInfo, flags, expected) => {
+      expect(
+        advanceBlockedReason(
+          intl,
+          { blocks, ...caseInfo },
+          { storedStatus: "MICROTOMY", ...flags },
+        ),
+      ).toEqual(expected);
+    });
+
+    // A case of many blocks would otherwise put every slide in one title.
+    it("names the first two unchecked slides and counts the rest, the way the rail names cassettes", () => {
+      const many = [1, 2, 3, 4].map((n) => ({
+        id: 10 + n,
+        designation: String(n),
+        blockId: 1,
+        active: true,
+      }));
+      expect(
+        advanceBlockedReason(
+          intl,
+          { blocks, slides: many },
+          { storedStatus: "MICROTOMY" },
+        ),
+      ).toEqual(
+        unverifiedReason(
+          intl.formatMessage(
+            { id: "pathology.badge.outstandingMore" },
+            { designations: "A1.1, A1.2", count: 2 },
+          ),
+        ),
+      );
+    });
+
+    it("leaves out a retired slide, an unsaved one and one with no block on record", () => {
+      expect(
+        advanceBlockedReason(
+          intl,
+          {
+            blocks,
+            slides: [
+              { id: 5, designation: "1", blockId: 1, active: true },
+              { id: 6, designation: "2", blockId: 1, active: false },
+              { designation: "", blockId: 1, level: "" },
+              { id: 8, designation: "7", blockId: null, active: true },
+            ],
+            labelVerifications: verified(5),
+          },
+          { storedStatus: "MICROTOMY" },
+        ),
+      ).toBe(null);
+    });
+
+    it("holds no other stage for an unchecked label", () => {
+      expect(
+        advanceBlockedReason(
+          intl,
+          { blocks, slides },
+          { storedStatus: "STAINING" },
+        ),
+      ).toBe(null);
+    });
+  });
+
+  it("judges each rule on the stored stage only", () => {
+    expect(
+      advanceBlockedReason(
+        intl,
+        { blocks: [] },
+        { storedStatus: "PROCESSING" },
+      ),
+    ).toBe(null);
+    expect(
+      advanceBlockedReason(
+        intl,
+        { grossExam: "", slides: [] },
+        { storedStatus: "STAINING" },
+      ),
+    ).toBe(null);
+  });
+});
+
+describe("returnBlockedReason", () => {
+  it("says a signed-out case cannot be changed, before anything else", () => {
+    expect(
+      returnBlockedReason({
+        storedStatus: "COMPLETED",
+        previousStage: null,
+        dirty: true,
+      }),
+    ).toEqual({ key: "pathology.locked.caseCompleted" });
+  });
+
+  it("says there is nothing to return to before the first stage", () => {
+    expect(
+      returnBlockedReason({ storedStatus: "ACCESSIONED", previousStage: null }),
+    ).toEqual({ key: "pathology.locked.nothingToReturnTo" });
+  });
+
+  it("says to wait while a save or a move is out, and to save first while the form holds unsaved work", () => {
+    const clean = { storedStatus: "PROCESSING", previousStage: "GROSSING" };
+    expect(
+      returnBlockedReason({ ...clean, saving: true, dirty: true }),
+    ).toEqual({ key: "pathology.locked.requestInFlight" });
+    expect(returnBlockedReason({ ...clean, moving: true })).toEqual({
+      key: "pathology.locked.requestInFlight",
+    });
+    expect(returnBlockedReason({ ...clean, dirty: true })).toEqual({
+      key: "pathology.locked.saveBeforeTransition",
+    });
+  });
+
+  it("lets a clean case with an earlier stage be returned", () => {
+    expect(
+      returnBlockedReason({
+        storedStatus: "PROCESSING",
+        previousStage: "GROSSING",
+      }),
+    ).toBe(null);
+  });
+});
+
+describe("rowActionLock", () => {
+  const saveFirstKey = "pathology.locked.saveBeforeEmbed";
+
+  it.each([
+    ["a clean case standing still", {}, false, null],
+    [
+      "a signed-out case, before anything else",
+      { status: "COMPLETED", dirty: true, moving: true },
+      true,
+      "pathology.locked.caseCompleted",
+    ],
+    [
+      "a save in flight",
+      { saving: true, dirty: true },
+      true,
+      "pathology.locked.requestInFlight",
+    ],
+    [
+      "a move in flight",
+      { moving: true },
+      true,
+      "pathology.locked.requestInFlight",
+    ],
+    [
+      "an embed in flight",
+      { embedding: true },
+      true,
+      "pathology.locked.requestInFlight",
+    ],
+    ["unsaved work", { dirty: true }, true, saveFirstKey],
+  ])("locks a row action on %s", (_, state, disabled, reasonKey) => {
+    expect(
+      rowActionLock({ status: "EMBEDDING", ...state, saveFirstKey }),
+    ).toEqual({ disabled, reasonKey });
+  });
+});
+
+describe("verifyLabelLock", () => {
+  const slide = { id: 6, designation: "2", blockId: 1, active: true };
+  const stamp = { verifiedAt: "x", verifiedBy: "y" };
+  const offeredFree = { offered: true, disabled: false, reasonKey: null };
+  const notOffered = { offered: false, disabled: true, reasonKey: null };
+  const inFlight = {
+    offered: true,
+    disabled: true,
+    reasonKey: "pathology.locked.requestInFlight",
+  };
+
+  it.each([
+    ["an unchecked saved slide on a clean case", {}, offeredFree],
+    [
+      "unsaved work, which a check does not touch",
+      { dirty: true },
+      offeredFree,
+    ],
+    ["a save in flight", { saving: true }, inFlight],
+    ["a move in flight", { moving: true }, inFlight],
+    ["the row's own check in flight", { verifying: true }, inFlight],
+    [
+      "a slide already verified",
+      { labelVerifications: { 6: stamp } },
+      notOffered,
+    ],
+    [
+      "a signed-out case, before any request",
+      { status: "COMPLETED", saving: true },
+      notOffered,
+    ],
+    ["a section shown only for reading", { readOnly: true }, notOffered],
+    [
+      "a stage the laboratory stopped tracking",
+      { untracked: true },
+      notOffered,
+    ],
+    ["a retired slide", { slide: { ...slide, active: false } }, notOffered],
+    [
+      "an unsaved slide",
+      { slide: { designation: "", blockId: 1 } },
+      notOffered,
+    ],
+    [
+      "a slide with no block on record",
+      { slide: { ...slide, blockId: null } },
+      notOffered,
+    ],
+  ])("on %s", (_, state, expected) => {
+    expect(
+      verifyLabelLock({
+        slide,
+        labelVerifications: {},
+        status: "MICROTOMY",
+        ...state,
+      }),
+    ).toEqual(expected);
+  });
+});
+
+describe("addSlideLock", () => {
+  const block = { id: 1, designation: "A1", cassetteState: "BLOCK" };
+  const cassette = { id: 2, designation: "A2", cassetteState: "CASSETTE" };
+  const embeddingOff = { PATHOLOGY_STAGE_EMBEDDING_ENABLED: "false" };
+
+  it("lets a slide be added under a block", () => {
+    expect(addSlideLock({ status: "MICROTOMY", block })).toEqual({
+      disabled: false,
+      reasonKey: null,
+    });
+  });
+
+  it("holds a cassette back until it is embedded, where the laboratory tracks embedding", () => {
+    expect(addSlideLock({ status: "MICROTOMY", block: cassette })).toEqual({
+      disabled: true,
+      reasonKey: "pathology.locked.embedBeforeSlides",
+    });
+    // A row with no state is a cassette, as the server reads it.
+    expect(
+      addSlideLock({ status: "MICROTOMY", block: { id: 3 } }).reasonKey,
+    ).toBe("pathology.locked.embedBeforeSlides");
+  });
+
+  it("offers every row in use once the laboratory has stopped tracking embedding", () => {
+    expect(
+      addSlideLock({
+        status: "MICROTOMY",
+        block: cassette,
+        configurationProperties: embeddingOff,
+      }),
+    ).toEqual({ disabled: false, reasonKey: null });
+  });
+
+  it("holds every row back on a signed-out case, before the embedding rule", () => {
+    [block, cassette].forEach((row) =>
+      expect(addSlideLock({ status: "COMPLETED", block: row })).toEqual({
+        disabled: true,
+        reasonKey: "pathology.locked.caseCompleted",
+      }),
+    );
+  });
+});
+
+// 12.5 item 1: a stage switched off used to hide the slides already cut there
+// behind a locked section, whose body is never shown.
+describe("a stage the laboratory stopped tracking, with rows on record", () => {
+  const MICROTOMY = "pathology-section-microtomy";
+  const microtomyOff = { PATHOLOGY_STAGE_MICROTOMY_ENABLED: "false" };
+  const derive = (status, configurationProperties, hasRows) =>
+    deriveCaseSections({
+      intl,
+      status,
+      isPathologist: false,
+      configurationProperties,
+      decalcificationRequired: true,
+      sectionHasRows: (section) => hasRows && section.id === MICROTOMY,
+    });
+
+  it("shows the section read-only and still not applicable, with a badge saying it is not tracked", () => {
+    const sections = derive("STAINING", microtomyOff, true);
+    const microtomy = byId(sections, MICROTOMY);
+
+    expect(microtomy.state).toBe(SECTION_STATE.READ_ONLY);
+    expect(microtomy.notApplicable).toBe(true);
+    expect(microtomy.readOnlyBecauseUntracked).toBe(true);
+    expect(microtomy.lockedHintKey).toBeUndefined();
+    expect(
+      sectionBadge(microtomy, { caseInfo: { slides: [{ id: "1" }] } }),
+    ).toEqual({ kind: "none", textKey: "pathology.locked.stageDisabled" });
+
+    const railItem = deriveRailItems(sections, {
+      intl,
+      status: "STAINING",
+      reportCount: 0,
+      openRequestNames: [],
+      caseInfo: { slides: [{ id: "1" }] },
+    }).find((item) => item.id === MICROTOMY);
+    expect(railItem.notApplicable).toBe(true);
+    expect(railItem.complete).toBe(false);
+  });
+
+  it("keeps the section locked as before when it holds no rows", () => {
+    const microtomy = byId(derive("STAINING", microtomyOff, false), MICROTOMY);
+
+    expect(microtomy.state).toBe(SECTION_STATE.DISABLED);
+    expect(microtomy.lockedHintKey).toBe("pathology.locked.stageDisabled");
+    expect(microtomy.notApplicable).toBe(true);
+    expect(microtomy.readOnlyBecauseUntracked).toBeUndefined();
+  });
+
+  it("changes nothing for a section whose stage the laboratory tracks", () => {
+    const microtomy = byId(derive("STAINING", {}, true), MICROTOMY);
+
+    expect(microtomy.state).toBe(SECTION_STATE.COMPLETE);
+    expect(microtomy.notApplicable).toBe(false);
+    expect(microtomy.readOnlyBecauseUntracked).toBeUndefined();
+  });
+
+  it("asks no caller for rows it does not know about, and locks every other switched-off stage as before", () => {
+    const sections = deriveCaseSections({
+      intl,
+      status: "STAINING",
+      isPathologist: false,
+      configurationProperties: microtomyOff,
+      decalcificationRequired: true,
+    });
+    expect(byId(sections, MICROTOMY).state).toBe(SECTION_STATE.DISABLED);
+
+    const coverslipping = byId(
+      derive(
+        "STAINING",
+        { PATHOLOGY_STAGE_COVERSLIPPING_ENABLED: "false" },
+        true,
+      ),
+      "pathology-section-coverslipping",
+    );
+    expect(coverslipping.state).toBe(SECTION_STATE.DISABLED);
+  });
+});
+
+describe("sectionIdOfStage", () => {
+  it("finds the section each stage is worked in, and none for a stage this build does not know", () => {
+    expect(sectionIdOfStage("PROCESSING")).toBe("pathology-section-processing");
+    expect(sectionIdOfStage("UNDER_REVIEW")).toBe("pathology-section-review");
+    expect(sectionIdOfStage("COMPLETED")).toBe("pathology-section-reports");
+    expect(sectionIdOfStage("SOMETHING_NEW")).toBeNull();
   });
 });

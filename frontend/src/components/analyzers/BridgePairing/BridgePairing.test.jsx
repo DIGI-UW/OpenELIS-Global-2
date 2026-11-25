@@ -64,6 +64,21 @@ describe("BridgePairing", () => {
     );
   });
 
+  it("says the stored key cannot be read instead of promising to pair on its own", () => {
+    getBridgePairing.mockImplementation((callback) =>
+      callback({ ...UNPAIRED, clientKeyReadable: false }),
+    );
+    renderPairing();
+
+    expect(screen.getByTestId("bridge-pairing-unpaired")).toHaveTextContent(
+      "OpenELIS cannot read the key it stored for the Bridge",
+    );
+    expect(
+      screen.queryByText(/pairs with the code it is configured with/),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Pairing code")).toBeInTheDocument();
+  });
+
   it("names why the Bridge refused the code", async () => {
     getBridgePairing.mockImplementation((callback) => callback(UNPAIRED));
     pairBridge.mockImplementation((code, callback) =>

@@ -44,4 +44,26 @@ public class ReportingAuditTest {
             Instant.parse(capture.events().get(0).path("timestamp").asText());
         }
     }
+
+    @Test
+    public void dashboardPdfExportIsOneEventListingEverySection() {
+        try (var capture = new ReportingAuditCapture()) {
+            ReportingAudit.managementDashboardExported("42", "30d", List.of("kpis", "quality"), 12);
+            assertEquals(List.of("MANAGEMENT_DASHBOARD_EXPORTED"), capture.actions());
+            var event = capture.events().get(0);
+            assertEquals("30d", event.path("timeScope").asText());
+            assertEquals("quality", event.path("sectionsIncluded").get(1).asText());
+            assertEquals(12, event.path("rowCount").asInt());
+        }
+    }
+
+    @Test
+    public void dashboardCsvDownloadNamesItsSection() {
+        try (var capture = new ReportingAuditCapture()) {
+            ReportingAudit.managementDashboardCsvDownloaded("42", "ytd", "workload", 7);
+            assertEquals(List.of("MANAGEMENT_DASHBOARD_CSV_DOWNLOADED"), capture.actions());
+            assertEquals("workload", capture.events().get(0).path("section").asText());
+            assertEquals(7, capture.events().get(0).path("rowCount").asInt());
+        }
+    }
 }

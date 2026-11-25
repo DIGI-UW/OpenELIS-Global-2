@@ -92,7 +92,7 @@ public final class ValidationSignals {
         if (limit == null || result == null || !"N".equals(result.getResultType())) {
             return false;
         }
-        String value = result.getReportedValue();
+        String value = result.getValue();
         if (GenericValidator.isBlankOrNull(value)) {
             return false;
         }
@@ -158,8 +158,7 @@ public final class ValidationSignals {
         if (TypeOfTestResultServiceImpl.ResultType.DICTIONARY.matches(result.getResultType())) {
             return result.getValue().equals(limit.getDictionaryNormalId());
         }
-        String numeric = "N".equals(result.getResultType())
-                ? StringUtil.getActualNumericValue(result.getReportedValue())
+        String numeric = "N".equals(result.getResultType()) ? StringUtil.getActualNumericValue(result.getValue())
                 : result.getValue(true);
         if (!GenericValidator.isDouble(numeric)) {
             return false;

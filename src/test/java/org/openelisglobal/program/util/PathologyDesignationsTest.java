@@ -110,6 +110,16 @@ public class PathologyDesignationsTest {
     }
 
     @Test
+    public void slideOnBlockName_joinsBlockAndSlideWithTheSchemesSeparator() {
+        assertEquals("a slide is named under its block", "A1.1",
+                PathologyDesignations.slideOnBlockName("A1", "1", DEFAULTS));
+        assertEquals("the separator is the one the barcode uses", "A1-1", PathologyDesignations.slideOnBlockName("A1",
+                "1", new DesignationScheme(PartScheme.ALPHA, "{part}{n}", "{n}", "-")));
+        assertEquals("a slide whose block is not known is named by itself", "1",
+                PathologyDesignations.slideOnBlockName(null, "1", DEFAULTS));
+    }
+
+    @Test
     public void barcode_withoutAnAccession_isTheDesignationAlone() {
         assertEquals("a barcode never opens with a bare separator", "A1",
                 PathologyDesignations.blockBarcode(null, "A1", DEFAULTS));

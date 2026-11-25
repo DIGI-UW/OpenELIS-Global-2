@@ -45,6 +45,44 @@ public class LabelPresetForm {
     @NotNull(message = "{error.labelpreset.barcodeType.required}")
     private BarcodeType barcodeType;
 
+    private Boolean printsPerContainer = false;
+    @NotNull
+    @Min(0)
+    private Integer defaultPerContainer = 0;
+    @NotNull
+    @Min(0)
+    private Integer maxPerContainer = 10;
+
+    @AssertTrue(message = "{error.labelpreset.maxPerContainer.lte}")
+    public boolean isMaxPerContainerGteDefault() {
+        return defaultPerContainer != null && maxPerContainer != null && defaultPerContainer >= 0
+                && maxPerContainer >= defaultPerContainer;
+    }
+
+    public Boolean getPrintsPerContainer() {
+        return printsPerContainer;
+    }
+
+    public void setPrintsPerContainer(Boolean value) {
+        printsPerContainer = value;
+    }
+
+    public Integer getDefaultPerContainer() {
+        return defaultPerContainer;
+    }
+
+    public void setDefaultPerContainer(Integer value) {
+        defaultPerContainer = value;
+    }
+
+    public Integer getMaxPerContainer() {
+        return maxPerContainer;
+    }
+
+    public void setMaxPerContainer(Integer value) {
+        maxPerContainer = value;
+    }
+
     private Boolean printsPerOrder = false;
 
     private Boolean printsPerSample = true;
@@ -74,7 +112,8 @@ public class LabelPresetForm {
     /** At least one scope flag must be true. */
     @AssertTrue(message = "{error.labelpreset.scope.required}")
     public boolean isAtLeastOneScopeSelected() {
-        return Boolean.TRUE.equals(printsPerOrder) || Boolean.TRUE.equals(printsPerSample);
+        return Boolean.TRUE.equals(printsPerOrder) || Boolean.TRUE.equals(printsPerSample)
+                || Boolean.TRUE.equals(printsPerContainer);
     }
 
     /** For order scope: maxPerOrder >= defaultPerOrder. */

@@ -181,6 +181,7 @@ export default [
             "verifyResults",
             "verifyImportedResults",
             "acceptAndVerifyResults",
+            "runMicrobiologyAstReportingWorkflow",
             "testConnection",
             "testAnalyzerConnection",
           ],

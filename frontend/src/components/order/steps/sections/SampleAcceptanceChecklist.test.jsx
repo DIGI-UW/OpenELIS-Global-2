@@ -4,6 +4,7 @@ import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
+import { ConfigurationContext } from "../../../layout/contexts";
 
 // Hoisted mutable mocks so each test can program the API responses and assert
 // against stable spy instances.
@@ -376,4 +377,38 @@ describe("SampleAcceptanceChecklist", () => {
       screen.queryByRole("button", { name: /Resample/i }),
     ).not.toBeInTheDocument();
   });
+});
+
+// OGC-1657 walk: Sample Check read "Collected 2026-11-05 10:00 · Received
+// 2026-11-06 14:20" on a day-first site; the transit time is unchanged.
+describe("SampleAcceptanceChecklist collected and received times", () => {
+  const renderOnSite = (dateLocale) =>
+    render(
+      <ConfigurationContext.Provider
+        value={{ configurationProperties: { DEFAULT_DATE_LOCALE: dateLocale } }}
+      >
+        <IntlProvider locale="en" messages={messages}>
+          <SampleAcceptanceChecklist
+            sampleItemId="42"
+            labNumber="ENV-2026-00231"
+            collectedAt="2026-03-05 10:00"
+            receivedAt="2026-03-06 14:20"
+          />
+        </IntlProvider>
+      </ConfigurationContext.Provider>,
+    );
+
+  test.each([
+    ["fr-FR", "05/03/2026 10:00", "06/03/2026 14:20"],
+    ["en-US", "03/05/2026 10:00", "03/06/2026 14:20"],
+  ])(
+    "%s: shows them in the site format",
+    async (locale, collected, received) => {
+      renderOnSite(locale);
+
+      expect(await screen.findByText(collected)).toBeInTheDocument();
+      expect(screen.getByText(received)).toBeInTheDocument();
+      expect(screen.getByText("28h 20m")).toBeInTheDocument();
+    },
+  );
 });

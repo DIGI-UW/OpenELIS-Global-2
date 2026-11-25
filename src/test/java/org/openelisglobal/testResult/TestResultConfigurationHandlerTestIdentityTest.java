@@ -71,9 +71,8 @@ public class TestResultConfigurationHandlerTestIdentityTest {
         when(testService.getTestByLocalizedName("Hemoglobin")).thenReturn(legacy);
         when(testService.getTestByDescription("Hemoglobin")).thenReturn(hemoglobin);
 
-        handler.processConfiguration(
-                new ByteArrayInputStream(
-                        "testName,resultType,significantDigits\nHemoglobin,N,0\n".getBytes(StandardCharsets.UTF_8)),
+        handler.processConfiguration(new ByteArrayInputStream(
+                "testName,resultType,reportingDecimalPlaces\nHemoglobin,N,0\n".getBytes(StandardCharsets.UTF_8)),
                 "analyzer-harness-results.csv");
 
         ArgumentCaptor<TestResult> created = ArgumentCaptor.forClass(TestResult.class);
@@ -86,9 +85,8 @@ public class TestResultConfigurationHandlerTestIdentityTest {
         org.openelisglobal.test.valueholder.Test legacy = test("15", "Hémoglobine(Whole Blood)");
         when(testService.getTestByLocalizedName("Hemoglobin")).thenReturn(legacy);
 
-        handler.processConfiguration(
-                new ByteArrayInputStream(
-                        "testName,resultType,significantDigits\nHemoglobin,N,0\n".getBytes(StandardCharsets.UTF_8)),
+        handler.processConfiguration(new ByteArrayInputStream(
+                "testName,resultType,reportingDecimalPlaces\nHemoglobin,N,0\n".getBytes(StandardCharsets.UTF_8)),
                 "legacy-results.csv");
 
         ArgumentCaptor<TestResult> created = ArgumentCaptor.forClass(TestResult.class);

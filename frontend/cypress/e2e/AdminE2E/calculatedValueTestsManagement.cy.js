@@ -61,9 +61,11 @@ describe("Calculated Value Tests Management", () => {
   it("Enter Final Result and Submit", () => {
     cy.fixture("ReflexTestsConfig").then((test) => {
       reflexTestsConfigPage.selectThirdSample(test.sample);
-      reflexTestsConfigPage.enterFinalResult(test.searchTest);
+      reflexTestsConfigPage.enterFinalResult(test.calcResultTest);
       reflexTestsConfigPage.addFinalExternatNote(test.externalNote);
+      cy.intercept("POST", "**/rest/test-calculation").as("saveCalculation");
       reflexTestsConfigPage.submitButton();
+      cy.wait("@saveCalculation").its("response.statusCode").should("eq", 200);
     });
   });
 

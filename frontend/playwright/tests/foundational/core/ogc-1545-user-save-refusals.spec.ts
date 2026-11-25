@@ -28,11 +28,21 @@ async function createUser(
   firstName: string,
   lastName: string,
 ) {
+  const created = await postUser(page, login, firstName, lastName);
+  expect(created.status(), await created.text()).toBe(200);
+}
+
+async function postUser(
+  page: Page,
+  login: string,
+  firstName: string,
+  lastName: string,
+) {
   const template = await (
     await page.request.get(`${USER_ENDPOINT}?ID=0&startingRecNo=1&roleFilter=`)
   ).json();
   const csrf = (await (await page.request.get(`${API}/session`)).json()).csrf;
-  const created = await page.request.post(USER_ENDPOINT, {
+  return page.request.post(USER_ENDPOINT, {
     headers: { "X-CSRF-Token": csrf },
     data: {
       ...template,
@@ -50,7 +60,6 @@ async function createUser(
       selectedRoles: [],
     },
   });
-  expect(created.status(), await created.text()).toBe(200);
 }
 
 async function listed(page: Page, login: string) {
@@ -85,6 +94,26 @@ async function addUserThroughTheScreen(
 }
 
 test.describe("OGC-1545 user saves", () => {
+  test("a login with a character the site does not allow answers 400 naming the allowed characters (OGC-1593)", async ({
+    page,
+  }) => {
+    const suffix = letters(6);
+    const refused = await postUser(
+      page,
+      `<b>${suffix}`,
+      "Playwright",
+      `Charset ${suffix}`,
+    );
+
+    expect(refused.status()).toBe(400);
+    const body = await refused.json();
+    expect(body.errorKey).toBe("errors.loginName.charset");
+    expect(body.error).toMatch(
+      /^Login name may only contain these characters: /,
+    );
+    expect(await listed(page, `<b>${suffix}`)).toBe(false);
+  });
+
   test("a second person with the same name gets an account", async ({
     page,
   }) => {

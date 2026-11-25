@@ -92,6 +92,17 @@ public class SurveillanceMappingServiceIntegrationTest extends BaseWebContextSen
     }
 
     @Test
+    public void readsASemicolonSeparatedFile() {
+        SurveillanceImportResult result = importCsv(
+                SIX_ROWS.replace(",", ";").replace("\"MTB DETECTED; MTB TRACE\"", "MTB DETECTED, MTB TRACE"));
+
+        assertEquals(new SurveillanceImportResult(6, 0, List.of()), result);
+        assertEquals("MTB DETECTED,MTB TRACE", jdbcTemplate.queryForObject(
+                "SELECT positive_result_codes FROM clinlims.test_surveillance_mapping WHERE metric_key = 'MTB_CODES'",
+                String.class));
+    }
+
+    @Test
     public void aRowNeverMapsATestInAVectorSection() {
         SurveillanceImportResult result = importCsv(
                 HEADER + "MALARIA,32700-7,Smear positive,SMEAR_POSITIVE,ALL_ABNORMAL,,,,1\n");

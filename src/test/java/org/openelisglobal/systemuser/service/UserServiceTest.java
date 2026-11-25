@@ -31,6 +31,9 @@ public class UserServiceTest extends BaseWebContextSensitiveTest {
     @Autowired
     private LoginUserService loginUserService;
 
+    @Autowired
+    private org.openelisglobal.userrole.service.UserRoleService userRoleService;
+
     @Before
     public void init() throws Exception {
         executeDataSetWithStateManagement("testdata/user-service.xml");
@@ -133,6 +136,20 @@ public class UserServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("Lab unit should be hematology", "hematology", savedRoleMap.getLabUnit());
         assertEquals("Should have exactly one role mapped to lab unit", 1, savedRoleMap.getRoles().size());
         assertTrue("Role 2 (labTech) should be in the mapped roles", savedRoleMap.getRoles().contains("2"));
+    }
+
+    @Test
+    public void saveUserLabUnitRoles_shouldKeepARoleTheUserAlreadyHolds() {
+        SystemUser user101 = systemUserService.get("101");
+        Map<String, Set<String>> selectedLabUnitRolesMap = new HashMap<>();
+        selectedLabUnitRolesMap.put("hematology", new HashSet<>(Set.of("2")));
+
+        userService.saveUserLabUnitRoles(user101, selectedLabUnitRolesMap, "100");
+
+        assertEquals("role 2, already held, is still held once", List.of("2"),
+                userRoleService.getRoleIdsForUser("101"));
+        assertEquals(Set.of("2"),
+                userService.getUserLabUnitRoles("101").getLabUnitRoleMap().iterator().next().getRoles());
     }
 
     @Test

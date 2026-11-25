@@ -12,6 +12,8 @@ public interface MicroAntibioticDAO extends BaseDAO<MicroAntibiotic, String> {
 
     Optional<MicroAntibiotic> findByWhonetCodeIgnoreCase(String whonetCode);
 
+    Optional<MicroAntibiotic> findByReference(String source, String code);
+
     long countWorkflowReferences(String antibioticId);
 
     List<MicroAntibiotic> search(String q, String status, String category, String sort, int offset, int limit);

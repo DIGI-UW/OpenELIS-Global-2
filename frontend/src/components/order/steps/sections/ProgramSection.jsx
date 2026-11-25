@@ -8,10 +8,10 @@ import {
   TextInput,
   Select,
   SelectItem,
-  DatePicker,
   DatePickerInput,
   InlineNotification,
 } from "@carbon/react";
+import { DatePicker } from "../../../common/DatePicker";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import { filterByTypedLabel } from "../../comboFilter";
 import Questionnaire from "../../../common/Questionnaire";

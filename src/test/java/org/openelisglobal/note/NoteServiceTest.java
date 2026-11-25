@@ -328,4 +328,25 @@ public class NoteServiceTest extends BaseWebContextSensitiveTest {
             }
         };
     }
+
+    @Test
+    public void defaultHtmlOutputEscapesEachNoteAndRetainsLineSeparators() throws Exception {
+        String text = "Clinical <value> & <img src=x onerror=alert(1)>";
+        Note first = noteService.get("1");
+        first.setText(text);
+        noteService.update(first);
+        Note second = noteService.get("2");
+        second.setText("Second note");
+        noteService.update(second);
+        String html = noteService.getNotesAsString(createTestNoteObject(REF_ID, REF_TABLE_ID), false, false, "<br/>",
+                false);
+        var document = javax.xml.parsers.DocumentBuilderFactory.newInstance().newDocumentBuilder()
+                .parse(new java.io.ByteArrayInputStream(
+                        ("<root>" + html + "</root>").getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        assertEquals(text + "Second note", document.getDocumentElement().getTextContent());
+        assertEquals(1, document.getElementsByTagName("br").getLength());
+        assertEquals(0, document.getElementsByTagName("img").getLength());
+        assertEquals(0, document.getElementsByTagName("value").getLength());
+    }
+
 }

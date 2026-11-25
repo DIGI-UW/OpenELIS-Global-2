@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+  <changeSet id="014-microbiology-case-result-entry" author="openelis">
+    <addColumn tableName="micro_case_analysis" schemaName="clinlims">
+      <column name="entered_by" type="varchar(36)"/>
+      <column name="tested_elsewhere" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+      <column name="performing_lab_id" type="varchar(36)"/>
+      <column name="performing_user_id" type="varchar(36)"/>
+      <column name="performed_at" type="timestamp"/>
+    </addColumn>
+    <rollback>
+      <dropColumn tableName="micro_case_analysis" schemaName="clinlims" columnName="entered_by"/>
+      <dropColumn tableName="micro_case_analysis" schemaName="clinlims" columnName="tested_elsewhere"/>
+      <dropColumn tableName="micro_case_analysis" schemaName="clinlims" columnName="performing_lab_id"/>
+      <dropColumn tableName="micro_case_analysis" schemaName="clinlims" columnName="performing_user_id"/>
+      <dropColumn tableName="micro_case_analysis" schemaName="clinlims" columnName="performed_at"/>
+    </rollback>
+  </changeSet>
+</databaseChangeLog>

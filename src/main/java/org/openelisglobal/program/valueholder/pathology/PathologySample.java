@@ -16,7 +16,9 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.annotations.LazyCollection;
 import org.hibernate.annotations.LazyCollectionOption;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
+import org.openelisglobal.program.util.DictionaryEntryNames;
 import org.openelisglobal.program.valueholder.ProgramSample;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion.ConclusionType;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestType;
@@ -104,6 +106,13 @@ public class PathologySample extends ProgramSample {
 
     @Column(name = "microscopy_exam")
     private String microscopyExam;
+
+    /**
+     * Whether the specimen needs decalcifying before processing, which is what
+     * makes the DECALCIFICATION stage apply to this case.
+     */
+    @Column(name = "decalcification_required", nullable = false)
+    private boolean decalcificationRequired;
 
     public List<PathologyRequest> getRequests() {
         return requests;
@@ -210,7 +219,7 @@ public class PathologySample extends ProgramSample {
         return blocks;
     }
 
-    /** Names each block by the identifier written on it. */
+    /** Names each block by the identifier written on it and the tissue it holds. */
     public String getBlocks_Audit() {
         if (blocks == null) {
             return null;
@@ -218,9 +227,20 @@ public class PathologySample extends ProgramSample {
             return StringUtils.join(blocks.stream()
                     .map(e -> "Block: " + e.displayIdentifier() + ", Cassette State: "
                             + (e.getCassetteState() == null ? "" : e.getCassetteState().name()) + ", Location: "
-                            + StringUtils.defaultString(e.getLocation()) + ", Active: " + e.isActive())
+                            + StringUtils.defaultString(e.getLocation()) + ", Tissue: "
+                            + dictionaryName(e.getTissueTypeId()) + ", Active: " + e.isActive())
                     .collect(Collectors.toList()), "; ");
         }
+    }
+
+    /**
+     * A dictionary entry by its name, so a history row says what a cassette held or
+     * how a slide was stained rather than a bare id; the id stands in for a missing
+     * entry.
+     */
+    private static String dictionaryName(String dictionaryId) {
+        return DictionaryEntryNames.localizedNameOf(SpringContext.getBean(DictionaryService.class), dictionaryId)
+                .orElse(StringUtils.defaultString(dictionaryId));
     }
 
     public void setBlocks(List<PathologyBlock> blocks) {
@@ -231,16 +251,21 @@ public class PathologySample extends ProgramSample {
         return slides;
     }
 
-    /** Names each slide by the identifier written on it and by its parent block. */
+    /**
+     * Names each slide by the identifier written on it and by its parent block,
+     * with the level it was cut at and the stain it carries.
+     */
     public String getSlides_Audit() {
         if (slides == null) {
             return null;
         } else {
-            return StringUtils.join(slides.stream()
-                    .map(e -> "Slide: " + e.displayIdentifier() + ", Block: "
-                            + (e.getBlockId() == null ? "" : e.getBlockId()) + ", Location: "
-                            + StringUtils.defaultString(e.getLocation()) + ", Active: " + e.isActive() + ", File Type: "
-                            + StringUtils.defaultString(e.getFileType()))
+            return StringUtils.join(slides.stream().map(e -> "Slide: " + e.displayIdentifier() + ", Block: "
+                    + (e.getBlockId() == null ? "" : e.getBlockId()) + ", Location: "
+                    + StringUtils.defaultString(e.getLocation()) + ", Level: " + StringUtils.defaultString(e.getLevel())
+                    + ", Stain: " + dictionaryName(e.getStainId()) + ", Active: " + e.isActive() + ", File Type: "
+                    + StringUtils.defaultString(e.getFileType()) + ", Label verified: "
+                    + (e.getLabelVerifiedAt() == null ? ""
+                            : DateUtil.convertTimestampToStringDateAndConfiguredHourTime(e.getLabelVerifiedAt())))
                     .collect(Collectors.toList()), "; ");
         }
     }
@@ -263,6 +288,14 @@ public class PathologySample extends ProgramSample {
 
     public void setMicroscopyExam(String microscopyExam) {
         this.microscopyExam = microscopyExam;
+    }
+
+    public boolean isDecalcificationRequired() {
+        return decalcificationRequired;
+    }
+
+    public void setDecalcificationRequired(boolean decalcificationRequired) {
+        this.decalcificationRequired = decalcificationRequired;
     }
 
     public List<PathologyReport> getReports() {

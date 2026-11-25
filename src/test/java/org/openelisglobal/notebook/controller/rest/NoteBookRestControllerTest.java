@@ -81,4 +81,15 @@ public class NoteBookRestControllerTest extends BaseWebContextSensitiveTest {
         assertNotNull("Notebook list response should deserialize", response);
         assertTrue("Notebook list should contain at least one entry from fixtures", !response.isEmpty());
     }
+
+    @Test
+    public void invalidAttachmentReturnsBadRequestAndPreservesNotebook() throws Exception {
+        String title = noteBookService.get(2).getTitle();
+        mockMvc.perform(post("/rest/notebook/update/2").sessionAttr("userSessionData", userSessionData)
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .content("{\"title\":\"rejected change\",\"files\":[{\"base64File\":\"data:text/html;base64,eA==\"}]}"))
+                .andExpect(status().isBadRequest());
+        assertEquals(title, noteBookService.get(2).getTitle());
+    }
+
 }

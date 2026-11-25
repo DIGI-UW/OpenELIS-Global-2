@@ -25,11 +25,11 @@ public interface KpiDAO {
     Map<String, TatFigures> tatByPeriod(LocalDate from, LocalDate to, String interval, BigDecimal targetHours);
 
     /**
-     * {validated, on time} per test section id (null when the analysis has none);
-     * sections with nothing validated are left out.
+     * Receipt-to-validation TAT per test section id (null when the analysis has
+     * none); sections with nothing validated are left out.
      */
-    Map<String, long[]> countOnTimeBySection(LocalDate from, LocalDate to, BigDecimal targetHours);
+    Map<String, TatFigures> tatBySection(LocalDate from, LocalDate to, BigDecimal targetHours);
 
-    record TatFigures(BigDecimal medianHours, long validated, long onTime) {
+    record TatFigures(BigDecimal medianHours, BigDecimal p90Hours, long validated, long onTime) {
     }
 }

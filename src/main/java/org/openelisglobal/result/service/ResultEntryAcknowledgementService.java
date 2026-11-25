@@ -34,15 +34,6 @@ public interface ResultEntryAcknowledgementService extends BaseObjectService<Res
     List<ResultEntryAlert> alertsFor(ResultLimit limit, String resultType, String value, String previousValue);
 
     /**
-     * As {@link #alertsFor(ResultLimit, String, String, String)}, judging a plain
-     * decimal as it is reported: rounded half up to {@code decimalPlaces}
-     * (OGC-1544), so the acknowledgement agrees with the flag Validation and the
-     * report show. A null place count judges the value as typed.
-     */
-    List<ResultEntryAlert> alertsFor(ResultLimit limit, String resultType, String value, String previousValue,
-            Integer decimalPlaces);
-
-    /**
      * Whether the admin has asked for values outside the valid range to be
      * confirmed.
      */

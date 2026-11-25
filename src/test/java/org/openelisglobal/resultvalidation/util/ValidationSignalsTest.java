@@ -146,20 +146,15 @@ public class ValidationSignalsTest {
         assertFalse(ValidationSignals.isNormalResult(range, numeric("100.1")));
     }
 
-    /**
-     * OGC-1544: flags judge the value as reported, rounded to the test's places, so
-     * the report agrees with itself: 4.6 reported as "5" is inside 5-100, and 1.96
-     * reported as "2.0" is not below a critical low of 2.0.
-     */
     @Test
-    public void flagsJudgeTheValueAsReported() {
+    public void flagsJudgeTheClinicalValueRegardlessOfReportFormatting() {
         Result reportedAsFive = numeric("4.6");
-        reportedAsFive.setSignificantDigits(0);
+        reportedAsFive.setReportingDecimalPlaces(0);
         Result reportedAsTwo = numeric("1.96");
-        reportedAsTwo.setSignificantDigits(1);
+        reportedAsTwo.setReportingDecimalPlaces(1);
 
-        assertTrue(ValidationSignals.isNormalResult(authoredLimit(), reportedAsFive));
-        assertFalse(ValidationSignals.isCritical(limit(2.0, 10.0), reportedAsTwo));
+        assertFalse(ValidationSignals.isNormalResult(authoredLimit(), reportedAsFive));
+        assertTrue(ValidationSignals.isCritical(limit(2.0, 10.0), reportedAsTwo));
         assertEquals("4.6", reportedAsFive.getValue());
     }
 
