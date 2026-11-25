@@ -52,15 +52,15 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
 
     String getDisplayAgeRange(ResultLimit resultLimit, String separator);
 
-    String getDisplayValidRange(ResultLimit resultLimit, String significantDigits, String separator);
+    String getDisplayValidRange(ResultLimit resultLimit, String reportingDecimalPlaces, String separator);
 
-    String getDisplayReportingRange(ResultLimit resultLimit, String significantDigits, String separator);
+    String getDisplayReportingRange(ResultLimit resultLimit, String reportingDecimalPlaces, String separator);
 
-    String getDisplayCriticalRange(ResultLimit resultLimit, String significantDigits, String separator);
+    String getDisplayCriticalRange(ResultLimit resultLimit, String reportingDecimalPlaces, String separator);
 
-    String getDisplayReferenceRange(ResultLimit resultLimit, String significantDigits, String separator);
+    String getDisplayReferenceRange(ResultLimit resultLimit, String reportingDecimalPlaces, String separator);
 
-    String getDisplayNormalRange(double low, double high, String significantDigits, String separator);
+    String getDisplayNormalRange(double low, double high, String reportingDecimalPlaces, String separator);
 
     ResultLimit getResultLimitForTestAndPatient(String testId, Patient patient);
 

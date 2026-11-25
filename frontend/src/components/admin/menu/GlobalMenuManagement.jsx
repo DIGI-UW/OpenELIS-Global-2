@@ -71,12 +71,27 @@ function MenuSettings({ item, drafts, onChange, saving, label }) {
   const current = drafts[menu.elementId] || menu;
   const iconNames = Object.keys(navigationIcons);
   const Icon = navigationIcons[current.icon];
+  // A module's entries live only in memory and the server refuses to edit
+  // them; who sees one follows from the roles that hold its permission.
+  const contributed =
+    (typeof menu.displayKey === "string" &&
+      menu.displayKey.startsWith("mod.")) ||
+    (typeof menu.id === "string" && menu.id.startsWith("module:"));
+  const locked = saving || contributed;
   return (
     <AccordionItem
       title={label(menu.displayKey || menu.elementId)}
       data-testid={`menu-settings-${menu.elementId}`}
     >
       <Stack gap={5}>
+        {contributed && (
+          <p
+            className="menu-settings-module-note"
+            data-testid={`menu-module-note-${menu.elementId}`}
+          >
+            {label("menu.module.managed")}
+          </p>
+        )}
         <div
           className="menu-settings-fields"
           data-testid={`menu-fields-${menu.elementId}`}
@@ -85,14 +100,14 @@ function MenuSettings({ item, drafts, onChange, saving, label }) {
             id={`${menu.elementId}-active`}
             labelText={label("common.active")}
             toggled={current.isActive}
-            disabled={saving}
+            disabled={locked}
             onToggle={(value) => onChange(menu, "isActive", value)}
           />
           <Select
             id={`${menu.elementId}-style`}
             labelText={label("menu.presentation.style")}
             value={current.presentationStyle || ""}
-            disabled={saving}
+            disabled={locked}
             helperText={
               current.presentationStyle === "section"
                 ? label("menu.presentation.sectionHint")
@@ -112,7 +127,7 @@ function MenuSettings({ item, drafts, onChange, saving, label }) {
             id={`${menu.elementId}-icon`}
             labelText={label("common.icon")}
             value={current.icon || ""}
-            disabled={saving || current.presentationStyle === "section"}
+            disabled={locked || current.presentationStyle === "section"}
             helperText={
               current.presentationStyle === "section"
                 ? label("menu.presentation.sectionIconHint")

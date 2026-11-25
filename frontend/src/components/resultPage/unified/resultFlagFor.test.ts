@@ -39,6 +39,14 @@ describe("resultFlagFor", () => {
     expect(resultFlagFor(row({ resultValue: "<50" }))).toBe("NORMAL");
   });
 
+  it("preserves critical flags behind inclusive comparators", () => {
+    for (const resultValue of [">200", ">=200", "<1", "<=1", ">= 2e2"]) {
+      expect(resultFlagFor(row({ resultValue, resultFlag: "CRITICAL" }))).toBe(
+        "CRITICAL",
+      );
+    }
+  });
+
   it("carries no flag for a blank or unparseable value", () => {
     expect(resultFlagFor(row({ resultValue: "" }))).toBeUndefined();
     expect(resultFlagFor(row({ resultValue: "   " }))).toBeUndefined();
@@ -61,25 +69,25 @@ describe("resultFlagFor", () => {
     ).toBeUndefined();
   });
 
-  it("judges a plain decimal as reported, rounded half up to the test's places", () => {
+  it("judges the clinical value independently of reporting decimal places", () => {
     expect(
-      resultFlagFor(row({ resultValue: "4.5", significantDigits: 0 })),
-    ).toBe("NORMAL");
-    expect(
-      resultFlagFor(row({ resultValue: "4.4", significantDigits: 0 })),
+      resultFlagFor(row({ resultValue: "4.5", reportingDecimalPlaces: 0 })),
     ).toBe("ABNORMAL");
     expect(
-      resultFlagFor(row({ resultValue: "100.04", significantDigits: 1 })),
-    ).toBe("NORMAL");
+      resultFlagFor(row({ resultValue: "4.4", reportingDecimalPlaces: 0 })),
+    ).toBe("ABNORMAL");
+    expect(
+      resultFlagFor(row({ resultValue: "100.04", reportingDecimalPlaces: 1 })),
+    ).toBe("ABNORMAL");
   });
 
   it("does not round a value behind < or >, or when the places are unknown", () => {
     expect(
-      resultFlagFor(row({ resultValue: "<4.5", significantDigits: 0 })),
+      resultFlagFor(row({ resultValue: "<4.5", reportingDecimalPlaces: 0 })),
     ).toBe("ABNORMAL");
     expect(resultFlagFor(row({ resultValue: "4.5" }))).toBe("ABNORMAL");
     expect(
-      resultFlagFor(row({ resultValue: "4.5", significantDigits: -1 })),
+      resultFlagFor(row({ resultValue: "4.5", reportingDecimalPlaces: -1 })),
     ).toBe("ABNORMAL");
   });
 });

@@ -49,6 +49,18 @@ public class SiteInformationForm extends BaseForm {
     @Valid
     private Localization localization;
 
+    // OGC-1364 v3: the version the page loaded, so a save from an older page is
+    // refused instead of overwriting a newer value.
+    private Long lastupdated;
+
+    public Long getLastupdated() {
+        return lastupdated;
+    }
+
+    public void setLastupdated(Long lastupdated) {
+        this.lastupdated = lastupdated;
+    }
+
     public SiteInformationForm() {
         setFormName("siteInformationForm");
     }

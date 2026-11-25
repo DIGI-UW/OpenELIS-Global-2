@@ -24,6 +24,7 @@ import {
   formatHoldingMinutes,
   formatIsoDateForBackend,
   formatPickerDateForIso,
+  isClockTime,
 } from "../../dateUtils";
 import {
   getHandlingRequirements,
@@ -40,6 +41,8 @@ import {
   shortestHoldingMinutes,
   storageConditionLabelId,
 } from "./handlingRules";
+import SearchableSelect from "../../../common/SearchableSelect";
+import ContainerTypeField from "./ContainerTypeField";
 
 /**
  * SampleCollectionCard - Card for a single sample with collection details
@@ -219,7 +222,8 @@ const SampleCollectionCard = ({
 
   const sampleTypeName =
     sample.sampleTypeName ||
-    sampleTypes.find((st) => st.id === sample.sampleTypeId)?.value ||
+    sampleTypes.find((st) => String(st.id) === String(sample.sampleTypeId))
+      ?.value ||
     "";
 
   const requirements =
@@ -397,30 +401,45 @@ const SampleCollectionCard = ({
         )}
         {/* Sample Type */}
         <Column lg={4} md={4} sm={4}>
-          <Select
+          <SearchableSelect
             id={`sampleType-${sampleIndex}`}
             labelText={intl.formatMessage({
               id: "sample.type",
               defaultMessage: "Sample Type",
             })}
+            options={sampleTypes}
             value={sample.sampleTypeId || ""}
-            onChange={(e) => {
-              const newTypeId = e.target.value;
+            onChange={(newTypeId) => {
               const newTypeName =
-                sampleTypes.find((st) => st.id === newTypeId)?.value || "";
+                sampleTypes.find((st) => String(st.id) === newTypeId)?.value ||
+                "";
               onUpdate(sampleIndex, {
                 sampleTypeId: newTypeId,
                 sampleTypeName: newTypeName,
+                ...(isClinical && sample.proposed && !sample.sampleItemId
+                  ? { containerEdited: true }
+                  : {}),
               });
             }}
             disabled={isReadOnly}
-          >
-            <SelectItem value="" text="" />
-            {sampleTypes.map((type) => (
-              <SelectItem key={type.id} value={type.id} text={type.value} />
-            ))}
-          </Select>
+          />
         </Column>
+
+        {isClinical && (
+          <Column lg={4} md={4} sm={4}>
+            <ContainerTypeField
+              sample={sample}
+              sampleIndex={sampleIndex}
+              isReadOnly={isReadOnly}
+              onChange={(containerTypeId) =>
+                onUpdate(sampleIndex, {
+                  containerTypeId,
+                  ...(sample.sampleItemId ? {} : { containerEdited: true }),
+                })
+              }
+            />
+          </Column>
+        )}
 
         {/* Quantity */}
         <Column lg={4} md={4} sm={2}>
@@ -631,6 +650,8 @@ const SampleCollectionCard = ({
               defaultMessage: "Collection Time",
             })}
             value={sample.collectionTime || ""}
+            invalid={!isClockTime(sample.collectionTime)}
+            invalidText={intl.formatMessage({ id: "sample.time.invalid" })}
             onChange={(e) =>
               handleFieldChange("collectionTime", e.target.value)
             }
@@ -861,6 +882,8 @@ const SampleCollectionCard = ({
                 (sample.sampleItemId ? "" : serverReceivedTime) ||
                 ""
               }
+              invalid={!isClockTime(sample.receivedTime)}
+              invalidText={intl.formatMessage({ id: "sample.time.invalid" })}
               onChange={(e) =>
                 handleFieldChange("receivedTime", e.target.value)
               }

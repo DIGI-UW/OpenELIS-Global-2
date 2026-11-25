@@ -34,8 +34,8 @@ import org.springframework.transaction.annotation.Transactional;
  * unit=Core Lab - Room 101), 1 REJECTION + 1 WARNING violation</li>
  * <li>Instrument 200: Standalone Hematology (profile=Hematology, lab
  * unit=Hematology Wing), 1 WARNING violation</li>
- * <li>Instrument 300: Resolved Only Analyzer, only RESOLVED violations (should
- * not appear)</li>
+ * <li>Instrument 300: Resolved Only Analyzer, only RESOLVED violations
+ * (NOT_CONFIGURED)</li>
  * <li>Instrument 400: Clean Immunoassay Analyzer, has QC results but NO
  * violations (should appear as GREEN)</li>
  * <li>Instrument 500: Coagulation Analyzer, 4 QC results across 2 tests, NO
@@ -93,15 +93,27 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
                 + ") WHERE resolved_date_time IS NOT NULL");
     }
 
+    @Test
+    public void activeAnalyzerWithoutQcActivityIsVisibleAsNotConfigured() {
+        InstrumentQCStatus status = dashboardService
+                .getAllInstrumentComplianceStatus(Timestamp.valueOf("2020-01-01 00:00:00"),
+                        Timestamp.valueOf("2020-01-02 00:00:00"))
+                .stream().filter(row -> "300".equals(row.getInstrumentId())).findFirst().orElseThrow();
+        assertEquals("Resolved Only Analyzer", status.getInstrumentName());
+        assertEquals("NOT_CONFIGURED", status.getComplianceColor());
+        assertEquals(0, status.getUnresolvedRejections());
+        assertEquals(0, status.getAnalyteDetails().size());
+    }
+
     // ==================== getAllInstrumentComplianceStatus ====================
 
     @Test
     public void getAllInstrumentComplianceStatus_returnsInstrumentsWithResultsOrViolations() {
         List<InstrumentQCStatus> statuses = dashboardService.getAllInstrumentComplianceStatus();
 
-        // 5 instruments: 100 (RED), 600 (RED), 200 (YELLOW), 400 (GREEN), 500 (GREEN)
-        // Instrument 300 has only resolved violations and no QC results → excluded
-        assertEquals(5, statuses.size());
+        // Six active instruments, including 300 without configured QC.
+        // Active instrument 300 remains visible as NOT_CONFIGURED.
+        assertEquals(6, statuses.size());
     }
 
     @Test
@@ -138,13 +150,13 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
     public void getAllInstrumentComplianceStatus_excludesResolvedViolations() {
         List<InstrumentQCStatus> statuses = dashboardService.getAllInstrumentComplianceStatus();
 
-        // Instrument 300 has ONLY resolved violations — must not appear at all
+        // Resolved violations do not hide an active instrument.
         Set<String> instrumentIds = statuses.stream().map(InstrumentQCStatus::getInstrumentId)
                 .collect(Collectors.toSet());
-        assertTrue("Instrument 300 (resolved-only) should not appear", !instrumentIds.contains("300"));
+        assertTrue("Active instrument 300 remains visible", instrumentIds.contains("300"));
 
         // viol-004 is RESOLVED on instrument 100 — should not inflate rejection count
-        assertEquals(5, statuses.size());
+        assertEquals(6, statuses.size());
     }
 
     // ==================== Instrument Metadata ====================
@@ -346,8 +358,8 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
         QCDashboardSummary summary = dashboardService.getDashboardSummary();
 
         assertNotNull(summary);
-        // 5 instruments: 100 (RED), 600 (RED), 200 (YELLOW), 400 (GREEN), 500 (GREEN)
-        assertEquals(5, summary.getTotalInstruments());
+        // Six active instruments, including 300 without configured QC.
+        assertEquals(6, summary.getTotalInstruments());
         assertEquals(2, summary.getCompliantInstruments());
         assertEquals(1, summary.getWarningInstruments());
         assertEquals(2, summary.getNonCompliantInstruments());
@@ -380,16 +392,18 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
 
         List<InstrumentQCStatus> statuses = dashboardService.getAllInstrumentComplianceStatus(startDate, endDate);
 
-        // No QC results in Jan 2025, but unresolved violations still determine
-        // compliance — instruments with unresolved violations should still appear
-        // Instruments 100 and 200 have unresolved violations → appear with empty
-        // analyteDetails
-        // Instrument 400 has no violations and no results in this window → excluded
+        // Date filtering removes results, not active instrument inventory or
+        // unresolved violations.
         for (InstrumentQCStatus status : statuses) {
             assertTrue("analyteDetails should be empty outside date window", status.getAnalyteDetails().isEmpty());
             // Compliance color still reflects full unresolved state
-            assertTrue("Compliance color should still reflect unresolved violations",
-                    "RED".equals(status.getComplianceColor()) || "YELLOW".equals(status.getComplianceColor()));
+            if (Set.of("100", "200", "600").contains(status.getInstrumentId())) {
+                assertTrue("Unresolved violations remain visible outside the result window",
+                        "RED".equals(status.getComplianceColor()) || "YELLOW".equals(status.getComplianceColor()));
+            }
+            if ("300".equals(status.getInstrumentId())) {
+                assertEquals("NOT_CONFIGURED", status.getComplianceColor());
+            }
         }
     }
 

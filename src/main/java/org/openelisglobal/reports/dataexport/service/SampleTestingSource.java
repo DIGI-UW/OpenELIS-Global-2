@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -18,6 +19,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
@@ -28,12 +30,15 @@ import org.openelisglobal.reports.dataexport.form.ExportSnapshot;
 import org.openelisglobal.reports.dataexport.form.ReportSourceConfig;
 import org.openelisglobal.reports.dataexport.form.ReportingVariable;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl.ResultType;
 import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +48,7 @@ public class SampleTestingSource implements ReportingSource {
     private static final List<String> BOTH = List.of("SPREADSHEET", "RESULT_LIST");
     private static final List<String> DETAIL = List.of("RESULT_LIST");
     private static final List<String> SPREADSHEET = List.of("SPREADSHEET");
+    private static final Set<String> ORDER_FIELDS = Set.of("enteredDate", "program", "labUnit");
     private static final List<Interval> RESULT_INTERVALS = List.of(
             new Interval("orderToResultMinutes", "Order to Result (min)"),
             new Interval("receivedToValidatedMinutes", "Received to Validated (min)"),
@@ -55,6 +61,10 @@ public class SampleTestingSource implements ReportingSource {
     private ReportingResultValues resultValues;
     @Autowired
     private IStatusService statuses;
+    @Autowired
+    private ExportLocations locations;
+    @Autowired
+    private ExportTestNames testNames;
 
     @Override
     public String id() {
@@ -66,12 +76,22 @@ public class SampleTestingSource implements ReportingSource {
         return List.of("FINALIZED");
     }
 
+    /**
+     * Collection is the definition's own date; received and order entry are the
+     * alternatives (OGC-1655).
+     */
+    @Override
+    public List<String> dateBases() {
+        return List.of("collectionDate", "receivedDate", "orderEnteredDate");
+    }
+
     @Override
     public void validateConfiguration(ReportSourceConfig configuration) {
         if (!"collectionDate".equals(configuration.dateAnchor())
-                || !List.of("tests", "components", "observations", "testTurnaround", "componentTurnaround")
-                        .containsAll(configuration.catalogs())
-                || !List.of("labSectionIds", "testIds", "resultStatuses").containsAll(configuration.filters())) {
+                || !List.of("tests", "components", "observations", "testTurnaround", "componentTurnaround",
+                        ExportLocations.GROUP).containsAll(configuration.catalogs())
+                || !List.of("labSectionIds", "testIds", "resultStatuses", "dateBasis")
+                        .containsAll(configuration.filters())) {
             throw new IllegalArgumentException("reporting.definition.unsupportedMapping");
         }
         var available = catalog().stream().map(ReportingVariable::id).collect(Collectors.toSet());
@@ -92,8 +112,15 @@ public class SampleTestingSource implements ReportingSource {
         common(fields, "orderDate", "Order Date", "date", "sample", BOTH);
         common(fields, "sampleType", "Sample Type", "text", "sample", BOTH);
         common(fields, "sampleStatus", "Sample Status", "text", "sample", BOTH);
+        common(fields, "orderStatus", "Order Status", "text", "sample", BOTH);
         common(fields, "priority", "Priority", "text", "sample", BOTH);
         common(fields, "numberOfTests", "Number of Tests Ordered", "number", "sample", BOTH);
+        common(fields, "enteredDate", "Date Entered", "datetime", "sample", BOTH);
+        common(fields, "program", "Program", "text", "sample", BOTH);
+        common(fields, "labUnit", "Lab Unit", "text", "sample", BOTH);
+        common(fields, "ageYears", "Age at collection (years)", "number", "sample", BOTH);
+        common(fields, "ageMonths", "Age at collection (months)", "number", "sample", BOTH);
+        common(fields, "ageWeeks", "Age at collection (weeks)", "number", "sample", BOTH);
         common(fields, "patientName", "Patient Name", "text", "patient", BOTH);
         common(fields, "dateOfBirth", "Date of Birth", "date", "patient", BOTH);
         common(fields, "sex", "Sex", "text", "patient", BOTH);
@@ -116,18 +143,20 @@ public class SampleTestingSource implements ReportingSource {
         common(fields, "collectionToReceivedMinutes", "Collection to Received (min)", "number", "turnaround", BOTH);
         common(fields, "resultedToValidatedMinutes", "Resulted to Validated (min)", "number", "turnaround", DETAIL);
         var tests = dao.tests();
-        var names = tests.stream().collect(Collectors.toMap(t -> t.getId(), t -> t.getDescription()));
+        var names = testNames.labels(tests, LocaleContextHolder.getLocale());
         tests.forEach(t -> fields
-                .add(new ReportingVariable("test:" + t.getId(), t.getDescription(), "result", "tests", true, BOTH)));
-        tests.forEach(t -> turnaroundFields(fields, "test:" + t.getId(), t.getDescription(), "testTurnaround"));
+                .add(new ReportingVariable("test:" + t.getId(), names.get(t.getId()), "result", "tests", true, BOTH)));
+        tests.forEach(t -> turnaroundFields(fields, "test:" + t.getId(), names.get(t.getId()), "testTurnaround"));
         dao.components().stream().filter(c -> names.containsKey(c.getTestId())).forEach(c -> {
             String id = "component:" + c.getId();
-            String label = names.get(c.getTestId()) + " — " + c.getLabel();
+            String label = names.get(c.getTestId()) + " — "
+                    + ExportTestNames.componentLabel(c, LocaleContextHolder.getLocale());
             fields.add(new ReportingVariable(id, label, c.getResultType(), "components", true, BOTH));
             turnaroundFields(fields, id, label, "componentTurnaround");
         });
         dao.observationTypes().forEach(t -> fields.add(new ReportingVariable("observation:" + t.getId(),
                 t.getDescription(), "text", "observations", false, BOTH)));
+        fields.addAll(locations.catalog(BOTH));
         return fields;
     }
 
@@ -155,9 +184,12 @@ public class SampleTestingSource implements ReportingSource {
                 .collect(Collectors.groupingBy(TestResultComponent::getTestId, Collectors.counting())).entrySet()
                 .stream().filter(entry -> entry.getValue() > 1).map(Map.Entry::getKey).collect(Collectors.toSet());
         Map<String, String> dictionaryCache = new HashMap<>();
+        Map<String, Map<String, String>> locationCache = new HashMap<>();
         var units = dao.unitsOfMeasure().stream().collect(
                 Collectors.toMap(UnitOfMeasure::getId, UnitOfMeasure::getUnitOfMeasureName, (first, second) -> first));
         ZoneId zone = ZoneId.of(request.timezone());
+        boolean orderFieldsSelected = request.variables().stream().map(ReportingVariable::id)
+                .anyMatch(ORDER_FIELDS::contains);
         try (var stream = dao.stream(request)) {
             Iterator<Result> input = stream.iterator();
             Iterator<ExportRecord> records = new Iterator<>() {
@@ -178,9 +210,15 @@ public class SampleTestingSource implements ReportingSource {
                         if (!Objects.equals(specimenId, specimen.getId())) {
                             specimenId = specimen.getId();
                             Patient patient = dao.patient(specimen.getSample().getId());
-                            patientFields = patientFields(patient, zone);
-                            observationFields = observationFields(
-                                    dao.observations(specimen.getSample().getId(), specimenId));
+                            patientFields = new LinkedHashMap<>(patientFields(patient, zone));
+                            patientFields.putAll(ages(patient, specimen.getCollectionDate()));
+                            observationFields = new LinkedHashMap<>(
+                                    observationFields(dao.observations(specimen.getSample().getId(), specimenId)));
+                            observationFields.putAll(locations.forSample(specimen.getSample(), locationCache));
+                            if (orderFieldsSelected) {
+                                observationFields.putAll(orderFields(specimen.getSample().getId(), specimenId, zone,
+                                        request.userLocale()));
+                            }
                         }
                         if (!Objects.equals(sampleId, specimen.getSample().getId())) {
                             sampleId = specimen.getSample().getId();
@@ -235,14 +273,15 @@ public class SampleTestingSource implements ReportingSource {
     /**
      * The sample type as the application shows it (its localized name), not the
      * catalog description: an environmental sample exported as "Air Minum" while
-     * every screen said "Drinking Water".
+     * every screen said "Drinking Water". It reads in the language of the user who
+     * asked for the export (OGC-1680), not the language the export worker runs in.
      */
-    static String sampleTypeName(TypeOfSample type) {
+    static String sampleTypeName(TypeOfSample type, Locale locale) {
         if (type == null) {
             return null;
         }
         Localization localization = type.getLocalization();
-        String localized = localization == null ? null : localization.getLocalizedValue();
+        String localized = localization == null ? null : localization.getLocalizedValue(locale);
         return localized == null || localized.isBlank() ? type.getDescription() : localized;
     }
 
@@ -281,28 +320,30 @@ public class SampleTestingSource implements ReportingSource {
         a.put("collectionDate", date(specimen.getCollectionDate(), zone));
         a.put("collectionTime", specimen.getCollectionDate() == null ? null
                 : specimen.getCollectionDate().toInstant().atZone(zone).toLocalTime().toString());
-        a.put("receivedDate", date(specimen.getReceivedDate(), zone));
-        a.put("receivedTime", time(specimen.getReceivedDate(), zone));
+        Timestamp receivedAt = received(specimen, sample);
+        a.put("receivedDate", date(receivedAt, zone));
+        a.put("receivedTime", time(receivedAt, zone));
         a.put("orderDate", sample.getEnteredDate() == null ? null : sample.getEnteredDate().toLocalDate().toString());
-        a.put("sampleType", sampleTypeName(specimen.getTypeOfSample()));
+        a.put("sampleType", sampleTypeName(specimen.getTypeOfSample(), request.userLocale()));
         a.put("sampleStatus", statuses.getStatusNameFromId(specimen.getStatusId()));
+        a.put("orderStatus", statuses.getStatusNameFromId(sample.getStatusId()));
         a.put("priority", sample.getPriority() == null ? null : sample.getPriority().toString());
         a.put("numberOfTests", Long.toString(analysisCount));
         a.put("resultId", r.getId());
-        a.put("testName", test.getName());
+        a.put("testName", ExportTestNames.name(test, request.userLocale()));
         a.put("component", component == null || !multiComponentTests.contains(component.getTestId()) ? null
-                : component.getLabel());
+                : ExportTestNames.componentLabel(component, request.userLocale()));
         a.put("loincCode", test.getLoinc());
         a.put("resultUnit", resultUnit(component, test, units));
         a.put("resultStatus", analysis.isCorrectedSincePatientReport() ? "Corrected"
                 : statuses.getStatusNameFromId(analysis.getStatusId()));
         a.put("dateResulted", timestamp(analysis.getCompletedDate(), zone));
         a.put("validationDate", timestamp(analysis.getReleasedDate(), zone));
-        a.put("labSection", analysis.getTestSection() == null ? null : analysis.getTestSection().getTestSectionName());
+        a.put("labSection", ExportTestNames.sectionName(analysis.getTestSection(), request.userLocale()));
         Instant order = sample.getEnteredDate() == null ? null
                 : sample.getEnteredDate().toLocalDate().atStartOfDay(zone).toInstant();
         Instant collected = instant(specimen.getCollectionDate());
-        Instant received = instant(specimen.getReceivedDate());
+        Instant received = instant(receivedAt);
         Instant resulted = instant(analysis.getCompletedDate());
         Instant validated = instant(analysis.getReleasedDate());
         a.put("orderToResultMinutes", minutes(order, resulted));
@@ -320,6 +361,39 @@ public class SampleTestingSource implements ReportingSource {
                 ? analysis.getId() + ":" + componentId + ":" + r.getGrouping() + ":" + r.getResultType()
                 : null;
         return new Normalized(r.getId(), specimen.getId(), a, fields, value, multiKey);
+    }
+
+    /**
+     * The patient's age when the specimen was collected, in whole years, months and
+     * weeks, each counted on its own as the Routine CSV did (OGC-1655).
+     */
+    static Map<String, String> ages(Patient patient, Timestamp collected) {
+        Map<String, String> ages = new LinkedHashMap<>();
+        if (patient == null || patient.getBirthDate() == null || collected == null) {
+            return ages;
+        }
+        ages.put("ageYears", Integer.toString(DateUtil.getAgeInYears(patient.getBirthDate(), collected)));
+        ages.put("ageMonths", Integer.toString(DateUtil.getAgeInMonths(patient.getBirthDate(), collected)));
+        ages.put("ageWeeks", Integer.toString(DateUtil.getAgeInWeeks(patient.getBirthDate(), collected)));
+        return ages;
+    }
+
+    private Map<String, String> orderFields(String sampleId, String specimenId, ZoneId zone, Locale locale) {
+        Map<String, String> fields = new LinkedHashMap<>();
+        fields.put("enteredDate", timestamp(dao.enteredAt(sampleId), zone));
+        fields.put("program", dao.program(sampleId));
+        fields.put("labUnit", dao.labUnits(specimenId).stream().map(unit -> ExportTestNames.sectionName(unit, locale))
+                .sorted().collect(Collectors.joining("; ")));
+        return fields;
+    }
+
+    /**
+     * When the specimen reached the lab: its own receipt, or the order's when the
+     * specimen was not received on its own, as order entry records it (OGC-1655).
+     */
+    static Timestamp received(SampleItem specimen, Sample sample) {
+        return specimen.getReceivedDate() != null ? specimen.getReceivedDate()
+                : sample == null ? null : sample.getReceivedTimestamp();
     }
 
     private static Map<String, String> patientFields(Patient patient, ZoneId zone) {

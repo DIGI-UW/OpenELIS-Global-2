@@ -19,6 +19,14 @@ public class MicroIsolateDAOImpl extends BaseDAOImpl<MicroIsolate, String> imple
 
     @Override
     @Transactional(readOnly = true)
+    public List<MicroIsolate> getWorkspace(String caseId) {
+        return entityManager.createQuery(
+                "select distinct i from MicroIsolate i left join fetch i.sourceCulture left join fetch i.identificationHistory where i.caseId = :caseId and i.cancelledAt is null order by i.createdAt, i.id",
+                MicroIsolate.class).setParameter("caseId", caseId).getResultList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<MicroIsolate> getByCaseId(String caseId) {
         Query<MicroIsolate> query = entityManager.unwrap(Session.class).createQuery(
                 "from MicroIsolate i where i.caseId = :caseId and i.cancelledAt is null order by i.isolateLabel",

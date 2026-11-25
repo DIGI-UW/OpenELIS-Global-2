@@ -8,11 +8,12 @@ import {
   StructuredListRow,
   StructuredListWrapper,
   Tag,
-  TextArea,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
+import MacroTextArea from "../common/textMacro/MacroTextArea";
 import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
 import MicrobiologyService from "./MicrobiologyService";
+import { MicrobiologyReportBlock } from "./CaseReportWorkspace";
 
 const isErrorResponse = (response) =>
   response?.status === 0 || response?.status >= 400;
@@ -23,6 +24,7 @@ const AmendmentHistoryPanel = ({
   service = MicrobiologyService,
   onCaseUpdated,
   active = true,
+  canAmend = true,
 }) => {
   const intl = useIntl();
   const headingRef = useRef(null);
@@ -105,6 +107,7 @@ const AmendmentHistoryPanel = ({
   const versionNumberFor = (versionId) =>
     reportVersions.find((version) => version.id === versionId)?.versionNumber;
 
+  // i18n-keys: microbiology.m6.release.*
   return (
     <section
       className="microbiology-card"
@@ -153,10 +156,11 @@ const AmendmentHistoryPanel = ({
         />
       )}
 
-      {(finalReleased || amendmentOpen) && (
+      {canAmend && (finalReleased || amendmentOpen) && (
         <div className="microbiology-amendment-actions">
-          <TextArea
+          <MacroTextArea
             id="microbiology-amendment-reason"
+            context="MICROBIOLOGY_AMENDMENT_REASON"
             labelText={intl.formatMessage({
               id: amendmentOpen
                 ? "microbiology.amendment.cancelReason"
@@ -312,10 +316,16 @@ const AmendmentHistoryPanel = ({
                     <Tag
                       type={version.releaseType === "FINAL" ? "blue" : "purple"}
                     >
-                      {formatMicrobiologyEnum(version.releaseType, intl)}
+                      {intl.formatMessage({
+                        id: `microbiology.m6.release.${version.releaseType}`,
+                      })}
                     </Tag>
                   </div>
-                  <p>{version.content}</p>
+                  {version.report ? (
+                    <MicrobiologyReportBlock report={version.report} />
+                  ) : (
+                    <p>{version.content}</p>
+                  )}
                   {version.correctsVersionId && (
                     <div className="microbiology-list__meta">
                       {intl.formatMessage(

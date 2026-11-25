@@ -45,6 +45,15 @@ public class MicroAntibioticDAOImpl extends BaseDAOImpl<MicroAntibiotic, String>
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<MicroAntibiotic> findByReference(String source, String code) {
+        return entityManager.unwrap(Session.class)
+                .createQuery("from MicroAntibiotic e where e.referenceSource = :source and e.referenceCode = :code",
+                        MicroAntibiotic.class)
+                .setParameter("source", source).setParameter("code", code).uniqueResultOptional();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public long countWorkflowReferences(String antibioticId) {
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(
                 "select count(r.id) from MicroAstReading r where r.antibioticId = :antibioticId", Long.class);

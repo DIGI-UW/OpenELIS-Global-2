@@ -1,5 +1,6 @@
 package org.openelisglobal.eqa.service;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -34,6 +35,17 @@ public interface EQACycleSubmissionService {
      * @return true when anything changed, for the scheduler's log line
      */
     boolean advanceCycle(Long cycleId);
+
+    enum AutoSubmitReason {
+        NOT_APPLICABLE, HELD_FOR_REVIEW, NO_CHANNEL, WAITING, RETRIES_SPENT, DUE
+    }
+
+    /** {@code dueAt} is set only while WAITING. */
+    record AutoSubmission(AutoSubmitReason reason, Instant dueAt) {
+    }
+
+    /** Whether the sweep will send this cycle, and if not, why. */
+    AutoSubmission autoSubmission(Long cycleId);
 
     /**
      * Submits a cycle a reviewer has just released, on a scheme that asks a human
@@ -93,6 +105,12 @@ public interface EQACycleSubmissionService {
      *         cycle
      */
     boolean assignAnalyst(Analysis analysis, Long analystId, String sysUserId);
+
+    /**
+     * Whether another order holds this analysis's participant row, keyed by round,
+     * enrollment, analyte and provider sample code.
+     */
+    boolean participantRowTaken(Analysis analysis);
 
     int intakeScores(Long cycleId, Long labEnrollmentId, List<Map<String, Object>> scores, String sysUserId);
 

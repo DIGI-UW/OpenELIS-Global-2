@@ -21,6 +21,7 @@ import {
 } from "../utils/Utils";
 import ReferenceSection from "../resultPage/unified/ReferenceSection";
 import HistorySection from "../resultPage/unified/HistorySection";
+import RunQcProvenance from "../resultPage/unified/runs/RunQcProvenance";
 import CriticalBanner from "../resultPage/unified/CriticalBanner";
 import ResultAlertModal, {
   acknowledgementRefusal,
@@ -38,7 +39,7 @@ import {
 } from "../resultPage/unified/sectionLayout";
 import "../resultPage/unified/unified-results.scss";
 import InlineNceForm from "../nonconform/common/InlineNceForm";
-import { triageRows } from "./validationTriage";
+import { reviewStateOf, triageRows } from "./validationTriage";
 import { displayRange } from "../common/rangeNotApplied";
 import {
   NOTE_CONTEXT_MODIFICATION,
@@ -99,9 +100,69 @@ const Field = ({ labelKey, value, testId }) => (
  * count starts from that count.
  */
 const modifyStartValue = (row) =>
-  row.resultType === "N" && !row.displayResultAsLog && row.storedResult != null
-    ? row.storedResult
-    : (row.result ?? "");
+  row.displayResultAsLog ? displayResult(row) : (row.result ?? "");
+
+/**
+ * OGC-1364 v2: who signed which review level in this pass, and the signatures
+ * a modification, retest or rejection superseded.
+ */
+const SignOffs = ({ review, intl }) => (
+  <div className="validationSignOffs" data-testid="review-sign-offs">
+    <h6>
+      <FormattedMessage id="label.validation.review.signOffs.title" />
+    </h6>
+    {review.signOffs.length === 0 ? (
+      <p className="cds--label">
+        <FormattedMessage id="label.validation.review.signOffs.empty" />
+      </p>
+    ) : (
+      <ul>
+        {review.signOffs.map((signOff) => (
+          <li
+            key={`current-${signOff.level}`}
+            data-testid={`review-sign-off-${signOff.level}`}
+          >
+            {intl.formatMessage(
+              { id: "label.validation.review.signOffs.entry" },
+              {
+                level: signOff.level,
+                levels: signOff.levels,
+                name: signOff.signerName,
+                role: signOff.roleName,
+                when: signOff.signedWhen || "",
+              },
+            )}
+          </li>
+        ))}
+      </ul>
+    )}
+    {review.superseded.length > 0 && (
+      <ul>
+        {review.superseded.map((signOff, index) => (
+          <li
+            key={`superseded-${index}`}
+            data-testid="review-sign-off-superseded"
+          >
+            <s>
+              {intl.formatMessage(
+                { id: "label.validation.review.signOffs.superseded" },
+                {
+                  level: signOff.level,
+                  levels: signOff.levels,
+                  name: signOff.signerName,
+                  when: signOff.signedWhen || "",
+                  reason: intl.formatMessage({
+                    id: `label.validation.review.signOffs.reason.${signOff.supersededReason}`,
+                  }),
+                },
+              )}
+            </s>
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
+);
 
 const ValidationReviewPanel = ({
   data: row,
@@ -259,15 +320,15 @@ const ValidationReviewPanel = ({
       nceNumber: nceNumber || "",
     });
 
-  const release = () =>
-    submit(
-      "release",
-      actionPayload(row, {
+  const release = (signature) =>
+    submit("release", {
+      ...actionPayload(row, {
         note: noteText,
         noteVisibility,
         noteContext: NOTE_CONTEXT_VALIDATION,
       }),
-    );
+      signatureId: signature?.signatureId ?? null,
+    });
 
   const saveModification = () =>
     submit(
@@ -283,8 +344,17 @@ const ValidationReviewPanel = ({
   const qcAckBlocksRelease = Boolean(qcAck?.required && !qcAck?.satisfied);
   const qcHoldBlocksRelease =
     row.qcHold === true &&
-    configurationProperties?.QC_FAIL_BLOCKS_VALIDATION === "true";
-  const releaseBlocked = busy || qcAckBlocksRelease || qcHoldBlocksRelease;
+    (row.qcHoldBlocksRelease === true ||
+      configurationProperties?.QC_FAIL_BLOCKS_VALIDATION === "true");
+  const selfValidationBlocked = row.selfValidationBlocked === true;
+  const review = reviewStateOf(row);
+  const reviewBlocked = Boolean(review.blockedReason) && !selfValidationBlocked;
+  const releaseBlocked =
+    busy ||
+    qcHoldBlocksRelease ||
+    selfValidationBlocked ||
+    reviewBlocked ||
+    (review.finalLevel && qcAckBlocksRelease);
   const reasonMissing = notesRequired && !noteText.trim();
   const modificationBlocked =
     busy || !editableHere || !String(newValue ?? "").trim() || reasonMissing;
@@ -292,13 +362,24 @@ const ValidationReviewPanel = ({
   const retestBlocked = busy || retestNoteMissing;
   const inSideMode = modifying || retesting || rejecting;
 
-  const signContext = intl.formatMessage(
-    {
-      id: "esig.context.validateSingle",
-      defaultMessage: "Validate and release {test} for accession {accession}",
-    },
-    { test: row.testName, accession },
-  );
+  const signContext = review.finalLevel
+    ? intl.formatMessage(
+        {
+          id: "esig.context.validateSingle",
+          defaultMessage:
+            "Validate and release {test} for accession {accession}",
+        },
+        { test: row.testName, accession },
+      )
+    : intl.formatMessage(
+        { id: "esig.context.reviewLevel" },
+        {
+          test: row.testName,
+          accession,
+          level: review.level,
+          levels: review.levels,
+        },
+      );
 
   return (
     <div
@@ -333,6 +414,14 @@ const ValidationReviewPanel = ({
             </strong>
             {unitsOnly(row.units) && <span> {unitsOnly(row.units)}</span>}{" "}
             <FlagChip flag={flag} />
+            {row.resultType === "N" && displayResult(row) !== row.result && (
+              <div className="unifiedFieldHint">
+                <FormattedMessage
+                  id="label.results.clinicalValue"
+                  values={{ value: row.result }}
+                />
+              </div>
+            )}
           </div>
           <Field
             labelKey="label.validation.review.normalRange"
@@ -626,6 +715,10 @@ const ValidationReviewPanel = ({
           </div>
         )}
 
+        {(review.levels > 1 || review.superseded.length > 0) && (
+          <SignOffs review={review} intl={intl} />
+        )}
+
         <div
           className="unifiedWorkZoneActions"
           style={{
@@ -638,8 +731,32 @@ const ValidationReviewPanel = ({
         >
           {!inSideMode && (
             <span data-testid="review-release">
+              {selfValidationBlocked && (
+                <p id={`review-self-validation-hint-${row.id}`}>
+                  {intl.formatMessage({
+                    id: "microbiology.testing.selfValidationBlocked",
+                  })}
+                </p>
+              )}
+              {reviewBlocked && (
+                <p
+                  id={`review-level-hint-${row.id}`}
+                  data-testid="review-level-blocked"
+                >
+                  {intl.formatMessage(
+                    {
+                      id: `label.validation.review.level.blocked.${review.blockedReason}`,
+                    },
+                    { level: review.level, role: review.roleName },
+                  )}
+                </p>
+              )}
               <ESignatureButton
-                meaning={SignatureMeaning.VALIDATED_AND_RELEASED}
+                meaning={
+                  review.finalLevel
+                    ? SignatureMeaning.VALIDATED_AND_RELEASED
+                    : SignatureMeaning.REVIEWED
+                }
                 context={signContext}
                 recordType="VALIDATION_BATCH"
                 recordId={Number(row.analysisId)}
@@ -650,13 +767,23 @@ const ValidationReviewPanel = ({
                   [
                     qcAckBlocksRelease && `review-qc-ack-hint-${row.id}`,
                     qcHoldBlocksRelease && `review-qc-hold-hint-${row.id}`,
+                    selfValidationBlocked &&
+                      `review-self-validation-hint-${row.id}`,
+                    reviewBlocked && `review-level-hint-${row.id}`,
                   ]
                     .filter(Boolean)
                     .join(" ") || undefined
                 }
                 size="sm"
               >
-                <FormattedMessage id="label.validation.review.action.release" />
+                {review.finalLevel ? (
+                  <FormattedMessage id="label.validation.review.action.release" />
+                ) : (
+                  <FormattedMessage
+                    id="label.validation.review.action.signLevel"
+                    values={{ level: review.level, levels: review.levels }}
+                  />
+                )}
               </ESignatureButton>
             </span>
           )}
@@ -804,7 +931,7 @@ const ValidationReviewPanel = ({
               className="unifiedFieldHint"
               data-testid="review-qc-hold-hint"
             >
-              <FormattedMessage id="label.validation.review.error.qcHold" />
+              <FormattedMessage id="label.validation.review.error.qcHeld" />
             </span>
           )}
         </div>
@@ -869,13 +996,15 @@ const ValidationReviewPanel = ({
         <ReferenceSection
           sectionId="qc"
           title={<FormattedMessage id="label.validation.review.qcSection" />}
-          summary={
-            qcStatus
-              ? intl.formatMessage({
-                  id: `label.validation.review.qc.${qcStatus}`,
-                })
-              : ""
-          }
+          summary={[
+            qcStatus &&
+              intl.formatMessage({
+                id: `label.validation.review.qc.${qcStatus}`,
+              }),
+            row.runQc?.runLabel,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
           open={sectionOpen("qc")}
           onToggle={toggleSection("qc")}
         >
@@ -886,9 +1015,13 @@ const ValidationReviewPanel = ({
               })}
             </Tag>
           )}
-          <div className="unifiedFieldHint">
-            <FormattedMessage id="label.validation.review.reagents.followUp" />
-          </div>
+          {row.runQc ? (
+            <RunQcProvenance runQc={row.runQc} />
+          ) : (
+            <div className="unifiedFieldHint">
+              <FormattedMessage id="label.validation.review.reagents.followUp" />
+            </div>
+          )}
         </ReferenceSection>
 
         <OrderInfoSection

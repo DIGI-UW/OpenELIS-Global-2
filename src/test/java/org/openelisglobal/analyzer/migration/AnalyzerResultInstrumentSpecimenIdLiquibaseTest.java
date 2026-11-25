@@ -13,6 +13,7 @@ import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.Test;
+import org.openelisglobal.IsolatedDatabase;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.MountableFile;
 
@@ -22,6 +23,7 @@ import org.testcontainers.utility.MountableFile;
  * 120 already has the column; 132 must be marked ran there, or its ADD COLUMN
  * fails and the application never starts.
  */
+@IsolatedDatabase
 public class AnalyzerResultInstrumentSpecimenIdLiquibaseTest {
 
     private static final String CHANGESET = "132-analyzer-result-instrument-specimen-id";

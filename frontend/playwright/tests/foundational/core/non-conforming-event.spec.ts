@@ -13,6 +13,7 @@ import {
   NAV_TIMEOUT,
   UI_TIMEOUT,
 } from "../../../helpers/timeouts";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 
 /**
  * A non-conforming event is reported against an order's specimen, reviewed
@@ -71,7 +72,16 @@ test.describe("Non-conforming events", () => {
       await expect(main.getByLabel("NCE Number")).toHaveValue(/^NCE-/, {
         timeout: NAV_TIMEOUT,
       });
-      await main.getByLabel("Reporting Unit *").selectOption(reportingUnit);
+      const units: Array<{ id: string; value: string }> = await (
+        await page.request.get(
+          "/api/OpenELIS-Global/rest/displayList/TEST_SECTION_ACTIVE",
+        )
+      ).json();
+      const unitName = units.find(
+        (unit) => String(unit.id) === reportingUnit,
+      )?.value;
+      expect(unitName, `lab unit ${reportingUnit} is active`).toBeTruthy();
+      await chooseCarbonOption(main.locator("#reporting-unit"), unitName ?? "");
       const categorySelect = main.getByLabel("Category *");
       category = await firstRealOption(categorySelect);
       await categorySelect.selectOption(category.value);

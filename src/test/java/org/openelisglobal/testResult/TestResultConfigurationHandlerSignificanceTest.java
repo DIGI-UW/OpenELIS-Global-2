@@ -232,4 +232,51 @@ public class TestResultConfigurationHandlerSignificanceTest {
                 existing.getSignificance());
         verify(testResultService, times(1)).update(existing);
     }
+
+    @Test
+    public void create_withoutDecimalPlaces_leavesReportingUnconfigured() throws Exception {
+        when(testResultService.getActiveTestResultsByTest("42")).thenReturn(Collections.emptyList());
+        handler.processConfiguration(csv("testName,resultType\nPlasmodium CSP-ELISA,N\n"), "numeric.csv");
+        ArgumentCaptor<TestResult> captured = insertCaptor();
+        verify(testResultService).insert(captured.capture());
+        assertNull(captured.getValue().getReportingDecimalPlaces());
+    }
+
+    @Test
+    public void legacyReportingColumnRemainsAnImportAlias() throws Exception {
+        when(testResultService.getActiveTestResultsByTest("42")).thenReturn(Collections.emptyList());
+        handler.processConfiguration(csv("testName,resultType,significantDigits\nPlasmodium CSP-ELISA,N,0\n"),
+                "legacy.csv");
+        ArgumentCaptor<TestResult> captured = insertCaptor();
+        verify(testResultService).insert(captured.capture());
+        assertEquals("0", captured.getValue().getReportingDecimalPlaces());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void conflictingReportingColumnsAreRejected() throws Exception {
+        handler.processConfiguration(
+                csv("testName,resultType,reportingDecimalPlaces,significantDigits\nPlasmodium CSP-ELISA,N,2,0\n"),
+                "conflicting.csv");
+    }
+
+    @Test
+    public void update_blankAndOmittedDecimalPlacesPreserveAuthoredPolicyForEveryAlias() throws Exception {
+        TestResult existing = new TestResult();
+        existing.setId("777");
+        existing.setTestResultType("N");
+        existing.setReportingDecimalPlaces("0");
+        when(testResultService.getActiveTestResultsByTest("42")).thenReturn(List.of(existing));
+        when(testResultService.update(any(TestResult.class))).thenReturn(existing);
+        handler.processConfiguration(csv("testName,resultType\nPlasmodium CSP-ELISA,N\n"), "omitted.csv");
+        assertEquals("0", existing.getReportingDecimalPlaces());
+        for (String column : new String[] { "reportingDecimalPlaces", "decimalPlaces", "significantDigits" }) {
+            existing.setReportingDecimalPlaces("2");
+            handler.processConfiguration(csv("testName,resultType," + column + "\nPlasmodium CSP-ELISA,N, \n"),
+                    "blank.csv");
+            assertEquals(column + " must preserve the authored count", "2", existing.getReportingDecimalPlaces());
+            handler.processConfiguration(csv("testName,resultType," + column + "\nPlasmodium CSP-ELISA,N,0\n"),
+                    "zero.csv");
+            assertEquals(column + " must accept an explicit zero", "0", existing.getReportingDecimalPlaces());
+        }
+    }
 }

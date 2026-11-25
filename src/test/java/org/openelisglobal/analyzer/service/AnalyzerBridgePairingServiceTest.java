@@ -82,7 +82,8 @@ public class AnalyzerBridgePairingServiceTest {
 
         String storedKey = stored.get().getClientPrivateKey();
 
-        assertFalse(storedKey.startsWith("MI"));
+        assertThrows(java.security.GeneralSecurityException.class,
+                () -> BridgeTls.privateKey(java.util.Base64.getDecoder().decode(storedKey)));
         BridgeTls.privateKey(java.util.Base64.getDecoder().decode(encryptor.decrypt(storedKey)));
     }
 
@@ -120,6 +121,21 @@ public class AnalyzerBridgePairingServiceTest {
         assertFalse(status.clientKeyReadable());
         assertFalse(status.pairsAutomatically());
         assertTrue(service(CODE).getStatus().clientKeyReadable());
+    }
+
+    /**
+     * Another installation's key sometimes decrypts without an error into text that
+     * is no key at all, about one time in two hundred and fifty; that key is as
+     * unreadable as one that does not decrypt, never an IllegalArgumentException.
+     */
+    @Test
+    public void aKeyThatDecryptsToSomethingElseIsUnreadableToo() {
+        service("").pair(CODE, "7");
+        stored.get().setClientPrivateKey(encryptor.encrypt("?not a key?"));
+        bridge.forget();
+
+        assertFalse(service(CODE).getStatus().clientKeyReadable());
+        assertThrows(BridgePairingException.class, () -> service("").pair("WRONG", "8"));
     }
 
     /**

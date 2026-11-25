@@ -102,23 +102,11 @@ const OrderReferOutSection = () => {
       setNotificationVisible(true);
       return;
     }
-    if (!referral.handoffDatetime) {
-      addNotification({
-        kind: NotificationKinds.error,
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({
-          id: "error.referOut.handoffRequiredForDispatch",
-          defaultMessage: "Handoff Date/Time is required to dispatch.",
-        }),
-      });
-      setNotificationVisible(true);
-      return;
-    }
     setSavingSampleId(sample.sampleItemId);
     postToOpenElisServerJsonResponse(
       `/rest/referrals/${encodeURIComponent(referral.referralId)}/dispatch-subcontract`,
       JSON.stringify({
-        handoffDatetime: referral.handoffDatetime,
+        handoffDatetime: referral.handoffDatetime || "",
         notes: referral.subcontractNotes || "",
       }),
       (response) => {

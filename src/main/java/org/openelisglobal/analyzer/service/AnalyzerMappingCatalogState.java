@@ -20,13 +20,24 @@ public final class AnalyzerMappingCatalogState {
     private final Map<String, List<AnalyzerMappingCatalogService.ComponentOption>> activeComponents = new HashMap<>();
 
     private AnalyzerMappingCatalogState(AnalyzerMappingCatalogService mappingCatalogService) {
+        this(mappingCatalogService, mappingCatalogService.searchActiveTests(null));
+    }
+
+    private AnalyzerMappingCatalogState(AnalyzerMappingCatalogService mappingCatalogService,
+            List<AnalyzerMappingCatalogService.TestOption> tests) {
         this.mappingCatalogService = mappingCatalogService;
-        this.activeTests = Optional.ofNullable(mappingCatalogService.searchActiveTests(null)).orElse(List.of()).stream()
+        this.activeTests = Optional.ofNullable(tests).orElse(List.of()).stream()
                 .collect(Collectors.toMap(AnalyzerMappingCatalogService.TestOption::id, Function.identity()));
     }
 
     public static AnalyzerMappingCatalogState load(AnalyzerMappingCatalogService mappingCatalogService) {
         return new AnalyzerMappingCatalogState(mappingCatalogService);
+    }
+
+    /** Reuse one catalog read within a service operation, never across requests. */
+    public static AnalyzerMappingCatalogState load(AnalyzerMappingCatalogService mappingCatalogService,
+            List<AnalyzerMappingCatalogService.TestOption> activeTests) {
+        return new AnalyzerMappingCatalogState(mappingCatalogService, activeTests);
     }
 
     public Validation validate(AnalyzerMappingSnapshot binding) {

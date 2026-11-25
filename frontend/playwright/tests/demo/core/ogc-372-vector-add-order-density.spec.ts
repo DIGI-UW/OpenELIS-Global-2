@@ -4,6 +4,7 @@ import {
   seedVectorSite,
   addRequestingOrganization,
 } from "../../../helpers/seed-vector-data";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 
 /**
  * Add-order → collection density end-to-end (vector surveillance).
@@ -92,7 +93,7 @@ test.describe("OGC-372: Vector add-order → collection density", () => {
       // Domain-V sample types come from /rest/vector-sample-types, populated by
       // configuration/sample-types/vector-sample-types.csv at startup.
       await expect(page.locator("#sampleType-0")).toBeVisible();
-      await page.locator("#sampleType-0").selectOption({ label: "Mosquito" });
+      await chooseCarbonOption(page.locator("#sampleType-0"), "Mosquito");
     });
 
     await test.step("Enter Quantity in Pool + Traps + Nights (trap-effort)", async () => {
@@ -106,6 +107,9 @@ test.describe("OGC-372: Vector add-order → collection density", () => {
       );
       await expect(page.locator("#trapCount-0")).toHaveValue(String(traps));
       await expect(page.locator("#trapNights-0")).toHaveValue(String(nights));
+      // A vector sample needs a test before the order can be saved (OGC-1060).
+      await page.locator("#testSearch-0").fill("Malaria");
+      await page.locator('label[for^="test-0-"]').first().click();
       await demo.evidence("372-2-trap-effort-entered");
     });
 

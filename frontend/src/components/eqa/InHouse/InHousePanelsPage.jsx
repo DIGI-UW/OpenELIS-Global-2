@@ -4,8 +4,6 @@ import {
   Column,
   Grid,
   InlineNotification,
-  Select,
-  SelectItem,
   Table,
   TableBody,
   TableCell,
@@ -29,6 +27,7 @@ import {
   unblindPanel,
 } from "./inHouseApi";
 import { panelKpis, sealState } from "./blindingRules";
+import SearchableSelect from "../../common/SearchableSelect";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -136,21 +135,16 @@ const InHousePanelsPage = () => {
         )}
 
         <Column lg={8} md={4} sm={4}>
-          <Select
+          <SearchableSelect
             id="inhouse-scheme-filter"
             labelText={intl.formatMessage({ id: "eqa.inhouse.scheme" })}
+            options={schemes.map((scheme) => ({
+              id: String(scheme.id),
+              value: scheme.name,
+            }))}
             value={schemeId}
-            onChange={(e) => setSchemeId(e.target.value)}
-          >
-            <SelectItem value="" text="" />
-            {schemes.map((scheme) => (
-              <SelectItem
-                key={scheme.id}
-                value={scheme.id}
-                text={scheme.name}
-              />
-            ))}
-          </Select>
+            onChange={setSchemeId}
+          />
         </Column>
         <Column lg={8} md={4} sm={4}>
           {canManage ? (

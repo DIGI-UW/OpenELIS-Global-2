@@ -19,7 +19,7 @@ interface WorklistRow {
   testName?: string;
   analysisId?: string;
   resultType?: string;
-  significantDigits?: number;
+  reportingDecimalPlaces?: number;
   resultValue?: string;
   shadowResultValue?: string;
   rawResultValue?: string;
@@ -88,7 +88,7 @@ test.describe("OGC-1569 a row posted back keeps the entered value", () => {
         .join(","),
     });
     const row = (await logbook(page, accession)).testResult.find(
-      (r) => r.resultType === "N" && r.significantDigits === 0,
+      (r) => r.resultType === "N" && r.reportingDecimalPlaces === 0,
     );
     expect(row, "a numeric Serum test reporting no decimals").toBeTruthy();
     const analysisId = row!.analysisId!;
