@@ -2,6 +2,7 @@ package org.openelisglobal.storage.service;
 
 import java.util.List;
 import java.util.Map;
+import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.storage.valueholder.StorageRack;
 
 /**
@@ -17,7 +18,7 @@ public interface SampleStorageService {
     /**
      * Get all SampleItems with storage assignments and complete hierarchical paths.
      * All relationships are eagerly fetched within the service transaction.
-     * 
+     *
      * @return List of maps, each containing: id, sampleItemId,
      *         sampleAccessionNumber, type, status, location, assignedBy, date
      */
@@ -27,7 +28,7 @@ public interface SampleStorageService {
      * Assign a SampleItem to a location using simplified polymorphic relationship
      * (locationId + locationType). Supports assignment to device, shelf, or rack
      * level with optional text-based position coordinate.
-     * 
+     *
      * @param sampleItemId       SampleItem ID
      * @param locationId         Location ID (device, shelf, or rack ID)
      * @param locationType       Location type: 'device', 'shelf', or 'rack'
@@ -69,16 +70,15 @@ public interface SampleStorageService {
      * OGC-738: previously the disposal hardcoded {@code movedByUserId=1} and called
      * {@code sampleItemDAO.update} directly, bypassing audit emit.
      */
-    java.util.Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes,
-            String sysUserId);
+    java.util.Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes);
 
     /**
      * Record usage against a SampleItem's remaining quantity (OGC-1026, Results
-     * Entry v3 R7). Partial use decrements {@code remainingQuantity} (never below
-     * zero); {@code markUsedUp} zeroes it — "exhausted" is remaining == 0, not a
-     * status, and disposal stays an explicit follow-up step. The update rides
-     * {@code SampleItemService.update} so the global audit row reflects the acting
-     * user.
+     * Entry v3 R7). Partial use decrements {@code remainingQuantity} and refuses an
+     * amount above it; {@code markUsedUp} zeroes it — "exhausted" is remaining ==
+     * 0, not a status, and disposal stays an explicit follow-up step. The update
+     * rides {@code SampleItemService.update} so the global audit row reflects the
+     * acting user.
      *
      * @param sampleItemId flexible identifier (internal id, accession number, or
      *                     external id)
@@ -104,7 +104,7 @@ public interface SampleStorageService {
 
     /**
      * Get storage location for a specific SampleItem
-     * 
+     *
      * @param sampleItemId SampleItem ID
      * @return Map with location details including hierarchicalPath, or empty map if
      *         not assigned
@@ -173,4 +173,49 @@ public interface SampleStorageService {
      */
     java.util.Map<String, java.util.Map<String, Object>> getLocationsForInventoryLots(
             java.util.List<Long> inventoryLotIds);
+
+    /**
+     * Free an InventoryLot's slot by clearing its location, keeping the assignment
+     * row for audit. A lot with no assignment is a no-op.
+     *
+     * @param inventoryLotId InventoryLot ID
+     * @param reason         Why the lot left storage, recorded on the movement
+     * @param sysUserId      Acting user
+     * @return Map with previousLocation and movementId, empty when there was
+     *         nothing to release
+     */
+    java.util.Map<String, Object> releaseInventoryLotLocation(String inventoryLotId, String reason, String sysUserId);
+
+    /**
+     * Dispose an InventoryLot and free its storage slot in one transaction, so a
+     * failed release cannot leave a DISPOSED lot still occupying a box.
+     *
+     * @param inventoryLotId InventoryLot ID
+     * @param reason         Why the lot is being disposed
+     * @param notes          Free-text disposal notes, recorded on the transaction
+     * @param sysUserId      Acting user
+     * @return The disposed lot
+     */
+    InventoryLot disposeInventoryLot(Long inventoryLotId, String reason, String notes, String sysUserId);
+
+    /**
+     * Update an InventoryLot assignment's position and notes in place, the lot
+     * equivalent of {@link #updateAssignmentMetadata}.
+     *
+     * @param inventoryLotId     InventoryLot ID
+     * @param positionCoordinate New coordinate; blank clears it, null leaves it
+     * @param notes              New notes; blank clears them, null leaves them
+     * @return Map with assignmentId, positionCoordinate, notes and hierarchicalPath
+     */
+    java.util.Map<String, Object> updateInventoryLotAssignmentMetadata(String inventoryLotId, String positionCoordinate,
+            String notes);
+
+    /**
+     * List every InventoryLot that has an assignment row, with its current location
+     * or none; a lot never assigned storage is absent.
+     *
+     * @return List of maps with id, lotNumber, barcode, itemName, quantity, status,
+     *         location, assignedBy and date
+     */
+    java.util.List<java.util.Map<String, Object>> getAllInventoryLotsWithAssignments();
 }

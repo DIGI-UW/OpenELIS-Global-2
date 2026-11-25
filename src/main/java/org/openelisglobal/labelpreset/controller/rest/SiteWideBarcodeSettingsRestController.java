@@ -3,7 +3,9 @@ package org.openelisglobal.labelpreset.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
@@ -21,18 +23,27 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller for site-wide barcode/pre-print settings. These settings are
- * hosted in Lab Number Management (LNM) per OGC-771 clarification, not in
- * LabelPresetList. The controller itself lives in the labelpreset package.
+ * REST controller for the one surviving site-wide barcode setting: where
+ * pre-printed label numbers come from. The Label Presets page renders it as the
+ * "Site-wide Barcode Settings" card above the preset list (OGC-285 M3,
+ * OGC-1217). It is site-wide because {@code prePrintUseAltAccession} registers
+ * the alternate-prefix validator for every lab number the system accepts, and a
+ * scanned number carries no preset context.
  *
  * <p>
  * Reads/writes the {@code prePrintUseAltAccession} and
- * {@code prePrintAltAccessionPrefix} keys in {@code site_information}.
+ * {@code prePrintAltAccessionPrefix} keys in {@code site_information}. The
+ * prefix is validated (exactly four letters or digits) only when the separate
+ * pre-printed series is chosen; a prefix stored next to the order entry choice
+ * is kept as sent so it is there when the series is switched back on.
  */
 @RestController
 @RequestMapping("/api/siteSettings/barcode")
 @PreAuthorize("hasRole('ADMIN')")
 public class SiteWideBarcodeSettingsRestController {
+
+    static final Pattern PREFIX_PATTERN = Pattern.compile("^[A-Za-z0-9]{4}$");
+    static final String PREFIX_MESSAGE = "{error.sitesettings.barcode.prefix.format}";
 
     @Autowired
     private SiteInformationService siteInformationService;
@@ -46,13 +57,21 @@ public class SiteWideBarcodeSettingsRestController {
 
         SiteBarcodePreprintSettings settings = new SiteBarcodePreprintSettings();
         settings.setPrePrintUseAltAccession(useAltAccession);
-        settings.setPrePrintAltAccessionPrefix(altAccessionPrefix);
+        settings.setPrePrintAltAccessionPrefix(altAccessionPrefix == null ? "" : altAccessionPrefix);
         return ResponseEntity.ok(settings);
     }
 
     @PostMapping
     public ResponseEntity<Object> saveSettings(HttpServletRequest request,
             @RequestBody @Valid SiteBarcodePreprintSettings body, BindingResult result) {
+        String prefix = body.getPrePrintAltAccessionPrefix() == null ? null
+                : body.getPrePrintAltAccessionPrefix().trim().toUpperCase(Locale.ROOT);
+        body.setPrePrintAltAccessionPrefix(prefix);
+        if (Boolean.TRUE.equals(body.getPrePrintUseAltAccession())
+                && (prefix == null || !PREFIX_PATTERN.matcher(prefix).matches())) {
+            result.rejectValue("prePrintAltAccessionPrefix", "error.sitesettings.barcode.prefix.format",
+                    PREFIX_MESSAGE);
+        }
         if (result.hasErrors()) {
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(buildErrorBody(result));
         }

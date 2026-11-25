@@ -1,9 +1,9 @@
 package org.openelisglobal.dictionary.rest.controller;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
@@ -72,7 +72,8 @@ public class DictionaryMenuRestControllerTest extends BaseWebContextSensitiveTes
         assertEquals(200, status);
         String content = mvcResult.getResponse().getContentAsString();
         List<DictionaryCategory> menuList = Arrays.asList(super.mapFromJson(content, DictionaryCategory[].class));
-        assertThat(menuList, notNullValue());
+        assertFalse("fetchDictionaryCategories must return at least one category", menuList.isEmpty());
+        assertThat(menuList.get(0).getCategoryName(), is("Category Name 1"));
     }
 
     @Test

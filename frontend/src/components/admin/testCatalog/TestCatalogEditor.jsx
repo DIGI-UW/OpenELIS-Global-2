@@ -19,6 +19,7 @@ import { AlertDialog } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
 import BasicInfoSection from "./sections/BasicInfoSection";
 import SampleResultsSection from "./sections/SampleResultsSection";
+import ContainersSection from "./sections/ContainersSection";
 import MethodsSection from "./sections/MethodsSection";
 import RangesSection from "./sections/RangesSection";
 import QcTargetsSection from "./sections/QcTargetsSection";
@@ -30,6 +31,7 @@ import PanelsSection from "./sections/PanelsSection";
 import ReagentsSection from "./sections/ReagentsSection";
 import LabelsSection from "./sections/LabelsSection";
 import AlertsSection from "./sections/AlertsSection";
+import AccreditationSection from "./sections/AccreditationSection";
 import ReflexCalcSection from "./sections/ReflexCalcSection";
 import LocalizationSection from "./sections/LocalizationSection";
 import { DEFAULT_SECTION, isValidSection } from "./sectionConfig";
@@ -60,7 +62,7 @@ const TestCatalogEditor = () => {
   const { addNotification, setNotificationVisible, notificationVisible } =
     useContext(NotificationContext);
 
-  const [loading, setLoading] = useState(false);
+  const [loadedTestId, setLoadedTestId] = useState(null);
   const [error, setError] = useState(false);
   const [envelope, setEnvelope] = useState(null);
 
@@ -68,14 +70,29 @@ const TestCatalogEditor = () => {
   const isCreate = testId === "new";
   // The active section is driven entirely by the URL.
   const activeSection = isValidSection(section) ? section : DEFAULT_SECTION;
+  const loading = !isCreate && loadedTestId !== testId;
+
+  const handleEnvelope = (res, loadedFor) => {
+    if (res) {
+      setEnvelope(res);
+    }
+    setError(!res);
+    setLoadedTestId(loadedFor);
+  };
 
   useEffect(() => {
     if (!testId || isCreate) {
-      return;
+      return undefined;
     }
-    setLoading(true);
-    setError(false);
-    getFromOpenElisServer(`/rest/test-catalog/tests/${testId}`, handleEnvelope);
+    let current = true;
+    getFromOpenElisServer(`/rest/test-catalog/tests/${testId}`, (res) => {
+      if (current) {
+        handleEnvelope(res, testId);
+      }
+    });
+    return () => {
+      current = false;
+    };
   }, [testId, isCreate]);
 
   // Canonicalize the section into the URL so deep-links + the SideNav agree.
@@ -90,15 +107,6 @@ const TestCatalogEditor = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId, section]);
-
-  const handleEnvelope = (res) => {
-    setLoading(false);
-    if (!res) {
-      setError(true);
-      return;
-    }
-    setEnvelope(res);
-  };
 
   const breadcrumbs = [
     { label: "home.label", link: "/" },
@@ -289,6 +297,8 @@ const TestCatalogEditor = () => {
                 <BasicInfoSection testId={testId} />
               ) : activeSection === "sample-results" ? (
                 <SampleResultsSection testId={testId} />
+              ) : activeSection === "containers" ? (
+                <ContainersSection testId={testId} />
               ) : activeSection === "methods" ? (
                 <MethodsSection testId={testId} />
               ) : activeSection === "ranges" ? (
@@ -311,6 +321,8 @@ const TestCatalogEditor = () => {
                 <LabelsSection testId={testId} />
               ) : activeSection === "alerts" ? (
                 <AlertsSection testId={testId} />
+              ) : activeSection === "accreditation" ? (
+                <AccreditationSection testId={testId} />
               ) : activeSection === "reflex-calc" ? (
                 <ReflexCalcSection testId={testId} />
               ) : activeSection === "localization" ? (

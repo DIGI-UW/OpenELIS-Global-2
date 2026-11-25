@@ -29,6 +29,7 @@ import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.testalertrule.valueholder.TestAlertRule;
+import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
@@ -87,6 +88,9 @@ public class AlertOnEditedResultTest {
 
     @Mock
     private TestResultComponentService testResultComponentService;
+
+    @Mock
+    private TestResultService testResultService;
 
     @InjectMocks
     private TestAlertEvaluationServiceImpl evaluation;
@@ -168,6 +172,36 @@ public class AlertOnEditedResultTest {
         evaluation.evaluateAndDispatch(result(SECONDARY, DBS, "200.00"), USER);
 
         verify(headerNotificationService, never()).notifyUser(anyString(), anyString());
+    }
+
+    /**
+     * The rule may name its value the way the screen shows the result, in
+     * scientific notation. The rule is about the number, so 8.7×10¹ names 87,
+     * whichever way the result was written.
+     */
+    @Test
+    public void aRuleWrittenInScientificNotationFiresOnTheNumberItNames() {
+        TestAlertRule rule = new TestAlertRule();
+        rule.setName("Written");
+        rule.setTestId(TEST_ID);
+        rule.setEnabled(true);
+        rule.setTriggerType("SPECIFIC_VALUE");
+        rule.setTriggerValue("8.7×10¹");
+        rule.setComponentId(PRIMARY);
+        rule.setSampleTypeId(DBS);
+        lenient().when(alertRuleService.getByTestId(TEST_ID)).thenReturn(Collections.singletonList(rule));
+
+        evaluation.evaluateAndDispatch(result(PRIMARY, DBS, "87"), USER);
+        verify(headerNotificationService, times(1)).notifyUser(eq(USER), contains("Written"));
+
+        evaluation.evaluateAndDispatch(result(PRIMARY, DBS, "8.7e1"), USER);
+        verify(headerNotificationService, times(2)).notifyUser(eq(USER), contains("Written"));
+
+        evaluation.evaluateAndDispatch(result(PRIMARY, DBS, "8.7 x 10^1"), USER);
+        verify(headerNotificationService, times(3)).notifyUser(eq(USER), contains("Written"));
+
+        evaluation.evaluateAndDispatch(result(PRIMARY, DBS, "88"), USER);
+        verify(headerNotificationService, times(3)).notifyUser(eq(USER), contains("Written"));
     }
 
     @Test

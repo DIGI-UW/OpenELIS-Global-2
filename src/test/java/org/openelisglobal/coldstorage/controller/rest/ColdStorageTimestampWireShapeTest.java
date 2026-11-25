@@ -38,10 +38,17 @@ public class ColdStorageTimestampWireShapeTest extends BaseWebContextSensitiveTe
 
     private MockHttpSession session;
 
+    /**
+     * The threshold profile this class posts takes its id from
+     * {@code threshold_profile_seq}; sibling classes seed profiles with explicit
+     * ids without advancing it, so depending on class order the insert collided
+     * with a seeded row. Resync before writing.
+     */
     @Before
     public void setUp() throws Exception {
         super.setUp();
         executeDataSetWithStateManagement("testdata/freezer_second_probe.xml");
+        resyncSequence("threshold_profile_seq", "clinlims.threshold_profile");
         session = buildAdminSession();
     }
 

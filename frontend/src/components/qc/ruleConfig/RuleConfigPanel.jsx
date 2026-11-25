@@ -41,14 +41,14 @@ const configuredHeaders = [
   { key: "instrumentName", header: "qc.ruleConfig.field.analyzer" },
   { key: "testName", header: "qc.ruleConfig.field.test" },
   { key: "enabledRules", header: "qc.ruleConfig.field.enabledRules" },
-  { key: "actions", header: "" },
+  { key: "actions", header: "", isSortable: false },
 ];
 
 const unconfiguredHeaders = [
   { key: "instrumentName", header: "qc.ruleConfig.field.analyzer" },
   { key: "testName", header: "qc.ruleConfig.field.test" },
   { key: "activeLots", header: "qc.ruleConfig.unconfigured.activeLots" },
-  { key: "actions", header: "" },
+  { key: "actions", header: "", isSortable: false },
 ];
 
 const RuleConfigPanel = () => {
@@ -148,7 +148,7 @@ const RuleConfigPanel = () => {
   }));
 
   const translatedConfiguredHeaders = configuredHeaders.map((h) => ({
-    key: h.key,
+    ...h,
     header: h.header
       ? intl.formatMessage({ id: h.header, defaultMessage: h.header })
       : "",
@@ -169,7 +169,7 @@ const RuleConfigPanel = () => {
   }));
 
   const translatedUnconfiguredHeaders = unconfiguredHeaders.map((h) => ({
-    key: h.key,
+    ...h,
     header: h.header
       ? intl.formatMessage({ id: h.header, defaultMessage: h.header })
       : "",
@@ -211,8 +211,8 @@ const RuleConfigPanel = () => {
         <PageBreadCrumb
           breadcrumbs={[
             { label: "home.label", link: "/" },
-            { label: "analyzer.page.hierarchy.root", link: "" },
-            { label: "qc.dashboard.title", link: "" },
+            { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
+            { label: "qc.dashboard.title", link: "/analyzers/qc/db" },
             { label: "qc.ruleConfig.title", link: "" },
           ]}
         />
@@ -224,7 +224,7 @@ const RuleConfigPanel = () => {
             },
             {
               label: intl.formatMessage({ id: "qc.dashboard.title" }),
-              link: "/analyzers/qc/db",
+              link: "/qa/qc/dashboard",
             },
             {
               label: intl.formatMessage({ id: "qc.ruleConfig.title" }),

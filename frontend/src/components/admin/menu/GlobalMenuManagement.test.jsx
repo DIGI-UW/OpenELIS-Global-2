@@ -1,0 +1,252 @@
+import React from "react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
+import { IntlProvider } from "react-intl";
+import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import GlobalMenuManagement from "./GlobalMenuManagement";
+import {
+  fetchFromOpenElisServer,
+  postToOpenElisServerFullResponse,
+} from "../../utils/Utils";
+import messages from "../../../languages/en.json";
+
+vi.mock("../../utils/Utils", () => ({
+  fetchFromOpenElisServer: vi.fn(),
+  postToOpenElisServerFullResponse: vi.fn(),
+}));
+
+const editable = {
+  menu: {
+    elementId: "custom",
+    displayKey: "banner.menu.patient",
+    isActive: true,
+    actionURL: "/Patient",
+    icon: null,
+    presentationStyle: null,
+  },
+  childMenus: [],
+};
+const configured = {
+  menu: {
+    elementId: "managed",
+    displayKey: "sidenav.label.reports",
+    isActive: true,
+    actionURL: "/reports/custom-data-export",
+    icon: "reports",
+    presentationStyle: "section",
+  },
+  childMenus: [],
+};
+
+function mount() {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    logger: { log: () => {}, warn: () => {}, error: () => {} },
+  });
+  return render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter>
+        <IntlProvider locale="en" messages={messages}>
+          <GlobalMenuManagement />
+        </IntlProvider>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  fetchFromOpenElisServer.mockResolvedValue([editable, configured]);
+});
+
+test("persists only edited entries and reloads the returned effective menu", async () => {
+  postToOpenElisServerFullResponse.mockImplementation((url, body, done) => {
+    const [changed] = JSON.parse(body);
+    done({ ok: true, json: async () => [changed, configured] });
+  });
+  const view = mount();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Patient", exact: true }),
+  );
+  const patient = screen
+    .getByRole("button", { name: "Patient", exact: true })
+    .closest("li");
+  fireEvent.change(within(patient).getByLabelText("Icon"), {
+    target: { value: "patient" },
+  });
+  fireEvent.change(within(patient).getByLabelText("Display as"), {
+    target: { value: "section" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
+  expect(await screen.findByText("Menu settings saved.")).toBeTruthy();
+  expect(postToOpenElisServerFullResponse).toHaveBeenCalledTimes(1);
+  const [url, body] = postToOpenElisServerFullResponse.mock.calls[0];
+  expect(url).toBe("/rest/admin/menu");
+  expect(JSON.parse(body)).toEqual([
+    {
+      menu: { ...editable.menu, icon: "patient", presentationStyle: "section" },
+      childMenus: [],
+    },
+  ]);
+  expect(
+    screen.getByRole("button", { name: "Save", exact: true }),
+  ).toBeDisabled();
+  view.unmount();
+  fetchFromOpenElisServer.mockResolvedValue([
+    {
+      ...editable,
+      menu: { ...editable.menu, icon: "patient", presentationStyle: "section" },
+    },
+    configured,
+  ]);
+  mount();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Patient", exact: true }),
+  );
+  expect(
+    within(
+      screen
+        .getByRole("button", { name: "Patient", exact: true })
+        .closest("li"),
+    ).getByLabelText("Icon"),
+  ).toHaveValue("patient");
+});
+
+test("a menu the configuration file seeded can be edited here, so the edit stays", async () => {
+  postToOpenElisServerFullResponse.mockImplementation((url, body, done) => {
+    done({ ok: true, json: async () => [editable, JSON.parse(body)[0]] });
+  });
+  mount();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Reports", exact: true }),
+  );
+  const reports = screen
+    .getByRole("button", { name: "Reports", exact: true })
+    .closest("li");
+  expect(within(reports).getByLabelText("Display as")).toBeEnabled();
+  fireEvent.click(within(reports).getByRole("switch"));
+  fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
+  await screen.findByText("Menu settings saved.");
+  expect(
+    JSON.parse(postToOpenElisServerFullResponse.mock.calls[0][1])[0].menu,
+  ).toMatchObject({ elementId: "managed", isActive: false });
+});
+
+test("offers the current menu as a configuration file to download", async () => {
+  mount();
+  const exportLink = await screen.findByTestId("menu-configuration-export");
+  expect(exportLink.getAttribute("href")).toMatch(
+    /\/rest\/admin\/menu\/configuration$/,
+  );
+  expect(exportLink.textContent).toBe("Export menu file");
+});
+
+test("a failed save retains edits and lets the user retry", async () => {
+  postToOpenElisServerFullResponse.mockImplementation((url, body, done) =>
+    done({ ok: false }),
+  );
+  mount();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Patient", exact: true }),
+  );
+  const patient = screen
+    .getByRole("button", { name: "Patient", exact: true })
+    .closest("li");
+  fireEvent.change(within(patient).getByLabelText("Icon"), {
+    target: { value: "patient" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
+  await screen.findByText("Save failed");
+  expect(within(patient).getByLabelText("Icon")).toHaveValue("patient");
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: "Save", exact: true }),
+    ).toBeEnabled(),
+  );
+  expect(fetchFromOpenElisServer).toHaveBeenCalledTimes(1);
+  postToOpenElisServerFullResponse.mockImplementation((url, body, done) => {
+    done({ ok: true, json: async () => [JSON.parse(body)[0], configured] });
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
+  await screen.findByText("Menu settings saved.");
+  expect(postToOpenElisServerFullResponse.mock.calls[1][1]).toBe(
+    postToOpenElisServerFullResponse.mock.calls[0][1],
+  );
+});
+
+test("OGC-1418: does not offer the retired Validation entries, so they cannot be switched back on", async () => {
+  const validation = {
+    menu: {
+      elementId: "menu_resultvalidation",
+      displayKey: "banner.menu.resultvalidation",
+      isActive: true,
+      actionURL: "/validation",
+      icon: null,
+      presentationStyle: null,
+    },
+    childMenus: [
+      {
+        menu: {
+          elementId: "menu_resultvalidation_routine",
+          displayKey: "banner.menu.resultvalidation.routine",
+          isActive: false,
+          actionURL: "/ResultValidation?type=&test=",
+        },
+        childMenus: [],
+      },
+      {
+        menu: {
+          elementId: "menu_accession_validation",
+          displayKey: "banner.menu.accession.validation",
+          isActive: false,
+          actionURL: "/AccessionValidation",
+        },
+        childMenus: [],
+      },
+    ],
+  };
+  fetchFromOpenElisServer.mockResolvedValue([validation]);
+  mount();
+
+  expect(
+    await screen.findByTestId("menu-settings-menu_resultvalidation"),
+  ).toBeTruthy();
+  expect(
+    screen.queryByTestId("menu-settings-menu_resultvalidation_routine"),
+  ).toBeNull();
+  expect(
+    screen.queryByTestId("menu-settings-menu_accession_validation"),
+  ).toBeNull();
+});
+
+test("a module's entry is shown read-only with a note pointing to User Management", async () => {
+  const contributed = {
+    menu: {
+      elementId: "menu_mod_alpha",
+      displayKey: "mod.alpha.menu.title",
+      isActive: true,
+      actionURL: "/m/alpha/home",
+      icon: null,
+      presentationStyle: null,
+    },
+    childMenus: [],
+  };
+  fetchFromOpenElisServer.mockResolvedValue([editable, contributed]);
+  mount();
+
+  const entry = await screen.findByTestId("menu-settings-menu_mod_alpha");
+  fireEvent.click(
+    within(entry).getByRole("button", { name: "mod.alpha.menu.title" }),
+  );
+
+  expect(within(entry).getByRole("switch")).toBeDisabled();
+  expect(
+    screen.getByTestId("menu-module-note-menu_mod_alpha"),
+  ).toHaveTextContent("User Management");
+  const patient = screen.getByTestId("menu-settings-custom");
+  fireEvent.click(
+    within(patient).getByRole("button", { name: "Patient", exact: true }),
+  );
+  expect(within(patient).getByRole("switch")).toBeEnabled();
+});

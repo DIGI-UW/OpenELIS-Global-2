@@ -1,5 +1,6 @@
 package org.openelisglobal.observationhistory.service;
 
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -41,10 +42,10 @@ public class ObservationHistoryServiceImpl extends AuditableBaseObjectServiceImp
         ENV_SAMPLING_SITE_ID("envSamplingSiteId"), ENV_SAMPLING_SITE_NAME("envSamplingSiteName"),
         ENV_SITE_TYPE("envSiteType"), ENV_SITE_SUBTYPE("envSiteSubtype"),
         ENV_ENVIRONMENTAL_ZONE("envEnvironmentalZone"), ENV_REGULATORY_REFERENCE("envRegulatoryReference"),
-        ENV_COLLECTION_METHOD("envCollectionMethod"), ENV_CONTACT_PERSON("envContactPerson"),
-        ENV_CONTACT_PHONE("envContactPhone"), ENV_WATER_TEMP("envWaterTemp"), ENV_AMBIENT_TEMP("envAmbientTemp"),
-        ENV_WEATHER("envWeather"), ENV_PRESERVATION_METHOD("envPreservationMethod"), ENV_FIELD_NOTES("envFieldNotes"),
-        ENV_COMPLIANCE_STANDARDS("envComplianceStandards"),
+        ENV_ORDER_BRANCH("envOrderBranch"), ENV_COLLECTION_METHOD("envCollectionMethod"),
+        ENV_CONTACT_PERSON("envContactPerson"), ENV_CONTACT_PHONE("envContactPhone"), ENV_WATER_TEMP("envWaterTemp"),
+        ENV_AMBIENT_TEMP("envAmbientTemp"), ENV_WEATHER("envWeather"), ENV_PRESERVATION_METHOD("envPreservationMethod"),
+        ENV_FIELD_NOTES("envFieldNotes"), ENV_COMPLIANCE_STANDARDS("envComplianceStandards"),
         // Vector surveillance observation types
         VS_WORKFLOW_TYPE("vecWorkflowType"), VS_SAMPLE_TYPE_ID("vecSampleTypeId"), VS_SPECIES_ID("vecSpeciesId"),
         VS_LIFECYCLE_STAGE("vecLifecycleStage"), VS_TRAP_TYPE_ID("vecTrapTypeId"), VS_TRAP_COUNT("vecTrapCount"),
@@ -263,5 +264,18 @@ public class ObservationHistoryServiceImpl extends AuditableBaseObjectServiceImp
     @Transactional(readOnly = true)
     public List<ObservationHistory> getObservationHistoriesBySampleId(String sampleId) {
         return getBaseObjectDAO().getObservationHistoriesBySampleId(sampleId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ObservationHistory> getObservationHistoriesByType(ObservationType type) {
+        if (observationTypeToIdMap.isEmpty()) {
+            initialize();
+        }
+        String typeId = getObservationTypeIdForType(type);
+        if (GenericValidator.isBlankOrNull(typeId)) {
+            return new ArrayList<>();
+        }
+        return baseObjectDAO.getObservationHistoriesByType(typeId);
     }
 }

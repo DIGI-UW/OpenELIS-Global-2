@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    Programs V2 - a program can run in more than one lab unit (Serology AND
+    Molecular for the same HIV program), so the single `program.test_section_id`
+    FK becomes a many-to-many via `program_lab_unit`. Existing single
+    assignments backfill as one junction row each; the FK column on `program`
+    stays for now so legacy readers (older exports, plugins) keep working, and
+    is dropped in a follow-up once every reader has moved to the junction.
+    -->
+
+    <changeSet id="programs-v2-lab-unit-junction-create" author="herbert">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="program_lab_unit"/>
+            </not>
+        </preConditions>
+        <createTable schemaName="clinlims" tableName="program_lab_unit">
+            <column name="program_id" type="NUMERIC(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="test_section_id" type="NUMERIC(10,0)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addPrimaryKey schemaName="clinlims" tableName="program_lab_unit"
+            columnNames="program_id, test_section_id"
+            constraintName="program_lab_unit_pk"/>
+        <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="program_lab_unit"
+            baseColumnNames="program_id" constraintName="fk_program_lab_unit_program"
+            referencedTableSchemaName="clinlims" referencedTableName="program"
+            referencedColumnNames="id" onDelete="CASCADE"/>
+        <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="program_lab_unit"
+            baseColumnNames="test_section_id" constraintName="fk_program_lab_unit_test_section"
+            referencedTableSchemaName="clinlims" referencedTableName="test_section"
+            referencedColumnNames="id" onDelete="CASCADE"/>
+    </changeSet>
+
+    <!--
+    Backfill: every program with a test_section_id gets one junction row so the
+    admin list keeps showing the same lab unit after the schema flip. Idempotent
+    - ON CONFLICT is a no-op if the row already exists (re-running the changeset
+    or migrating a partially-backfilled deploy).
+    -->
+    <changeSet id="programs-v2-lab-unit-junction-backfill" author="herbert">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="program_lab_unit"/>
+                <columnExists schemaName="clinlims" tableName="program" columnName="test_section_id"/>
+            </and>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.program_lab_unit (program_id, test_section_id)
+            SELECT p.id, p.test_section_id
+            FROM clinlims.program p
+            WHERE p.test_section_id IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM clinlims.program_lab_unit plu
+                  WHERE plu.program_id = p.id
+                    AND plu.test_section_id = p.test_section_id
+              );
+        </sql>
+        <rollback>
+            <sql>DELETE FROM clinlims.program_lab_unit</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -12,6 +12,8 @@ import {
   Pagination,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
+import { serverPageArrowsProps } from "../utils/serverPaging";
+import ServerPageArrows from "../common/ServerPageArrows";
 
 const SEVERITY_TAG_MAP = {
   CRITICAL: "red",
@@ -24,15 +26,30 @@ const STATUS_TAG_MAP = {
   RESOLVED: "green",
 };
 
+const ACTION_LABELS = {
+  OPEN: "alerts.acknowledge.button",
+  ACKNOWLEDGED: "alerts.resolve.button",
+};
+
 const AlertsTable = ({
   alerts,
   totalCount,
   page,
   pageSize,
   onPageChange,
-  onAcknowledge,
+  onAction,
 }) => {
   const intl = useIntl();
+
+  // The endpoint pages by page + pageSize, so the arrows above the table and
+  // Carbon's pagination below it move through the same pages.
+  const arrows = serverPageArrowsProps({
+    paging: {
+      currentPage: page + 1,
+      totalPages: Math.max(Math.ceil((totalCount || 0) / (pageSize || 1)), 1),
+    },
+    onPageRequest: (pageNumber) => onPageChange(pageNumber - 1, pageSize),
+  });
 
   const headers = [
     {
@@ -66,28 +83,19 @@ const AlertsTable = ({
     return intl.formatMessage({ id: key, defaultMessage: type });
   };
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "";
-    try {
-      return new Date(dateStr).toLocaleString();
-    } catch {
-      return dateStr;
-    }
-  };
-
   const rows = (alerts || []).map((alert) => ({
     id: String(alert.id),
     alertType: formatAlertType(alert.alertType),
     severity: alert.severity,
     message: alert.message,
     status: alert.status,
-    startTime: formatDate(alert.startTime),
-    actions: alert.status === "OPEN" ? "acknowledge" : "",
+    startTime: alert.startTimeForDisplay,
     _original: alert,
   }));
 
   return (
     <>
+      {arrows.show && <ServerPageArrows {...arrows} />}
       <DataTable rows={rows} headers={headers}>
         {({
           rows: tableRows,
@@ -147,14 +155,14 @@ const AlertsTable = ({
                       if (cell.info.header === "actions") {
                         return (
                           <TableCell key={cell.id}>
-                            {original && original.status === "OPEN" && (
+                            {original && ACTION_LABELS[original.status] && (
                               <Button
                                 kind="ghost"
                                 size="sm"
-                                onClick={() => onAcknowledge(original)}
+                                onClick={() => onAction(original)}
                               >
                                 {intl.formatMessage({
-                                  id: "alerts.acknowledge.button",
+                                  id: ACTION_LABELS[original.status],
                                 })}
                               </Button>
                             )}

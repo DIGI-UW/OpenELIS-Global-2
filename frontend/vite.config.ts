@@ -2,10 +2,15 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import svgr from "vite-plugin-svgr";
+import { federation } from "@module-federation/vite";
 import path from "path";
+import moduleFederationConfig from "./module-federation.config.js";
 
 export default defineConfig({
-  plugins: [react(), svgr()],
+  // The federation plugin makes the application the host of module remotes
+  // (loaded at runtime from /rest/module-registry) and a remote itself,
+  // `openelis_core`, whose exposed surface modules import (docs/modules.md).
+  plugins: [react(), svgr(), federation(moduleFederationConfig)],
   resolve: {
     extensions: [".mjs", ".js", ".ts", ".jsx", ".tsx", ".json"],
     alias: [
@@ -33,6 +38,19 @@ export default defineConfig({
   build: {
     outDir: "dist",
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        // Each locale bundle is its own chunk (src/languages/index.js). Named
+        // apart from the code chunks, since Carbon ships an `es-<hash>.js` of
+        // its own, so a cache rule, a spec or an operator reading a network
+        // log can tell a translation download from application code.
+        chunkFileNames: (chunk) =>
+          chunk.facadeModuleId &&
+          /[\\/]src[\\/]languages[\\/][^\\/]+\.json$/.test(chunk.facadeModuleId)
+            ? "assets/messages-[name]-[hash].js"
+            : "assets/[name]-[hash].js",
+      },
+    },
   },
   test: {
     alias: [
@@ -58,6 +76,7 @@ export default defineConfig({
       "**/dist/**",
       "**/cypress/**",
       "**/playwright/**",
+      "**/packages/**",
     ],
   },
   server: {

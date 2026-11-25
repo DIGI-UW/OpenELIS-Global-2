@@ -4,7 +4,7 @@
  * `hierarchicalPath` per result; clicking a result fires onSelect.
  */
 
-import React from "react";
+import React, { useState } from "react";
 import {
   render as rtlRender,
   screen,
@@ -369,6 +369,50 @@ describe("SearchField", () => {
       screen.getByRole("option", { name: /Main Lab > Freezer 1/ }),
     );
     expect(onSelect).toHaveBeenCalledWith(result);
+  });
+
+  it("does not search again for the path it just put in the input after a pick", () => {
+    const result = {
+      id: 5,
+      type: "device",
+      name: "Freezer 1",
+      hierarchicalPath: "Main Lab › Freezer 1",
+    };
+    Utils.getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb(url.includes("q=Free") ? [result] : []),
+    );
+    // The picker owns query/results; this stands in for its reducer.
+    function Harness() {
+      const [query, setQuery] = useState("Free");
+      const [results, setResults] = useState([]);
+      return (
+        <SearchField
+          query={query}
+          results={results}
+          onQueryChange={setQuery}
+          onResultsChange={setResults}
+          onSelect={vi.fn()}
+        />
+      );
+    }
+    render(<Harness />);
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    expect(Utils.getFromOpenElisServer).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(
+      screen.getByRole("option", { name: /Main Lab › Freezer 1/ }),
+    );
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+
+    expect(screen.getByRole("combobox")).toHaveValue("Main Lab › Freezer 1");
+    expect(Utils.getFromOpenElisServer).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByText(/no storage locations match/i),
+    ).not.toBeInTheDocument();
   });
 
   it("uses tabIndex=-1 on every option (canonical ARIA combobox: input is sole tab stop)", () => {

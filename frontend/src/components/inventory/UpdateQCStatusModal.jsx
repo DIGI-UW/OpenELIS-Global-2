@@ -9,16 +9,18 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { InventoryLotAPI } from "./InventoryService";
+import { useIsMounted } from "./useIsMounted";
 
 const UpdateQCStatusModal = ({ open, onClose, onSave, lot }) => {
   const intl = useIntl();
 
-  const qcStatusOptions = [
-    { id: "PENDING", text: "Pending QC" },
-    { id: "PASSED", text: "Passed" },
-    { id: "FAILED", text: "Failed" },
-    { id: "NOT_REQUIRED", text: "Not Required" },
-  ];
+  // The values inventory_lot.qc_status's check constraint accepts.
+  const qcStatusOptions = ["PENDING", "PASSED", "FAILED", "QUARANTINED"].map(
+    (status) => ({
+      id: status,
+      text: intl.formatMessage({ id: `lot.qcStatus.${status}` }),
+    }),
+  );
 
   const [formData, setFormData] = useState({
     qcStatus: lot?.qcStatus || "PENDING",
@@ -28,6 +30,8 @@ const UpdateQCStatusModal = ({ open, onClose, onSave, lot }) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
+  const isMounted = useIsMounted();
+
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setError(null);
@@ -35,12 +39,12 @@ const UpdateQCStatusModal = ({ open, onClose, onSave, lot }) => {
 
   const validate = () => {
     if (!formData.qcStatus) {
-      setError("Please select a QC status");
+      setError(intl.formatMessage({ id: "qc.status.error.required" }));
       return false;
     }
 
     if (formData.qcStatus === "FAILED" && !formData.notes?.trim()) {
-      setError("Please provide notes explaining QC failure");
+      setError(intl.formatMessage({ id: "qc.status.error.notesRequired" }));
       return false;
     }
 
@@ -68,9 +72,9 @@ const UpdateQCStatusModal = ({ open, onClose, onSave, lot }) => {
       onSave();
     } catch (err) {
       console.error("Error updating QC status:", err);
-      setError(err.message || "Error updating QC status");
+      if (isMounted()) setError(err.message || "Error updating QC status");
     } finally {
-      setSaving(false);
+      if (isMounted()) setSaving(false);
     }
   };
 
@@ -113,17 +117,19 @@ const UpdateQCStatusModal = ({ open, onClose, onSave, lot }) => {
             <FormattedMessage id="qc.status.current" />
           </FormLabel>
           <p>
-            <strong>{lot.qcStatus || "PENDING"}</strong>
+            <strong>
+              <FormattedMessage
+                id={`lot.qcStatus.${lot.qcStatus || "PENDING"}`}
+              />
+            </strong>
           </p>
         </div>
 
         {formData.qcStatus === "FAILED" && (
           <InlineNotification
             kind="warning"
-            title={intl.formatMessage({ id: "qc.status.failed.warning.title" })}
-            subtitle={intl.formatMessage({
-              id: "qc.status.failed.warning.message",
-            })}
+            title={intl.formatMessage({ id: "qc.status.warning.title" })}
+            subtitle={intl.formatMessage({ id: "qc.status.warning.message" })}
             hideCloseButton
             lowContrast
           />
@@ -135,7 +141,9 @@ const UpdateQCStatusModal = ({ open, onClose, onSave, lot }) => {
           label={intl.formatMessage({ id: "qc.status.select" })}
           items={qcStatusOptions}
           itemToString={(item) => (item ? item.text : "")}
-          selectedItem={qcStatusOptions.find((s) => s.id === formData.qcStatus)}
+          selectedItem={
+            qcStatusOptions.find((s) => s.id === formData.qcStatus) ?? null
+          }
           onChange={({ selectedItem }) =>
             handleChange("qcStatus", selectedItem.id)
           }
@@ -144,7 +152,7 @@ const UpdateQCStatusModal = ({ open, onClose, onSave, lot }) => {
         {/* Notes */}
         <TextArea
           id="notes"
-          labelText={intl.formatMessage({ id: "qc.status.notes" })}
+          labelText={intl.formatMessage({ id: "common.notes" })}
           value={formData.notes}
           onChange={(e) => handleChange("notes", e.target.value)}
           placeholder={intl.formatMessage({

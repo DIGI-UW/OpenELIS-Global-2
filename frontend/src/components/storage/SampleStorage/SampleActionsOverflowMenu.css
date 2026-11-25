@@ -28,28 +28,27 @@
   fill: var(--cds-text-primary, #161616) !important;
 }
 
-/* Target the dropdown menu (ul) - remove blue background */
-/* Note: OverflowMenu renders dropdown in a portal, so we target by aria-label */
-ul.cds--overflow-menu-options[aria-label*="Sample actions"] {
+/* The menu renders in a portal, so it is hooked by menuOptionsClass rather
+   than by its aria-label, which changes with the locale. */
+ul.sample-actions-overflow-menu__options {
   background-color: var(--cds-layer-01, #ffffff) !important;
   border: 1px solid var(--cds-border-subtle-01, #e0e0e0) !important;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
 }
 
 /* Target menu item buttons - remove blue hover/focus */
-ul.cds--overflow-menu-options[aria-label*="Sample actions"]
-  .cds--overflow-menu-options__btn {
+ul.sample-actions-overflow-menu__options .cds--overflow-menu-options__btn {
   color: var(--cds-text-primary, #161616) !important;
   background-color: transparent !important;
 }
 
-ul.cds--overflow-menu-options[aria-label*="Sample actions"]
+ul.sample-actions-overflow-menu__options
   .cds--overflow-menu-options__btn:hover {
   background-color: var(--cds-layer-hover-01, #f4f4f4) !important;
   color: var(--cds-text-primary, #161616) !important;
 }
 
-ul.cds--overflow-menu-options[aria-label*="Sample actions"]
+ul.sample-actions-overflow-menu__options
   .cds--overflow-menu-options__btn:focus {
   outline: 2px solid var(--cds-focus, #0f62fe) !important;
   outline-offset: -2px !important;
@@ -57,7 +56,7 @@ ul.cds--overflow-menu-options[aria-label*="Sample actions"]
 }
 
 /* Target disabled menu item */
-ul.cds--overflow-menu-options[aria-label*="Sample actions"]
+ul.sample-actions-overflow-menu__options
   .cds--overflow-menu-options__option--disabled
   .cds--overflow-menu-options__btn {
   color: var(--cds-text-disabled, #c6c6c6) !important;
@@ -65,12 +64,11 @@ ul.cds--overflow-menu-options[aria-label*="Sample actions"]
 }
 
 /* Remove any blue background from menu items */
-ul.cds--overflow-menu-options[aria-label*="Sample actions"]
-  .cds--overflow-menu-options__option {
+ul.sample-actions-overflow-menu__options .cds--overflow-menu-options__option {
   background-color: transparent !important;
 }
 
-ul.cds--overflow-menu-options[aria-label*="Sample actions"]
+ul.sample-actions-overflow-menu__options
   .cds--overflow-menu-options__option:hover {
   background-color: transparent !important;
 }

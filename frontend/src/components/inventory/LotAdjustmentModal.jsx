@@ -9,18 +9,24 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { InventoryLotAPI } from "./InventoryService";
+import { useIsMounted } from "./useIsMounted";
 
 const LotAdjustmentModal = ({ open, onClose, onSave, lot }) => {
   const intl = useIntl();
 
+  const isMounted = useIsMounted();
+
   const adjustmentReasons = [
-    { id: "INVENTORY_COUNT", text: "Physical Inventory Count" },
-    { id: "DAMAGED", text: "Damaged Items" },
-    { id: "FOUND", text: "Items Found" },
-    { id: "ERROR_CORRECTION", text: "Data Entry Error Correction" },
-    { id: "EXPIRED_DISPOSAL", text: "Expired Item Disposal" },
-    { id: "OTHER", text: "Other" },
-  ];
+    "INVENTORY_COUNT",
+    "DAMAGED",
+    "FOUND",
+    "ERROR_CORRECTION",
+    "EXPIRED_DISPOSAL",
+    "OTHER",
+  ].map((id) => ({
+    id,
+    text: intl.formatMessage({ id: `adjustment.reason.${id}` }),
+  }));
 
   const [formData, setFormData] = useState({
     newQuantity: lot?.currentQuantity || 0,
@@ -43,17 +49,19 @@ const LotAdjustmentModal = ({ open, onClose, onSave, lot }) => {
 
   const validate = () => {
     if (formData.newQuantity < 0) {
-      setError("Quantity cannot be negative");
+      setError(intl.formatMessage({ id: "adjustment.error.negativeQuantity" }));
       return false;
     }
 
     if (!formData.reason) {
-      setError("Please select a reason for adjustment");
+      setError(intl.formatMessage({ id: "adjustment.error.reasonRequired" }));
       return false;
     }
 
     if (formData.reason === "OTHER" && !formData.notes?.trim()) {
-      setError("Please provide notes when selecting 'Other' as reason");
+      setError(
+        intl.formatMessage({ id: "common.error.notesRequiredForOther" }),
+      );
       return false;
     }
 
@@ -71,6 +79,7 @@ const LotAdjustmentModal = ({ open, onClose, onSave, lot }) => {
         lot.id,
         formData.newQuantity,
         formData.reason,
+        formData.notes,
       );
 
       setFormData({
@@ -82,9 +91,9 @@ const LotAdjustmentModal = ({ open, onClose, onSave, lot }) => {
       onSave();
     } catch (err) {
       console.error("Error adjusting lot:", err);
-      setError(err.message || "Error adjusting lot quantity");
+      if (isMounted()) setError(err.message || "Error adjusting lot quantity");
     } finally {
-      setSaving(false);
+      if (isMounted()) setSaving(false);
     }
   };
 
@@ -159,7 +168,9 @@ const LotAdjustmentModal = ({ open, onClose, onSave, lot }) => {
           label={intl.formatMessage({ id: "adjustment.reason.select" })}
           items={adjustmentReasons}
           itemToString={(item) => (item ? item.text : "")}
-          selectedItem={adjustmentReasons.find((r) => r.id === formData.reason)}
+          selectedItem={
+            adjustmentReasons.find((r) => r.id === formData.reason) ?? null
+          }
           onChange={({ selectedItem }) =>
             handleChange("reason", selectedItem.id)
           }

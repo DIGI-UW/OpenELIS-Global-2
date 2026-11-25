@@ -35,6 +35,7 @@ vi.mock("../storage/LocationPicker/LocationPickerModal", () => ({
             onConfirm({
               selection: { room: { id: 9, name: "Cold Room" } },
               position: null,
+              reason: "Consolidating stock",
               notes: "",
             })
           }
@@ -65,7 +66,7 @@ const fillRequiredFieldsExceptLocation = async () => {
   fireEvent.click(
     screen.getByRole("combobox", { name: /select catalog item/i }),
   );
-  fireEvent.click(await screen.findByText("Malaria RDT (RDT)"));
+  fireEvent.click(await screen.findByText("Malaria RDT (MAL_RDT)"));
   fireEvent.change(screen.getByLabelText(/lot number/i), {
     target: { value: "LOT-1" },
   });
@@ -77,7 +78,7 @@ const fillRequiredFieldsExceptLocation = async () => {
 beforeEach(() => {
   vi.clearAllMocks();
   InventoryItemAPI.getAll.mockResolvedValue([
-    { id: "MALARIA_RDT", name: "Malaria RDT", itemType: "RDT" },
+    { id: "MALARIA_RDT", name: "Malaria RDT", code: "MAL_RDT" },
   ]);
   InventoryLotStorageAPI.getLocation.mockResolvedValue({});
 });
@@ -92,7 +93,7 @@ describe("LotEntryModal — storage location wiring (OGC-657)", () => {
     fireEvent.click(screen.getByText("Save"));
 
     expect(
-      await screen.findByText(/please assign a storage location/i),
+      await screen.findByText(/assign a storage location/i),
     ).toBeInTheDocument();
     expect(InventoryManagementAPI.receive).not.toHaveBeenCalled();
   });
@@ -188,7 +189,11 @@ describe("LotEntryModal — storage location wiring (OGC-657)", () => {
 
     await waitFor(() => {
       expect(InventoryLotStorageAPI.moveLocation).toHaveBeenCalledWith(
-        expect.objectContaining({ inventoryLotId: "11", locationId: "9" }),
+        expect.objectContaining({
+          inventoryLotId: "11",
+          locationId: "9",
+          reason: "Consolidating stock",
+        }),
       );
     });
     expect(InventoryLotStorageAPI.assignLocation).not.toHaveBeenCalled();
@@ -209,7 +214,7 @@ describe("LotEntryModal — auto-generated lot number", () => {
     fireEvent.click(
       screen.getByRole("combobox", { name: /select catalog item/i }),
     );
-    fireEvent.click(await screen.findByText("Malaria RDT (RDT)"));
+    fireEvent.click(await screen.findByText("Malaria RDT (MAL_RDT)"));
     fireEvent.change(screen.getByLabelText(/initial quantity/i), {
       target: { value: "5" },
     });
@@ -285,6 +290,30 @@ describe("LotEntryModal — partial save recovery", () => {
     expect(InventoryLotStorageAPI.assignLocation).toHaveBeenCalledTimes(2);
   });
 
+  it("shows the barcode the server minted rather than a blank locked field", async () => {
+    InventoryManagementAPI.receive.mockResolvedValue({
+      id: 79,
+      barcode: "MALARIA-RDT-LOT-1",
+    });
+    InventoryLotStorageAPI.assignLocation.mockRejectedValue(
+      new Error("Position A1 is already occupied"),
+    );
+
+    renderWithIntl(
+      <LotEntryModal open onClose={vi.fn()} onSave={vi.fn()} lot={null} />,
+    );
+    await fillRequiredFieldsExceptLocation();
+
+    fireEvent.click(screen.getByText(/assign storage location/i));
+    fireEvent.click(await screen.findByText("mock-confirm-location"));
+    fireEvent.click(screen.getByText("Save"));
+    await screen.findByText(/the lot was created, but assigning/i);
+
+    const barcode = document.getElementById("barcode");
+    expect(barcode).toBeDisabled();
+    expect(barcode).toHaveValue("MALARIA-RDT-LOT-1");
+  });
+
   it("refreshes the caller's list on close when a lot was already committed", async () => {
     InventoryManagementAPI.receive.mockResolvedValue({ id: 78 });
     InventoryLotStorageAPI.assignLocation.mockRejectedValue(
@@ -327,9 +356,271 @@ describe("LotEntryModal — partial save recovery", () => {
     fireEvent.click(screen.getByText("Save"));
 
     expect(
-      await screen.findByText(/please assign a storage location/i),
+      await screen.findByText(/assign a storage location/i),
     ).toBeInTheDocument();
     expect(InventoryManagementAPI.receive).not.toHaveBeenCalled();
     expect(InventoryLotStorageAPI.assignLocation).not.toHaveBeenCalled();
+  });
+});
+
+describe("LotEntryModal — translated server refusals", () => {
+  it("renders the duplicate-barcode refusal from errorCode and params, not the raw message", async () => {
+    // The shape InventoryService.post builds from a {message, errorCode, params}
+    // body; the message is the backend's own wording, not the en.json one.
+    const err = new Error("Barcode ABC is already assigned to lot LOT-9");
+    err.errorCode = "inventory.lot.error.duplicateBarcode";
+    err.params = { barcode: "ABC", lotNumber: "LOT-9" };
+    InventoryManagementAPI.receive.mockRejectedValue(err);
+
+    renderWithIntl(
+      <LotEntryModal open onClose={vi.fn()} onSave={vi.fn()} lot={null} />,
+    );
+    await fillRequiredFieldsExceptLocation();
+    fireEvent.click(screen.getByText(/assign storage location/i));
+    fireEvent.click(await screen.findByText("mock-confirm-location"));
+    fireEvent.click(screen.getByText("Save"));
+
+    expect(
+      await screen.findByText('Barcode "ABC" is already assigned to lot LOT-9'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Barcode ABC is already assigned to lot LOT-9"),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("LotEntryModal — system-generated barcode", () => {
+  it("sends null when the barcode is left blank so the server generates one", async () => {
+    InventoryManagementAPI.receive.mockResolvedValue({ id: 77 });
+    InventoryLotStorageAPI.assignLocation.mockResolvedValue({
+      assignmentId: "1",
+    });
+    renderWithIntl(<LotEntryModal open onClose={vi.fn()} onSave={vi.fn()} />);
+
+    await fillRequiredFieldsExceptLocation();
+    fireEvent.click(screen.getByText(/assign storage location/i));
+    fireEvent.click(await screen.findByText("mock-confirm-location"));
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() => {
+      expect(InventoryManagementAPI.receive).toHaveBeenCalledWith(
+        expect.objectContaining({ barcode: null }),
+      );
+    });
+  });
+
+  it("offers auto-generation when creating", () => {
+    renderWithIntl(<LotEntryModal open onClose={vi.fn()} onSave={vi.fn()} />);
+
+    const barcode = screen.getByLabelText(/barcode/i);
+    expect(barcode).toBeEnabled();
+    expect(
+      screen.getByText(/leave blank to generate one/i),
+    ).toBeInTheDocument();
+  });
+
+  it("locks the barcode once the lot is saved", () => {
+    const lot = {
+      id: 12,
+      inventoryItem: { id: "MALARIA_RDT" },
+      lotNumber: "LOT-12",
+      barcode: "TEST-REAGENT-A-LOT-12",
+      currentQuantity: 4,
+      status: "ACTIVE",
+      qcStatus: "PENDING",
+    };
+    renderWithIntl(
+      <LotEntryModal open onClose={vi.fn()} onSave={vi.fn()} lot={lot} />,
+    );
+
+    const barcode = screen.getByLabelText(/barcode/i);
+    expect(barcode).toHaveValue("TEST-REAGENT-A-LOT-12");
+    expect(barcode).toBeDisabled();
+    expect(
+      screen.getByText(/barcode is locked once saved/i),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("LotEntryModal — barcode on a lot that has none", () => {
+  const barcodelessLot = {
+    id: 13,
+    inventoryItem: { id: "MALARIA_RDT" },
+    lotNumber: "LOT-13",
+    barcode: null,
+    currentQuantity: 4,
+    status: "ACTIVE",
+    qcStatus: "PENDING",
+  };
+
+  it("lets an operator give an existing lot its first barcode", () => {
+    renderWithIntl(
+      <LotEntryModal
+        open
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        lot={barcodelessLot}
+      />,
+    );
+
+    const barcode = screen.getByLabelText(/barcode/i);
+    expect(barcode).toBeEnabled();
+    expect(screen.getByText(/has no barcode yet/i)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/barcode is locked once saved/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("sends the barcode typed on a barcodeless lot to the server", async () => {
+    InventoryLotAPI.update.mockResolvedValue({});
+    renderWithIntl(
+      <LotEntryModal
+        open
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        lot={barcodelessLot}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText(/barcode/i), {
+      target: { value: "BC-GIVEN-13" },
+    });
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() => {
+      expect(InventoryLotAPI.update).toHaveBeenCalledWith(
+        13,
+        expect.objectContaining({ barcode: "BC-GIVEN-13" }),
+      );
+    });
+  });
+});
+
+describe("LotEntryModal — calendar dates on an edited lot", () => {
+  const originalTz = process.env.TZ;
+  beforeAll(() => {
+    process.env.TZ = "Africa/Kampala";
+  });
+  afterAll(() => {
+    process.env.TZ = originalTz;
+  });
+
+  it("saves the expiry and receipt days it shows, not the day before", async () => {
+    InventoryLotAPI.update.mockResolvedValue({});
+    renderWithIntl(
+      <LotEntryModal
+        open
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        lot={{
+          id: 21,
+          inventoryItem: { id: "MALARIA_RDT" },
+          lotNumber: "LOT-21",
+          barcode: "BC-21",
+          currentQuantity: 4,
+          status: "ACTIVE",
+          qcStatus: "PASSED",
+          expirationDate: Date.UTC(2027, 2, 31),
+          receiptDate: Date.UTC(2026, 9, 5),
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() => {
+      expect(InventoryLotAPI.update).toHaveBeenCalledWith(
+        21,
+        expect.objectContaining({
+          expirationDate: "2027-03-31T00:00:00.000Z",
+          receiptDate: "2026-10-05T00:00:00.000Z",
+        }),
+      );
+    });
+  });
+});
+
+describe("LotEntryModal — quantity on an edited lot", () => {
+  it("labels the quantity as what is left, and locks it, since only an adjustment may change it", () => {
+    renderWithIntl(
+      <LotEntryModal
+        open
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        lot={{
+          id: 21,
+          inventoryItem: { id: "MALARIA_RDT" },
+          lotNumber: "LOT-21",
+          currentQuantity: 4,
+          status: "ACTIVE",
+          qcStatus: "PASSED",
+        }}
+      />,
+    );
+
+    expect(screen.getByLabelText("Current Quantity")).toBeDisabled();
+    expect(screen.getByLabelText("Current Quantity")).toHaveValue(4);
+    expect(screen.queryByLabelText("Initial Quantity")).not.toBeInTheDocument();
+  });
+});
+
+describe("LotEntryModal status choices in the reader language", () => {
+  it("lists QC and lot statuses from the message bundle and still sends the status codes", async () => {
+    InventoryLotAPI.update.mockResolvedValue({});
+    const french = {
+      ...messages,
+      "lot.qcStatus.PENDING": "En attente",
+      "lot.qcStatus.PASSED": "Conforme",
+      "lot.qcStatus.FAILED": "Non conforme",
+      "lot.qcStatus.QUARANTINED": "En quarantaine",
+      "lot.status.ACTIVE": "Actif",
+      "lot.status.IN_USE": "Entamé",
+      "lot.status.QUARANTINED": "Isolé",
+    };
+    render(
+      <IntlProvider locale="fr" messages={french}>
+        <LotEntryModal
+          open
+          onClose={vi.fn()}
+          onSave={vi.fn()}
+          lot={{
+            id: 21,
+            inventoryItem: { id: "MALARIA_RDT" },
+            lotNumber: "LOT-21",
+            currentQuantity: 4,
+            status: "ACTIVE",
+            qcStatus: "PASSED",
+          }}
+        />
+      </IntlProvider>,
+    );
+    const optionTexts = () =>
+      screen.getAllByRole("option").map((option) => option.textContent);
+
+    fireEvent.click(
+      screen.getByRole("combobox", { name: messages["lot.qcStatus"] }),
+    );
+    expect(optionTexts()).toEqual([
+      "En attente",
+      "Conforme",
+      "Non conforme",
+      "En quarantaine",
+    ]);
+    fireEvent.click(screen.getByRole("option", { name: "Non conforme" }));
+
+    fireEvent.click(
+      screen.getByRole("combobox", { name: messages["lot.status"] }),
+    );
+    expect(optionTexts()).toEqual(["Actif", "Entamé", "Isolé"]);
+    fireEvent.click(screen.getByRole("option", { name: "Entamé" }));
+
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() =>
+      expect(InventoryLotAPI.update).toHaveBeenCalledWith(
+        21,
+        expect.objectContaining({ qcStatus: "FAILED", status: "IN_USE" }),
+      ),
+    );
   });
 });

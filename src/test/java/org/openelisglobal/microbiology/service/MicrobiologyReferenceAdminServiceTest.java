@@ -22,21 +22,21 @@ import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelAntibioticDAO;
+import org.openelisglobal.microbiology.dao.MicroAstPanelAssignmentDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
-import org.openelisglobal.microbiology.dao.MicroCultureSetupDAO;
+import org.openelisglobal.microbiology.dao.MicroBreakpointRuleDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.dao.MicroPatientOriginDAO;
+import org.openelisglobal.microbiology.dao.MicroWhonetOrganismDAO;
 import org.openelisglobal.microbiology.form.MicroAntibioticAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAntibioticAdminForm;
-import org.openelisglobal.microbiology.form.MicroCultureSetupAdminForm;
 import org.openelisglobal.microbiology.form.MicroOrganismAdminForm;
 import org.openelisglobal.microbiology.form.MicroPatientOriginAdminForm;
 import org.openelisglobal.microbiology.form.MicroReferenceAdminQueryForm;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic;
-import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroPatientOrigin;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
@@ -53,20 +53,25 @@ public class MicrobiologyReferenceAdminServiceTest {
     @Mock
     private MicroAstPanelAntibioticDAO panelAntibioticDAO;
     @Mock
-    private MicroCultureSetupDAO cultureSetupDAO;
+    private MicroAstPanelAssignmentDAO assignmentDAO;
     @Mock
     private MicroPatientOriginDAO patientOriginDAO;
     @Mock
     private MethodService methodService;
     @Mock
     private TypeOfSampleService typeOfSampleService;
+    @Mock
+    private MicroBreakpointRuleDAO breakpointRuleDAO;
+    @Mock
+    private MicroWhonetOrganismDAO whonetOrganismDAO;
 
     private MicrobiologyReferenceAdminService service;
 
     @Before
     public void setUp() {
         service = new MicrobiologyReferenceAdminServiceImpl(organismDAO, antibioticDAO, panelDAO, panelAntibioticDAO,
-                cultureSetupDAO, patientOriginDAO, methodService, typeOfSampleService);
+                patientOriginDAO, methodService, typeOfSampleService, assignmentDAO, breakpointRuleDAO,
+                whonetOrganismDAO);
     }
 
     @Test
@@ -184,47 +189,6 @@ public class MicrobiologyReferenceAdminServiceTest {
     }
 
     @Test
-    public void saveCultureSetupPersistsValidatedStructuredTimingOnMethodExtension() {
-        Method culture = new Method();
-        culture.setId("method-1");
-        culture.setMethodName("Routine blood culture");
-        when(methodService.findById("method-1")).thenReturn(culture);
-        when(cultureSetupDAO.findByMethodAndWorkflowType("method-1", "BACTERIOLOGY")).thenReturn(Optional.empty());
-        MicroCultureSetupAdminForm request = new MicroCultureSetupAdminForm();
-        request.methodId = "method-1";
-        request.name = "Routine blood culture";
-        request.workflowType = "BACTERIOLOGY";
-        request.incubationHours = 24;
-        request.subcultureAtHours = 48;
-        request.maxIncubationDays = 5;
-
-        MicroCultureSetupAdminForm saved = service.saveCultureSetup(null, request, "42");
-
-        ArgumentCaptor<MicroCultureSetup> captor = ArgumentCaptor.forClass(MicroCultureSetup.class);
-        verify(cultureSetupDAO).insert(captor.capture());
-        assertEquals(Integer.valueOf(24), captor.getValue().getIncubationHours());
-        assertEquals(Integer.valueOf(48), captor.getValue().getSubcultureAtHours());
-        assertEquals(Integer.valueOf(5), captor.getValue().getMaxIncubationDays());
-        assertEquals(Integer.valueOf(5), saved.maxIncubationDays);
-        assertEquals("42", captor.getValue().getLastUpdatedBy());
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void saveCultureSetupRejectsNonPositiveMaxIncubationDays() {
-        Method culture = new Method();
-        culture.setId("method-1");
-        when(methodService.findById("method-1")).thenReturn(culture);
-        when(cultureSetupDAO.findByMethodAndWorkflowType("method-1", "BACTERIOLOGY")).thenReturn(Optional.empty());
-        MicroCultureSetupAdminForm request = new MicroCultureSetupAdminForm();
-        request.methodId = "method-1";
-        request.name = "Routine blood culture";
-        request.workflowType = "BACTERIOLOGY";
-        request.maxIncubationDays = 0;
-
-        service.saveCultureSetup(null, request, "42");
-    }
-
-    @Test
     public void saveAntibioticNormalizesUppercaseWhonetCode() {
         when(antibioticDAO.findByDisplayNameIgnoreCase("Ciprofloxacin")).thenReturn(Optional.empty());
         when(antibioticDAO.findByWhonetCodeIgnoreCase("CIP")).thenReturn(Optional.empty());
@@ -250,7 +214,6 @@ public class MicrobiologyReferenceAdminServiceTest {
         existing.setLogicalKey("panel-family");
         existing.setVersionNumber(1);
         existing.setName("Gram negative panel");
-        existing.setWorkflowType("BACTERIOLOGY");
         when(panelDAO.get("panel-v1")).thenReturn(Optional.of(existing));
         when(panelDAO.findCurrentByLogicalKey("panel-family")).thenReturn(existing);
         MicroAntibiotic cip = antibiotic("cip", "CIP");
@@ -260,8 +223,7 @@ public class MicrobiologyReferenceAdminServiceTest {
 
         MicroAstPanelAdminForm request = new MicroAstPanelAdminForm();
         request.name = "Gram negative panel";
-        request.workflowType = "BACTERIOLOGY";
-        request.antibiotics = List.of(panelAntibiotic("gen", 1, "ALWAYS"), panelAntibiotic("cip", 2, "CASCADE"));
+        request.antibiotics = List.of(panelAntibiotic("gen"), panelAntibiotic("cip"));
 
         MicroAstPanelAdminForm result = service.publishPanelVersion("panel-v1", request, "42");
 
@@ -300,11 +262,9 @@ public class MicrobiologyReferenceAdminServiceTest {
         return antibiotic;
     }
 
-    private MicroAstPanelAntibioticAdminForm panelAntibiotic(String id, int tier, String behavior) {
+    private MicroAstPanelAntibioticAdminForm panelAntibiotic(String id) {
         MicroAstPanelAntibioticAdminForm form = new MicroAstPanelAntibioticAdminForm();
         form.antibioticId = id;
-        form.tier = tier;
-        form.reportBehavior = behavior;
         return form;
     }
 }

@@ -22,10 +22,8 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.dao.AnalyzerActivationRecordDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerActivationRecord;
-import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -67,7 +65,7 @@ public class AnalyzerActivationRecordServiceTest {
         AnalyzerActivationRecord inserted = captured.getValue();
         assertEquals("81", saved.getId());
         assertSame(fixture.analyzer, inserted.getAnalyzer());
-        assertSame(fixture.revision, inserted.getSiteBindingRevision());
+        assertSame(fixture.revision, inserted.getMapping());
         assertSame(fixture.confirmation, inserted.getVerificationConfirmation());
         assertEquals(CONNECTION_ID, inserted.getBridgeConnectionId());
         assertEquals("ACTIVE", inserted.getActivationIntent());
@@ -75,6 +73,21 @@ public class AnalyzerActivationRecordServiceTest {
         assertEquals(acknowledgement.path("runtimeFingerprint").asText(), inserted.getRuntimeFingerprint());
         assertEquals("17", inserted.getCreatedBy());
         verify(auditTrailService).saveNewHistory(inserted, "17", "analyzer_activation_record");
+    }
+
+    @Test
+    public void setupIntentRetainsTheTransportAcknowledgementWithoutClinicalApproval() throws Exception {
+        Fixture fixture = fixture();
+        ObjectNode acknowledgement = bridgeFixture("connection-activate-ack.json");
+        acknowledgement.put("action", "START_SETUP");
+        acknowledgement.put("receptionPurpose", "SETUP");
+        AnalyzerActivationRecord saved = service.retain(fixture.analyzer, fixture.revision, null, acknowledgement,
+                "SETUP", "17");
+        assertEquals("SETUP", saved.getActivationIntent());
+        org.junit.Assert.assertNull(saved.getVerificationConfirmation());
+        verify(auditTrailService).saveNewHistory(saved, "17", "analyzer_activation_record");
+        assertThrows(IllegalArgumentException.class,
+                () -> service.retain(fixture.analyzer, fixture.revision, null, acknowledgement, "ACTIVE", "17"));
     }
 
     @Test
@@ -102,33 +115,48 @@ public class AnalyzerActivationRecordServiceTest {
         assertEquals(List.of(first, second), service.findByAnalyzerId("42"));
     }
 
+    @Test
+    public void clinicalAuditRequiresAnExplicitRoutinePurpose() throws Exception {
+        Fixture fixture = fixture();
+        ObjectNode acknowledgement = bridgeFixture("connection-activate-ack.json");
+        for (String purpose : new String[] { "", "SETUP", "routine", "UNKNOWN" }) {
+            acknowledgement.put("receptionPurpose", purpose);
+            assertThrows(IllegalArgumentException.class, () -> service.retain(fixture.analyzer, fixture.revision,
+                    fixture.confirmation, acknowledgement, "ACTIVE", "17"));
+        }
+        acknowledgement.remove("receptionPurpose");
+        assertThrows(IllegalArgumentException.class, () -> service.retain(fixture.analyzer, fixture.revision,
+                fixture.confirmation, acknowledgement, "ACTIVE", "17"));
+        verify(recordDAO, never()).insert(any());
+    }
+
     private static Fixture fixture() {
-        AnalyzerProfileBinding profile = new AnalyzerProfileBinding();
-        profile.setProfileId(PROFILE_ID);
-        profile.setProfileRevision(2);
-        profile.setProfileFingerprint(PROFILE_FINGERPRINT);
-        AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
-        binding.setProfileBinding(profile);
-        AnalyzerSiteBindingRevision revision = new AnalyzerSiteBindingRevision();
+        AnalyzerMapping revision = new AnalyzerMapping();
         revision.setId("61");
-        revision.setSiteBinding(binding);
-        AnalyzerSiteBindingConfirmation confirmation = new AnalyzerSiteBindingConfirmation();
+        revision.setProfileId(PROFILE_ID);
+        revision.setProfileRevision(2);
+        revision.setProfileFingerprint(PROFILE_FINGERPRINT);
+        AnalyzerMappingConfirmation confirmation = new AnalyzerMappingConfirmation();
         confirmation.setId("71");
-        confirmation.setSiteBindingRevision(revision);
+        confirmation.setMapping(revision);
         Analyzer analyzer = new Analyzer();
         analyzer.setId("42");
         analyzer.setBridgeConnectionId(CONNECTION_ID);
-        analyzer.setSiteBindingRevision(revision);
+        analyzer.setMapping(revision);
         return new Fixture(analyzer, revision, confirmation);
     }
 
     private static ObjectNode bridgeFixture(String name) throws Exception {
         String json = Files.readString(
                 Path.of("tools", "openelis-analyzer-bridge", "contracts", "analyzer", "v1", "fixtures", name));
-        return (ObjectNode) JSON.readTree(json);
+        ObjectNode acknowledgement = (ObjectNode) JSON.readTree(json);
+        if ("connection-activate-ack.json".equals(name)) {
+            // The setup-capable Bridge adds purpose to the older base v1 fixture.
+            acknowledgement.put("receptionPurpose", "ROUTINE");
+        }
+        return acknowledgement;
     }
 
-    private record Fixture(Analyzer analyzer, AnalyzerSiteBindingRevision revision,
-            AnalyzerSiteBindingConfirmation confirmation) {
+    private record Fixture(Analyzer analyzer, AnalyzerMapping revision, AnalyzerMappingConfirmation confirmation) {
     }
 }

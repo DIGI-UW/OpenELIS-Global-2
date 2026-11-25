@@ -1,10 +1,13 @@
 package org.openelisglobal.eqa.controller;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -14,14 +17,17 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.eqa.controller.rest.EQAMyProgramsRestController;
+import org.openelisglobal.eqa.service.EQACycleService;
 import org.openelisglobal.eqa.service.EQALabProgramEnrollmentService;
 import org.openelisglobal.eqa.valueholder.EQALabEnrollmentLabUnit;
 import org.openelisglobal.eqa.valueholder.EQALabEnrollmentTestMap;
@@ -38,6 +44,9 @@ public class EQAMyProgramsRestControllerTest {
 
     @Mock
     private HttpServletRequest request;
+
+    @Mock
+    private EQACycleService cycleService;
 
     @InjectMocks
     private EQAMyProgramsRestController controller;
@@ -85,7 +94,7 @@ public class EQAMyProgramsRestControllerTest {
     public void testListMyPrograms() {
         when(enrollmentService.findAll()).thenReturn(List.of(enrollment1, enrollment2));
 
-        ResponseEntity<List<Map<String, Object>>> response = controller.listMyPrograms();
+        ResponseEntity<List<Map<String, Object>>> response = controller.listMyPrograms(false);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(2, response.getBody().size());
@@ -97,7 +106,7 @@ public class EQAMyProgramsRestControllerTest {
     public void testListMyPrograms_Empty() {
         when(enrollmentService.findAll()).thenReturn(new ArrayList<>());
 
-        ResponseEntity<List<Map<String, Object>>> response = controller.listMyPrograms();
+        ResponseEntity<List<Map<String, Object>>> response = controller.listMyPrograms(false);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertTrue(response.getBody().isEmpty());
@@ -146,7 +155,7 @@ public class EQAMyProgramsRestControllerTest {
     @Test
     public void testCreateMyProgram_Success() {
         when(enrollmentService.createEnrollment(
-                        any(EQALabProgramEnrollment.class), anyList(), anyList(), anyList()))
+                        any(EQALabProgramEnrollment.class), anyList(), anyList(), anyList(), anyMap()))
                 .thenReturn(enrollment1);
 
         Map<String, Object> body = new HashMap<>();
@@ -188,7 +197,7 @@ public class EQAMyProgramsRestControllerTest {
     @Test
     public void testUpdateMyProgram_Success() {
         when(enrollmentService.updateEnrollment(
-                        eq(1L), any(EQALabProgramEnrollment.class), anyList(), anyList(), anyList()))
+                        eq(1L), any(EQALabProgramEnrollment.class), anyList(), anyList(), anyList(), any()))
                 .thenReturn(enrollment1);
 
         Map<String, Object> body = new HashMap<>();
@@ -203,10 +212,56 @@ public class EQAMyProgramsRestControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
+    /**
+     * A status toggle omits testAnalytes, and the service reads a null map as
+     * "leave the stored one alone" — so the omission must not arrive as an empty map,
+     * which would clear every reporting analyte on the enrollment.
+     */
+    @Test
+    public void testUpdateMyProgram_AbsentTestAnalytesPassesNull() {
+        when(enrollmentService.updateEnrollment(
+                        eq(1L), any(EQALabProgramEnrollment.class), any(), any(), any(), any()))
+                .thenReturn(enrollment1);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("programName", "Chemistry PT");
+        body.put("provider", "WHO");
+        body.put("isActive", Boolean.FALSE);
+        body.put("testIds", List.of(200));
+
+        controller.updateMyProgram(request, 1L, body);
+
+        ArgumentCaptor<Map<Long, Long>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(enrollmentService).updateEnrollment(
+                eq(1L), any(EQALabProgramEnrollment.class), any(), any(), any(), captor.capture());
+        assertNull(captor.getValue());
+    }
+
+    /** An explicit map still arrives parsed, so the Edit form keeps setting analytes. */
+    @Test
+    public void testUpdateMyProgram_ExplicitTestAnalytesPassedThrough() {
+        when(enrollmentService.updateEnrollment(
+                        eq(1L), any(EQALabProgramEnrollment.class), any(), any(), any(), any()))
+                .thenReturn(enrollment1);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("programName", "Chemistry PT");
+        body.put("provider", "WHO");
+        body.put("testIds", List.of(191));
+        body.put("testAnalytes", Map.of("191", 103));
+
+        controller.updateMyProgram(request, 1L, body);
+
+        ArgumentCaptor<Map<Long, Long>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(enrollmentService).updateEnrollment(
+                eq(1L), any(EQALabProgramEnrollment.class), any(), any(), any(), captor.capture());
+        assertEquals(Map.of(191L, 103L), captor.getValue());
+    }
+
     @Test
     public void testUpdateMyProgram_NotFound() {
         when(enrollmentService.updateEnrollment(
-                        eq(999L), any(EQALabProgramEnrollment.class), any(), any(), any()))
+                        eq(999L), any(EQALabProgramEnrollment.class), any(), any(), any(), any()))
                 .thenThrow(new IllegalArgumentException("Not found"));
 
         Map<String, Object> body = new HashMap<>();
@@ -254,5 +309,41 @@ public class EQAMyProgramsRestControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(3, response.getBody().size());
         assertEquals("CDC", response.getBody().get(0));
+    }
+
+    /** OGC-1483: order entry offers only the enrollments the lab takes part in. */
+    @Test
+    public void listMyPrograms_activeOnly_skipsSuspendedAndWithdrawn() {
+        when(enrollmentService.findActiveEnrollments()).thenReturn(List.of(enrollment1));
+
+        ResponseEntity<List<Map<String, Object>>> response = controller.listMyPrograms(true);
+
+        assertEquals(1, response.getBody().size());
+        assertEquals(1L, response.getBody().get(0).get("id"));
+        verify(enrollmentService, never()).findAll();
+    }
+
+    /** OGC-1483: an enrollment's open cycles, with deadline and panel codes. */
+    @Test
+    @SuppressWarnings("unchecked")
+    public void openCycles_listsTheSchemesOpenCyclesWithTheirPanelCodes() {
+        when(enrollmentService.getMatch("id", 1L)).thenReturn(Optional.of(enrollment1));
+        when(cycleService.findOpenCycles("Chemistry PT")).thenReturn(List.of(new EQACycleService.OpenCycle(31L,
+                "Chemistry 2026-1", 1, java.sql.Date.valueOf("2026-11-30"), List.of("CH-01", "CH-02"))));
+
+        ResponseEntity<?> response = controller.openCycles(1L);
+
+        List<Map<String, Object>> rows = (List<Map<String, Object>>) response.getBody();
+        assertEquals(1, rows.size());
+        assertEquals(31L, rows.get(0).get("id"));
+        assertEquals("2026-11-30", rows.get(0).get("deadline"));
+        assertEquals(List.of("CH-01", "CH-02"), rows.get(0).get("panelCodes"));
+    }
+
+    @Test
+    public void openCycles_ofAnUnknownEnrollment_is404() {
+        when(enrollmentService.getMatch("id", 99L)).thenReturn(Optional.empty());
+
+        assertEquals(HttpStatus.NOT_FOUND, controller.openCycles(99L).getStatusCode());
     }
 }

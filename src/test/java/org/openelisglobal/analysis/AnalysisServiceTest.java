@@ -999,4 +999,79 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertEquals(plain,
                 org.openelisglobal.test.service.TestServiceImpl.getUserLocalizedReportingTestName(test, "  "));
     }
+
+    /**
+     * OGC-189 (M2): the "hasContent" half of the isActive-OR-hasContent rule for
+     * viewer controls. A lab unit keeps appearing on worklists while it still holds
+     * in-flight work, and drops out once that work reaches a terminal status —
+     * which is what stops a deactivated unit from stranding its pending analyses.
+     *
+     * <p>
+     * Exercised on the DAO query directly, against the seeded analyses (1 in
+     * section 1 at status 1, 2 in section 2 at status 2), because it is the status
+     * exclusion itself that has to be right. Excluding a status must remove exactly
+     * its section and leave the other — a query that ignored the exclusion list, or
+     * dropped everything, fails one of the two assertions.
+     */
+    @Test
+    public void getTestSectionIdsWithAnalysesNotInStatus_excludesOnlyTheExcludedStatuses() {
+        List<String> allSections = analysisDAO.getTestSectionIdsWithAnalysesNotInStatus(new ArrayList<>());
+        Assert.assertTrue("section 1 holds seeded analysis 1", allSections.contains("1"));
+        Assert.assertTrue("section 2 holds seeded analysis 2", allSections.contains("2"));
+
+        // Exclude status 1: section 1's only analysis is filtered out, section
+        // 2's is untouched. Positive control included so the exclusion cannot
+        // pass vacuously by returning nothing.
+        List<String> excludingStatusOne = analysisDAO.getTestSectionIdsWithAnalysesNotInStatus(Arrays.asList("1"));
+        Assert.assertFalse("section 1's only analysis is at the excluded status", excludingStatusOne.contains("1"));
+        Assert.assertTrue("section 2 still holds work at a non-excluded status", excludingStatusOne.contains("2"));
+    }
+
+    /**
+     * OGC-189 (M2): the service wrapper maps the terminal statuses and hands back a
+     * set, so a section with only Finalized/Canceled/rejected work no longer counts
+     * as holding content.
+     */
+    /**
+     * OGC-189: the viewer rule must keep a lab unit visible once its work is
+     * FINISHED, not only while it is pending.
+     *
+     * <p>
+     * Counting pending analyses alone meant that entering a result in a deactivated
+     * unit made it vanish from the results pages and from reporting at the moment
+     * of saving — the guardrail covers viewing historical data, not just completing
+     * pending work.
+     *
+     * <p>
+     * Exercised on the DAO exclusion directly: the fixture seeds only statuses 1
+     * and 2, so excluding status 1 stands in for "this section's work has reached a
+     * terminal state".
+     */
+    @Test
+    public void anyAnalyses_stillIncludesASectionWhosePendingWorkIsExcluded() {
+        // Seeded analysis 1 is in section 1 at status 1.
+        List<String> pendingOnly = analysisDAO.getTestSectionIdsWithAnalysesNotInStatus(Arrays.asList("1"));
+        List<String> anyStatus = analysisDAO.getTestSectionIdsWithAnalysesNotInStatus(new ArrayList<>());
+
+        // The pending-only view drops section 1 — the old behaviour that hid a
+        // finalized result. The unfiltered view keeps it, which is what makes
+        // the result reachable for viewing and reporting.
+        Assert.assertFalse("excluding its only status drops the section", pendingOnly.contains("1"));
+        Assert.assertTrue("the viewer rule must still include it", anyStatus.contains("1"));
+        // Positive control: section 2 is unaffected either way, so a query
+        // returning nothing (or everything) cannot satisfy both assertions.
+        Assert.assertTrue(pendingOnly.contains("2"));
+        Assert.assertTrue(anyStatus.contains("2"));
+    }
+
+    @Test
+    public void getTestSectionIdsWithPendingAnalyses_returnsSectionsHoldingNonTerminalWork() {
+        Set<String> pending = aService.getTestSectionIdsWithPendingAnalyses();
+        Assert.assertNotNull(pending);
+        // Every id reported must be a section that the unfiltered query also
+        // reports — the service may only narrow, never invent sections.
+        List<String> anyWork = analysisDAO.getTestSectionIdsWithAnalysesNotInStatus(new ArrayList<>());
+        Assert.assertTrue("pending sections are a subset of sections holding any analysis",
+                anyWork.containsAll(pending));
+    }
 }

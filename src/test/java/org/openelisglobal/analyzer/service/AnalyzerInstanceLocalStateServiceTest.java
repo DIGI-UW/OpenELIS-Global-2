@@ -3,8 +3,11 @@ package org.openelisglobal.analyzer.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -15,13 +18,12 @@ import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.form.AnalyzerInstanceRequest;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -33,10 +35,10 @@ public class AnalyzerInstanceLocalStateServiceTest {
     private AnalyzerService analyzerService;
 
     @Mock
-    private AnalyzerProfileBindingService profileBindingService;
+    private AnalyzerMappingService mappingService;
 
     @Mock
-    private AnalyzerSiteBindingService siteBindingService;
+    private AnalyzerMappingEditorService typeMappingService;
 
     @Mock
     private AnalyzerResultsService analyzerResultsService;
@@ -51,8 +53,9 @@ public class AnalyzerInstanceLocalStateServiceTest {
         request.setProfileId("fixture.synthetic-connection");
         request.setProfileRevision(3);
         request.setTestUnitIds(List.of("7", " 8 "));
-        service = new AnalyzerInstanceLocalStateServiceImpl(analyzerService, profileBindingService, siteBindingService,
-                analyzerResultsService);
+        service = new AnalyzerInstanceLocalStateServiceImpl(analyzerService, mappingService, typeMappingService,
+                analyzerResultsService, org.mockito.Mockito
+                        .mock(org.openelisglobal.analyzerimport.service.AnalyzerNormalizedResultImportService.class));
     }
 
     @Test
@@ -62,10 +65,8 @@ public class AnalyzerInstanceLocalStateServiceTest {
             analyzer.setId("42");
             return "42";
         });
-        when(profileBindingService.assignProfile(any(Analyzer.class),
-                org.mockito.ArgumentMatchers.eq("fixture.synthetic-connection"),
-                org.mockito.ArgumentMatchers.eq(3), org.mockito.ArgumentMatchers.eq("17")))
-                        .thenAnswer(invocation -> bind(invocation.getArgument(0)));
+        when(mappingService.assignProfile(any(Analyzer.class), eq("fixture.synthetic-connection"), eq(3), eq("17")))
+                .thenReturn(new AnalyzerMappingSnapshot(pinnedMapping(), List.of(), List.of()));
 
         AnalyzerInstanceState result = service.create(request, "17");
 
@@ -91,13 +92,15 @@ public class AnalyzerInstanceLocalStateServiceTest {
     public void attachesTheBridgeReferenceWithoutCopyingTheConnectionDocument() {
         Analyzer analyzer = analyzer("42");
         bind(analyzer);
-        when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(analyzer));
+        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
 
         AnalyzerInstanceState result = service.attachBridgeConnection("42", "bridge-connection-42", "17");
 
         assertEquals("bridge-connection-42", result.bridgeConnectionId());
-        assertEquals("bridge-connection-42", analyzer.getBridgeConnectionId());
-        verify(analyzerService).update(analyzer);
+        ArgumentCaptor<Analyzer> updated = ArgumentCaptor.forClass(Analyzer.class);
+        verify(analyzerService).update(updated.capture());
+        assertEquals("bridge-connection-42", updated.getValue().getBridgeConnectionId());
+        assertNull("Preserve the previous value for auditing", analyzer.getBridgeConnectionId());
     }
 
     @Test
@@ -105,7 +108,7 @@ public class AnalyzerInstanceLocalStateServiceTest {
         Analyzer analyzer = analyzer("42");
         bind(analyzer);
         analyzer.setBridgeConnectionId("bridge-connection-original");
-        when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(analyzer));
+        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
 
         assertThrows(IllegalStateException.class,
                 () -> service.attachBridgeConnection("42", "bridge-connection-different", "17"));
@@ -114,39 +117,54 @@ public class AnalyzerInstanceLocalStateServiceTest {
     }
 
     @Test
-    public void adoptsOnlyTheExactSharedBindingRevisionReviewedByTheUser() {
+    public void appliesOnlyTheExactMappingRevisionReviewedByTheUser() {
         Analyzer analyzer = analyzer("42");
-        AnalyzerProfileBinding profile = bind(analyzer);
-        profile.setId("11");
-        AnalyzerSiteBindingRevision reviewedRevision = siteBindingRevision(profile, "12", "13", 2,
-                "sha256:" + "2".repeat(64));
-        when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(analyzer));
-        when(siteBindingService.findCurrentByProfileBindingId("11"))
-                .thenReturn(Optional.of(new AnalyzerSiteBindingSnapshot(reviewedRevision.getSiteBinding(),
-                        reviewedRevision, List.of(), List.of())));
+        bind(analyzer);
+        AnalyzerMapping reviewed = mappingRevision("12", 2, "sha256:" + "2".repeat(64));
+        AnalyzerMapping previous = analyzer.getMapping();
+        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
+        when(mappingService.findLatestByAnalyzerId("42"))
+                .thenReturn(Optional.of(new AnalyzerMappingSnapshot(reviewed, List.of(), List.of())));
+        when(typeMappingService.getMapping("42"))
+                .thenReturn(mapping(reviewed, AnalyzerMappingConfirmationView.State.CURRENT));
 
-        AnalyzerInstanceState result = service.selectSiteBindingRevision("42", "12", 2,
-                reviewedRevision.getBindingFingerprint(), "17");
+        AnalyzerInstanceState result = service.applyMapping("42", "12", 2, reviewed.getMappingFingerprint(), "17");
 
-        assertEquals(reviewedRevision, analyzer.getSiteBindingRevision());
+        ArgumentCaptor<Analyzer> updated = ArgumentCaptor.forClass(Analyzer.class);
+        verify(analyzerService).update(updated.capture());
+        assertEquals(reviewed, updated.getValue().getMapping());
+        assertSame("Preserve the previous selection for auditing", previous, analyzer.getMapping());
         assertEquals("fixture.synthetic-connection", result.profileId());
-        verify(analyzerService).update(analyzer);
     }
 
     @Test
-    public void rejectsAReviewedBindingRevisionThatIsNoLongerCurrent() {
+    public void rejectsApplyingAnUnconfirmedMappingRevision() {
         Analyzer analyzer = analyzer("42");
-        AnalyzerProfileBinding profile = bind(analyzer);
-        profile.setId("11");
-        AnalyzerSiteBindingRevision currentRevision = siteBindingRevision(profile, "12", "13", 3,
-                "sha256:" + "3".repeat(64));
-        when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(analyzer));
-        when(siteBindingService.findCurrentByProfileBindingId("11"))
-                .thenReturn(Optional.of(new AnalyzerSiteBindingSnapshot(currentRevision.getSiteBinding(),
-                        currentRevision, List.of(), List.of())));
+        bind(analyzer);
+        AnalyzerMapping revision = mappingRevision("12", 2, "sha256:" + "2".repeat(64));
+        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
+        when(mappingService.findLatestByAnalyzerId("42"))
+                .thenReturn(Optional.of(new AnalyzerMappingSnapshot(revision, List.of(), List.of())));
+        when(typeMappingService.getMapping("42"))
+                .thenReturn(mapping(revision, AnalyzerMappingConfirmationView.State.UNCONFIRMED));
 
         assertThrows(IllegalArgumentException.class,
-                () -> service.selectSiteBindingRevision("42", "12", 2, "sha256:" + "2".repeat(64), "17"));
+                () -> service.applyMapping("42", "12", 2, revision.getMappingFingerprint(), "17"));
+
+        verify(analyzerService, never()).update(any(Analyzer.class));
+    }
+
+    @Test
+    public void rejectsAReviewedMappingRevisionThatIsNoLongerTheNewest() {
+        Analyzer analyzer = analyzer("42");
+        bind(analyzer);
+        AnalyzerMapping newest = mappingRevision("12", 3, "sha256:" + "3".repeat(64));
+        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
+        when(mappingService.findLatestByAnalyzerId("42"))
+                .thenReturn(Optional.of(new AnalyzerMappingSnapshot(newest, List.of(), List.of())));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.applyMapping("42", "12", 2, "sha256:" + "2".repeat(64), "17"));
 
         verify(analyzerService, never()).update(any(Analyzer.class));
     }
@@ -157,7 +175,7 @@ public class AnalyzerInstanceLocalStateServiceTest {
         Analyzer second = analyzer("43");
         bind(first);
         bind(second);
-        when(analyzerService.getAllWithBindings()).thenReturn(List.of(first, second));
+        when(analyzerService.getAllWithMapping()).thenReturn(List.of(first, second));
         when(analyzerResultsService.countHeldResultsByAnalyzerIds(List.of("42", "43"))).thenReturn(Map.of("42", 2L));
 
         List<AnalyzerInstanceState> states = service.list();
@@ -173,8 +191,8 @@ public class AnalyzerInstanceLocalStateServiceTest {
         draft.setTestUnitIds(List.of());
         Analyzer excluded = analyzer("43");
         excluded.setStatus(Analyzer.AnalyzerStatus.INACTIVE);
-        when(analyzerService.getAllWithBindings()).thenReturn(List.of(draft, excluded));
-        when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(draft));
+        when(analyzerService.getAllWithMapping()).thenReturn(List.of(draft, excluded));
+        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(draft));
 
         List<AnalyzerInstanceState> states = service.list();
 
@@ -189,14 +207,33 @@ public class AnalyzerInstanceLocalStateServiceTest {
     }
 
     @Test
+    public void anAnalyzerWithNoTypeYetCanBeRenamed() {
+        Analyzer migrated = analyzer("42");
+        migrated.setActive(false);
+        migrated.setStatus(Analyzer.AnalyzerStatus.INACTIVE);
+        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(migrated));
+        AnalyzerInstanceRequest rename = new AnalyzerInstanceRequest();
+        rename.setName("CPHL GeneXpert (retired)");
+        rename.setTestUnitIds(List.of("7"));
+
+        AnalyzerInstanceState result = service.update("42", rename, "17");
+
+        assertEquals("CPHL GeneXpert (retired)", result.name());
+        verify(mappingService, never()).assignProfile(any(), any(), any(Integer.class), any());
+        ArgumentCaptor<Analyzer> updated = ArgumentCaptor.forClass(Analyzer.class);
+        verify(analyzerService).update(updated.capture());
+        assertEquals("CPHL GeneXpert (retired)", updated.getValue().getName());
+    }
+
+    @Test
     public void completesAnUpgradedDraftUsingTheExplicitlySelectedProfile() {
         Analyzer draft = analyzer("42");
         draft.setActive(true);
         draft.setBridgeConnectionId(" ");
         draft.setTestUnitIds(List.of());
-        when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(draft));
-        when(profileBindingService.assignProfile(draft, "fixture.synthetic-connection", 3, "17"))
-                .thenAnswer(invocation -> bind(invocation.getArgument(0)));
+        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(draft));
+        when(mappingService.assignProfile(any(Analyzer.class), eq("fixture.synthetic-connection"), eq(3), eq("17")))
+                .thenReturn(new AnalyzerMappingSnapshot(pinnedMapping(), List.of(), List.of()));
 
         AnalyzerInstanceState result = service.update("42", request, "17");
 
@@ -206,47 +243,85 @@ public class AnalyzerInstanceLocalStateServiceTest {
         assertEquals(List.of("7", "8"), result.labUnitIds());
         assertEquals(Analyzer.AnalyzerStatus.SETUP, result.status());
         assertNull(result.bridgeConnectionId());
-        assertFalse(draft.isActive());
-        verify(analyzerService).update(draft);
+        ArgumentCaptor<Analyzer> updated = ArgumentCaptor.forClass(Analyzer.class);
+        verify(analyzerService).update(updated.capture());
+        assertFalse(updated.getValue().isActive());
+        assertTrue("Preserve the previous state for auditing", draft.isActive());
         verify(analyzerService, never()).insert(any(Analyzer.class));
+    }
+
+    @Test
+    public void anAnalyzerLeftWithoutAMappingByTheBaselineIsSetUpAgainKeepingItsConnection() {
+        Analyzer migrated = analyzer("42");
+        migrated.setStatus(Analyzer.AnalyzerStatus.INACTIVE);
+        migrated.setBridgeConnectionId("bridge-connection-42");
+        migrated.setLastActivatedDate(new java.sql.Timestamp(1L));
+        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(migrated));
+        when(mappingService.assignProfile(any(Analyzer.class), eq("fixture.synthetic-connection"), eq(3), eq("17")))
+                .thenReturn(new AnalyzerMappingSnapshot(pinnedMapping(), List.of(), List.of()));
+
+        AnalyzerInstanceState result = service.update("42", request, "17");
+
+        assertEquals("fixture.synthetic-connection", result.profileId());
+        assertEquals(3, result.profileRevision());
+        assertEquals("the Bridge connection is kept", "bridge-connection-42", result.bridgeConnectionId());
+        assertEquals("it stays inactive until verified and activated", Analyzer.AnalyzerStatus.INACTIVE,
+                result.status());
     }
 
     @Test
     public void cannotAssignAProfileToAPreviouslyActivatedUnboundAnalyzer() {
         Analyzer analyzer = analyzer("42");
         analyzer.setLastActivatedDate(new java.sql.Timestamp(1L));
-        when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(analyzer));
+        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
 
         assertThrows(IllegalArgumentException.class, () -> service.update("42", request, "17"));
 
-        verify(profileBindingService, never()).assignProfile(any(), any(), org.mockito.ArgumentMatchers.anyInt(),
-                any());
+        verify(mappingService, never()).assignProfile(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any());
         verify(analyzerService, never()).update(any(Analyzer.class));
     }
 
     @Test
-    public void cannotReplaceTheProfileOfAConfiguredAnalyzer() {
+    public void aConfiguredAnalyzerMovesToANewerRevisionOnlyByAdoption() {
         Analyzer analyzer = analyzer("42");
         bind(analyzer);
-        when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(analyzer));
-        request.setProfileId("another-profile");
+        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
+        request.setProfileRevision(4);
 
-        assertThrows(IllegalArgumentException.class, () -> service.update("42", request, "17"));
+        IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                () -> service.update("42", request, "17"));
 
+        assertTrue(refused.getMessage(), refused.getMessage().contains("Adopt revision 4"));
         verify(analyzerService, never()).update(any(Analyzer.class));
     }
 
-    private static AnalyzerProfileBinding bind(Analyzer analyzer) {
-        AnalyzerProfileBinding profile = new AnalyzerProfileBinding();
-        profile.setProfileId("fixture.synthetic-connection");
-        profile.setProfileRevision(3);
-        profile.setProfileFingerprint(FINGERPRINT);
-        AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
-        binding.setProfileBinding(profile);
-        AnalyzerSiteBindingRevision revision = new AnalyzerSiteBindingRevision();
-        revision.setSiteBinding(binding);
-        analyzer.setSiteBindingRevision(revision);
-        return profile;
+    @Test
+    public void aConfiguredAnalyzerKeepsItsProfile() {
+        Analyzer analyzer = analyzer("42");
+        bind(analyzer);
+        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
+        request.setProfileId("another-profile");
+
+        IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                () -> service.update("42", request, "17"));
+
+        assertTrue(refused.getMessage(), refused.getMessage().contains("keeps its profile"));
+        verify(analyzerService, never()).update(any(Analyzer.class));
+    }
+
+    private static AnalyzerMapping pinnedMapping() {
+        AnalyzerMapping revision = new AnalyzerMapping();
+        revision.setId("11");
+        revision.setRevisionNumber(1);
+        revision.setProfileId("fixture.synthetic-connection");
+        revision.setProfileRevision(3);
+        revision.setProfileFingerprint(FINGERPRINT);
+        revision.setMappingFingerprint(FINGERPRINT);
+        return revision;
+    }
+
+    private static void bind(Analyzer analyzer) {
+        analyzer.setMapping(pinnedMapping());
     }
 
     private static Analyzer analyzer(String id) {
@@ -259,16 +334,19 @@ public class AnalyzerInstanceLocalStateServiceTest {
         return analyzer;
     }
 
-    private static AnalyzerSiteBindingRevision siteBindingRevision(AnalyzerProfileBinding profile, String bindingId,
-            String revisionId, int revisionNumber, String fingerprint) {
-        AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
-        binding.setId(bindingId);
-        binding.setProfileBinding(profile);
-        AnalyzerSiteBindingRevision revision = new AnalyzerSiteBindingRevision();
-        revision.setId(revisionId);
-        revision.setSiteBinding(binding);
+    private static AnalyzerMapping mappingRevision(String id, int revisionNumber, String fingerprint) {
+        AnalyzerMapping revision = pinnedMapping();
+        revision.setId(id);
         revision.setRevisionNumber(revisionNumber);
-        revision.setBindingFingerprint(fingerprint);
+        revision.setMappingFingerprint(fingerprint);
         return revision;
+    }
+
+    private static AnalyzerMappingView mapping(AnalyzerMapping revision,
+            AnalyzerMappingConfirmationView.State confirmationState) {
+        return new AnalyzerMappingView("42", "fixture.synthetic-connection", 3, FINGERPRINT, "Fixture", "ASTM",
+                revision.getId(), revision.getRevisionNumber(), revision.getMappingFingerprint(), List.of(), null,
+                new AnalyzerMappingConfirmationView(confirmationState, "fixture.synthetic-connection", 3,
+                        revision.getMappingFingerprint(), null, null, null, null, List.of(), List.of()));
     }
 }

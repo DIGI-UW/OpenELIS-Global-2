@@ -36,6 +36,7 @@ const AsyncAvatar = ({
       return;
     }
 
+    let active = true;
     setLoading(true);
     setError(false);
     setThumbnail(null);
@@ -44,6 +45,9 @@ const AsyncAvatar = ({
     getFromOpenElisServer(
       `/rest/patient-photos/${patientId}/${true}`,
       (response) => {
+        if (!active) {
+          return;
+        }
         if (response && response.data && response.data.trim() !== "") {
           setThumbnail(response.data);
           setError(false);
@@ -53,6 +57,9 @@ const AsyncAvatar = ({
         setLoading(false);
       },
     );
+    return () => {
+      active = false;
+    };
   }, [patientId, hasPhoto]);
 
   if (!hasPhoto) {

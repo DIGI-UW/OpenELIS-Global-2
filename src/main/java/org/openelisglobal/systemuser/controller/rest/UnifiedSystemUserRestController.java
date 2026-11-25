@@ -18,6 +18,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
+import org.hibernate.ObjectNotFoundException;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.openelisglobal.common.constants.Constants;
@@ -32,6 +33,7 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.validator.BaseErrors;
+import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.login.service.LoginUserService;
 import org.openelisglobal.login.valueholder.LoginUser;
@@ -48,10 +50,13 @@ import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.openelisglobal.userrole.valueholder.LabUnitRoleMap;
 import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
+import org.openelisglobal.validation.constraintvalidator.NameValidator;
+import org.openelisglobal.validation.constraintvalidator.NameValidator.NameType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
+import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.InitBinder;
@@ -70,7 +75,9 @@ public class UnifiedSystemUserRestController extends BaseController {
     private static final String YES = "Y";
     private static final String NO = "N";
     public static final String ALL_LAB_UNITS = "AllLabUnits";
+    public static final String ERROR_ALL_LAB_UNITS_EXCLUSIVE = "labUnitRoles.allLabUnitsExclusive";
     private static final String RESERVED_ADMIN_NAME = "admin";
+    private static final int NAME_MAX_LENGTH = 30;
     // private static final String GLOBAL_ADMIN_ID = "globalAdminId";
     // private static final String ID = "id";
     public static final char DEFAULT_OBFUSCATED_CHARACTER = '@';
@@ -164,7 +171,13 @@ public class UnifiedSystemUserRestController extends BaseController {
 
         setDefaultProperties(form);
         if (!isNew) {
-            setPropertiesForExistingUser(form, id, doFiltering);
+            try {
+                setPropertiesForExistingUser(form, id, doFiltering);
+            } catch (ObjectNotFoundException | IllegalArgumentException | StringIndexOutOfBoundsException e) {
+                // A user id that names no user (a stale or edited link) used to answer
+                // 500 and leave the page an empty form.
+                return ResponseEntity.notFound().build();
+            }
         }
         setupRoles(form, request, doFiltering);
 
@@ -439,11 +452,16 @@ public class UnifiedSystemUserRestController extends BaseController {
     }
 
     @PostMapping(value = "/UnifiedSystemUser")
-    public Map<String, String> showUpdateUnifiedSystemUser(HttpServletRequest request,
+    public ResponseEntity<Map<String, String>> showUpdateUnifiedSystemUser(HttpServletRequest request,
             @RequestBody @Valid UnifiedSystemUserForm form, BindingResult result) {
         boolean doFiltering = true;
         formValidator.validate(form, result);
         Map<String, String> response = new HashMap<>();
+
+        Errors fieldRefusal = fieldRefusal(form, result);
+        if (fieldRefusal.hasErrors()) {
+            return ResponseEntity.badRequest().body(refusalBody(findForward(FWD_FAIL_INSERT), fieldRefusal));
+        }
 
         if (result.hasErrors()) {
             saveErrors(result);
@@ -452,6 +470,10 @@ public class UnifiedSystemUserRestController extends BaseController {
             response.put("forward", findForward(FWD_FAIL_INSERT));
             // return response;
             // return findForward(FWD_FAIL_INSERT);
+        }
+
+        if (NO.equals(form.getAllowCopyUserRoles()) && combinesAllLabUnitsWithSpecificLabUnits(form)) {
+            return ResponseEntity.badRequest().body(Map.of("error", ERROR_ALL_LAB_UNITS_EXCLUSIVE));
         }
 
         request.setAttribute(ALLOW_EDITS_KEY, "true");
@@ -464,7 +486,8 @@ public class UnifiedSystemUserRestController extends BaseController {
             form.setUserLoginName("");
         }
 
-        String forward = validateAndUpdateSystemUser(request, form);
+        Errors refusal = new BaseErrors();
+        String forward = validateAndUpdateSystemUser(request, form, refusal);
 
         if (forward.equals(FWD_SUCCESS_INSERT)) {
             // redirectAttributes.addFlashAttribute(FWD_SUCCESS, true);
@@ -477,18 +500,100 @@ public class UnifiedSystemUserRestController extends BaseController {
             response.put("forward", "redirect:/UnifiedSystemUser");
         } else {
             setupRoles(form, request, doFiltering);
-            // return findForward(forward);
-            response.put("forward", findForward(forward));
+            return ResponseEntity.badRequest().body(refusalBody(findForward(forward), refusal));
         }
 
-        return response;
+        return ResponseEntity.ok(response);
     }
 
-    private String validateAndUpdateSystemUser(HttpServletRequest request, UnifiedSystemUserForm form) {
+    /**
+     * The form's field constraints failed (a pattern or a charset the bean
+     * declares). Such a form used to go on to the insert, fail there and answer a
+     * bare 500 with nothing saved (OGC-1593); it is refused here with the reason
+     * the name checks give (characters, a missing login or name, a length), or a
+     * generic one.
+     */
+    private Errors fieldRefusal(UnifiedSystemUserForm form, BindingResult result) {
+        Errors refusal = new BaseErrors();
+        if (result.hasFieldErrors()) {
+            rejectDisallowedCharacters(form, refusal);
+            rejectMissingNames(form, refusal);
+            rejectWhenTooLong(refusal, form.getUserLoginName(), "login.login.name");
+            rejectWhenTooLong(refusal, form.getUserFirstName(), "systemuser.firstName");
+            rejectWhenTooLong(refusal, form.getUserLastName(), "systemuser.lastName");
+            if (!refusal.hasErrors()) {
+                refusal.reject("errors.UpdateException", "errors.UpdateException");
+            }
+        }
+        return refusal;
+    }
+
+    /**
+     * A login or name holding a character outside what the site allows (site
+     * information userNameCharset, firstNameCharset, lastNameCharset) is refused
+     * naming the allowed characters.
+     */
+    private void rejectDisallowedCharacters(UnifiedSystemUserForm form, Errors errors) {
+        if (!NameValidator.usesAllowedCharacters(NameType.USERNAME, form.getUserLoginName())) {
+            errors.reject("errors.loginName.charset",
+                    new Object[] { NameValidator.allowedCharacters(NameType.USERNAME) }, null);
+        }
+        if (!NameValidator.usesAllowedCharacters(NameType.FIRST_NAME, form.getUserFirstName())) {
+            errors.reject("errors.userName.charset",
+                    new Object[] { NameValidator.allowedCharacters(NameType.FIRST_NAME) }, null);
+        } else if (!NameValidator.usesAllowedCharacters(NameType.LAST_NAME, form.getUserLastName())) {
+            errors.reject("errors.userName.charset",
+                    new Object[] { NameValidator.allowedCharacters(NameType.LAST_NAME) }, null);
+        }
+    }
+
+    private void rejectMissingNames(UnifiedSystemUserForm form, Errors errors) {
+        if (GenericValidator.isBlankOrNull(form.getUserLoginName())) {
+            errors.reject("errors.loginName.required", "errors.loginName.required");
+        }
+        if (GenericValidator.isBlankOrNull(form.getUserFirstName())
+                || GenericValidator.isBlankOrNull(form.getUserLastName())) {
+            errors.reject("errors.userName.required", "errors.userName.required");
+        }
+    }
+
+    /**
+     * A save that wrote nothing answers 400 naming why (OGC-1545): it used to
+     * answer 200 with a failure forward, so an API client took a refused user for a
+     * created one. The reason is its message key and that message in the user's
+     * language.
+     */
+    private Map<String, String> refusalBody(String forward, Errors refusal) {
+        Map<String, String> body = new HashMap<>();
+        body.put("forward", forward);
+        ObjectError first = refusal.getAllErrors().stream().filter(error -> error.getCode() != null).findFirst()
+                .orElse(null);
+        String code = first == null ? "errors.UpdateException" : first.getCode();
+        body.put("errorKey", code);
+        body.put("error", MessageUtil.getMessage(code, first == null ? null : first.getArguments()));
+        return body;
+    }
+
+    /**
+     * "All Lab Units" is exclusive with per-lab-unit grants: whichever wins, the
+     * other is dead data, because every authorization check treats an
+     * {@value #ALL_LAB_UNITS} entry as superseding the lab-unit-specific ones. A
+     * submission holding both is therefore refused outright rather than written and
+     * quietly normalized, which used to strip the scoped grants while still
+     * reporting success.
+     */
+    private boolean combinesAllLabUnitsWithSpecificLabUnits(UnifiedSystemUserForm form) {
+        Map<String, Set<String>> selectedLabUnitRoles = form.getSelectedTestSectionLabUnits();
+        if (selectedLabUnitRoles == null || !selectedLabUnitRoles.containsKey(ALL_LAB_UNITS)) {
+            return false;
+        }
+        return selectedLabUnitRoles.keySet().stream()
+                .anyMatch(labUnit -> StringUtils.isNotBlank(labUnit) && !ALL_LAB_UNITS.equals(labUnit));
+    }
+
+    private String validateAndUpdateSystemUser(HttpServletRequest request, UnifiedSystemUserForm form, Errors errors) {
         String loginUserId = form.getLoginUserId();
         String systemUserId = form.getSystemUserId();
-
-        Errors errors = new BaseErrors();
 
         boolean loginUserNew = GenericValidator.isBlankOrNull(loginUserId);
         boolean systemUserNew = GenericValidator.isBlankOrNull(systemUserId);
@@ -532,6 +637,12 @@ public class UnifiedSystemUserRestController extends BaseController {
                 }
             }
             ID = systemUser.getId() + "-" + loginUser.getId();
+        } catch (LIMSDuplicateRecordException e) {
+            errors.reject("errors.loginName.duplicated", new Object[] { form.getUserLoginName() },
+                    "errors.loginName.duplicated");
+            saveErrors(errors);
+            disableNavigationButtons(request);
+            return FWD_FAIL_INSERT;
         } catch (LIMSRuntimeException e) {
             if (e.getCause() instanceof org.hibernate.StaleObjectStateException) {
                 errors.reject("errors.OptimisticLockException", "errors.OptimisticLockException");
@@ -564,20 +675,19 @@ public class UnifiedSystemUserRestController extends BaseController {
         boolean checkForDuplicateName = loginUserIsNew || userNameChanged(loginUserId, form.getUserLoginName());
         // check login name
 
-        if (GenericValidator.isBlankOrNull(form.getUserLoginName())) {
-            errors.reject("errors.loginName.required", "errors.loginName.required");
-        } else if (checkForDuplicateName) {
+        rejectDisallowedCharacters(form, errors);
+        rejectMissingNames(form, errors);
+        if (!GenericValidator.isBlankOrNull(form.getUserLoginName()) && checkForDuplicateName) {
             LoginUser login = loginService.getMatch("loginName", form.getUserLoginName()).orElse(null);
             if (login != null) {
-                errors.reject("errors.loginName.duplicated");
+                errors.reject("errors.loginName.duplicated", new Object[] { form.getUserLoginName() },
+                        "errors.loginName.duplicated");
             }
         }
 
-        // check first and last name
-        if (GenericValidator.isBlankOrNull(form.getUserFirstName())
-                || GenericValidator.isBlankOrNull(form.getUserLastName())) {
-            errors.reject("errors.userName.required", "errors.userName.required");
-        }
+        rejectWhenTooLong(errors, form.getUserLoginName(), "login.login.name");
+        rejectWhenTooLong(errors, form.getUserFirstName(), "systemuser.firstName");
+        rejectWhenTooLong(errors, form.getUserLastName(), "systemuser.lastName");
 
         if (passwordUpdated) {
             // check passwords match
@@ -592,6 +702,17 @@ public class UnifiedSystemUserRestController extends BaseController {
         // check timeout
         if (!timeoutValidAndInRange(form.getTimeout())) {
             errors.reject("errors.timeout.range", "errors.timeout.range");
+        }
+    }
+
+    /**
+     * The login and the names are stored in 30-character columns; a longer value
+     * used to fail at insert and answer a bare 500.
+     */
+    private void rejectWhenTooLong(Errors errors, String value, String labelKey) {
+        if (value != null && value.length() > NAME_MAX_LENGTH) {
+            errors.reject("errors.maxlength", new Object[] { MessageUtil.getMessage(labelKey), NAME_MAX_LENGTH },
+                    "errors.maxlength");
         }
     }
 

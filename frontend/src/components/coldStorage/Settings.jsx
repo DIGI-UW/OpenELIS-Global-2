@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState } from "react";
 import {
   Tabs,
   TabList,
@@ -12,16 +12,12 @@ import { injectIntl } from "react-intl";
 import DeviceManagement from "./settings/DeviceManagement";
 import TemperatureThresholds from "./settings/TemperatureThresholds";
 import AlertSettings from "./settings/AlertSettings";
-import { AlertDialog } from "../common/CustomNotification";
-import { NotificationContext } from "../layout/Layout";
 
 function Settings({ intl }) {
   const [selectedTab, setSelectedTab] = useState(0);
-  const { notificationVisible } = useContext(NotificationContext);
 
   return (
     <div style={{ padding: "1rem 0" }}>
-      {notificationVisible === true ? <AlertDialog /> : ""}
       <div
         style={{
           display: "flex",

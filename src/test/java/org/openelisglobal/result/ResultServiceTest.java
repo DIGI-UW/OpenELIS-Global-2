@@ -60,21 +60,7 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/result.xml");
-
-        // Ensure TestService maps are initialized before tests that use static methods
-        // The TestServiceImpl constructor calls initializeGlobalVariables(), but in
-        // test context
-        // we need to ensure maps are refreshed after test data is loaded
-        org.openelisglobal.test.service.TestService testServiceBean = org.openelisglobal.spring.util.SpringContext
-                .getBean(org.openelisglobal.test.service.TestService.class);
-
-        // Force initialization by calling a static method that triggers
-        // ensureEntityMapInitialized
-        // This ensures entityToMap is created if it doesn't exist
-        org.openelisglobal.test.service.TestServiceImpl.getUserLocalizedReportingTestName("1");
-
-        // Now refresh the maps to include the test data we just loaded
-        testServiceBean.refreshTestNames();
+        testService.refreshTestNames();
     }
 
     @Test
@@ -95,6 +81,115 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("3", result.getId());
         assertEquals("85.0", result.getValue());
 
+    }
+
+    @Test
+    public void getResultValue_preservesScientificNotationInsteadOfReinterpretingDecimalPlaces() {
+        Result result = numericResult("1.5e5", 2);
+
+        assertEquals("1.5e5", resultService.formatResultForDisplay(result, ",", false, false));
+        assertEquals("1.5e5", resultService.getResultValueForDisplay(result, ",", false, false));
+        assertEquals("1.5e5", resultService.formatSimpleResultForDisplay(result));
+    }
+
+    @Test
+    public void getResultValue_keepsScientificNotationWhenNoPlacesAreConfigured() {
+        assertEquals("1.5e5", resultService.formatResultForDisplay(numericResult("1.5e5", 0), ",", false, false));
+        assertEquals("<2e-3", resultService.formatResultForDisplay(numericResult("<2e-3", -1), ",", false, false));
+        assertEquals("2.5e-3", resultService.formatResultForDisplay(numericResult("2.5e-3", 2), ",", false, false));
+        assertEquals("1.567e5", resultService.formatResultForDisplay(numericResult("1.567e5", 2), ",", false, false));
+    }
+
+    @Test
+    public void getResultValue_showsTheNotationTheTechnologistWrote() {
+        assertEquals("1.5×10⁵", resultService.formatResultForDisplay(numericResult("1.5×10⁵", 2), ",", false, false));
+        assertEquals("1.5 x 10^5",
+                resultService.formatResultForDisplay(numericResult("1.5 x 10^5", 2), ",", false, false));
+        assertEquals("1.5E+05", resultService.formatResultForDisplay(numericResult("1.5E+05", 2), ",", false, false));
+        assertEquals("10⁻³", resultService.formatResultForDisplay(numericResult("10⁻³", 2), ",", false, false));
+    }
+
+    @Test
+    public void getValue_readsBackAsANumberWhileTheEnteredFormIsKept() {
+        Result result = numericResult("1.5×10⁵", 2);
+
+        assertEquals("1.5e5", result.getValue());
+        assertEquals("1.5×10⁵", result.getEnteredValue());
+        assertEquals(150000d, Double.parseDouble(result.getValue()), 0.0001);
+    }
+
+    @Test
+    public void getResultValue_stillPadsPlainDecimals() {
+        assertEquals("12.50", resultService.formatResultForDisplay(numericResult("12.5", 2), ",", false, false));
+    }
+
+    /**
+     * OGC-1544: a value is shown rounded half up to the test's decimal places, in
+     * every formatter, and the stored value is not changed by showing it.
+     */
+    @Test
+    public void getResultValue_roundsHalfUpToTheConfiguredPlaces() {
+        assertReported("1", "0.9", 0);
+        assertReported("1.0", "0.95", 1);
+        assertReported("70", "69.9", 0);
+        assertReported("13", "12.5", 0);
+        assertReported("12.35", "12.345", 2);
+        assertReported("-1", "-0.5", 0);
+        assertReported("0", "0.4", 0);
+    }
+
+    @Test
+    public void getResultValue_keepsTheStoredValue() {
+        Result result = numericResult("0.9", 0);
+
+        resultService.formatResultForDisplay(result, ",", false, false);
+
+        assertEquals("0.9", result.getValue());
+    }
+
+    @Test
+    public void getResultValue_padsButNeverRoundsAValueBehindAComparator() {
+        assertReported("<0.55", "<0.55", 0);
+        assertReported("<5.00", "<5", 2);
+        assertReported(">10.0", ">10", 1);
+    }
+
+    @Test
+    public void getResultValue_showsAValueWithNoPlacesConfiguredAsStored() {
+        assertReported("12", "12", -1);
+        assertReported("12.345", "12.345", -1);
+    }
+
+    @Test
+    public void printedRoundingNamesTheClinicalValueWithoutChangingIt() {
+        Result result = numericResult("1.176", 0);
+        assertEquals("1 (Value used for clinical decisions: 1.176)",
+                resultService.formatResultForDisplay(result, ",", true, false));
+        assertEquals("1.176", result.getValue());
+        assertEquals("12.50", resultService.formatResultForDisplay(numericResult("12.5", 2), ",", true, false));
+    }
+
+    @Test
+    public void printedWhitespaceValueStillExplainsItsClinicalBoundary() {
+        Result result = numericResult(" 6.004 ", 0);
+        assertEquals("6 (Value used for clinical decisions:  6.004 )",
+                resultService.formatResultForDisplay(result, ",", true, false));
+        assertEquals(" 6.004 ", result.getEnteredValue());
+    }
+
+    private void assertReported(String expected, String stored, int places) {
+        assertEquals(expected, resultService.formatResultForDisplay(numericResult(stored, places), ",", false, false));
+        assertEquals(expected,
+                resultService.getResultValueForDisplay(numericResult(stored, places), ",", false, false));
+        assertEquals(expected, resultService.formatSimpleResultForDisplay(numericResult(stored, places)));
+    }
+
+    private Result numericResult(String value, int reportingDecimalPlaces) {
+        Result result = new Result();
+        result.setResultType("N");
+        result.setValue(value);
+        result.setReportingDecimalPlaces(reportingDecimalPlaces);
+        return result;
     }
 
     @Test
@@ -327,7 +422,7 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getSimpleResultValue_shouldReturnSimpleResultValue() {
         Result result = resultService.get("3");
-        String simpleResultValue = resultService.getSimpleResultValue(result);
+        String simpleResultValue = resultService.formatSimpleResultForDisplay(result);
         assertNotNull(simpleResultValue);
         assertEquals("85.0", simpleResultValue);
     }
@@ -335,7 +430,7 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getResultValueForDisplay_shouldReturnResultValueForDisplay() {
         Result result = resultService.get("3");
-        String resultValue = resultService.getResultValue(result, ", ", true, true);
+        String resultValue = resultService.formatResultForDisplay(result, ", ", true, true);
         assertNotNull(resultValue);
         assertEquals("85.0 mg/dL", resultValue);
     }
@@ -519,9 +614,11 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     public void deleteAll_shouldDeleteAllResults() {
 
         List<ResultSignature> signatures = resultSignatureService.getAll();
+        signatures.forEach(s -> s.setSysUserId(TEST_SYS_USER_ID));
         resultSignatureService.deleteAll(signatures);
         List<Result> results1 = resultService.getAll();
         results1.sort((r1, r2) -> Long.compare(Long.parseLong(r2.getId()), Long.parseLong(r1.getId())));
+        results1.forEach(r -> r.setSysUserId(TEST_SYS_USER_ID));
         resultService.deleteAll(results1);
         List<Result> results2 = resultService.getAll();
         assertEquals(0, results2.size());
@@ -532,10 +629,11 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     public void deleteAllGivenList_shouldDeleteAllResults() {
 
         List<ResultSignature> signatures = resultSignatureService.getAll();
+        signatures.forEach(s -> s.setSysUserId(TEST_SYS_USER_ID));
         resultSignatureService.deleteAll(signatures);
 
         List<String> resultIds = List.of("4", "3");
-        resultService.deleteAll(resultIds, "");
+        resultService.deleteAll(resultIds, TEST_SYS_USER_ID);
         List<Result> results = resultService.getAll();
         assertEquals(0, results.size());
     }
@@ -543,9 +641,11 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void delete_shouldDeleteAResult() {
         List<ResultSignature> signatures = resultSignatureService.getAll();
+        signatures.forEach(s -> s.setSysUserId(TEST_SYS_USER_ID));
         resultSignatureService.deleteAll(signatures);
         Result result = resultService.get("4");
         assertNotNull(result);
+        result.setSysUserId(TEST_SYS_USER_ID);
         resultService.delete(result);
         List<Result> results = resultService.getAll();
         assertEquals(1, results.size());
@@ -561,15 +661,18 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void save_shouldSaveResult() {
         List<ResultSignature> signatures = resultSignatureService.getAll();
+        signatures.forEach(s -> s.setSysUserId(TEST_SYS_USER_ID));
         resultSignatureService.deleteAll(signatures);
         List<Result> results1 = resultService.getAll();
         results1.sort((r1, r2) -> Long.compare(Long.parseLong(r2.getId()), Long.parseLong(r1.getId())));
+        results1.forEach(r -> r.setSysUserId(TEST_SYS_USER_ID));
         resultService.deleteAll(results1);
         Result result = new Result();
         result.setValue("90.0");
         result.setAnalysis(analysisService.get("1"));
         result.setTestResult(testResultService.get("1"));
         result.setAnalyte(analyteService.get("3"));
+        result.setSysUserId(TEST_SYS_USER_ID);
         Result result1 = resultService.save(result);
         List<Result> results2 = resultService.getAll();
         assertNotNull(result1);
@@ -581,15 +684,18 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void insert_shouldInsertResult() {
         List<ResultSignature> signatures = resultSignatureService.getAll();
+        signatures.forEach(s -> s.setSysUserId(TEST_SYS_USER_ID));
         resultSignatureService.deleteAll(signatures);
         List<Result> results1 = resultService.getAll();
         results1.sort((r1, r2) -> Long.compare(Long.parseLong(r2.getId()), Long.parseLong(r1.getId())));
+        results1.forEach(r -> r.setSysUserId(TEST_SYS_USER_ID));
         resultService.deleteAll(results1);
         Result result = new Result();
         result.setValue("90.0");
         result.setAnalysis(analysisService.get("1"));
         result.setTestResult(testResultService.get("1"));
         result.setAnalyte(analyteService.get("3"));
+        result.setSysUserId(TEST_SYS_USER_ID);
         String result1 = resultService.insert(result);
         List<Result> results2 = resultService.getAll();
         assertNotNull(result1);
@@ -603,6 +709,7 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     public void update_shouldUpdateResult() {
         Result result = resultService.get("3");
         result.setValue("95.0");
+        result.setSysUserId(TEST_SYS_USER_ID);
         Result updatedResult = resultService.update(result);
         assertNotNull(updatedResult);
         assertEquals("95.0", updatedResult.getValue());

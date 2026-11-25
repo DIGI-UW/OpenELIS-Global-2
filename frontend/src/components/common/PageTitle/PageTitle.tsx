@@ -1,14 +1,17 @@
 /**
  * PageTitle Component
  *
- * Reusable hierarchical breadcrumb page title with optional back navigation
- * Used across analyzer pages for consistent navigation UI
+ * Reusable page heading with optional back navigation
+ * Used across analyzer pages for consistent page titles
  *
  * Features:
- * - Hierarchical breadcrumb display (e.g., "Analyzers > Field Mappings > Hematology Analyzer 1")
+ * - Renders the current page name as the page heading (h1)
  * - Optional back arrow button
- * - Clickable breadcrumb links for navigation
- * - Internationalized separator
+ * - Optional subtitle
+ *
+ * The parent segments of the hierarchy are navigation, not a title, so they are
+ * left to the Carbon breadcrumb that every page using this component renders
+ * directly above it.
  */
 
 import React from "react";
@@ -55,10 +58,7 @@ const PageTitle = ({
     }
   };
 
-  const separator = intl.formatMessage({
-    id: "page.breadcrumb.separator",
-    defaultMessage: " > ",
-  });
+  const title = breadcrumbs?.[breadcrumbs.length - 1]?.label;
 
   return (
     <div className="page-title" data-testid="page-title">
@@ -75,40 +75,11 @@ const PageTitle = ({
             className="page-title-back-button"
           />
         )}
-        <div
-          className="page-title-breadcrumbs"
-          data-testid="page-title-breadcrumbs"
-        >
-          {breadcrumbs &&
-            breadcrumbs.map((crumb, index) => (
-              <React.Fragment key={index}>
-                {crumb.link ? (
-                  <button
-                    className="page-title-breadcrumb-link"
-                    onClick={() => history.push(crumb.link)}
-                    data-testid={`breadcrumb-link-${index}`}
-                  >
-                    {crumb.label}
-                  </button>
-                ) : (
-                  <span
-                    className="page-title-breadcrumb-current"
-                    data-testid={`breadcrumb-current-${index}`}
-                  >
-                    {crumb.label}
-                  </span>
-                )}
-                {index < breadcrumbs.length - 1 && (
-                  <span
-                    className="page-title-breadcrumb-separator"
-                    data-testid={`breadcrumb-separator-${index}`}
-                  >
-                    {separator}
-                  </span>
-                )}
-              </React.Fragment>
-            ))}
-        </div>
+        {title && (
+          <h1 className="page-title-heading" data-testid="page-title-heading">
+            {title}
+          </h1>
+        )}
       </div>
       {subtitle && (
         <div className="page-title-subtitle" data-testid="page-title-subtitle">

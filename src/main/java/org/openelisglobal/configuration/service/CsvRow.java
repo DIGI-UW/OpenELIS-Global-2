@@ -1,5 +1,6 @@
 package org.openelisglobal.configuration.service;
 
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 
@@ -8,7 +9,20 @@ import java.util.Map;
  * (case-insensitive) rather than position. A missing or blank cell reads as the
  * empty string.
  */
-public record CsvRow(Map<String, Integer> columns, String[] values, int lineNumber) {
+public record CsvRow(Map<String, Integer> columns, String[] values, int lineNumber, Map<String, String> headers) {
+
+    public CsvRow(Map<String, Integer> columns, String[] values, int lineNumber) {
+        this(columns, values, lineNumber, Map.of());
+    }
+
+    /**
+     * The column's header as written in the file, for columns whose name carries
+     * meaning of its own (an identifier label); the lower-cased key otherwise.
+     */
+    public String header(String column) {
+        String key = column.toLowerCase(Locale.ROOT);
+        return headers.getOrDefault(key, key);
+    }
 
     public String get(String column) {
         Integer index = columns.get(column.toLowerCase(Locale.ROOT));
@@ -24,6 +38,17 @@ public record CsvRow(Map<String, Integer> columns, String[] values, int lineNumb
 
     public boolean isBlank(String column) {
         return get(column).isEmpty();
+    }
+
+    /** The filled {@code localization:<language>} cells, by language. */
+    public Map<String, String> translations() {
+        Map<String, String> byLanguage = new LinkedHashMap<>();
+        for (String column : columns.keySet()) {
+            if (column.startsWith("localization:") && !isBlank(column)) {
+                byLanguage.put(column.substring("localization:".length()), get(column));
+            }
+        }
+        return byLanguage;
     }
 
     /** A Y/N-style cell; blank falls back to the default. */

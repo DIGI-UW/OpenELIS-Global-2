@@ -17,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MicroReportReleaseServiceImpl implements MicroReportReleaseService {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroCaseAuthorizationService authorization;
     private final MicroCaseDAO caseDAO;
     private final MicroCaseActivityDAO activityDAO;
     private final MicroCaseReadinessService readinessService;
@@ -41,30 +43,48 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
     @Override
     @Transactional
     public MicroCase releasePreliminary(String caseId, String performedBy) {
+        authorization.requireWrite(caseId, performedBy, org.openelisglobal.common.constants.Constants.ROLE_RESULTS);
         MicroCase microCase = getCase(caseId);
+        if ("AMENDMENT_IN_PROGRESS".equals(microCase.getFinalReleaseState()))
+            throw new MicroAmendmentConflictException("AMENDED_RELEASE_REQUIRED");
         if (MicroCaseFinalReleaseState.FINAL_RELEASED.name().equals(microCase.getFinalReleaseState())
                 || MicroCaseStage.FINAL_RELEASED.name().equals(microCase.getStage())) {
             throw new IllegalStateException("Preliminary release is blocked: CASE_FINAL_RELEASED");
         }
         MicroReportProjectionResult projection = reportProjectionService.releasePreliminary(caseId, performedBy);
         microCase.setFinalReleaseState(MicroCaseFinalReleaseState.PRELIMINARY_RELEASED.name());
-        microCase.setStage(MicroCaseStage.PRELIM_RELEASED.name());
+        // Partial reporting does not change the current laboratory work stage.
         MicroCase updated = caseDAO.update(microCase);
+        reportVersionService.recordPreliminary(caseId, projection, performedBy);
         recordActivity(caseId, MicroCaseActivityType.PRELIMINARY_REPORT_RELEASED, performedBy,
-                projection.isMappingConfigured() ? "Preliminary report released and projected"
-                        : "Preliminary report released; standard report mapping is not configured");
+                projection.isMappingConfigured() ? "Partial report released and projected"
+                        : "Partial report released; standard report mapping is not configured");
         return updated;
     }
 
     @Override
     @Transactional
     public MicroCase releaseFinal(String caseId, String performedBy) {
+        return releaseFinal(caseId, performedBy, java.util.List.of());
+    }
+
+    @Override
+    @Transactional
+    public MicroCase releaseFinal(String caseId, String performedBy, java.util.List<String> confirmedIncomingIds) {
+        var current = authorization.requireWrite(caseId, performedBy,
+                org.openelisglobal.common.constants.Constants.ROLE_VALIDATION);
+        if ("AMENDMENT_IN_PROGRESS".equals(current.getFinalReleaseState()))
+            throw new MicroAmendmentConflictException("AMENDED_RELEASE_REQUIRED");
         MicroCaseReadinessForm readiness = readinessService.getReadiness(caseId);
+        if (confirmedIncomingIds == null || !confirmedIncomingIds.containsAll(readiness.pendingIncomingIds))
+            throw new IllegalArgumentException("MICROBIOLOGY_INCOMING_CONFIRM_RELEASE");
         if (!readiness.finalReleaseReady) {
-            throw new IllegalStateException("Final release is blocked: " + String.join(", ", readiness.blockers));
+            throw new MicroReleaseBlockedException("Final release is blocked: " + String.join(", ", readiness.blockers),
+                    readiness.blockers);
         }
         if (hasOpenCriticalFollowUp(caseId)) {
-            throw new IllegalStateException("Final release is blocked: CRITICAL_FOLLOW_UP_REQUIRED");
+            throw new MicroReleaseBlockedException("Final release is blocked: CRITICAL_FOLLOW_UP_REQUIRED",
+                    java.util.List.of("CRITICAL_FOLLOW_UP_REQUIRED"));
         }
         MicroReportProjectionResult projection = reportProjectionService.releaseFinal(caseId, performedBy);
         MicroCase microCase = getCase(caseId);
@@ -81,12 +101,23 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
     @Override
     @Transactional
     public MicroCase releaseAmended(String caseId, String performedBy) {
+        return releaseAmended(caseId, performedBy, java.util.List.of());
+    }
+
+    @Override
+    @Transactional
+    public MicroCase releaseAmended(String caseId, String performedBy, java.util.List<String> confirmedIncomingIds) {
+        authorization.requireWrite(caseId, performedBy, org.openelisglobal.common.constants.Constants.ROLE_VALIDATION);
         MicroCaseReadinessForm readiness = readinessService.getReadiness(caseId);
+        if (confirmedIncomingIds == null || !confirmedIncomingIds.containsAll(readiness.pendingIncomingIds))
+            throw new IllegalArgumentException("MICROBIOLOGY_INCOMING_CONFIRM_RELEASE");
         if (!readiness.finalReleaseReady) {
-            throw new IllegalStateException("Amended release is blocked: " + String.join(", ", readiness.blockers));
+            throw new MicroReleaseBlockedException(
+                    "Amended release is blocked: " + String.join(", ", readiness.blockers), readiness.blockers);
         }
         if (hasOpenCriticalFollowUp(caseId)) {
-            throw new IllegalStateException("Amended release is blocked: CRITICAL_FOLLOW_UP_REQUIRED");
+            throw new MicroReleaseBlockedException("Amended release is blocked: CRITICAL_FOLLOW_UP_REQUIRED",
+                    java.util.List.of("CRITICAL_FOLLOW_UP_REQUIRED"));
         }
         MicroReportProjectionResult projection = reportProjectionService.releaseAmended(caseId, performedBy);
         amendmentService.completeAmendment(caseId, projection, performedBy);

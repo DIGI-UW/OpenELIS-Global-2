@@ -20,7 +20,11 @@ import {
   Tabs,
   TabList,
   Tag,
+  InlineNotification,
+  Stack,
 } from "@carbon/react";
+import useInAppNavigation from "../common/useInAppNavigation";
+import ServerPageArrows from "../common/ServerPageArrows";
 import "./Dashboard.css";
 import {
   Minimize,
@@ -37,6 +41,11 @@ import {
   WarningSquareFilled,
 } from "@carbon/react/icons";
 import { Copy } from "@carbon/icons-react";
+import {
+  serverPageArrowsProps,
+  serverPageSizeOf,
+  serverPaginationProps,
+} from "../utils/serverPaging";
 
 // Map each metric type to a representative icon shown in the top-left of its card.
 const TILE_ICONS: Record<string, any> = {
@@ -51,7 +60,7 @@ const TILE_ICONS: Record<string, any> = {
   AVERAGE_TURN_AROUND_TIME: Time,
   DELAYED_TURN_AROUND: WarningSquareFilled,
 };
-import { useState, useEffect, useRef, useContext } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
 import {
   getFromOpenElisServer,
   convertAlphaNumLabNumForDisplay,
@@ -59,6 +68,7 @@ import {
 } from "../utils/Utils";
 import { FormattedMessage, useIntl } from "react-intl";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import ExtensionSlot from "../../modules/ExtensionSlot";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 
@@ -94,8 +104,27 @@ interface Notification {
   addNotification: any;
 }
 
+const TILES_WITH_TABS = [
+  "ORDERS_IN_PROGRESS",
+  "ORDERS_READY_FOR_VALIDATION",
+  "ORDERS_COMPLETED_TODAY",
+  "ORDERS_REJECTED_TODAY",
+  "UN_PRINTED_RESULTS",
+  "DELAYED_TURN_AROUND",
+  "ORDERS_FOR_USER",
+  "ORDERS_PARTIALLY_COMPLETED_TODAY",
+];
+
+const ALL_SECTIONS = "all";
+
 const HomeDashBoard: React.FC<DashBoardProps> = () => {
   const intl = useIntl();
+  const navigate = useInAppNavigation();
+  const orderLink = (type: string, labNumber: string) =>
+    type == "ORDERS_IN_PROGRESS"
+      ? "/Results?accessionNumber=" + encodeURIComponent(labNumber)
+      : "/validation?type=order&accessionNumber=" +
+        encodeURIComponent(labNumber);
 
   const [counts, setCounts] = useState({
     ordersInProgress: 0,
@@ -122,9 +151,16 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   >([]);
   const [selectedTestSection, setSelectedTestSection] = useState("");
   const [loading, setLoading] = useState(true);
-  const componentMounted = useRef(true);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
+  const [metricsFailed, setMetricsFailed] = useState(false);
+  const [metricsAttempt, setMetricsAttempt] = useState(0);
+  // The server's page announcement for the list shown, and the rows a full
+  // server page holds; Carbon's items per page is pinned to the latter so
+  // Carbon's page is the server's page.
+  const [paging, setPaging] = useState<{
+    currentPage?: string | number;
+    totalPages?: string | number;
+  }>();
+  const [serverPageSize, setServerPageSize] = useState<number | undefined>();
   const [selectedTile, setSelectedTile] = useState<Tile>(null);
   // Identifies the tile load in flight, so a superseded response is dropped.
   const latestRequest = useRef(0);
@@ -136,18 +172,46 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     useContext(NotificationContext) as Notification;
 
   useEffect(() => {
-    getFromOpenElisServer("/rest/home-dashboard/metrics", loadCount);
+    const controller = new AbortController();
+    setLoading(true);
+    setMetricsFailed(false);
+    getFromOpenElisServer<typeof counts>(
+      "/rest/home-dashboard/metrics",
+      (data) => {
+        if (controller.signal.aborted) return;
+        if (data == null) {
+          setMetricsFailed(true);
+        } else {
+          setCounts(data);
+        }
+        setLoading(false);
+      },
+      controller.signal,
+    );
+    return () => controller.abort();
+  }, [metricsAttempt]);
 
-    return () => {
-      // This code runs when component is unmounted
-      componentMounted.current = false;
-    };
-  }, []);
+  /**
+   * The query the open tile's list is read with. The selected tab travels to
+   * the server, so the rows, the page count and the tile's number all describe
+   * the same population; filtering a server page in the browser used to leave
+   * pages that held nothing for the reader.
+   */
+  const listQuery = (params: string[] = []) => {
+    const query = [...params];
+    if (
+      TILES_WITH_TABS.includes(selectedTile?.type) &&
+      selectedTestSection &&
+      selectedTestSection !== ALL_SECTIONS
+    ) {
+      query.push("testSectionId=" + selectedTestSection);
+    }
+    return query.length > 0 ? "?" + query.join("&") : "";
+  };
 
   useEffect(() => {
     if (selectedTile != null) {
       const requestId = ++latestRequest.current;
-      setPage(1);
       setLoading(true);
       if (selectedTile.type == "AVERAGE_TURN_AROUND_TIME") {
         getFromOpenElisServer(
@@ -158,80 +222,50 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
         getFromOpenElisServer(
           "/rest/home-dashboard/" +
             selectedTile.type +
-            "?systemUserId=" +
-            selectedTile.id,
+            listQuery(["systemUserId=" + selectedTile.id]),
           (res) => loadData(res, requestId),
         );
       } else {
         getFromOpenElisServer(
-          "/rest/home-dashboard/" + selectedTile.type,
+          "/rest/home-dashboard/" + selectedTile.type + listQuery(),
           (res) => loadData(res, requestId),
         );
       }
     }
-
-    return () => {
-      // This code runs when component is unmounted
-      componentMounted.current = false;
-    };
-  }, [selectedTile]);
-
-  // A narrowed list is shorter, so the page the user was on may no longer exist.
-  useEffect(() => {
-    setPage(1);
-  }, [selectedTestSection]);
+  }, [selectedTile, selectedTestSection]);
 
   useEffect(() => {
     if (!userSessionDetails?.loginName) return;
     getFromOpenElisServer("/rest/user-test-sections/ALL", (res: any) => {
       const sections = Array.isArray(res) ? res : [];
       setTestSections(sections);
-      if (hasRole(userSessionDetails, "Global Administrator")) {
-        setSelectedTestSection("all");
-      } else {
-        setSelectedTestSection(sections[0]?.id);
-      }
+      setSelectedTestSection(
+        hasRole(userSessionDetails, "Global Administrator")
+          ? ALL_SECTIONS
+          : sections[0]?.id,
+      );
     });
   }, [userSessionDetails]);
 
-  // The server splits the list into pages of its own. The table below pages it
-  // again, so with a table page size as large as the server's, every order past
-  // the first server page was unreachable: the next button had nothing left to
-  // show. Pull the remaining server pages in and hand the table the full list.
-  const loadRemainingResultPages = (
-    loadedItems: any[],
-    pageToLoad: number,
-    totalPages: number,
-    requestId: number,
-  ) => {
+  /**
+   * One server page of the open tile's list, the same request for the arrows
+   * above the table and for Carbon's pagination below it.
+   */
+  const loadResultsPage = (pageNumber: number | string) => {
+    const requestId = ++latestRequest.current;
+    setLoading(true);
     getFromOpenElisServer(
-      "/rest/home-dashboard/" + selectedTile.type + "?page=" + pageToLoad,
-      (res) => {
-        if (requestId !== latestRequest.current) {
-          return;
-        }
-        const items = loadedItems.concat(res?.displayItems ?? []);
-        setData(items);
-        if (pageToLoad < totalPages) {
-          loadRemainingResultPages(
-            items,
-            pageToLoad + 1,
-            totalPages,
-            requestId,
-          );
-        } else {
-          setLoading(false);
-        }
-      },
+      "/rest/home-dashboard/" +
+        selectedTile.type +
+        listQuery(["page=" + pageNumber]),
+      (res) => loadData(res, requestId),
     );
   };
 
-  const loadCount = (data) => {
-    if (componentMounted.current) {
-      setCounts(data);
-      setLoading(false);
-    }
-  };
+  const arrows = serverPageArrowsProps({
+    paging,
+    onPageRequest: loadResultsPage,
+  });
 
   const loadData = (res, requestId: number) => {
     // A newer tile was opened while this request was in flight; its data wins.
@@ -245,17 +279,11 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
         ? res.displayItems
         : [];
     setData(items);
-    setPage(1);
-
-    // The rest of the server's pages belong to the same list, so fetch them
-    // before handing over to the table's own pagination.
-    const totalPages = parseInt(res?.paging?.totalPages) || 1;
-    const currentPage = parseInt(res?.paging?.currentPage) || 1;
-    if (totalPages > currentPage) {
-      loadRemainingResultPages(items, currentPage + 1, totalPages, requestId);
-    } else {
-      setLoading(false);
-    }
+    setPaging(res?.paging);
+    setServerPageSize((previous) =>
+      serverPageSizeOf(res?.paging, items.length, previous),
+    );
+    setLoading(false);
   };
 
   const loadTimeMetrics = (data) => {
@@ -302,7 +330,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       value: counts.ordersRejectedToday,
     },
     {
-      title: <FormattedMessage id="dashboard.unprints.results.label" />,
+      title: <FormattedMessage id="dashboard.unprinted.results.label" />,
       type: "UN_PRINTED_RESULTS",
       value: counts.unPritendResults,
     },
@@ -351,16 +379,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     },
   ];
 
-  const tilesWithTabs = [
-    "ORDERS_IN_PROGRESS",
-    "ORDERS_READY_FOR_VALIDATION",
-    "ORDERS_COMPLETED_TODAY",
-    "ORDERS_REJECTED_TODAY",
-    "UN_PRINTED_RESULTS",
-    "DELAYED_TURN_AROUND",
-    "ORDERS_FOR_USER",
-    "ORDERS_PARTIALLY_COMPLETED_TODAY",
-  ];
+  const tilesWithTabs = TILES_WITH_TABS;
 
   const handleMinimizeClick = () => {
     console.log("Icon clicked!");
@@ -374,10 +393,15 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     } else {
       setSelectedTile(null);
       hasRole(userSessionDetails, "Global Administrator")
-        ? setSelectedTestSection("all")
+        ? setSelectedTestSection(ALL_SECTIONS)
         : setSelectedTestSection(testSections[0]?.id);
     }
   };
+
+  const openTile = (tile) =>
+    tile.type === "UN_PRINTED_RESULTS"
+      ? navigate("/ReportPrintQueue?type=patient&printStatus=unprinted")()
+      : handleMaximizeClick(tile);
 
   const handleMaximizeClick = (tile) => {
     if (
@@ -417,15 +441,6 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     setSelectedTile(tile);
   };
 
-  const handlePageChange = (pageInfo) => {
-    if (page != pageInfo.page) {
-      setPage(pageInfo.page);
-    }
-
-    if (pageSize != pageInfo.pageSize) {
-      setPageSize(pageInfo.pageSize);
-    }
-  };
   const renderCell = (cell, row) => {
     if (cell.info.header === "labNumber" && cell.value) {
       return (
@@ -451,12 +466,8 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
               selectedTile.type == "ORDERS_READY_FOR_VALIDATION" ? (
                 <Link
                   style={{ color: "blue" }}
-                  href={
-                    selectedTile.type == "ORDERS_IN_PROGRESS"
-                      ? "/result?type=order&doRange=false&accessionNumber=" +
-                        cell.value
-                      : "validation?type=order&accessionNumber=" + cell.value
-                  }
+                  href={orderLink(selectedTile.type, cell.value)}
+                  onClick={navigate(orderLink(selectedTile.type, cell.value))}
                 >
                   <u>{convertAlphaNumLabNumForDisplay(cell.value)}</u>
                 </Link>
@@ -481,40 +492,61 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   const orderHeaders = [
     {
       key: "priority",
-      header: <FormattedMessage id="eorder.priority" />,
+      header: intl.formatMessage({ id: "eorder.priority" }),
     },
     {
       key: "orderDate",
-      header: <FormattedMessage id="sample.label.orderdate" />,
+      header: intl.formatMessage({ id: "sample.label.orderdate" }),
     },
     {
       key: "patientId",
-      header: <FormattedMessage id="patient.id" />,
+      header: intl.formatMessage({ id: "patient.id" }),
     },
     {
       key: "labNumber",
-      header: <FormattedMessage id="eorder.labNumber" />,
+      header: intl.formatMessage({ id: "eorder.labNumber" }),
     },
     {
       key: "testName",
-      header: <FormattedMessage id="eorder.test.name" />,
+      header: intl.formatMessage({ id: "eorder.test.name" }),
     },
   ];
 
   const userHeaders = [
     {
       key: "userFirstName",
-      header: "First Name",
+      header: intl.formatMessage({ id: "login.login.first" }),
     },
     {
       key: "userLastName",
-      header: "Last Name",
+      header: intl.formatMessage({ id: "login.login.last" }),
     },
     {
       key: "countOfOrdersEntered",
-      header: "Orders Entered",
+      header: intl.formatMessage({ id: "dashboard.user.ordersEntered" }),
     },
   ];
+
+  if (metricsFailed) {
+    return (
+      <Grid>
+        <Column lg={16} md={8} sm={4}>
+          <Stack gap={5}>
+            <InlineNotification
+              kind="error"
+              role="alert"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({ id: "dashboard.metrics.loadFailed" })}
+            />
+            <Button onClick={() => setMetricsAttempt((attempt) => attempt + 1)}>
+              <FormattedMessage id="common.retry" />
+            </Button>
+          </Stack>
+        </Column>
+      </Grid>
+    );
+  }
 
   return (
     <>
@@ -528,7 +560,8 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
               <ClickableTile
                 key={index}
                 className="dashboard-tile"
-                onClick={() => handleMaximizeClick(tile)}
+                role="button"
+                onClick={() => openTile(tile)}
               >
                 {TileIcon && (
                   <div className="tile-leading-icon">
@@ -539,11 +572,14 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                 <p className="dashboard-tile__subtitle">
                   {tile.subTitle ?? " "}
                 </p>
-                <h2 className="dashboard-tile__value">{tile.value}</h2>
+                <p className="dashboard-tile__value">{tile.value}</p>
 
                 <div className="tile-icon">
                   <div
-                    onClick={() => handleMaximizeClick(tile)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openTile(tile);
+                    }}
                     className="icon-wrapper"
                   >
                     <Maximize
@@ -556,6 +592,10 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
               </ClickableTile>
             );
           })}
+          <ExtensionSlot
+            name="home.dashboard.cards"
+            context={{ user: userSessionDetails }}
+          />
         </div>
       ) : (
         <div className="dashboard-view">
@@ -568,9 +608,9 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                 <p className="dashboard-tile__subtitle-view">
                   {selectedTile.subTitle ?? " "}
                 </p>
-                <h1 className="dashboard-tile__value-view">
+                <p className="dashboard-tile__value-view">
                   {selectedTile.value}
-                </h1>
+                </p>
                 {
                   <div className="tile-icon">
                     <div onClick={handleMinimizeClick} className="icon-wrapper">
@@ -594,7 +634,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                         <p className="dashboard-tile__subtitle">
                           {tile.subTitle}
                         </p>
-                        <h2 className="dashboard-tile__value">{tile.value}</h2>
+                        <p className="dashboard-tile__value">{tile.value}</p>
                       </Tile>
                     ))}
                   </div>
@@ -602,71 +642,48 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
               ) : (
                 <Grid>
                   <Column lg={16} md={8} sm={4}>
+                    {arrows.show && <ServerPageArrows {...arrows} />}
                     {tilesWithTabs.includes(selectedTile.type) && (
                       <Grid>
                         <Column lg={16} md={8} sm={4}>
                           <Tabs>
-                            {hasRole(
-                              userSessionDetails,
-                              "Global Administrator",
-                            ) ? (
-                              <TabList
-                                style={{ width: "100%" }}
-                                aria-label="List of tabs"
-                                contained
-                              >
+                            <TabList
+                              style={{ width: "100%" }}
+                              aria-label="List of tabs"
+                              contained
+                            >
+                              {hasRole(
+                                userSessionDetails,
+                                "Global Administrator",
+                              ) ? (
                                 <Tab
-                                  onClick={() => setSelectedTestSection("all")}
+                                  onClick={() =>
+                                    setSelectedTestSection(ALL_SECTIONS)
+                                  }
                                 >
                                   <FormattedMessage id="all.label" />
                                 </Tab>
+                              ) : null}
 
-                                {testSections?.map((item, id) => {
-                                  return (
-                                    <Tab
-                                      key={id}
-                                      onClick={() =>
-                                        setSelectedTestSection(item.id)
-                                      }
-                                    >
-                                      {item.value}
-                                    </Tab>
-                                  );
-                                })}
-                              </TabList>
-                            ) : (
-                              <TabList
-                                style={{ width: "100%" }}
-                                aria-label="List of tabs"
-                                contained
-                              >
-                                {testSections?.map((item, id) => {
-                                  return (
-                                    <Tab
-                                      key={id}
-                                      onClick={() =>
-                                        setSelectedTestSection(item.id)
-                                      }
-                                    >
-                                      {item.value}
-                                    </Tab>
-                                  );
-                                })}
-                              </TabList>
-                            )}
+                              {testSections?.map((item, id) => {
+                                return (
+                                  <Tab
+                                    key={id}
+                                    onClick={() =>
+                                      setSelectedTestSection(item.id)
+                                    }
+                                  >
+                                    {item.value}
+                                  </Tab>
+                                );
+                              })}
+                            </TabList>
                           </Tabs>
                         </Column>
                       </Grid>
                     )}
                     <DataTable
-                      rows={data
-                        .filter((item) =>
-                          tilesWithTabs.includes(selectedTile.type) &&
-                          selectedTestSection != "all"
-                            ? item.testSection === selectedTestSection
-                            : true,
-                        )
-                        .slice((page - 1) * pageSize, page * pageSize)}
+                      rows={data}
                       headers={
                         selectedTile.type != "ORDERS_ENTERED_BY_USER_TODAY"
                           ? orderHeaders
@@ -713,54 +730,13 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                       )}
                     </DataTable>
                     <Pagination
-                      onChange={handlePageChange}
-                      page={page}
-                      pageSize={pageSize}
-                      pageSizes={[10, 20, 30, 50, 100]}
-                      totalItems={
-                        data.filter((item) =>
-                          tilesWithTabs.includes(selectedTile.type) &&
-                          selectedTestSection != "all"
-                            ? item.testSection === selectedTestSection
-                            : true,
-                        ).length
-                      }
-                      forwardText={intl.formatMessage({
-                        id: "pagination.forward",
+                      {...serverPaginationProps({
+                        paging,
+                        rowsOnPage: data.length,
+                        pageSize: serverPageSize,
+                        onPageRequest: loadResultsPage,
+                        intl,
                       })}
-                      backwardText={intl.formatMessage({
-                        id: "pagination.backward",
-                      })}
-                      itemRangeText={(min, max, total) =>
-                        intl.formatMessage(
-                          { id: "pagination.item-range" },
-                          { min: min, max: max, total: total },
-                        )
-                      }
-                      itemsPerPageText={intl.formatMessage({
-                        id: "pagination.items-per-page",
-                      })}
-                      itemText={(min, max) =>
-                        intl.formatMessage(
-                          { id: "pagination.item" },
-                          { min: min, max: max },
-                        )
-                      }
-                      pageNumberText={intl.formatMessage({
-                        id: "pagination.page-number",
-                      })}
-                      pageRangeText={(_current, total) =>
-                        intl.formatMessage(
-                          { id: "pagination.page-range" },
-                          { total: total },
-                        )
-                      }
-                      pageText={(page, pagesUnknown) =>
-                        intl.formatMessage(
-                          { id: "pagination.page" },
-                          { page: pagesUnknown ? "" : page },
-                        )
-                      }
                     />
                   </Column>
                 </Grid>

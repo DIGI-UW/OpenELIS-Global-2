@@ -22,6 +22,7 @@ import org.openelisglobal.configuration.valueholder.ConfigurationImportRun;
 import org.openelisglobal.security.DaemonContextExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.core.io.Resource;
@@ -64,6 +65,9 @@ public class ConfigurationInitializationService implements ApplicationListener<C
 
     @Autowired(required = false)
     private UnresolvedReferenceService unresolvedReferenceService;
+
+    @Autowired(required = false)
+    private ApplicationEventPublisher eventPublisher;
 
     private List<DomainConfigurationHandler> domainHandlers;
 
@@ -137,6 +141,9 @@ public class ConfigurationInitializationService implements ApplicationListener<C
             ConfigurationReloadResult result = loadDomains(options);
             if (unresolvedReferenceService != null) {
                 unresolvedReferenceService.closeResolvable();
+            }
+            if (eventPublisher != null) {
+                eventPublisher.publishEvent(new ConfigurationLoadedEvent(source));
             }
             return result;
         } finally {
@@ -279,7 +286,9 @@ public class ConfigurationInitializationService implements ApplicationListener<C
      * <p>
      * Files already present in {@code claimedFiles} (claimed by a handler with
      * lower load order) are skipped. Every file this handler processes is added to
-     * the set so that later, broader-pattern handlers won't reprocess it.
+     * the set so that later, broader-pattern handlers won't reprocess it. A file
+     * outside the reload's named set is neither claimed nor reported: the reload
+     * did not concern it.
      */
     private LoadResult processFiles(DomainConfigurationHandler handler, Map<String, InputStreamSource> files,
             Properties checksums, String domainName, Set<String> claimedFiles, ConfigurationReloadOptions options) {
@@ -291,6 +300,10 @@ public class ConfigurationInitializationService implements ApplicationListener<C
             String fileName = entry.getKey();
             InputStreamSource streamSource = entry.getValue();
             filesFound = true;
+
+            if (!options.includesFile(fileName)) {
+                continue;
+            }
 
             // Skip files already claimed by a more-specific handler
             String fileKey = domainName + "/" + fileName;
@@ -331,7 +344,7 @@ public class ConfigurationInitializationService implements ApplicationListener<C
                         "Successfully loaded " + domainName + " configuration: " + fileName);
             } catch (Exception e) {
                 LogEvent.logError("Failed to load " + domainName + " configuration from file: " + fileName, e);
-                fileResults.add(ConfigurationReloadFileResult.error(domainName, fileName, e.getMessage()));
+                fileResults.add(ConfigurationReloadFileResult.error(domainName, fileName, CsvLoadSummary.reason(e)));
             }
         }
 

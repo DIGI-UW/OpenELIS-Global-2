@@ -10,6 +10,8 @@ import org.openelisglobal.configuration.service.CatalogImportService;
 import org.openelisglobal.configuration.service.CatalogImportService.ImportPlan;
 import org.openelisglobal.configuration.service.UnresolvedReferenceService;
 import org.openelisglobal.configuration.valueholder.UnresolvedReference;
+import org.openelisglobal.microbiology.form.MicroReferenceOptionForm;
+import org.openelisglobal.microbiology.service.MicrobiologyReferenceAdminService;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
@@ -70,6 +72,9 @@ public class CatalogImportRestController {
     @Autowired
     private UnitOfMeasureService unitOfMeasureService;
 
+    @Autowired
+    private MicrobiologyReferenceAdminService microbiologyReferenceAdminService;
+
     @GetMapping(value = "/import/domains", produces = MediaType.APPLICATION_JSON_VALUE)
     public List<String> getDomains() {
         return importService.getImportableDomains();
@@ -122,6 +127,16 @@ public class CatalogImportRestController {
                 candidates.add(new Candidate(unit.getId(), unit.getUnitOfMeasureName()));
             }
         }
+        case UnresolvedReference.TYPE_ORGANISM -> {
+            for (MicroReferenceOptionForm organism : microbiologyReferenceAdminService.getOptions("organisms")) {
+                candidates.add(new Candidate(organism.id, organism.label));
+            }
+        }
+        case UnresolvedReference.TYPE_ANTIBIOTIC -> {
+            for (MicroReferenceOptionForm antibiotic : microbiologyReferenceAdminService.getOptions("antibiotics")) {
+                candidates.add(new Candidate(antibiotic.id, antibiotic.label + " (" + antibiotic.code + ")"));
+            }
+        }
         default -> {
             return candidates;
         }
@@ -142,6 +157,12 @@ public class CatalogImportRestController {
         }
     }
 
+    /**
+     * A batch the service could not take (a file it cannot place in a domain) or
+     * could not keep (a configuration tree the webapp cannot write to) is a 422
+     * whose body carries the reason, so the page can show it instead of an empty
+     * result.
+     */
     private ResponseEntity<ImportPlan> respond(List<MultipartFile> files, List<String> domains,
             HttpServletRequest request, boolean apply) {
         if (files == null || files.isEmpty()) {
@@ -151,7 +172,7 @@ public class CatalogImportRestController {
         try {
             return ResponseEntity.ok(apply ? importService.apply(files, domains, sysUserId)
                     : importService.preview(files, domains, sysUserId));
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.unprocessableEntity().body(new ImportPlan(null,
                     List.of(new CatalogImportService.FilePlan(null, null, 0, 0, 0, List.of(), message(e))), 0));
         }

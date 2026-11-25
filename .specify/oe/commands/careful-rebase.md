@@ -143,7 +143,7 @@ Important: Call out any "special" hotspots (examples):
 
 - Lockfiles (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`)
 - Localization JSON (`frontend/src/languages/*.json`)
-- Submodule pointer changes (e.g., `plugins` as a submodule)
+- Submodule pointer changes (e.g., `dataexport` as a submodule)
 
 #### 3b) Report base-only improvements (CRITICAL — easy to lose)
 
@@ -401,12 +401,9 @@ Then run validation level:
   `mvn clean install -DskipTests -Dmaven.test.skip=true`
 - **standard**: quick + backend unit/integration tests:  
   `mvn test`  
-  (If available, prefer CI-equivalent checks via
-  `./scripts/run-ci-checks.sh --skip-submodules`.)
-- **thorough**: standard + frontend CI checks (and optionally E2E):  
-  `./scripts/run-ci-checks.sh` and `./scripts/run-frontend-ci-checks.sh`  
-  (If the user wants to skip E2E,
-  `./scripts/run-frontend-ci-checks.sh --skip-e2e`.)
+  (For complete local CI validation, use the thorough command below.)
+- **thorough**: all locally reproducible backend, frontend and E2E checks:
+  `./scripts/run-ci-checks.sh`
 
 If any validation fails, stop and report failures clearly before suggesting
 fixes.

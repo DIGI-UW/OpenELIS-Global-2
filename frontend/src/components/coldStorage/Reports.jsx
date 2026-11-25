@@ -10,7 +10,6 @@ import {
   Column,
   Dropdown,
   Button,
-  DatePicker,
   DatePickerInput,
   Tag,
   Tabs,
@@ -31,16 +30,21 @@ import {
   TableToolbarSearch,
   Pagination,
 } from "@carbon/react";
+import { DatePicker } from "../common/DatePicker";
 import "./Reports.scss";
 import {
   fetchReportExcursions,
   fetchAuditTrail,
   downloadReportDirect,
 } from "./api";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import { NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 import { toDate, formatDuration } from "./shared/timeUtils";
 import { FormattedMessage, useIntl } from "react-intl";
+import { endOfDay, startOfDay } from "date-fns";
+import { toLocalIsoDate } from "../utils/Utils";
+import { labNow, labTimeToInstant } from "../utils/labClock";
+import useSiteDateFormat from "../common/useSiteDateFormat";
 
 const REPORT_TYPES = ["Daily Log", "Weekly Log", "Monthly Log"];
 
@@ -48,8 +52,8 @@ const EXPORT_FORMATS = ["PDF"]; // CSV, XML, and Excel to be implemented in Phas
 
 const REPORT_TYPE_MAP = {
   "Daily Log": "freezerDailyLogReport",
-  "Weekly Log": "freezerDailyLogReport",
-  "Monthly Log": "freezerDailyLogReport",
+  "Weekly Log": "weeklylog",
+  "Monthly Log": "monthlylog",
 };
 
 const getExcursionHeaders = (intl) => [
@@ -196,8 +200,8 @@ const mapAlertToExcursion = (alert) => {
 };
 
 const defaultDateRange = () => {
-  const end = new Date();
-  const start = new Date();
+  const end = labNow();
+  const start = labNow();
   start.setDate(start.getDate() - 7);
   return [start, end];
 };
@@ -214,7 +218,7 @@ const toIsoString = (value) => {
 const formatActionLabel = (value) => {
   const actionLabels = {
     ALERT_ACKNOWLEDGED: "Alert acknowledged",
-    CRITICAL_ALERT_RESOLVED: "Critical alert resolved",
+    ALERT_RESOLVED: "Alert resolved",
     CORRECTIVE_ACTION_LOGGED: "Corrective action logged",
     THRESHOLD_UPDATED: "Threshold updated",
     FREEZER_RENAMED: "Freezer renamed",
@@ -249,7 +253,8 @@ const mapAuditEvent = (event) => ({
 
 function Reports({ devices = [] }) {
   const intl = useIntl();
-  const { notificationVisible, setNotificationVisible, addNotification } =
+  const siteDate = useSiteDateFormat();
+  const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const excursionHeaders = useMemo(() => getExcursionHeaders(intl), [intl]);
   const auditHeaders = useMemo(() => getAuditHeaders(intl), [intl]);
@@ -397,8 +402,12 @@ function Reports({ devices = [] }) {
       return null;
     }
     const [start, end] = dateRange;
-    const startIso = toIsoString(start);
-    const endIso = toIsoString(end);
+    const startIso = toIsoString(
+      start && labTimeToInstant(startOfDay(new Date(start))),
+    );
+    const endIso = toIsoString(
+      end && labTimeToInstant(endOfDay(new Date(end))),
+    );
     if (!startIso || !endIso) {
       return null;
     }
@@ -552,9 +561,12 @@ function Reports({ devices = [] }) {
     if (!rangeParams) {
       notify({
         kind: NotificationKinds.error,
-        title: "Missing date range",
-        subtitle:
-          "Please select a valid start and end date before generating a report.",
+        title: intl.formatMessage({
+          id: "coldStorage.reports.missingRange.title",
+        }),
+        subtitle: intl.formatMessage({
+          id: "coldStorage.reports.missingRange.subtitle",
+        }),
       });
       return;
     }
@@ -576,8 +588,8 @@ function Reports({ devices = [] }) {
       const blob = await downloadReportDirect({
         reportName: reportName,
         format: formatParam,
-        startDate: rangeParams.start.split("T")[0],
-        endDate: rangeParams.end.split("T")[0],
+        startDate: toLocalIsoDate(dateRange[0]),
+        endDate: toLocalIsoDate(dateRange[1]),
         freezerId: selectedFreezerId,
       });
 
@@ -585,7 +597,7 @@ function Reports({ devices = [] }) {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      const dateStr = new Date().toISOString().split("T")[0];
+      const dateStr = toLocalIsoDate(labNow());
       const reportSlug = reportType.toLowerCase().replace(/ /g, "_");
       link.download = `freezer_report_${reportSlug}_${dateStr}.${formatParam.toLowerCase()}`;
       document.body.appendChild(link);
@@ -627,8 +639,6 @@ function Reports({ devices = [] }) {
 
   return (
     <div className="reports-page">
-      {notificationVisible === true ? <AlertDialog /> : ""}
-
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
           <h3 className="reports-title">
@@ -685,19 +695,19 @@ function Reports({ devices = [] }) {
       <Grid fullWidth className="reports-form">
         <Column lg={4} md={4} sm={4}>
           <DatePicker
+            dateFormat={siteDate.dateFormat}
+            parseDate={siteDate.parseDate}
             datePickerType="single"
             value={dateRange[0]}
             onChange={(dates) => {
-              if (dates && dates.length > 0) {
-                const newRange = [...dateRange];
-                newRange[0] = dates[0];
-                setDateRange(newRange);
-              }
+              const newRange = [...dateRange];
+              newRange[0] = dates?.[0] || null;
+              setDateRange(newRange);
             }}
           >
             <DatePickerInput
               id="reports-start-date"
-              placeholder="mm/dd/yyyy"
+              placeholder={siteDate.placeholder}
               labelText={intl.formatMessage({
                 id: "coldStorage.reports.startDate",
                 defaultMessage: "Start date",
@@ -708,19 +718,19 @@ function Reports({ devices = [] }) {
         </Column>
         <Column lg={4} md={4} sm={4}>
           <DatePicker
+            dateFormat={siteDate.dateFormat}
+            parseDate={siteDate.parseDate}
             datePickerType="single"
             value={dateRange[1]}
             onChange={(dates) => {
-              if (dates && dates.length > 0) {
-                const newRange = [...dateRange];
-                newRange[1] = dates[0];
-                setDateRange(newRange);
-              }
+              const newRange = [...dateRange];
+              newRange[1] = dates?.[0] || null;
+              setDateRange(newRange);
             }}
           >
             <DatePickerInput
               id="reports-end-date"
-              placeholder="mm/dd/yyyy"
+              placeholder={siteDate.placeholder}
               labelText={intl.formatMessage({
                 id: "coldStorage.reports.endDate",
                 defaultMessage: "End date",

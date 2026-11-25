@@ -6,7 +6,9 @@
     <changeSet id="fixture-analyzer-cutover-data"
         author="openelis">
         <comment>Existing data before lifecycle normalization and destructive
-            cleanup.</comment>
+            cleanup. Two configured analyzers share one site binding revision;
+            another
+            revision is saved but no analyzer uses it.</comment>
         <sql>
             INSERT INTO analyzer_profile_binding (id, profile_id, profile_revision,
             profile_fingerprint)
@@ -19,6 +21,16 @@
             INSERT INTO analyzer_site_binding_test
             (site_binding_revision_id, source_row_key, mapping_state, test_id)
             VALUES (900003, 'upgrade-test', 'BOUND', (SELECT MIN(id) FROM test));
+            INSERT INTO analyzer_profile_binding (id, profile_id,
+            profile_revision,
+            profile_fingerprint)
+            VALUES (900005, 'unpinned-fixture', 1, 'sha256:' || repeat('e', 64));
+            INSERT INTO analyzer_site_binding (id, profile_binding_id,
+            created_by)
+            VALUES (900005, 900005, '1');
+            INSERT INTO analyzer_site_binding_revision
+            (id, site_binding_id, revision_number, binding_fingerprint, created_by)
+            VALUES (900005, 900005, 1, 'sha256:' || repeat('f', 64), '1');
             INSERT INTO analyzer (id, name, is_active, status, analyzer_type)
             VALUES (900001, 'Empty draft', TRUE, 'PENDING_REGISTRATION',
             'HEMATOLOGY');
@@ -26,9 +38,19 @@
             VALUES (900002, 'Excluded fixture', FALSE, 'INACTIVE');
             INSERT INTO analyzer
             (id, name, is_active, status, bridge_connection_id,
-            site_binding_revision_id, machine_id)
+            site_binding_revision_id, machine_id, test_unit_ids)
             VALUES (900003, 'Migrated fixture', TRUE, 'ACTIVE',
-            'bridge-upgrade-fixture', 900003, 'legacy-fixture');
+            'bridge-upgrade-fixture', 900003, 'legacy-fixture', '1,2'),
+            (900004, 'Second migrated fixture', TRUE, 'ACTIVE',
+            'bridge-upgrade-fixture-2', 900003, NULL, '2');
+            INSERT INTO analyzer_activation_record
+            (id, analyzer_id, site_binding_revision_id, bridge_connection_id,
+            activation_intent, runtime_acknowledgement_json, runtime_fingerprint,
+            created_by)
+            VALUES (900003, 900003, 900003, 'bridge-upgrade-fixture', 'ACTIVE',
+            '{"runtimeRevision":1}', 'sha256:' || repeat('d', 64), '1');
+            UPDATE analyzer SET latest_activation_record_id = 900003
+            WHERE id = 900003;
             INSERT INTO analyzer_test_map (analyzer_id, analyzer_test_name, test_id)
             VALUES (900003, 'upgrade-test', (SELECT MIN(id) FROM test));
         </sql>

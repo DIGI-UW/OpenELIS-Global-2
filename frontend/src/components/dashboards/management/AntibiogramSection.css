@@ -1,0 +1,46 @@
+.mgmt-antibiogram {
+  margin-bottom: 1.5rem;
+}
+
+.mgmt-antibiogram h4 {
+  margin-bottom: 0.25rem;
+}
+
+.mgmt-antibiogram__note,
+.mgmt-antibiogram__n {
+  font-size: 0.75rem;
+  color: var(--cds-text-helper, #6f6f6f);
+}
+
+.mgmt-antibiogram__note {
+  margin-bottom: 0.75rem;
+}
+
+.mgmt-antibiogram__scroll {
+  overflow-x: auto;
+}
+
+.mgmt-antibiogram__cell {
+  text-align: center;
+}
+
+.mgmt-antibiogram__cell--green {
+  background: var(--qa-green-bg);
+}
+
+.mgmt-antibiogram__cell--amber {
+  background: var(--qa-amber-bg);
+}
+
+.mgmt-antibiogram__cell--orange {
+  background: #ffd9be;
+}
+
+.mgmt-antibiogram__cell--red {
+  background: var(--qa-red-bg);
+}
+
+.mgmt-antibiogram__counts {
+  list-style: none;
+  padding: 0;
+}

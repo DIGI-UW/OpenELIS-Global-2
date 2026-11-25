@@ -1,8 +1,11 @@
 package org.openelisglobal.rolemodule.service;
 
+import java.util.Collection;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.systemusermodule.dao.RoleModuleDAO;
@@ -102,5 +105,32 @@ public class RoleModuleServiceImpl extends AuditableBaseObjectServiceImpl<RoleMo
             permittedPages.add(permissionModule.getSystemModule().getSystemModuleName());
         }
         return permittedPages;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<String> getPermittedModuleNames(Collection<String> roleNames, String prefix) {
+        if (roleNames == null) {
+            return new LinkedHashSet<>();
+        }
+        List<String> named = roleNames.stream().filter(name -> name != null && !name.trim().isEmpty()).map(String::trim)
+                .toList();
+        Set<String> permissions = new LinkedHashSet<>();
+        for (String moduleName : baseObjectDAO.getSelectableModuleNames(named, prefix)) {
+            if (moduleName != null && !moduleName.trim().isEmpty()) {
+                permissions.add(moduleName.trim());
+            }
+        }
+        return permissions;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<String> getPermittedModuleNames(Collection<String> roleNames) {
+        Set<String> permissions = new LinkedHashSet<>();
+        for (String prefix : Constants.PERMISSION_MODULE_PREFIXES) {
+            permissions.addAll(getPermittedModuleNames(roleNames, prefix));
+        }
+        return permissions;
     }
 }

@@ -4,7 +4,6 @@ import ca.uhn.fhir.rest.api.server.IBundleProvider;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.fhir.search.bundleProviders.PractitionerBundleProvider;
 import org.openelisglobal.fhir.search.searchparams.PractitionerSearchParams;
-import org.openelisglobal.search.dao.ObservationSearchDao;
 import org.openelisglobal.search.dao.PractitionerSearchDao;
 import org.openelisglobal.search.dao.ServiceRequestSearchDao;
 import org.springframework.stereotype.Service;
@@ -20,24 +19,21 @@ public class PractitionerSearchService {
 
     private final ServiceRequestSearchDao serviceRequestSearchDao;
 
-    private final ObservationSearchDao observationSearchDao;
-
     private final FhirTransformService fhirTransformService;
 
     public PractitionerSearchService(PractitionerSearchDao practitionerSearchDao,
             SampleHumanSearchDao sampleHumanSearchDao, ServiceRequestSearchDao serviceRequestSearchDao,
-            ObservationSearchDao observationSearchDao, FhirTransformService fhirTransformService) {
+            FhirTransformService fhirTransformService) {
 
         this.practitionerSearchDao = practitionerSearchDao;
         this.sampleHumanSearchDao = sampleHumanSearchDao;
         this.serviceRequestSearchDao = serviceRequestSearchDao;
-        this.observationSearchDao = observationSearchDao;
         this.fhirTransformService = fhirTransformService;
     }
 
     public IBundleProvider searchPractitioners(PractitionerSearchParams params) {
 
         return new PractitionerBundleProvider(params, practitionerSearchDao, sampleHumanSearchDao,
-                serviceRequestSearchDao, observationSearchDao, fhirTransformService);
+                serviceRequestSearchDao, fhirTransformService);
     }
 }

@@ -12,6 +12,13 @@ import InstrumentDetailPage from "./InstrumentDetailPage";
 
 vi.mock("../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
+  toLocalIsoDate: (date) => date.toISOString().slice(0, 10),
+}));
+
+vi.mock("../charts/LeveyJenningsChart", () => ({
+  default: ({ data }) => (
+    <div>{data.map((point) => point.value).join(", ")}</div>
+  ),
 }));
 
 const renderPage = () =>
@@ -105,7 +112,7 @@ describe("InstrumentDetailPage analyzer context", () => {
       breadcrumbQueries.getByRole("link", {
         name: "Quality Control Dashboard",
       }),
-    ).toHaveAttribute("href", "/analyzers/qc/db");
+    ).toHaveAttribute("href", "/qa/qc/dashboard");
     const currentCrumb = breadcrumb.querySelector('[aria-current="page"]');
     expect(currentCrumb).toHaveTextContent("GeneXpert - Main Lab");
   });
@@ -133,6 +140,140 @@ describe("InstrumentDetailPage analyzer context", () => {
     expect(params.get("view")).toBe("activity");
     expect(params.get("returnTo")).toBe("/analyzers?search=gene&status=ACTIVE");
     expect(activityTab).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("loads recorded lots through the chart tab even without dashboard analyte summaries", async () => {
+    const instrumentResponse = getFromOpenElisServer.getMockImplementation();
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === "/rest/qc/controlLots?instrumentId=42")
+        return callback([
+          {
+            id: "normal",
+            lotNumber: "SHARED",
+            controlLevel: "NORMAL",
+            testId: "test-a",
+            productName: "Control",
+            testName: "Viral load",
+          },
+          {
+            id: "high",
+            lotNumber: "SHARED",
+            controlLevel: "HIGH",
+            testId: "test-a",
+            productName: "Control",
+            testName: "Viral load",
+          },
+        ]);
+      if (url === "/rest/qc/charts/high")
+        return callback({
+          dataPoints: [
+            { resultId: "recorded", value: 1009.64, controlLevel: "HIGH" },
+          ],
+        });
+      if (url === "/rest/qc/charts/normal") return callback({ dataPoints: [] });
+      if (url.endsWith("/statistics"))
+        return callback({
+          mean: 1009.64,
+          resultCount: url.includes("/high/") ? 1 : 0,
+        });
+      if (url.includes("ruleConfig/enabled"))
+        return callback([{ id: "rule", ruleCode: "1_3s", enabled: true }]);
+      instrumentResponse(url, callback);
+    });
+    renderPage();
+    await userEvent.click(
+      await screen.findByRole("tab", { name: "Control Chart", exact: true }),
+    );
+    await userEvent.click(
+      await screen.findByRole("tab", { name: "High", exact: true }),
+    );
+    expect(await screen.findByTestId("chart-panel-HIGH")).toHaveTextContent(
+      "1009.64",
+    );
+    expect(
+      screen.getByRole("combobox", { name: "Control lot", exact: true }),
+    ).toHaveTextContent("SHARED — High — Viral load");
+    expect(await screen.findByText("1_3s")).toBeVisible();
+    expect(
+      screen.queryByTestId("control-chart-detail-header"),
+    ).not.toBeInTheDocument();
+    expect(new URLSearchParams(window.location.search).get("returnTo")).toBe(
+      "/analyzers?search=gene&status=ACTIVE",
+    );
+    await userEvent.click(
+      screen.getByRole("tab", { name: "Normal", exact: true }),
+    );
+    expect(screen.getByTestId("chart-panel-NORMAL")).not.toHaveTextContent(
+      "1009.64",
+    );
+  });
+
+  it("keeps custom levels and same-product analytes distinguishable", async () => {
+    const instrumentResponse = getFromOpenElisServer.getMockImplementation();
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("/controlLots?"))
+        return callback([
+          {
+            id: "hiv",
+            lotNumber: "SHARED",
+            controlLevel: "LPC",
+            testId: "a",
+            testName: "HIV RNA",
+            productName: "Control",
+          },
+          {
+            id: "hcv",
+            lotNumber: "SHARED",
+            controlLevel: "LPC",
+            testId: "b",
+            testName: "HCV RNA",
+            productName: "Control",
+          },
+        ]);
+      if (url === "/rest/qc/charts/hiv")
+        return callback({
+          dataPoints: [
+            { resultId: "one", value: 1009.64, controlLevel: "LPC" },
+          ],
+        });
+      if (url === "/rest/qc/charts/hcv")
+        return callback({
+          dataPoints: [{ resultId: "two", value: 42.5, controlLevel: "LPC" }],
+        });
+      if (url.endsWith("/statistics")) return callback({ mean: 10 });
+      instrumentResponse(url, callback);
+    });
+    renderPage();
+    await userEvent.click(
+      await screen.findByRole("tab", { name: "Control Chart", exact: true }),
+    );
+    expect(
+      await screen.findByRole("tab", { name: "LPC", exact: true }),
+    ).toBeVisible();
+    expect(await screen.findByTestId("chart-panel-LPC")).toHaveTextContent(
+      "1009.64",
+    );
+    await userEvent.click(
+      screen.getByRole("combobox", { name: "Control lot", exact: true }),
+    );
+    expect(
+      screen.getByRole("option", {
+        name: "SHARED — LPC — HIV RNA",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await userEvent.click(
+      screen.getByRole("option", {
+        name: "SHARED — LPC — HCV RNA",
+        exact: true,
+      }),
+    );
+    expect(await screen.findByTestId("chart-panel-LPC")).toHaveTextContent(
+      "42.5",
+    );
+    expect(screen.getByTestId("chart-panel-LPC")).not.toHaveTextContent(
+      "1009.64",
+    );
   });
 
   it("shows an unconfigured operational QC state without exposing a bare database id", async () => {

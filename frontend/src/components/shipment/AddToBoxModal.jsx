@@ -15,8 +15,10 @@ import {
   postToOpenElisServerFullResponse,
 } from "../utils/Utils";
 
+import useInAppNavigation from "../common/useInAppNavigation";
 const AddToBoxModal = ({ open, onClose, sample, onSuccess }) => {
   const intl = useIntl();
+  const navigate = useInAppNavigation();
   const { addNotification } = useContext(NotificationContext);
 
   const [mode, setMode] = useState("existing"); // "existing" or "new"
@@ -49,8 +51,11 @@ const AddToBoxModal = ({ open, onClose, sample, onSuccess }) => {
       `/rest/shipping-box/by-facility/${sample.destinationFacilityId}`,
       (response) => {
         if (response) {
-          // Filter to only show DRAFT boxes
-          const draftBoxes = response.filter((box) => box.state === "DRAFT");
+          // Filter to DRAFT boxes, minus EQA boxes: those carry provider panel
+          // material to another lab and the server refuses a patient sample in one.
+          const draftBoxes = response.filter(
+            (box) => box.state === "DRAFT" && !box.eqaCycleId,
+          );
           setAvailableBoxes(draftBoxes);
 
           if (draftBoxes.length === 0) {
@@ -139,7 +144,9 @@ const AddToBoxModal = ({ open, onClose, sample, onSuccess }) => {
         ? `facilityId=${sample.destinationFacilityId}&`
         : "";
       const sampleParam = sample.sampleItemId || sample.id || "";
-      window.location.href = `/SampleShipment/create-box?${facilityParam}sampleItemId=${sampleParam}`;
+      navigate(
+        `/SampleShipment/create-box?${facilityParam}sampleItemId=${sampleParam}`,
+      )();
       setSubmitting(false);
     }
   };

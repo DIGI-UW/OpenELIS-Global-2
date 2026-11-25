@@ -50,8 +50,12 @@ public class PractitionerTransformServiceImpl implements PractitionerTransformSe
         if (facilityId != null) {
             practitioner.addIdentifier(facilityId);
         }
-        practitioner.addName(new HumanName().setFamily(provider.getPerson().getLastName())
-                .addGiven(provider.getPerson().getFirstName()));
+        HumanName name = new HumanName().setFamily(provider.getPerson().getLastName())
+                .addGiven(provider.getPerson().getFirstName());
+        if (provider.getPerson().getTitleCode() != null && !provider.getPerson().getTitleCode().isBlank()) {
+            name.addPrefix(provider.getPerson().getTitleCode());
+        }
+        practitioner.addName(name);
         practitioner.setTelecom(common.transformToTelecom(provider.getPerson()));
         Address address = common.transformToAddress(provider.getPerson());
         if (!address.isEmpty()) {

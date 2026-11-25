@@ -376,6 +376,100 @@ describe("Header Component - M2b Enhancement Tests", () => {
     });
   });
 
+  describe("reporting navigation", () => {
+    const leaf = (id, label, url) => ({
+      menu: {
+        elementId: id,
+        displayKey: label,
+        actionURL: url,
+        isActive: true,
+      },
+      childMenus: [],
+    });
+    const menuData = [
+      MOCK_MENU_DATA[0],
+      {
+        menu: {
+          elementId: "menu_reports",
+          displayKey: "banner.menu.reports",
+          isActive: true,
+        },
+        childMenus: [
+          leaf(
+            "menu_reports_status_patient",
+            "openreports.patientTestStatus",
+            "/Report?type=patient&report=patientCILNSP_vreduit",
+          ),
+          leaf(
+            "menu_reports_custom_data_export",
+            "reporting.title",
+            "/reports/custom-data-export",
+          ),
+          leaf(
+            "menu_reports_queue",
+            "reporting.queue",
+            "/reports/custom-data-export?view=queue",
+          ),
+        ],
+      },
+    ];
+
+    test.each([
+      [
+        "/reports/custom-data-export?job=example&view=queue&page=2&review=example",
+        "My Report Queue",
+      ],
+      [
+        "/reports/custom-data-export?view=builder&step=columns&type=SAMPLE_TESTING",
+        "Custom Data Export",
+      ],
+      [
+        "/Report?report=patientCILNSP_vreduit&review=example&type=patient",
+        "Patient Status Report",
+      ],
+    ])(
+      "a deep link selects only its menu entry and opens Reports: %s",
+      async (initialRoute, name) => {
+        const { container } = renderHeader({ menuData, initialRoute });
+        const selected = await screen.findByRole("link", { name, exact: true });
+        expect(selected).toHaveAttribute("aria-current", "page");
+        expect(
+          container.querySelectorAll('.cds--side-nav [aria-current="page"]'),
+        ).toHaveLength(1);
+        expect(
+          screen.getByRole("button", { name: "Reports", exact: true }),
+        ).toHaveAttribute("aria-expanded", "true");
+      },
+    );
+
+    test("opening the queue from Home expands Reports and preserves native modified-click behavior", async () => {
+      renderHeader({ menuData, initialRoute: "/Dashboard" });
+      const reports = await screen.findByRole("button", {
+        name: "Reports",
+        exact: true,
+      });
+      fireEvent.click(reports);
+      const queue = screen.getByRole("link", {
+        name: "My Report Queue",
+        exact: true,
+      });
+      expect(fireEvent.click(queue, { ctrlKey: true })).toBe(true);
+      expect(screen.getByTestId("current-path")).toHaveTextContent(
+        "/Dashboard",
+      );
+      fireEvent.click(queue);
+      expect(screen.getByTestId("current-path")).toHaveTextContent(
+        "/reports/custom-data-export?view=queue",
+      );
+      expect(
+        screen.getByRole("link", { name: "My Report Queue", exact: true }),
+      ).toHaveAttribute("aria-current", "page");
+      expect(
+        screen.getByRole("button", { name: "Reports", exact: true }),
+      ).toHaveAttribute("aria-expanded", "true");
+    });
+  });
+
   describe("Home item active state", () => {
     test.each(["/", "/Dashboard"])(
       "landing on %s highlights the Home menu item",
@@ -544,138 +638,22 @@ describe("Header Component - M2b Enhancement Tests", () => {
   });
 
   describe("URL Matching and Active State", () => {
-    /**
-     * Test: URL matching logic is covered by E2E tests
-     * Unit testing active state requires complex DOM mocking
-     * See: cypress/e2e/sidenavEnhanced.cy.js for comprehensive URL matching tests
-     *
-     * Note: Active state is determined by:
-     * 1. Exact match: location.pathname === menuItem.menu.actionURL
-     * 2. Prefix match: location.pathname.startsWith(menuItem.menu.actionURL + "/")
-     * 3. Length check: actionURL.length > 1 (prevents "/" from matching everything)
-     */
-    test("URL matching logic documentation", () => {
-      // This test documents the URL matching algorithm
-      // Actual behavior is tested in E2E tests with real navigation
-      expect(true).toBe(true);
-    });
-
-    /**
-     * Test: Active state styling verification
-     * Verifies that active nav items have correct styling:
-     * - Left border (4px blue)
-     * - Background color (not transparent)
-     * - No double borders
-     * - No white background on focus/active
-     * - Subnav items (like workplan) show active state correctly
-     */
-    test("active nav items have correct styling", async () => {
-      // Sidenav must be expanded to see menu items
-      const { container } = renderHeader({
-        initialRoute: "/Storage",
-      });
-
-      await waitFor(
-        () => {
-          const activeLink = container.querySelector(
-            '.cds--side-nav__link--current[href="/Storage"]',
+    test.each(["/Storage", "/WorkPlanByTest"])(
+      "nested route %s has one active, visible navigation destination",
+      async (initialRoute) => {
+        const { container } = renderHeader({ initialRoute });
+        await waitFor(() => {
+          const selected = container.querySelector(
+            '.cds--side-nav [aria-current="page"]',
           );
-          expect(activeLink).toBeTruthy();
-
-          // Log DOM for debugging (uncomment to inspect)
-          // logDOM(container, '.cds--side-nav__link--current');
-          // screen.debug(activeLink);
-
-          // Verify active link exists and has correct class
+          expect(selected).toHaveAttribute("href", initialRoute);
+          expect(selected).toBeVisible();
           expect(
-            activeLink.classList.contains("cds--side-nav__link--current"),
-          ).toBe(true);
-
-          // Verify it's a subnav item (has reduced-padding class on parent)
-          const menuItem = activeLink.closest(".cds--side-nav__menu-item");
-          expect(menuItem).toBeTruthy();
-          expect(
-            menuItem.classList.contains("reduced-padding-nav-menu-item"),
-          ).toBe(true);
-        },
-        { timeout: 5000 },
-      );
-    });
-
-    /**
-     * Test: Workplan subnav shows active state
-     * Verifies that subnav items like workplan correctly show active state
-     * when the current path matches their actionURL
-     */
-    test("workplan subnav shows active state when path matches", async () => {
-      // Sidenav must be expanded to see menu items
-      const { container } = renderHeader({
-        initialRoute: "/WorkPlanByTest",
-      });
-
-      await waitFor(
-        () => {
-          const workplanLink = container.querySelector(
-            '.cds--side-nav__link[href="/WorkPlanByTest"]',
-          );
-          expect(workplanLink).toBeTruthy();
-
-          // Log DOM for debugging (uncomment to inspect)
-          // logDOM(container, '[href="/WorkPlanByTest"]');
-
-          // Verify workplan link has active class
-          expect(
-            workplanLink.classList.contains("cds--side-nav__link--current"),
-          ).toBe(true);
-
-          // Verify it's a subnav item
-          const menuItem = workplanLink.closest(".cds--side-nav__menu-item");
-          expect(menuItem).toBeTruthy();
-          expect(
-            menuItem.classList.contains("reduced-padding-nav-menu-item"),
-          ).toBe(true);
-        },
-        { timeout: 5000 },
-      );
-    });
-
-    /**
-     * Test: No double borders on active items
-     * Verifies that active items don't have multiple borders applied
-     * Note: jsdom's getComputedStyle has limitations, so we check class and structure instead
-     */
-    test("active items have only left border, no double borders", async () => {
-      // Sidenav must be expanded to see menu items
-      const { container } = renderHeader({
-        initialRoute: "/Storage",
-      });
-
-      await waitFor(
-        () => {
-          const activeLink = container.querySelector(
-            '.cds--side-nav__link--current[href="/Storage"]',
-          );
-          expect(activeLink).toBeTruthy();
-
-          // Verify active class is present
-          expect(
-            activeLink.classList.contains("cds--side-nav__link--current"),
-          ).toBe(true);
-
-          // Verify it's a subnav item (has reduced-padding class on parent)
-          const menuItem = activeLink.closest(".cds--side-nav__menu-item");
-          expect(menuItem).toBeTruthy();
-          expect(
-            menuItem.classList.contains("reduced-padding-nav-menu-item"),
-          ).toBe(true);
-
-          // In jsdom, getComputedStyle may not work correctly, so we verify structure instead
-          // The CSS rules ensure only left border is applied (verified via CSS file)
-          // For actual computed styles, use browser DevTools or E2E tests
-        },
-        { timeout: 5000 },
-      );
-    });
+            container.querySelectorAll('.cds--side-nav [aria-current="page"]'),
+          ).toHaveLength(1);
+        });
+      },
+    );
   });
 
   describe("Menu Initialization", () => {
@@ -777,57 +755,31 @@ describe("Header Component - M2b Enhancement Tests", () => {
       );
     });
 
-    test("configured Admin group preserves the dashboard and exposes stuck analyzer events", async () => {
+    test("Admin opens its dashboard in one click, with no submenu to expand", async () => {
+      // The shipped menu carries no children under Admin: the dashboard itself
+      // lists the admin destinations, stuck analyzer events among them.
       const configuredAdminMenu = [
         MENU_DATA[0],
         {
           ...MENU_DATA[1],
-          childMenus: [
-            {
-              menu: {
-                elementId: "menu_administration_dashboard",
-                displayKey: "admin.dashboard.title",
-                actionURL: "/MasterListsPage",
-                isActive: true,
-              },
-              childMenus: [],
-            },
-            {
-              menu: {
-                elementId: "menu_administration_stuck_analyzer_events",
-                displayKey: "analyzer.importIssues.events.title",
-                actionURL: "/AnalyzerResults?view=import-issues",
-                isActive: true,
-              },
-              childMenus: [],
-            },
-          ],
+          menu: { ...MENU_DATA[1].menu, actionURL: "/MasterListsPage" },
+          childMenus: [],
         },
       ];
       renderHeader({ menuData: configuredAdminMenu });
 
-      const adminMenu = await screen.findByRole("button", { name: "Admin" });
-      expect(adminMenu).toHaveAttribute("id", "menu_administration");
-      fireEvent.click(adminMenu);
-      const adminDashboard = screen.getByRole("link", {
-        name: "Admin dashboard",
-      });
-      expect(adminDashboard).toHaveAttribute(
-        "id",
-        "menu_administration_dashboard_nav",
-      );
-      expect(adminDashboard).toHaveAttribute("href", "/MasterListsPage");
+      const adminMenu = await screen.findByRole("link", { name: "Admin" });
+      expect(adminMenu).toHaveAttribute("href", "/MasterListsPage");
+      expect(
+        screen.queryByRole("button", { name: "Admin" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Stuck analyzer events"),
+      ).not.toBeInTheDocument();
 
-      const stuckEvents = screen.getByRole("link", {
-        name: "Stuck analyzer events",
-      });
-      expect(stuckEvents).toHaveAttribute(
-        "href",
-        "/AnalyzerResults?view=import-issues",
-      );
-      fireEvent.click(stuckEvents);
+      fireEvent.click(adminMenu);
       expect(screen.getByTestId("current-path")).toHaveTextContent(
-        "/AnalyzerResults?view=import-issues",
+        "/MasterListsPage",
       );
     });
 
@@ -1023,5 +975,139 @@ describe("Header Component - M2b Enhancement Tests", () => {
         expect(container.querySelector(".cds--side-nav")).toBeTruthy();
       });
     });
+  });
+});
+
+describe("OEHeader menu items whose children are all deactivated", () => {
+  // A parent renders as an expandable SideNavMenu and never navigates, so a
+  // parent left holding only deactivated children became an expandable that
+  // opened onto nothing — the Storage Management case.
+  const MENU_WITH_DEACTIVATED_CHILDREN = [
+    {
+      menu: {
+        elementId: "menu_storage",
+        displayKey: "banner.menu.storage",
+        actionURL: "",
+        isActive: true,
+      },
+      childMenus: [
+        {
+          menu: {
+            elementId: "menu_storage_management",
+            displayKey: "storage.nav.dashboard",
+            actionURL: "/Storage",
+            isActive: true,
+          },
+          childMenus: [
+            {
+              menu: {
+                elementId: "menu_storage_rooms",
+                displayKey: "storage.nav.rooms",
+                actionURL: "/Storage/rooms",
+                isActive: false,
+              },
+              childMenus: [],
+            },
+            {
+              menu: {
+                elementId: "menu_storage_boxes",
+                displayKey: "storage.nav.boxes",
+                actionURL: "/Storage/boxes",
+                isActive: false,
+              },
+              childMenus: [],
+            },
+          ],
+        },
+      ],
+    },
+  ];
+
+  test("renders the parent as a navigable link, not an empty expandable", async () => {
+    const { container } = renderHeader({
+      menuData: MENU_WITH_DEACTIVATED_CHILDREN,
+    });
+
+    // The leaf branch puts elementId + "_nav" on the anchor itself; the bare
+    // elementId lands on an inner span. An expandable parent renders a
+    // button.cds--side-nav__submenu instead, so this anchor would not exist.
+    const link = await waitFor(() => {
+      const el = container.querySelector(
+        'a#menu_storage_management_nav[href="/Storage"]',
+      );
+      expect(el).toBeTruthy();
+      return el;
+    });
+
+    expect(
+      link.closest("li").querySelector(".cds--side-nav__submenu"),
+    ).toBeNull();
+  });
+
+  test("navigates when the parent is clicked", async () => {
+    const { container, getByTestId } = renderHeader({
+      menuData: MENU_WITH_DEACTIVATED_CHILDREN,
+    });
+
+    const link = await waitFor(() => {
+      const el = container.querySelector(
+        'a#menu_storage_management_nav[href="/Storage"]',
+      );
+      expect(el).toBeTruthy();
+      return el;
+    });
+
+    fireEvent.click(link);
+
+    await waitFor(() => {
+      expect(getByTestId("current-path").textContent).toBe("/Storage");
+    });
+  });
+
+  // A deactivated row is not reachable from the sidenav, so a URL that only
+  // matches one must not auto-expand the parent onto rows nobody can use.
+  const MENU_WITH_A_DEACTIVATED_MATCH = [
+    {
+      menu: {
+        elementId: "menu_storage",
+        displayKey: "banner.menu.storage",
+        actionURL: "",
+        isActive: true,
+      },
+      childMenus: [
+        {
+          menu: {
+            elementId: "menu_storage_cold",
+            displayKey: "sidenav.label.storage.coldstorage",
+            actionURL: "/ColdStorage",
+            isActive: true,
+          },
+          childMenus: [],
+        },
+        {
+          menu: {
+            elementId: "menu_storage_rooms",
+            displayKey: "storage.nav.rooms",
+            actionURL: "/Storage/rooms",
+            isActive: false,
+          },
+          childMenus: [],
+        },
+      ],
+    },
+  ];
+
+  test("a deactivated child's path does not expand its parent", async () => {
+    const { container } = renderHeader({
+      menuData: MENU_WITH_A_DEACTIVATED_MATCH,
+      initialRoute: "/Storage/rooms",
+    });
+
+    const submenu = await waitFor(() => {
+      const el = container.querySelector("button.cds--side-nav__submenu");
+      expect(el).toBeTruthy();
+      return el;
+    });
+    expect(submenu).toHaveAttribute("aria-expanded", "false");
   });
 });

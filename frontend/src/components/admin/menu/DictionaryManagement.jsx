@@ -1,4 +1,10 @@
-import { ArrowLeft, ArrowRight } from "@carbon/icons-react";
+import {
+  DEFAULT_SERVER_PAGE_SIZE,
+  serverPageSizeFrom,
+  startingRecNoFor,
+} from "../../utils/offsetPaging";
+import { serverPageArrowsProps } from "../../utils/serverPaging";
+import ServerPageArrows from "../../common/ServerPageArrows";
 import {
   Button,
   Column,
@@ -19,6 +25,7 @@ import {
   TableHeader,
   TableRow,
   TableSelectRow,
+  Tag,
   TextInput,
 } from "@carbon/react";
 import React, { useContext, useEffect, useRef, useState } from "react";
@@ -28,6 +35,8 @@ import {
   NotificationKinds,
 } from "../../common/CustomNotification";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { RequiredMarker, requiredProps } from "../../common/RequiredMarker";
+import SearchableSelect from "../../common/SearchableSelect";
 import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import "../../Style.css";
 import {
@@ -35,6 +44,30 @@ import {
   postToOpenElisServer,
   postToOpenElisServerFullResponse,
 } from "../../utils/Utils";
+
+/**
+ * One row of the dictionary list. The origin of the entry's label tells a
+ * shipped translation from the lab's override or the site's own value
+ * (OGC-1507).
+ */
+const toMenuRow = (item) => ({
+  id: item.id,
+  dictEntry: item.dictEntry,
+  labelOrigin: item.labelOrigin || "SITE_VALUE",
+  localAbbreviation: item.localAbbreviation,
+  isActive: item.isActive,
+  loincCode: item.loincCode || "",
+  categoryName: item.dictionaryCategory
+    ? item.dictionaryCategory.categoryName
+    : "not available",
+  lastupdated: item.lastupdated,
+});
+
+const ORIGIN_TAG = {
+  SHIPPED: { type: "blue", id: "translation.origin.shipped" },
+  SITE_OVERRIDE: { type: "purple", id: "translation.origin.siteOverride" },
+  SITE_VALUE: { type: "gray", id: "translation.origin.siteValue" },
+};
 
 function DictionaryManagement() {
   const intl = useIntl();
@@ -47,7 +80,6 @@ function DictionaryManagement() {
   const [dictionaryMenuList, setDictionaryMenuList] = useState([]);
 
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
   const [open, setOpen] = useState(false);
 
   const [categoryDescription, setCategoryDescription] = useState([]);
@@ -56,19 +88,23 @@ function DictionaryManagement() {
   const [dictionaryNumber, setDictionaryNumber] = useState("");
   const [dictionaryEntry, setDictionaryEntry] = useState("");
   const [localAbbreviation, setLocalAbbreviation] = useState("");
+  const [containerPopulation, setContainerPopulation] = useState("");
   const [isActive, setIsActive] = useState("");
   const [loincCode, setLoincCode] = useState("");
 
   const [fromRecordCount, setFromRecordCount] = useState("1");
   const [toRecordCount, setToRecordCount] = useState("");
   const [totalRecordCount, setTotalRecordCount] = useState("");
+  const [serverPageSize, setServerPageSize] = useState(
+    DEFAULT_SERVER_PAGE_SIZE,
+  );
   const [selectedRowIds, setSelectedRowIds] = useState([]);
   const [modifyButton, setModifyButton] = useState(true);
   const [deactivateButton, setDeactivateButton] = useState(true);
   const [editMode, setEditMode] = useState(true);
+  const [touched, setTouched] = useState({});
 
-  const [paging, setPaging] = useState(null);
-  const [startingRecNo, setStartingRecNo] = useState(1);
+  const startingRecNo = startingRecNoFor(page, serverPageSize);
   const [panelSearchTerm, setPanelSearchTerm] = useState("");
   const [searchedMenuList, setSearchedMenuList] = useState([]);
   const isSearching = Boolean(panelSearchTerm);
@@ -81,16 +117,27 @@ function DictionaryManagement() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Browse and search are separate response snapshots. When search is cleared,
+  // the now-visible browse page is fetched instead of exposing the copy that
+  // was held before a dictionary write.
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer(
-      `/rest/DictionaryMenu?paging=${paging}&startingRecNo=${startingRecNo}`,
-      fetchedDictionaryMenu,
-    );
+    if (panelSearchTerm) {
+      getFromOpenElisServer(
+        `/rest/SearchDictionaryMenu?search=Y&startingRecNo=${startingRecNo}&searchString=${panelSearchTerm}`,
+        fetchedSearchedDictionaryMenu,
+      );
+    } else {
+      setSearchedMenuList([]);
+      getFromOpenElisServer(
+        `/rest/DictionaryMenu?startingRecNo=${startingRecNo}`,
+        fetchedDictionaryMenu,
+      );
+    }
     return () => {
       componentMounted.current = false;
     };
-  }, [paging, startingRecNo]);
+  }, [panelSearchTerm, startingRecNo]);
 
   useEffect(() => {
     if (selectedRowIds.length === 1) {
@@ -105,18 +152,6 @@ function DictionaryManagement() {
     }
   }, [selectedRowIds]);
 
-  const handleNextPage = () => {
-    setPaging((pager) => Math.max(pager, 2));
-    setStartingRecNo(fromRecordCount);
-    setSelectedRowIds([]);
-  };
-
-  const handlePreviousPage = () => {
-    setPaging((pager) => Math.max(pager - 1, 1));
-    setStartingRecNo(Math.max(fromRecordCount, 1));
-    setSelectedRowIds([]);
-  };
-
   const yesOrNo = [
     {
       id: "Y",
@@ -128,15 +163,22 @@ function DictionaryManagement() {
     },
   ];
 
-  const handlePageChange = (pageInfo) => {
-    if (page != pageInfo.page) {
-      setPage(pageInfo.page);
-    }
-
-    if (pageSize != pageInfo.pageSize) {
-      setPageSize(pageInfo.pageSize);
+  const handlePageChange = ({ page: newPage }) => {
+    if (newPage !== page) {
+      setPage(newPage);
+      setSelectedRowIds([]);
     }
   };
+  const arrows = serverPageArrowsProps({
+    paging: {
+      currentPage: page,
+      totalPages: Math.max(
+        Math.ceil((Number(totalRecordCount) || 0) / serverPageSize),
+        1,
+      ),
+    },
+    onPageRequest: (pageNumber) => handlePageChange({ page: pageNumber }),
+  });
 
   const fetchedDictionaryMenu = (res) => {
     if (componentMounted.current) {
@@ -149,19 +191,17 @@ function DictionaryManagement() {
           setToRecordCount(res.toRecordCount);
           setFromRecordCount(res.fromRecordCount);
           setTotalRecordCount(res.totalRecordCount);
+          setServerPageSize((previous) =>
+            serverPageSizeFrom(
+              res.fromRecordCount,
+              res.toRecordCount,
+              res.totalRecordCount,
+              previous,
+            ),
+          );
         }
         if (res.menuList) {
-          const menuList = res.menuList.map((item) => ({
-            id: item.id,
-            dictEntry: item.dictEntry,
-            localAbbreviation: item.localAbbreviation,
-            isActive: item.isActive,
-            loincCode: item.loincCode || "",
-            categoryName: item.dictionaryCategory
-              ? item.dictionaryCategory.categoryName
-              : "not available",
-            lastupdated: item.lastupdated,
-          }));
+          const menuList = res.menuList.map(toMenuRow);
           setDictionaryMenuList(menuList);
         }
       }
@@ -174,24 +214,6 @@ function DictionaryManagement() {
     }
   };
 
-  useEffect(() => {
-    if (panelSearchTerm) {
-      getFromOpenElisServer(
-        `/rest/SearchDictionaryMenu?search=Y&startingRecNo=1&searchString=${panelSearchTerm}`,
-        fetchedSearchedDictionaryMenu,
-      );
-    } else {
-      setSearchedMenuList([]);
-      // Browse and search are separate response snapshots. When search is
-      // cleared, fetch the now-visible browse representation instead of
-      // exposing the copy that was held before a dictionary write.
-      getFromOpenElisServer(
-        `/rest/DictionaryMenu?paging=${paging}&startingRecNo=${startingRecNo}`,
-        fetchedDictionaryMenu,
-      );
-    }
-  }, [panelSearchTerm]);
-
   const fetchedSearchedDictionaryMenu = (res) => {
     if (componentMounted.current) {
       if (res) {
@@ -203,32 +225,22 @@ function DictionaryManagement() {
           setToRecordCount(res.toRecordCount);
           setFromRecordCount(res.fromRecordCount);
           setTotalRecordCount(res.totalRecordCount);
+          setServerPageSize((previous) =>
+            serverPageSizeFrom(
+              res.fromRecordCount,
+              res.toRecordCount,
+              res.totalRecordCount,
+              previous,
+            ),
+          );
         }
         if (res.menuList) {
-          const menuList = res.menuList.map((item) => ({
-            id: item.id,
-            dictEntry: item.dictEntry,
-            localAbbreviation: item.localAbbreviation,
-            isActive: item.isActive,
-            loincCode: item.loincCode || "",
-            categoryName: item.dictionaryCategory
-              ? item.dictionaryCategory.categoryName
-              : "not available",
-            lastupdated: item.lastupdated,
-          }));
+          const menuList = res.menuList.map(toMenuRow);
           setSearchedMenuList(menuList);
         }
       }
     }
   };
-
-  useEffect(() => {
-    componentMounted.current = true;
-    getFromOpenElisServer("/rest/DictionaryMenu", fetchedDictionaryMenu);
-    return () => {
-      componentMounted.current = false;
-    };
-  }, []);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -248,12 +260,12 @@ function DictionaryManagement() {
   const refreshDictionaryList = () => {
     if (panelSearchTerm) {
       getFromOpenElisServer(
-        `/rest/SearchDictionaryMenu?search=Y&startingRecNo=1&searchString=${panelSearchTerm}`,
+        `/rest/SearchDictionaryMenu?search=Y&startingRecNo=${startingRecNo}&searchString=${panelSearchTerm}`,
         fetchedSearchedDictionaryMenu,
       );
     } else {
       getFromOpenElisServer(
-        `/rest/DictionaryMenu?paging=${paging}&startingRecNo=${startingRecNo}`,
+        `/rest/DictionaryMenu?startingRecNo=${startingRecNo}`,
         fetchedDictionaryMenu,
       );
     }
@@ -264,6 +276,7 @@ function DictionaryManagement() {
     selectedDictionaryCategoryId: category?.id,
     dictEntry: dictionaryEntry,
     localAbbreviation: localAbbreviation,
+    containerPopulation: containerPopulation || null,
     isActive: isActive.id,
     loincCode: loincCode.trim() || null,
     dirtyFormFields: "",
@@ -325,6 +338,7 @@ function DictionaryManagement() {
       selectedDictionaryCategoryId: category.id,
       dictEntry: dictionaryEntry,
       localAbbreviation: localAbbreviation,
+      containerPopulation: containerPopulation || null,
       isActive: isActive.id,
       loincCode: loincCode.trim() || null,
       dirtyFormFields: dirtyFields,
@@ -372,6 +386,16 @@ function DictionaryManagement() {
         </TableCell>
       );
     }
+    if (cell.info.header === "labelOrigin") {
+      const origin = ORIGIN_TAG[cell.value] || ORIGIN_TAG.SITE_VALUE;
+      return (
+        <TableCell key={cell.id} data-cy={`cell-labelOrigin-${row.id}`}>
+          <Tag type={origin.type} size="sm">
+            <FormattedMessage id={origin.id} />
+          </Tag>
+        </TableCell>
+      );
+    }
     return (
       <TableCell key={cell.id} data-cy={`cell-${cell.info.header}-${row.id}`}>
         {cell.value}
@@ -386,6 +410,7 @@ function DictionaryManagement() {
       setDictionaryEntry(res.dictEntry);
       setIsActive(yesOrNo.find((item) => item.id === res.isActive));
       setLocalAbbreviation(res.localAbbreviation);
+      setContainerPopulation(res.containerPopulation || "");
       setLoincCode(res.loincCode || "");
     }
   };
@@ -504,7 +529,10 @@ function DictionaryManagement() {
                   data-cy="addButton"
                   style={{ width: isMobile ? "100%" : "auto" }}
                   disabled={!editMode}
-                  onClick={() => setOpen(true)}
+                  onClick={() => {
+                    setTouched({});
+                    setOpen(true);
+                  }}
                 >
                   {intl.formatMessage({
                     id: "admin.page.configuration.formEntryConfigMenu.button.add",
@@ -543,6 +571,13 @@ function DictionaryManagement() {
                   onRequestSubmit={
                     editMode ? handleSubmitModal : handleUpdateModal
                   }
+                  primaryButtonDisabled={
+                    !category?.id ||
+                    !isActive?.id ||
+                    !String(dictionaryEntry || "").trim() ||
+                    !String(localAbbreviation || "").trim() ||
+                    String(localAbbreviation).length > 60
+                  }
                 >
                   <TextInput
                     data-modal-primary-focus
@@ -557,31 +592,80 @@ function DictionaryManagement() {
                       marginBottom: "1rem",
                     }}
                   />
-                  <Dropdown
-                    id="description"
-                    label=""
-                    type="default"
-                    items={categoryDescription}
-                    titleText={intl.formatMessage({
-                      id: "dictionary.category.label",
-                    })}
-                    itemToString={(item) => (item ? item.description : "")}
-                    onChange={({ selectedItem }) => {
-                      setCategory(selectedItem);
-                    }}
-                    selectedItem={category}
-                    size="md"
-                    style={{
-                      marginBottom: "1rem",
-                    }}
-                  />
+                  <div style={{ marginBottom: "1rem" }}>
+                    <SearchableSelect
+                      id="description"
+                      required
+                      labelText={intl.formatMessage({
+                        id: "dictionary.category.label",
+                      })}
+                      options={categoryDescription.map((item) => ({
+                        id: item.id,
+                        value: item.description,
+                      }))}
+                      value={category?.id ?? ""}
+                      invalid={(touched.category || !editMode) && !category?.id}
+                      invalidText={intl.formatMessage({
+                        id: "dictionary.error.categoryRequired",
+                      })}
+                      onChange={(id) => {
+                        const selectedItem =
+                          categoryDescription.find(
+                            (item) => String(item.id) === id,
+                          ) || "";
+                        setCategory(selectedItem);
+                        if (selectedItem?.categoryName !== "Sample Container")
+                          setContainerPopulation("");
+                      }}
+                      onBlur={() =>
+                        setTouched((prev) => ({ ...prev, category: true }))
+                      }
+                      size="md"
+                    />
+                  </div>
+                  {category?.categoryName === "Sample Container" && (
+                    <Dropdown
+                      id="container-population"
+                      titleText={intl.formatMessage({
+                        id: "dictionary.containerPopulation",
+                      })}
+                      label={intl.formatMessage({
+                        id: "dictionary.containerPopulation.unspecified",
+                      })}
+                      items={["", "ADULT", "PAEDIATRIC"]}
+                      selectedItem={containerPopulation}
+                      itemToString={(item) =>
+                        intl.formatMessage({
+                          id: `dictionary.containerPopulation.${item || "unspecified"}`,
+                        })
+                      }
+                      onChange={({ selectedItem }) => {
+                        setContainerPopulation(selectedItem || "");
+                        dirtyFieldsRef.current.add("containerPopulation");
+                      }}
+                    />
+                  )}
                   <TextInput
                     id="dictEntry"
-                    labelText={intl.formatMessage({
-                      id: "dictionary.dictEntry",
-                    })}
+                    {...requiredProps()}
+                    labelText={
+                      <>
+                        {intl.formatMessage({ id: "dictionary.dictEntry" })}
+                        <RequiredMarker />
+                      </>
+                    }
                     value={dictionaryEntry}
+                    invalid={
+                      (touched.dictEntry || !editMode) &&
+                      !String(dictionaryEntry || "").trim()
+                    }
+                    invalidText={intl.formatMessage({
+                      id: "dictionary.error.dictEntryRequired",
+                    })}
                     onChange={(e) => setDictionaryEntry(e.target.value)}
+                    onBlur={() =>
+                      setTouched((prev) => ({ ...prev, dictEntry: true }))
+                    }
                     style={{
                       marginBottom: "1rem",
                     }}
@@ -591,9 +675,14 @@ function DictionaryManagement() {
                     type="default"
                     label=""
                     items={yesOrNo}
-                    titleText={intl.formatMessage({
-                      id: "dictionary.category.isActive",
-                    })}
+                    titleText={
+                      <>
+                        {intl.formatMessage({
+                          id: "dictionary.category.isActive",
+                        })}
+                        <RequiredMarker />
+                      </>
+                    }
                     itemToString={(item) => (item ? item.id : "")}
                     onChange={({ selectedItem }) => {
                       setIsActive(selectedItem);
@@ -606,11 +695,30 @@ function DictionaryManagement() {
                   />
                   <TextInput
                     id="localAbbrev"
-                    labelText={intl.formatMessage({
-                      id: "dictionary.category.localAbbreviation",
-                    })}
+                    {...requiredProps()}
+                    labelText={
+                      <>
+                        {intl.formatMessage({
+                          id: "dictionary.category.localAbbreviation",
+                        })}
+                        <RequiredMarker />
+                      </>
+                    }
                     value={localAbbreviation}
+                    invalid={
+                      ((touched.localAbbrev || !editMode) &&
+                        !String(localAbbreviation || "").trim()) ||
+                      String(localAbbreviation || "").length > 60
+                    }
+                    invalidText={intl.formatMessage({
+                      id: String(localAbbreviation || "").trim()
+                        ? "dictionary.error.localAbbreviationTooLong"
+                        : "dictionary.error.localAbbreviationRequired",
+                    })}
                     onChange={(e) => setLocalAbbreviation(e.target.value)}
+                    onBlur={() =>
+                      setTouched((prev) => ({ ...prev, localAbbrev: true }))
+                    }
                     style={{
                       marginBottom: "1rem",
                     }}
@@ -666,45 +774,6 @@ function DictionaryManagement() {
                   {toRecordCount} <FormattedMessage id="of" />{" "}
                   {totalRecordCount}
                 </h4>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "0.5rem",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Button
-                    style={{
-                      minWidth: isMobile ? "2rem" : "2.5rem",
-                      minHeight: isMobile ? "2rem" : "2.5rem",
-                      padding: "0.5rem",
-                    }}
-                    hasIconOnly
-                    iconDescription={intl.formatMessage({
-                      id: "organization.previous",
-                    })}
-                    disabled={parseInt(fromRecordCount) <= 1}
-                    onClick={handlePreviousPage}
-                    renderIcon={ArrowLeft}
-                  />
-                  <Button
-                    style={{
-                      minWidth: isMobile ? "2rem" : "2.5rem",
-                      minHeight: isMobile ? "2rem" : "2.5rem",
-                      padding: "0.5rem",
-                    }}
-                    hasIconOnly
-                    iconDescription={intl.formatMessage({
-                      id: "organization.next",
-                    })}
-                    renderIcon={ArrowRight}
-                    onClick={handleNextPage}
-                    disabled={
-                      parseInt(toRecordCount) >= parseInt(totalRecordCount)
-                    }
-                  />
-                </div>
               </Column>
             </Form>
           </Section>
@@ -730,19 +799,10 @@ function DictionaryManagement() {
         <br />
         <Grid fullWidth={true} className="gridBoundary">
           <Column lg={16} md={8} sm={4}>
+            {arrows.show && <ServerPageArrows {...arrows} />}
             <DataTable
               size="sm"
-              rows={
-                isSearching
-                  ? searchedMenuList.slice(
-                      (page - 1) * pageSize,
-                      page * pageSize,
-                    )
-                  : dictionaryMenuList.slice(
-                      (page - 1) * pageSize,
-                      page * pageSize,
-                    )
-              }
+              rows={isSearching ? searchedMenuList : dictionaryMenuList}
               headers={[
                 {
                   key: "select",
@@ -759,6 +819,10 @@ function DictionaryManagement() {
                 {
                   key: "dictEntry",
                   header: intl.formatMessage({ id: "dictionary.dictEntry" }),
+                },
+                {
+                  key: "labelOrigin",
+                  header: intl.formatMessage({ id: "translation.origin" }),
                 },
                 {
                   key: "localAbbreviation",
@@ -812,13 +876,10 @@ function DictionaryManagement() {
             <Pagination
               onChange={handlePageChange}
               page={page}
-              pageSize={pageSize}
-              pageSizes={[10, 20]}
-              totalItems={
-                isSearching
-                  ? searchedMenuList.length
-                  : dictionaryMenuList.length
-              }
+              pageSize={serverPageSize}
+              pageSizes={[serverPageSize]}
+              pageSizeInputDisabled
+              totalItems={Number(totalRecordCount) || 0}
               forwardText={intl.formatMessage({ id: "pagination.forward" })}
               backwardText={intl.formatMessage({ id: "pagination.backward" })}
               size="sm"

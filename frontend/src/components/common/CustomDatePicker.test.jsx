@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -70,5 +70,127 @@ describe("CustomDatePicker — controlled input contract", () => {
     await user.clear(input);
 
     expect(onChange).toHaveBeenCalledWith("");
+  });
+});
+
+// OGC-1375: a typed future date of birth reached the form (negative ages, a
+// silent 400) while the calendar blanked the box. It is refused in the field.
+describe("CustomDatePicker — typed dates outside the allowed range", () => {
+  const nextYear = new Date().getFullYear() + 1;
+  const lastYear = new Date().getFullYear() - 1;
+
+  test("a future date is refused with the caller's message when future dates are disallowed", () => {
+    const onChange = vi.fn();
+    renderWithConfig({
+      id: "dob",
+      value: "",
+      onChange,
+      disallowFutureDate: true,
+      futureDateText: "Date of birth cannot be in the future.",
+    });
+
+    fireEvent.input(findInput(), { target: { value: `01/01/${nextYear}` } });
+
+    expect(onChange).not.toHaveBeenCalledWith(`01/01/${nextYear}`);
+    expect(onChange).toHaveBeenCalledWith("");
+    expect(
+      screen.getByText("Date of birth cannot be in the future."),
+    ).toBeInTheDocument();
+  });
+
+  test("clearing the box after a refused date drops the message", () => {
+    renderWithConfig({
+      id: "dob",
+      value: "",
+      onChange: vi.fn(),
+      disallowFutureDate: true,
+      futureDateText: "Date of birth cannot be in the future.",
+    });
+    fireEvent.input(findInput(), { target: { value: `01/01/${nextYear}` } });
+    expect(
+      screen.getByText("Date of birth cannot be in the future."),
+    ).toBeInTheDocument();
+
+    fireEvent.input(findInput(), { target: { value: "" } });
+
+    expect(
+      screen.queryByText("Date of birth cannot be in the future."),
+    ).toBeNull();
+  });
+
+  test("a past date is still accepted when only future dates are disallowed", () => {
+    const onChange = vi.fn();
+    renderWithConfig({
+      id: "dob",
+      value: "",
+      onChange,
+      disallowFutureDate: true,
+      futureDateText: "Date of birth cannot be in the future.",
+    });
+
+    fireEvent.input(findInput(), { target: { value: `01/01/${lastYear}` } });
+
+    expect(onChange).toHaveBeenCalledWith(`01/01/${lastYear}`);
+    expect(
+      screen.queryByText("Date of birth cannot be in the future."),
+    ).toBeNull();
+  });
+
+  test("a future date is accepted where future dates are allowed", () => {
+    const onChange = vi.fn();
+    renderWithConfig({ id: "visit", value: "", onChange });
+
+    fireEvent.input(findInput(), { target: { value: `01/01/${nextYear}` } });
+
+    expect(onChange).toHaveBeenCalledWith(`01/01/${nextYear}`);
+  });
+
+  test("a past date is refused where past dates are disallowed", () => {
+    const onChange = vi.fn();
+    renderWithConfig({
+      id: "required-by",
+      value: "",
+      onChange,
+      disallowPastDate: true,
+      pastDateText: "Pick today or a later date.",
+    });
+
+    fireEvent.input(findInput(), { target: { value: `01/01/${lastYear}` } });
+
+    expect(onChange).toHaveBeenCalledWith("");
+    expect(screen.getByText("Pick today or a later date.")).toBeInTheDocument();
+  });
+});
+
+describe("CustomDatePicker — retyped text that is not a full date (OGC-1635)", () => {
+  const clickElsewhere = () => {
+    act(() => {
+      fireEvent.touchStart(document.body);
+      fireEvent.mouseDown(document.body);
+      findInput().blur();
+    });
+  };
+
+  const retype = (text) => {
+    const input = findInput();
+    act(() => input.focus());
+    fireEvent.click(input);
+    fireEvent.input(input, { target: { value: text } });
+  };
+
+  test("drops the earlier date and marks the text when a 2-digit year replaces it", () => {
+    const onChange = vi.fn();
+    renderWithConfig({ id: "dob", value: "", onChange });
+
+    retype("03/09/1990");
+    clickElsewhere();
+    expect(onChange).toHaveBeenLastCalledWith("03/09/1990");
+
+    retype("03/09/85");
+    clickElsewhere();
+
+    expect(onChange).toHaveBeenLastCalledWith("");
+    expect(findInput()).toHaveValue("03/09/85");
+    expect(findInput()).toHaveAttribute("data-invalid");
   });
 });

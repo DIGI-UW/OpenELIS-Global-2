@@ -7,8 +7,7 @@ import { reducer, initialState, createInitialState } from "./useLocationPicker";
 
 describe("useLocationPicker reducer", () => {
   describe("initial state", () => {
-    it("starts in search mode with empty selection and null position", () => {
-      expect(initialState.mode).toBe("search");
+    it("starts with an empty selection and null position", () => {
       expect(initialState.selection).toEqual({});
       expect(initialState.position).toBeNull();
       expect(initialState.searchQuery).toBe("");
@@ -144,29 +143,6 @@ describe("useLocationPicker reducer", () => {
       };
       const next = reducer(state, { type: "SET_POSITION", position: null });
       expect(next.position).toBeNull();
-    });
-  });
-
-  describe("SET_MODE", () => {
-    it("toggles between 'search' and 'create'", () => {
-      const after = reducer(initialState, {
-        type: "SET_MODE",
-        mode: "create",
-      });
-      expect(after.mode).toBe("create");
-      const back = reducer(after, { type: "SET_MODE", mode: "search" });
-      expect(back.mode).toBe("search");
-    });
-
-    it("preserves selection across mode change", () => {
-      const state = {
-        ...initialState,
-        selection: { room: { id: 1, name: "Main Lab" } },
-        position: { mode: "text", value: "x" },
-      };
-      const next = reducer(state, { type: "SET_MODE", mode: "create" });
-      expect(next.selection.room).toEqual({ id: 1, name: "Main Lab" });
-      expect(next.position).toEqual({ mode: "text", value: "x" });
     });
   });
 
@@ -342,13 +318,9 @@ describe("useLocationPicker reducer", () => {
   });
 
   describe("RESET (modal reopen / clean slate)", () => {
-    // The modal re-uses the same useLocationPicker hook across opens. Without
-    // RESET, a previous open's stale mode / searchQuery / searchResults /
-    // reason / notes would leak into the next open.
     it("returns every field to initialState", () => {
       const dirty = {
         ...initialState,
-        mode: "create",
         selection: { room: { id: 1, name: "Main Lab" } },
         position: { mode: "text", value: "back left" },
         searchQuery: "freezer",
@@ -358,7 +330,6 @@ describe("useLocationPicker reducer", () => {
         capacityWarning: { kind: "shelf", over: 1 },
       };
       const next = reducer(dirty, { type: "RESET" });
-      expect(next.mode).toBe("search");
       expect(next.selection).toEqual({});
       expect(next.position).toBeNull();
       expect(next.searchQuery).toBe("");

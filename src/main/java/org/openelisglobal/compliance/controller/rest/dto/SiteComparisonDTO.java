@@ -8,7 +8,7 @@ public class SiteComparisonDTO {
 
     private String siteId;
     private String siteName;
-    private double complianceRate;
+    private Double complianceRate;
     private int totalOrders;
     private int exceedances;
     private ColorBand colorBand;
@@ -29,11 +29,15 @@ public class SiteComparisonDTO {
         siteName = v;
     }
 
-    public double getComplianceRate() {
+    /**
+     * Null when none of the site's results in the period has a threshold to be
+     * judged against: the site has no compliance rate to compare.
+     */
+    public Double getComplianceRate() {
         return complianceRate;
     }
 
-    public void setComplianceRate(double v) {
+    public void setComplianceRate(Double v) {
         complianceRate = v;
     }
 

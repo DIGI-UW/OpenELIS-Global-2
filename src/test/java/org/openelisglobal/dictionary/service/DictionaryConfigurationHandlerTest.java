@@ -2,12 +2,14 @@ package org.openelisglobal.dictionary.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -41,6 +43,9 @@ public class DictionaryConfigurationHandlerTest {
 
     @Mock
     private SupportedLocaleService supportedLocaleService;
+
+    @Mock
+    private org.openelisglobal.dictionaryterminology.service.DictionaryTerminologyMappingService answerTerminology;
 
     @InjectMocks
     private DictionaryConfigurationHandler handler;
@@ -128,6 +133,64 @@ public class DictionaryConfigurationHandlerTest {
         verify(dictionaryCategoryService, times(0)).insert(any(DictionaryCategory.class));
         verify(dictionaryService, times(1)).update(any(Dictionary.class));
         verify(dictionaryService, times(0)).insert(any(Dictionary.class));
+    }
+
+    /**
+     * OGC-1507: a shipped entry's displayKey is stored, and its file translations
+     * are written as OpenELIS's labels that keep a lab's own label; a site entry
+     * without a key in the catalogue is rewritten from its file as before.
+     */
+    @Test
+    public void aShippedEntryStoresItsKeyAndKeepsTheLabsOwnLabels() throws Exception {
+        String csv = "category,dictEntry,localAbbreviation,isActive,sortOrder,displayKey,localization:en,localization:fr\n"
+                + "Test Category,Positive,POS,Y,1,dictionary.testResults.positive,Positive,Positif\n"
+                + "Test Category,Lab Own,LO,Y,2,,Lab own,Propre au labo\n";
+        when(dictionaryCategoryService.getDictionaryCategoryByName("Test Category")).thenReturn(testCategory);
+        Dictionary shipped = existing("1", "Positive", "7");
+        Dictionary siteOwn = existing("2", "Lab Own", "8");
+        when(dictionaryService.getDictionaryEntryByNameAndCategoryName("Positive", "Test Category"))
+                .thenReturn(shipped);
+        when(dictionaryService.getDictionaryEntryByNameAndCategoryName("Lab Own", "Test Category")).thenReturn(siteOwn);
+
+        handler.processConfiguration(new ByteArrayInputStream(csv.getBytes("UTF-8")), "test.csv");
+
+        assertEquals("dictionary.testResults.positive", shipped.getNameKey());
+        assertEquals(null, siteOwn.getNameKey());
+        verify(localizationValueService).setSystemTranslation("7", "fr", "Positif", "1", true);
+        verify(localizationValueService).setSystemTranslation("7", "en", "Positive", "1", true);
+        verify(localizationValueService).setSystemTranslation("8", "fr", "Propre au labo", "1", false);
+    }
+
+    /**
+     * OGC-1507: Test Management's rename rewrites a shipped option's dictEntry, so
+     * its file line finds the row by display key instead of adding a second one.
+     */
+    @Test
+    public void aRenamedShippedEntryIsFoundByItsKey() throws Exception {
+        String csv = "category,dictEntry,displayKey,localization:en\n"
+                + "Test Category,Yeast cell,dictionary.candidaKohResults.yeastCell,Yeast cell\n";
+        when(dictionaryCategoryService.getDictionaryCategoryByName("Test Category")).thenReturn(testCategory);
+        Dictionary renamed = existing("1482", "Yeast cells seen", "9");
+        renamed.setNameKey("dictionary.candidaKohResults.yeastCell");
+        when(dictionaryService.getAllMatching("nameKey", "dictionary.candidaKohResults.yeastCell"))
+                .thenReturn(List.of(renamed));
+
+        handler.processConfiguration(new ByteArrayInputStream(csv.getBytes("UTF-8")), "test.csv");
+
+        verify(dictionaryService).update(renamed);
+        verify(dictionaryService, never()).insert(any(Dictionary.class));
+        assertEquals("the lab's rename stands", "Yeast cells seen", renamed.getDictEntry());
+    }
+
+    private Dictionary existing(String id, String entry, String localizationId) {
+        Dictionary dictionary = new Dictionary();
+        dictionary.setId(id);
+        dictionary.setDictEntry(entry);
+        dictionary.setDictionaryCategory(testCategory);
+        Localization localization = new Localization();
+        localization.setId(localizationId);
+        dictionary.setLocalizedDictionaryName(localization);
+        return dictionary;
     }
 
     @Test

@@ -83,8 +83,8 @@ export const RoutineReports = (props) => {
 
       {type === "indicator" && report === "indicatorCDILNSPHIV" && (
         <ReportByDate
-          report={"indicatorHaitiLNSPAllTests"}
-          id={"openreports.all.test.summary.title"}
+          report={"indicatorCDILNSPHIV"}
+          id={"openreports.hiv.aggregate"}
         />
       )}
 

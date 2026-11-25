@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet
+        id="assert-analyzer-window-schema-nothing-to-export" author="openelis">
+        <preConditions onFail="HALT" onError="HALT">
+            <!-- The storage was already gone, so the removal runs and writes nothing. -->
+            <sqlCheck expectedResult="1"><![CDATA[
+                SELECT COUNT(*) FROM databasechangelog
+                WHERE id = '116-remove-pre-bridge-analyzer-storage' AND exectype = 'EXECUTED'
+            ]]></sqlCheck>
+            <sqlCheck expectedResult="0"><![CDATA[
+                SELECT COUNT(*) FROM configuration_import_run WHERE source = 'ANALYZER_LEGACY'
+            ]]></sqlCheck>
+            <not>
+                <tableExists tableName="analyzer_type" />
+            </not>
+            <not>
+                <columnExists tableName="analyzer"
+                    columnName="analyzer_type_id" />
+            </not>
+            <sqlCheck expectedResult="1"><![CDATA[
+                SELECT COUNT(*) FROM analyzer WHERE id = 900021 AND name = 'Window fixture'
+            ]]></sqlCheck>
+        </preConditions>
+        <sql>SELECT 1;</sql>
+    </changeSet>
+</databaseChangeLog>

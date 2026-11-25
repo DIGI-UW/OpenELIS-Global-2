@@ -12,9 +12,11 @@ import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.referral.valueholder.ReferralStatus;
 import org.openelisglobal.shipment.dao.BoxSampleItemDAO;
 import org.openelisglobal.shipment.dao.ShippingBoxDAO;
+import org.openelisglobal.shipment.fhir.ShipmentFhirImportService;
 import org.openelisglobal.shipment.fhir.ShippingBoxFhirTransform;
 import org.openelisglobal.shipment.valueholder.BoxState;
 import org.openelisglobal.shipment.valueholder.ShippingBox;
+import org.openelisglobal.systemuser.service.SystemUserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,7 +43,13 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
     private ShippingBoxFhirTransform shippingBoxFhirTransform;
 
     @Autowired
+    private ShipmentFhirImportService shipmentFhirImportService;
+
+    @Autowired
     private ReferralService referralService;
+
+    @Autowired
+    private SystemUserService systemUserService;
 
     @Override
     @Transactional(readOnly = true)
@@ -153,6 +161,17 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<ShippingBox> getBoxesByEqaCycle(Long eqaCycleId) {
+        try {
+            return shippingBoxDAO.findByEqaCycleId(eqaCycleId);
+        } catch (Exception e) {
+            logger.error("Error getting shipping boxes by EQA cycle", e);
+            throw new LIMSRuntimeException("Error getting shipping boxes by EQA cycle", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<ShippingBox> getBoxesByDestinationFacility(Integer facilityId) {
         try {
             List<ShippingBox> boxes = shippingBoxDAO.findByDestinationFacilityId(facilityId);
@@ -189,6 +208,9 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
             // the samples that are actually added afterwards, each of which moves it by
             // one; taking a figure from the caller as well counts every sample twice.
             box.setActualSampleCount(0);
+            if (box.getCreatedBy() == null && box.getSystemUserId() != null) {
+                box.setCreatedBy(systemUserService.getUserById(String.valueOf(box.getSystemUserId())));
+            }
 
             Integer id = shippingBoxDAO.insert(box);
             logger.info("Created shipping box with ID: {}", id);
@@ -294,6 +316,20 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
             // Sync state change to FHIR server asynchronously
             shippingBoxFhirTransform.syncToFhir(box, false);
 
+            // Taking delivery of an imported box completes the origin store's
+            // SupplyDelivery, so the sender's monitor learns it arrived. Async and
+            // non-fatal, like the sync above; a locally-created box is a no-op there.
+            // The catch is not decoration: without @EnableAsync the call runs inline,
+            // and a backflow fault must never undo a completed state change.
+            if (newState == BoxState.RECEIVED) {
+                try {
+                    shipmentFhirImportService.completeRemoteSupplyDelivery(box);
+                } catch (Exception e) {
+                    logger.error("Delivery recorded but the origin store was not updated for box {}", box.getBoxId(),
+                            e);
+                }
+            }
+
             return box;
         } catch (IllegalStateException | IllegalArgumentException e) {
             logger.error("State transition error: {}", e.getMessage());
@@ -321,18 +357,23 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
     }
 
     @Override
-    public ShippingBox markReadyToSend(Integer id) {
+    public ShippingBox markReadyToSend(Integer id, Integer systemUserId) {
         try {
-            ShippingBox box = shippingBoxDAO.get(id)
-                    .orElseThrow(() -> new IllegalArgumentException("Box not found with ID: " + id));
+            shippingBoxDAO.get(id).orElseThrow(() -> new IllegalArgumentException("Box not found with ID: " + id));
 
-            // Validate box has at least one sample
-            int sampleCount = boxSampleItemDAO.countByShippingBoxId(id);
-            if (sampleCount == 0) {
+            // Validate box has at least one item of contents — a patient sample item or
+            // EQA panel material.
+            int contentsCount = boxSampleItemDAO.countByShippingBoxId(id);
+            if (contentsCount == 0) {
                 throw new IllegalStateException("Cannot mark empty box as ready to send");
             }
 
-            return changeBoxState(id, BoxState.READY_TO_SEND, null);
+            return changeBoxState(id, BoxState.READY_TO_SEND, systemUserId);
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            // The empty-box refusal is the whole point of this method, so it must reach
+            // the caller as itself rather than as a wrapped runtime fault.
+            logger.error("Refused marking box ready to send: {}", e.getMessage());
+            throw e;
         } catch (Exception e) {
             logger.error("Error marking box as ready to send", e);
             throw new LIMSRuntimeException("Error marking box as ready to send", e);

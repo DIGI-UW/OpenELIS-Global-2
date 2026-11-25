@@ -19,7 +19,7 @@ test.describe("M-07 microbiology worklist grains", () => {
   }) => {
     const seeded = await seedMicrobiologyWorklistCase(page);
     const query = new URLSearchParams({
-      workflow: "BACTERIOLOGY",
+      grain: "cultures",
       q: seeded.caseId,
       sort: "newest",
     });
@@ -47,13 +47,11 @@ test.describe("M-07 microbiology worklist grains", () => {
     const row = page.getByTestId(`microbiology-worklist-row-${seeded.caseId}`);
     await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
     await expect(row).toContainText(seeded.accessionNumber);
-    await expect(row).toContainText("Linked · 2 workflows");
     await row.focus();
     await page.keyboard.press("Enter");
     await page.waitForURL((url) => {
       return (
         url.pathname === `/Microbiology/cases/${seeded.caseId}` &&
-        url.searchParams.get("workflow") === "BACTERIOLOGY" &&
         url.searchParams.get("q") === seeded.caseId &&
         url.searchParams.get("sort") === "newest"
       );
@@ -114,9 +112,9 @@ test.describe("M-07 microbiology worklist grains", () => {
         url.searchParams.get("astRunId") === seeded.astRunId
       );
     });
-    await expect(page.getByRole("heading", { name: "Manual AST" })).toBeVisible(
-      { timeout: LONG_TIMEOUT },
-    );
+    await expect(
+      page.getByRole("heading", { name: "AST / DST", exact: true }),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
   });
 
   test("Reviewed AST runs leave active work and remain available read-only", async ({
@@ -181,8 +179,8 @@ test.describe("M-07 microbiology worklist grains", () => {
         url.searchParams.get("astView") === "reviewed"
       );
     });
-    await expect(page.getByRole("heading", { name: "Manual AST" })).toBeVisible(
-      { timeout: LONG_TIMEOUT },
-    );
+    await expect(
+      page.getByRole("heading", { name: "AST / DST", exact: true }),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
   });
 });

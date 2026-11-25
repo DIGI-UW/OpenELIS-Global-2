@@ -1,6 +1,7 @@
 package org.openelisglobal.sample.service;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import jakarta.persistence.PersistenceContext;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
@@ -75,12 +76,10 @@ public class SampleEditServiceImpl implements SampleEditService {
     private EntityManager entityManager;
 
     private static final String DEFAULT_ANALYSIS_TYPE = "MANUAL";
-    private static final String CANCELED_TEST_STATUS_ID;
     private static final String CANCELED_SAMPLE_STATUS_ID;
     private final String SAMPLE_SUBJECT = "Sample Note";
 
     static {
-        CANCELED_TEST_STATUS_ID = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled);
         CANCELED_SAMPLE_STATUS_ID = SpringContext.getBean(IStatusService.class).getStatusID(SampleStatus.Canceled);
     }
 
@@ -118,6 +117,8 @@ public class SampleEditServiceImpl implements SampleEditService {
     NoteService noteService;
     @Autowired
     private SampleStorageService sampleStorageService;
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO microCaseAnalyses;
     private List<String> analysisList = new ArrayList<>();
 
     @Transactional
@@ -130,7 +131,8 @@ public class SampleEditServiceImpl implements SampleEditService {
         List<SampleItem> updateSampleItemList = createSampleItemUpdateList(existingTests, sysUserId);
         List<SampleItem> cancelSampleItemList = createCancelSampleList(existingTests, cancelAnalysisList, sysUserId);
         List<Analysis> addAnalysisList = createAddAanlysisList(
-                form.getPossibleTests() != null ? form.getPossibleTests() : new ArrayList<>(), sysUserId);
+                form.getPossibleTests() != null ? form.getPossibleTests() : new ArrayList<>(), sysUserId,
+                cancelAnalysisList);
 
         List<IResultUpdate> updaters = ResultUpdateRegister.getRegisteredUpdaters();
         ResultsUpdateDataSet actionDataSet = new ResultsUpdateDataSet(sysUserId);
@@ -138,7 +140,14 @@ public class SampleEditServiceImpl implements SampleEditService {
         if (updatedSample == null) {
             updatedSample = sampleService.getSampleByAccessionNumber(form.getAccessionNumber());
         }
-        updatedSample.setPriority(form.getSampleOrderItems().getPriority());
+        Sample storedSample = new Sample();
+        storedSample.setId(updatedSample.getId());
+        sampleService.getData(storedSample);
+        if (!Objects.equals(updatedSample.getPriority(), form.getSampleOrderItems().getPriority())) {
+            updatedSample.setPriority(form.getSampleOrderItems().getPriority());
+            updatedSample.setSysUserId(sysUserId);
+            sampleChanged = true;
+        }
         String receivedDateForDisplay = updatedSample.getReceivedDateForDisplay();
         String collectionDateFromRecieveDate = null;
         boolean useReceiveDateForCollectionDate = !FormFields.getInstance().useField(Field.CollectionDate);
@@ -220,17 +229,28 @@ public class SampleEditServiceImpl implements SampleEditService {
 
         sampleChanged = sampleChanged || consentChanged;
         Patient patient = sampleService.getPatient(updatedSample);
+        String patientId = patient == null ? null : patient.getId();
         persistProviderData(orderArtifacts);
         SampleHuman sampleHuman = new SampleHuman();
         sampleHuman.setSampleId(updatedSample.getId());
         SampleHuman existingSampleHuman = sampleHumanService.getDataBySample(sampleHuman);
+        boolean newSampleHuman = existingSampleHuman == null;
+        if (newSampleHuman) {
+            existingSampleHuman = new SampleHuman();
+        }
         existingSampleHuman.setSysUserId(sysUserId);
         existingSampleHuman.setSampleId(updatedSample.getId());
-        existingSampleHuman.setPatientId(patient.getId());
+        existingSampleHuman.setPatientId(patientId);
         if (orderArtifacts.getProvider() != null) {
             existingSampleHuman.setProviderId(orderArtifacts.getProvider().getId());
+        } else if (orderArtifacts.getDeletableSamplePersonRequester() != null) {
+            existingSampleHuman.setProviderId(null);
         }
-        sampleHumanService.update(existingSampleHuman);
+        if (newSampleHuman) {
+            sampleHumanService.insert(existingSampleHuman);
+        } else {
+            sampleHumanService.update(existingSampleHuman);
+        }
 
         for (SampleItem sampleItem : updateSampleItemList) {
             sampleItemService.update(sampleItem);
@@ -262,7 +282,7 @@ public class SampleEditServiceImpl implements SampleEditService {
         }
 
         if (sampleChanged) {
-            sampleService.update(updatedSample);
+            sampleService.updateAgainst(updatedSample, storedSample);
         }
 
         // seems like this is unused
@@ -299,7 +319,7 @@ public class SampleEditServiceImpl implements SampleEditService {
 
             if (sampleTestCollection.initialSampleConditionIdList != null) {
                 for (ObservationHistory observation : sampleTestCollection.initialSampleConditionIdList) {
-                    observation.setPatientId(patient.getId());
+                    observation.setPatientId(patientId);
                     observation.setSampleItemId(sampleTestCollection.item.getId());
                     observation.setSampleId(sampleTestCollection.item.getSample().getId());
                     observation.setSysUserId(sysUserId);
@@ -308,7 +328,7 @@ public class SampleEditServiceImpl implements SampleEditService {
             }
 
             if (sampleTestCollection.sampleNature != null) {
-                sampleTestCollection.sampleNature.setPatientId(patient.getId());
+                sampleTestCollection.sampleNature.setPatientId(patientId);
                 sampleTestCollection.sampleNature.setSampleItemId(sampleTestCollection.item.getId());
                 sampleTestCollection.sampleNature.setSampleId(sampleTestCollection.item.getSample().getId());
                 sampleTestCollection.sampleNature.setSysUserId(sysUserId);
@@ -371,10 +391,19 @@ public class SampleEditServiceImpl implements SampleEditService {
             sampleRequesterService.delete(orderArtifacts.getDeletableSampleOrganizationRequester());
         }
 
+        if (orderArtifacts.getDeletableSamplePersonRequester() != null) {
+            sampleRequesterService.delete(orderArtifacts.getDeletableSamplePersonRequester());
+        }
+
         persistSampleStorageLocation(addedSamples);
 
+        Sample versioned = entityManager.find(Sample.class, updatedSample.getId());
+        if (versioned != null) {
+            entityManager.lock(versioned, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
+        }
+
         request.getSession().setAttribute("lastAccessionNumber", updatedSample.getAccessionNumber());
-        request.getSession().setAttribute("lastPatientId", patient.getId());
+        request.getSession().setAttribute("lastPatientId", patientId);
 
         analysisList = analysisIds;
     }
@@ -438,7 +467,7 @@ public class SampleEditServiceImpl implements SampleEditService {
             testSection = testSectionService.get(userSelectedTestSection); // change
         }
 
-        Panel panel = sampleAddService.getPanelForTest(test);
+        Panel panel = sampleAddService.getPanelForTest(sampleTestCollection, test);
 
         Analysis analysis = new Analysis();
         analysis.setTest(test);
@@ -500,16 +529,20 @@ public class SampleEditServiceImpl implements SampleEditService {
         return cancelList;
     }
 
-    private List<Analysis> createAddAanlysisList(List<SampleEditItem> tests, String sysUserId) {
+    private List<Analysis> createAddAanlysisList(List<SampleEditItem> tests, String sysUserId,
+            List<Analysis> cancelAnalysisList) {
         List<Analysis> addAnalysisList = new ArrayList<>();
 
         for (SampleEditItem sampleEditItem : tests) {
             if (sampleEditItem.isAdd()) {
+                SampleItem sampleItem = sampleItemService.get(sampleEditItem.getSampleItemId());
+                if (isLiveOnItem(sampleItem, sampleEditItem.getTestId(), addAnalysisList, cancelAnalysisList)) {
+                    continue;
+                }
 
                 Analysis analysis = newOrExistingCanceledAnalysis(sampleEditItem);
 
                 if (analysis.getId() == null) {
-                    SampleItem sampleItem = sampleItemService.get(sampleEditItem.getSampleItemId());
                     analysis.setSampleItem(sampleItem);
 
                     Test test = testService.get(sampleEditItem.getTestId());
@@ -534,12 +567,57 @@ public class SampleEditServiceImpl implements SampleEditService {
         return addAnalysisList;
     }
 
+    /**
+     * Whether the sample item already carries a live analysis of the test, stored
+     * or queued by this same save, so adding it again would order the test twice on
+     * the same specimen. Every add is checked, including one that would revive a
+     * cancelled analysis next to a live one. An analysis this save cancels does not
+     * count: the test may be cancelled and ordered afresh in one edit. Cancelled
+     * analyses are told apart by status name, not by the status id cached when this
+     * class loaded.
+     */
+    private boolean isLiveOnItem(SampleItem sampleItem, String testId, List<Analysis> queued,
+            List<Analysis> cancelling) {
+        for (Analysis analysis : queued) {
+            if (analysis.getSampleItem() != null && Objects.equals(analysis.getSampleItem().getId(), sampleItem.getId())
+                    && analysis.getTest() != null && Objects.equals(analysis.getTest().getId(), testId)) {
+                return true;
+            }
+        }
+        Set<String> cancellingIds = new HashSet<>();
+        for (Analysis analysis : cancelling) {
+            cancellingIds.add(analysis.getId());
+        }
+        IStatusService statusService = SpringContext.getBean(IStatusService.class);
+        for (Analysis analysis : analysisService.getAnalysesBySampleItem(sampleItem)) {
+            if (cancellingIds.contains(analysis.getId())
+                    || statusService.matches(analysis.getStatusId(), AnalysisStatus.Canceled)) {
+                continue;
+            }
+            if (analysis.getTest() != null && Objects.equals(analysis.getTest().getId(), testId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * The cancelled analysis of the test on the item, to revive instead of ordering
+     * a new row, or a fresh analysis when there is none. The cancelled status is
+     * read from the status service at call time, not from the id cached when this
+     * class loaded.
+     */
     private Analysis newOrExistingCanceledAnalysis(SampleEditItem sampleEditItem) {
-        List<Analysis> canceledAnalysis = analysisService
-                .getAnalysesBySampleItemIdAndStatusId(sampleEditItem.getSampleItemId(), CANCELED_TEST_STATUS_ID);
+        List<Analysis> canceledAnalysis = analysisService.getAnalysesBySampleItemIdAndStatusId(
+                sampleEditItem.getSampleItemId(),
+                SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled));
 
         for (Analysis analysis : canceledAnalysis) {
             if (sampleEditItem.getTestId().equals(analysis.getTest().getId())) {
+                // A cancelled case result keeps its analysis identity, even if the
+                // catalog switch has since changed. Reordering creates new work.
+                if (analysis.getTest().isOpensMicrobiologyCase() || microCaseAnalyses.hasOwnership(analysis.getId()))
+                    return new Analysis();
                 return analysis;
             }
         }

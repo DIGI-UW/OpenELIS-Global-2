@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <localization id="901" description="Hematology" />
+    <localization id="902" description="Biochemistry" />
+    <localization id="903" description="Blood" />
+    <localization_value id="901" localization_id="901"
+        locale="en" value="Hematology" />
+    <localization_value id="902" localization_id="902"
+        locale="en" value="Biochemistry" />
+    <localization_value id="903" localization_id="903"
+        locale="en" value="Blood" />
+
+    <!-- names must match StatusService.addToOrderMap() / addToAnalysisMap() -->
+    <status_of_sample id="1" description="Test Entered"
+        code="1" status_type="ORDER" lastupdated="2025-03-18"
+        name="Test Entered" display_key="sample.status.entered" is_active="Y" />
+    <status_of_sample id="5" description="Not Tested"
+        code="5" status_type="ANALYSIS" lastupdated="2025-03-18"
+        name="Not Tested" display_key="status.analysis.not.started"
+        is_active="Y" />
+    <status_of_sample id="10"
+        description="Technical Acceptance" code="10" status_type="ANALYSIS"
+        lastupdated="2025-03-18" name="Technical Acceptance"
+        display_key="status.analysis.technical.accepted" is_active="Y" />
+
+    <type_of_sample id="1" description="Blood" domain="H"
+        name_localization_id="903" lastupdated="2025-03-18 12:00:00" />
+
+    <test_section id="901" name="Hematology"
+        description="Hematology" is_external="N" is_active="Y"
+        lastupdated="2025-03-18 12:00:00" sort_order="1"
+        name_localization_id="901" />
+    <test_section id="902" name="Biochemistry"
+        description="Biochemistry" is_external="N" is_active="Y"
+        lastupdated="2025-03-18 12:00:00" sort_order="2"
+        name_localization_id="902" />
+
+    <test id="901" description="Hemoglobin" name="Hemoglobin"
+        test_section_id="901" is_active="Y" name_localization_id="901"
+        orderable="true" sort_order="1" guid="vb-test-901"
+        lastupdated="2025-03-18 12:00:00" />
+
+    <sample id="901" accession_number="DEV0126000000000901"
+        status_id="1" received_date="2026-10-01 08:00:00"
+        entered_date="2026-10-01 08:00:00" lastupdated="2026-10-01 08:00:00" />
+    <sample_item id="901" samp_id="901" typeosamp_id="1"
+        sort_order="1" status_id="1" lastupdated="2026-10-01 08:00:00" />
+
+    <!-- two awaiting validation in Hematology, one not yet tested -->
+    <analysis id="901" sampitem_id="901" test_sect_id="901"
+        test_id="901" revision="1" status_id="10" analysis_type="MANUAL"
+        lastupdated="2026-10-01 09:00:00" />
+    <analysis id="902" sampitem_id="901" test_sect_id="901"
+        test_id="901" revision="1" status_id="10" analysis_type="MANUAL"
+        lastupdated="2026-10-01 09:00:00" />
+    <analysis id="903" sampitem_id="901" test_sect_id="901"
+        test_id="901" revision="1" status_id="5" analysis_type="MANUAL"
+        lastupdated="2026-10-01 09:00:00" />
+</dataset>

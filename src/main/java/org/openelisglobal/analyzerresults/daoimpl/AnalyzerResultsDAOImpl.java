@@ -50,14 +50,23 @@ public class AnalyzerResultsDAOImpl extends BaseDAOImpl<AnalyzerResults, String>
             // OGC-1129: a multiplex test stages one row per component, all sharing the
             // same testName. Include component_id so distinct components of one test are
             // not treated as duplicates of each other (null = PRIMARY, today's behavior).
+            // The records of one run share a completion time, so two records held on the
+            // same target are told apart by their sub-identity. Two tubes of one order
+            // are told apart by the tube the instrument named; a row staged before tube
+            // ids were kept counts as its accession.
             String sql = "from AnalyzerResults a where a.analyzerId = :analyzerId and "
                     + "a.accessionNumber = :assessionNumber and a.testName = :testName and "
-                    + "((:componentId is null and a.componentId is null) or a.componentId = :componentId)";
+                    + "((:componentId is null and a.componentId is null) or a.componentId = :componentId) and "
+                    + "a.rawSubIdentity = :rawSubIdentity and "
+                    + "coalesce(a.instrumentSpecimenId, a.accessionNumber) = :specimenId";
             Query<AnalyzerResults> query = entityManager.unwrap(Session.class).createQuery(sql, AnalyzerResults.class);
             query.setParameter("analyzerId", result.getAnalyzerId());
             query.setParameter("assessionNumber", result.getAccessionNumber());
+            query.setParameter("specimenId", result.getInstrumentSpecimenId() != null ? result.getInstrumentSpecimenId()
+                    : result.getAccessionNumber());
             query.setParameter("testName", result.getTestName());
             query.setParameter("componentId", result.getComponentId());
+            query.setParameter("rawSubIdentity", result.getRawSubIdentity());
 
             list = query.list();
 
@@ -83,20 +92,11 @@ public class AnalyzerResultsDAOImpl extends BaseDAOImpl<AnalyzerResults, String>
 
     @Override
     @Transactional(readOnly = true)
-    public List<AnalyzerResults> findHeldResultValuesByProfile(String profileId, int profileRevision) {
-        try {
-            String hql = "FROM AnalyzerResults a WHERE a.importIssueReason = :reason "
-                    + "AND a.sourceProfileId = :profileId AND a.sourceProfileRevision = :profileRevision "
-                    + "ORDER BY a.lastupdated DESC NULLS LAST, a.id DESC";
-            Query<AnalyzerResults> query = entityManager.unwrap(Session.class).createQuery(hql, AnalyzerResults.class);
-            query.setParameter("reason", AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE);
-            query.setParameter("profileId", profileId);
-            query.setParameter("profileRevision", profileRevision);
-            return query.list();
-        } catch (RuntimeException e) {
-            LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error finding held analyzer result values", e);
-        }
+    public List<AnalyzerResults> findHeldMappingResultsByAnalyzer(String analyzerId) {
+        return entityManager.unwrap(Session.class).createQuery(
+                "FROM AnalyzerResults a WHERE a.analyzerId = :analyzerId AND a.isReadOnly = true AND a.importIssueReason IN (:reasons)",
+                AnalyzerResults.class).setParameter("analyzerId", analyzerId)
+                .setParameterList("reasons", AnalyzerResults.MAPPING_IMPORT_ISSUES).list();
     }
 
     @Override
@@ -108,9 +108,10 @@ public class AnalyzerResultsDAOImpl extends BaseDAOImpl<AnalyzerResults, String>
         try {
             String hql = "SELECT a.analyzerId, COUNT(a.id) FROM AnalyzerResults a "
                     + "WHERE a.analyzerId IN (:analyzerIds) AND a.importIssueReason IS NOT NULL "
-                    + "GROUP BY a.analyzerId";
+                    + "AND a.importIssueReason <> :setupCapture " + "GROUP BY a.analyzerId";
             Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(hql, Object[].class);
             query.setParameterList("analyzerIds", analyzerIds);
+            query.setParameter("setupCapture", AnalyzerResults.IMPORT_ISSUE_SETUP_CAPTURE);
             Map<String, Long> counts = new LinkedHashMap<>();
             for (Object[] row : query.list()) {
                 counts.put((String) row[0], ((Number) row[1]).longValue());

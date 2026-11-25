@@ -23,6 +23,7 @@ import {
 import { Add } from "@carbon/icons-react";
 import {
   getFromOpenElisServer,
+  patchToOpenElisServerFullResponse,
   postToOpenElisServerFullResponse,
 } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
@@ -32,6 +33,7 @@ import {
 } from "../../common/CustomNotification";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import LabelPresetEditor from "./LabelPresetEditor";
+import SiteWideBarcodeSettings from "./SiteWideBarcodeSettings";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -88,9 +90,18 @@ function LabelPresetList() {
   };
 
   const handleEditorClose = (saved) => {
+    const wasEdit = editingPreset != null;
     setEditorOpen(false);
     setEditingPreset(null);
     if (saved) {
+      addNotification({
+        kind: NotificationKinds.success,
+        title: intl.formatMessage({
+          id: wasEdit
+            ? "admin.labelPresets.updated"
+            : "admin.labelPresets.created",
+        }),
+      });
       loadPresets();
     }
   };
@@ -124,7 +135,7 @@ function LabelPresetList() {
 
   const handleToggleActive = (preset) => {
     const newActive = !preset.isActive;
-    postToOpenElisServerFullResponse(
+    patchToOpenElisServerFullResponse(
       `/api/labelPresets/${preset.id}/activate`,
       JSON.stringify({ isActive: newActive }),
       (response) => {
@@ -228,6 +239,7 @@ function LabelPresetList() {
         <Heading>
           <FormattedMessage id="admin.labelPresets.title" />
         </Heading>
+        <SiteWideBarcodeSettings />
       </Section>
 
       {loading ? (

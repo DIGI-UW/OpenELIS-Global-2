@@ -15,7 +15,10 @@ public interface AnalysisTimelineService {
     List<AnalysisTimelineEvent> getTimeline(Analysis analysis);
 
     class AnalysisTimelineEvent {
-        /** CREATED | STATUS | RESULT | NOTE | RETEST | REFLEX | REFERRAL | NCE */
+        /**
+         * CREATED | STATUS | RESULT | NOTE | RETEST | REFLEX | REFERRAL | NCE |
+         * CRITICAL_ACK | INVALID_CONFIRMED
+         */
         private String type;
         private long timestamp;
         private String when;

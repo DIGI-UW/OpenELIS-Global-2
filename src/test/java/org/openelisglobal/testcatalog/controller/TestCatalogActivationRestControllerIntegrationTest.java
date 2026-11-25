@@ -9,6 +9,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.services.StaleSaveGuard;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.service.LocalizationServiceImpl;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -42,6 +43,7 @@ public class TestCatalogActivationRestControllerIntegrationTest extends BaseWebC
 
     private static final long TEST_ID = 95401L;
     private static final String SECTION_NAME = "ActivateIT-Sec";
+    private static final long SAMPLE_TYPE_ID = 95409L;
 
     @Autowired
     private TestService testService;
@@ -66,6 +68,12 @@ public class TestCatalogActivationRestControllerIntegrationTest extends BaseWebC
 
     @Autowired
     private javax.sql.DataSource dataSource;
+
+    @Autowired
+    private org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService;
+
+    @Autowired
+    private org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService;
 
     private TestCatalogActivationRestController controller;
     private JdbcTemplate jdbc;
@@ -104,6 +112,15 @@ public class TestCatalogActivationRestControllerIntegrationTest extends BaseWebC
                         + " VALUES (?, ?, 'PRIMARY', 'Result', 0, 'N', false, true, true, 'Y', NOW())",
                 UUID.randomUUID().toString(), TEST_ID);
         resultTypeId = jdbc.queryForObject("SELECT min(id) FROM clinlims.type_of_test_result", String.class);
+        // A sample type is part of the completeness gate too (OGC-1460).
+        jdbc.update("INSERT INTO clinlims.localization (id, description, lastupdated) VALUES (?, 'ActivateIT-ST',"
+                + " NOW())", SAMPLE_TYPE_ID);
+        jdbc.update("INSERT INTO clinlims.type_of_sample (id, description, domain, local_abbrev, is_active,"
+                + " sort_order, name_localization_id, lastupdated) VALUES (?, 'ActivateIT-ST', 'H', 'AIT95409', 'true', 1,"
+                + " ?, NOW())", SAMPLE_TYPE_ID, SAMPLE_TYPE_ID);
+        jdbc.update("INSERT INTO clinlims.sampletype_test (id, sample_type_id, test_id) VALUES (?, ?, ?)",
+                SAMPLE_TYPE_ID, SAMPLE_TYPE_ID, TEST_ID);
+        typeOfSampleService.clearCache();
     }
 
     @After
@@ -115,7 +132,10 @@ public class TestCatalogActivationRestControllerIntegrationTest extends BaseWebC
         jdbc.update("DELETE FROM clinlims.test_activation_acknowledgment WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM clinlims.result_limits WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM clinlims.test_result_component WHERE test_id = ?", TEST_ID);
+        jdbc.update("DELETE FROM clinlims.sampletype_test WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM clinlims.test WHERE id = ?", TEST_ID);
+        jdbc.update("DELETE FROM clinlims.type_of_sample WHERE id = ?", SAMPLE_TYPE_ID);
+        jdbc.update("DELETE FROM clinlims.localization WHERE id = ?", SAMPLE_TYPE_ID);
         java.util.List<Long> sectionLocIds = jdbc.queryForList(
                 "SELECT name_localization_id FROM clinlims.test_section WHERE name = ?", Long.class, SECTION_NAME);
         jdbc.update("DELETE FROM clinlims.test_section WHERE name = ?", SECTION_NAME);
@@ -203,6 +223,47 @@ public class TestCatalogActivationRestControllerIntegrationTest extends BaseWebC
     }
 
     /**
+     * OGC-1460: a test with no sample type cannot be placed on any sample in order
+     * entry, so it is not activated; the checklist names the gap.
+     */
+    @org.junit.Test
+    public void noSampleType_returns422_namingTheGap_andDoesNotActivate() {
+        seedRange(null, 0d, Double.POSITIVE_INFINITY);
+        jdbc.update("DELETE FROM clinlims.sampletype_test WHERE test_id = ?", TEST_ID);
+        typeOfSampleService.clearCache();
+
+        ResponseEntity<?> resp = controller.activateTest(String.valueOf(TEST_ID), null, authedRequest());
+
+        assertEquals(422, resp.getStatusCode().value());
+        CompletenessReport report = (CompletenessReport) resp.getBody();
+        assertTrue("the checklist must name the sample type", report.missing.contains("NO_SAMPLE_TYPE"));
+        assertFalse("a 422 must not activate the test", testActive());
+    }
+
+    /**
+     * A sample type linked behind the cached test-to-sample-type map (the legacy
+     * assign endpoint wrote links without clearing it) still counts: activation
+     * reads the links themselves.
+     */
+    @org.junit.Test
+    public void aSampleTypeLinkedBehindTheCacheStillCounts() {
+        org.springframework.test.util.ReflectionTestUtils.setField(controller, "typeOfSampleTestService",
+                typeOfSampleTestService);
+        seedRange(null, 0d, Double.POSITIVE_INFINITY);
+        jdbc.update("DELETE FROM clinlims.sampletype_test WHERE test_id = ?", TEST_ID);
+        typeOfSampleService.clearCache();
+        assertTrue("the cache now holds no sample type for the test",
+                testService.getTypeOfSamples(testService.getTestById(String.valueOf(TEST_ID))).isEmpty());
+        jdbc.update("INSERT INTO clinlims.sampletype_test (id, sample_type_id, test_id) VALUES (?, ?, ?)",
+                SAMPLE_TYPE_ID, SAMPLE_TYPE_ID, TEST_ID);
+
+        ResponseEntity<?> resp = controller.activateTest(String.valueOf(TEST_ID), null, authedRequest());
+
+        assertEquals(String.valueOf(resp.getBody()), 200, resp.getStatusCode().value());
+        assertTrue(testActive());
+    }
+
+    /**
      * FR-18 (OGC-1119) — activation re-surfaces the LOINC guardrails: the success
      * body names the other active test sharing this test's LOINC, and the
      * activation still goes through (warn, never block).
@@ -259,6 +320,9 @@ public class TestCatalogActivationRestControllerIntegrationTest extends BaseWebC
         assertTrue("the success body must still carry the coverage report", result.male != null);
 
         Test reloaded = testService.getTestById(String.valueOf(TEST_ID));
+        // OGC-1376: the Basic Info editor adopts this token, so its next save is not
+        // refused as stale against the activation it just made.
+        assertEquals(StaleSaveGuard.token(reloaded.getLastupdated()), result.lastupdated);
         assertTrue("the reported flags must match what was persisted", reloaded.isActive());
         assertTrue(Boolean.TRUE.equals(reloaded.getOrderable()));
     }

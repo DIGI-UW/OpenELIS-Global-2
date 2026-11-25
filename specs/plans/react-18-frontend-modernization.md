@@ -331,6 +331,5 @@ With Phases 1 and 2 running in parallel: **~5-8 days wall clock**.
 - [React Router v5→v6 Migration](https://reactrouter.com/upgrading/v5)
 - [react-intl v5→v6 Migration](https://formatjs.io/docs/react-intl/upgrade-guide-5x-to-6x)
 - [Testing Library React Migration](https://testing-library.com/docs/react-testing-library/migrate-v13)
-- Prerequisite: `.specify/plan-archive/cra-to-vite-migration.md` (archived —
-  migration shipped in PR #3349)
+- Prerequisite: the CRA-to-Vite migration, shipped in PR #3349
 - GitHub Issue: #3312 (Vite migration), TBD (React 18 upgrade)

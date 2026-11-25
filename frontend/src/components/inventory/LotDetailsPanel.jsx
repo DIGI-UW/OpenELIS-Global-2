@@ -63,14 +63,18 @@ const LotDetailsPanel = ({ open, onClose, lot }) => {
   };
 
   const getQCStatusTag = (status) => {
-    const statusMap = {
-      PASSED: { type: "green", label: "Passed" },
-      FAILED: { type: "red", label: "Failed" },
-      PENDING: { type: "gray", label: "Pending" },
-      NOT_REQUIRED: { type: "outline", label: "Not Required" },
+    const tagKind = {
+      PASSED: "green",
+      FAILED: "red",
+      PENDING: "gray",
+      QUARANTINED: "magenta",
     };
-    const config = statusMap[status] || statusMap.PENDING;
-    return <Tag type={config.type}>{config.label}</Tag>;
+    const known = tagKind[status] ? status : "PENDING";
+    return (
+      <Tag type={tagKind[known]}>
+        {intl.formatMessage({ id: `lot.qcStatus.${known}` })}
+      </Tag>
+    );
   };
 
   return (
@@ -83,7 +87,7 @@ const LotDetailsPanel = ({ open, onClose, lot }) => {
           kind="ghost"
           size="sm"
           renderIcon={Close}
-          iconDescription="Close"
+          iconDescription={intl.formatMessage({ id: "button.close" })}
           onClick={onClose}
           hasIconOnly
         />
@@ -91,10 +95,15 @@ const LotDetailsPanel = ({ open, onClose, lot }) => {
 
       <div className="panel-content">
         {loading ? (
-          <Loading description="Loading lot details..." withOverlay={false} />
+          <Loading
+            description={intl.formatMessage({ id: "lot.details.loading" })}
+            withOverlay={false}
+          />
         ) : (
           <Tabs>
-            <TabList aria-label="Lot details tabs">
+            <TabList
+              aria-label={intl.formatMessage({ id: "lot.details.tabs" })}
+            >
               <Tab>
                 <FormattedMessage id="lot.details.tab.info" />
               </Tab>
@@ -124,6 +133,16 @@ const LotDetailsPanel = ({ open, onClose, lot }) => {
                       </StructuredListRow>
                       <StructuredListRow>
                         <StructuredListCell>
+                          <FormattedMessage id="lot.barcode" />
+                        </StructuredListCell>
+                        <StructuredListCell>
+                          <code className="lot-details-barcode">
+                            {lot.barcode || "-"}
+                          </code>
+                        </StructuredListCell>
+                      </StructuredListRow>
+                      <StructuredListRow>
+                        <StructuredListCell>
                           <FormattedMessage id="catalog.item.name" />
                         </StructuredListCell>
                         <StructuredListCell>
@@ -132,10 +151,12 @@ const LotDetailsPanel = ({ open, onClose, lot }) => {
                       </StructuredListRow>
                       <StructuredListRow>
                         <StructuredListCell>
-                          <FormattedMessage id="catalog.item.type" />
+                          <FormattedMessage id="inventory.item.tags" />
                         </StructuredListCell>
                         <StructuredListCell>
-                          {lot.inventoryItem?.itemType}
+                          {lot.inventoryItem?.tags?.length
+                            ? lot.inventoryItem.tags.join(", ")
+                            : "—"}
                         </StructuredListCell>
                       </StructuredListRow>
                       <StructuredListRow>
@@ -334,7 +355,10 @@ const LotDetailsPanel = ({ open, onClose, lot }) => {
                               {formatDate(txn.transactionDate)}
                             </StructuredListCell>
                             <StructuredListCell>
-                              {txn.transactionType}
+                              {intl.formatMessage({
+                                id: `transaction.type.${txn.transactionType}`,
+                                defaultMessage: txn.transactionType,
+                              })}
                             </StructuredListCell>
                             <StructuredListCell>
                               {txn.quantityChange > 0 ? "+" : ""}

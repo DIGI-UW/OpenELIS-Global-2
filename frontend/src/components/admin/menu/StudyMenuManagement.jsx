@@ -81,15 +81,7 @@ function StudyMenuManagement() {
         childMenus: [],
       },
       {
-        menu: { isActive: false, elementId: "menu_resultvalidation_study" },
-        childMenus: [],
-      },
-      {
         menu: { isActive: false, elementId: "menu_reports_vl" },
-        childMenus: [],
-      },
-      {
-        menu: { isActive: false, elementId: "menu_resultvalidation_virology" },
         childMenus: [],
       },
     ],
@@ -119,7 +111,7 @@ function StudyMenuManagement() {
     event.preventDefault();
     setIsSubmitting(true);
     postToOpenElisServerFullResponse(
-      "/rest/menu/",
+      "/rest/menu",
       JSON.stringify(menuItem.childMenus),
       displayStatus,
     );
@@ -180,18 +172,9 @@ function StudyMenuManagement() {
     getFromOpenElisServer("/rest/menu/menu_patient_create", (res) => {
       handleMenuItems(res, "menu_patient_create");
     });
-    getFromOpenElisServer("/rest/menu/menu_resultvalidation_study", (res) => {
-      handleMenuItems(res, "menu_resultvalidation_study");
-    });
     getFromOpenElisServer("/rest/menu/menu_reports_vl", (res) => {
       handleMenuItems(res, "menu_reports_vl");
     });
-    getFromOpenElisServer(
-      "/rest/menu/menu_resultvalidation_virology",
-      (res) => {
-        handleMenuItems(res, "menu_resultvalidation_virology");
-      },
-    );
     return () => {
       componentMounted.current = false;
     };

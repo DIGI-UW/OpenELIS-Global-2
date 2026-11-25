@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <system_user id="1" external_id="EXT001" login_name="admin"
+        last_name="Admin" first_name="System" initials="SA" is_active="Y"
+        is_employee="Y" lastupdated="2025-03-08 12:00:00" />
+    <system_user id="3" external_id="EXT003" login_name="jdoe"
+        last_name="Doe" first_name="John" initials="JD" is_active="Y"
+        is_employee="Y" lastupdated="2025-03-08 12:00:00" />
+    <system_user id="4" external_id="EXT004"
+        login_name="asmith" last_name="Smith" first_name="Alice" initials="AS"
+        is_active="Y" is_employee="N" lastupdated="2025-03-08 12:00:00" />
+    <system_user id="5" external_id="EXT005"
+        login_name="bwhite" last_name="White" first_name="Bob" initials="BW"
+        is_active="Y" is_employee="Y" lastupdated="2025-03-08 12:00:00" />
+
+    <login_user id="6" login_name="jdoe" password="password1"
+        password_expired_dt="2035-12-31" account_locked="N"
+        account_disabled="N" is_admin="N" user_time_out="30"
+        last_updated="2025-03-16" />
+    <login_user id="7" login_name="asmith" password="password2"
+        password_expired_dt="2035-12-31" account_locked="N"
+        account_disabled="N" is_admin="N" user_time_out="30"
+        last_updated="2025-03-16" />
+    <login_user id="8" login_name="bwhite" password="password3"
+        password_expired_dt="2035-12-31" account_locked="N"
+        account_disabled="N" is_admin="N" user_time_out="30"
+        last_updated="2025-03-16" />
+
+    <system_role id="69" name="Global Roles"
+        description="Global roles group" is_grouping_role="true"
+        display_key="globalRolesKey" active="true" editable="false" />
+    <system_role id="70" name="Lab Unit Roles"
+        description="Lab unit roles group" is_grouping_role="true"
+        display_key="labUnitRolesKey" active="true" editable="false" />
+    <system_role id="4" name="Reception"
+        description="Reception role" is_grouping_role="false"
+        grouping_parent="70" display_key="receptionKey" active="true"
+        editable="true" />
+    <system_role id="10" name="Validation"
+        description="Validation role" is_grouping_role="false"
+        grouping_parent="70" display_key="validationKey" active="true"
+        editable="true" />
+
+    <system_user_role />
+    <user_lab_unit_roles />
+    <lab_unit_roles />
+    <lab_unit_role_map />
+    <lab_roles />
+</dataset>

@@ -99,6 +99,29 @@ public abstract class AuditableBaseObjectServiceImpl<T extends BaseObject<PK>, P
         }
     }
 
+    @Override
+    @Transactional
+    public T updateAgainst(T baseObject, T storedState) {
+        fillSysUserIdIfMissing(baseObject);
+        saveHistoryAgainst(baseObject, storedState, baseObject.getSysUserId());
+        return super.update(baseObject);
+    }
+
+    /**
+     * Records how an object differs from a snapshot taken before it changed,
+     * without saving the object. {@link #updateAgainst} calls it before its own
+     * save. A subclass that changes a child row through that row's own DAO calls it
+     * alone: the object's own row is not saved, so its version does not move and an
+     * open page's save of it is not refused, yet the child's change still belongs
+     * in the object's audit trail.
+     */
+    protected void saveHistoryAgainst(T changed, T storedState, String sysUserId) {
+        if (auditTrailLog) {
+            auditTrailService.saveHistory(changed, storedState, sysUserId, IActionConstants.AUDIT_TRAIL_UPDATE,
+                    getBaseObjectDAO().getTableName());
+        }
+    }
+
     protected T update(T baseObject, String auditTrailType) {
         fillSysUserIdIfMissing(baseObject);
         if (auditTrailLog) {

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+ <changeSet id="OGC-1200-qc-result-run" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <not>
+    <columnExists schemaName="clinlims" tableName="qc_result" columnName="run_id"/>
+   </not>
+  </preConditions>
+  <comment>OGC-1200 FR-C1, FR-G1: a control recorded on a run carries the run, its verdict for the run (Pass or Fail) and where that verdict came from (the analyzer, computed from the QC target, or declared by the technician).</comment>
+  <addColumn schemaName="clinlims" tableName="qc_result">
+   <column name="run_id" type="BIGINT"/>
+   <column name="run_verdict" type="VARCHAR(10)"/>
+   <column name="verdict_source" type="VARCHAR(20)"/>
+  </addColumn>
+  <addForeignKeyConstraint constraintName="fk_qc_result_run" baseTableSchemaName="clinlims"
+   baseTableName="qc_result" baseColumnNames="run_id" referencedTableSchemaName="clinlims"
+   referencedTableName="result_run" referencedColumnNames="id"/>
+  <createIndex schemaName="clinlims" tableName="qc_result" indexName="idx_qc_result_run">
+   <column name="run_id"/>
+  </createIndex>
+ </changeSet>
+</databaseChangeLog>

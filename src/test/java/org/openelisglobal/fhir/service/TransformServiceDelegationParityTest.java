@@ -7,6 +7,7 @@ import static org.junit.Assert.assertNotSame;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
 import org.hl7.fhir.instance.model.api.IBaseResource;
+import org.hl7.fhir.r4.model.ServiceRequest;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -105,8 +106,15 @@ public class TransformServiceDelegationParityTest extends BaseWebContextSensitiv
 
     @Test
     public void serviceRequest_orchestratorMatchesServiceRequestService() throws Exception {
-        assertSameResource(fhirTransformService.transformToServiceRequest(ANALYSIS_ID),
-                serviceRequestTransformService.transformToServiceRequest(ANALYSIS_ID));
+        ServiceRequest viaOrchestrator = fhirTransformService.transformToServiceRequest(ANALYSIS_ID);
+        ServiceRequest viaService = serviceRequestTransformService.transformToServiceRequest(ANALYSIS_ID);
+        assertNotNull(viaOrchestrator.getAuthoredOn());
+        assertNotNull(viaService.getAuthoredOn());
+        // Each call generates its own current timestamp; compare the stable resource
+        // content.
+        viaOrchestrator.setAuthoredOn(null);
+        viaService.setAuthoredOn(null);
+        assertSameResource(viaOrchestrator, viaService);
     }
 
     @Test
@@ -142,6 +150,46 @@ public class TransformServiceDelegationParityTest extends BaseWebContextSensitiv
 
         assertSameResource(fhirTransformService.transformAnalyzerToDevice(analyzer),
                 deviceTransformService.transformAnalyzerToDevice(analyzer));
+    }
+
+    @Test
+    public void observationPreservesClinicalQuantityAndComparatorRegardlessOfDisplayDecimals() throws Exception {
+        Result result = resultService.get(RESULT_ID);
+        result.setResultType("N");
+        result.setReportingDecimalPlaces(0);
+        result.setValue("1.170");
+        org.hl7.fhir.r4.model.Observation observation = fhirTransformService.transformResultToObservation(result);
+        assertEquals(new java.math.BigDecimal("1.170"), observation.getValueQuantity().getValue());
+        assertEquals("1", result.getDisplayValue());
+        org.hl7.fhir.r4.model.Observation decoded = (org.hl7.fhir.r4.model.Observation) parser
+                .parseResource(parser.encodeResourceToString(observation));
+        assertEquals(new java.math.BigDecimal("1.170"), decoded.getValueQuantity().getValue());
+        result.setValue("<1.170");
+        observation = fhirTransformService.transformResultToObservation(result);
+        assertEquals(new java.math.BigDecimal("1.170"), observation.getValueQuantity().getValue());
+        assertEquals(org.hl7.fhir.r4.model.Quantity.QuantityComparator.LESS_THAN,
+                observation.getValueQuantity().getComparator());
+    }
+
+    @Test
+    public void observationNormalizesWrittenScientificNotationAfterPreservingTheComparator() throws Exception {
+        Result result = resultService.get(RESULT_ID);
+        result.setResultType("N");
+        result.setReportingDecimalPlaces(0);
+        for (org.hl7.fhir.r4.model.Quantity.QuantityComparator comparator : new org.hl7.fhir.r4.model.Quantity.QuantityComparator[] {
+                org.hl7.fhir.r4.model.Quantity.QuantityComparator.LESS_THAN,
+                org.hl7.fhir.r4.model.Quantity.QuantityComparator.LESS_OR_EQUAL,
+                org.hl7.fhir.r4.model.Quantity.QuantityComparator.GREATER_THAN,
+                org.hl7.fhir.r4.model.Quantity.QuantityComparator.GREATER_OR_EQUAL }) {
+            result.setValue(comparator.toCode() + "1.50×10⁵");
+            org.hl7.fhir.r4.model.Observation observation = fhirTransformService.transformResultToObservation(result);
+            assertEquals(comparator, observation.getValueQuantity().getComparator());
+            assertEquals(0, new java.math.BigDecimal("150000").compareTo(observation.getValueQuantity().getValue()));
+            org.hl7.fhir.r4.model.Observation decoded = (org.hl7.fhir.r4.model.Observation) parser
+                    .parseResource(parser.encodeResourceToString(observation));
+            assertEquals(comparator, decoded.getValueQuantity().getComparator());
+            assertEquals(0, new java.math.BigDecimal("150000").compareTo(decoded.getValueQuantity().getValue()));
+        }
     }
 
     private void assertSameResource(IBaseResource viaOrchestrator, IBaseResource viaService) {

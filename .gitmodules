@@ -1,6 +1,3 @@
-[submodule "plugins"]
-	path = plugins
-	url = https://github.com/DIGI-UW/openelisglobal-plugins.git
 [submodule "tools/Liquibase-Outdated"]
 	path = tools/Liquibase-Outdated
 	url = https://github.com/DIGI-UW/Liquibase-Outdated.git
@@ -23,10 +20,6 @@
 [submodule "tools/analyzer-mock-server"]
 	path = tools/analyzer-mock-server
 	url = https://github.com/DIGI-UW/analyzer-mock-server.git
-[submodule "projects/catalyst"]
-	path = projects/catalyst
-	url = https://github.com/DIGI-UW/openelis-catalyst.git
-	branch = main
 [submodule "tools/code-qa"]
 	path = tools/code-qa
 	url = https://github.com/DIGI-UW/code-qa

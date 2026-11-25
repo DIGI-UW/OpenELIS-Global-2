@@ -93,6 +93,7 @@ const SampleAcceptanceReview = ({
   labNumber,
   samples,
   onBlockedChange,
+  onUnacceptedChange,
 }) => {
   const intl = useIntl();
 
@@ -104,6 +105,7 @@ const SampleAcceptanceReview = ({
 
   const [statusById, setStatusById] = useState({});
   const [loading, setLoading] = useState(false);
+  const [statusesLoaded, setStatusesLoaded] = useState(false);
   const [selectedKey, setSelectedKey] = useState(null);
   // Optimistic per-entry reject flags: a rejected pool/specimen drops out of
   // /order/{id}/items, so the table tag can't come from statusById — track it here.
@@ -122,6 +124,7 @@ const SampleAcceptanceReview = ({
           map[String(it.sampleItemId)] = it;
         });
         setStatusById(map);
+        setStatusesLoaded(true);
       })
       .finally(() => setLoading(false));
   }, [orderId]);
@@ -148,6 +151,33 @@ const SampleAcceptanceReview = ({
     const anyBlocked = Object.values(statusById).some((s) => s.blocked);
     onBlockedChange?.(anyBlocked);
   }, [statusById, onBlockedChange]);
+
+  // Each unit is named as its labels and Refer Out name it: the order's lab
+  // number and the tube's position in the order.
+  const unitName = (entry) =>
+    labNumber
+      ? `${labNumber}-${(samples || []).indexOf(entry.representative) + 1}`
+      : "—";
+
+  // Which units the server does not yet hold as accepted, named the way the
+  // rest of the order names tubes, so a release that needs a reason can say
+  // what is missing (OGC-1443). Answers count only once Accept sample saves
+  // them, so a unit answered on screen but not accepted is still listed.
+  // Until the server has reported, nothing is known to be unaccepted.
+  const unaccepted = (statusesLoaded ? entries : [])
+    .filter(
+      (entry) =>
+        !isEntryRejected(entry) &&
+        statusById[String(entry.representative.sampleItemId)]?.overallStatus !==
+          STATUS.ACCEPTED,
+    )
+    .map((entry) =>
+      `${unitName(entry)} ${entry.representative.sampleTypeName || ""}`.trim(),
+    );
+  const unacceptedKey = unaccepted.join("|");
+  useEffect(() => {
+    onUnacceptedChange?.(unacceptedKey ? unacceptedKey.split("|") : []);
+  }, [unacceptedKey, onUnacceptedChange]);
 
   // The detail reports the server evaluation on load + after an Accept; refresh
   // that row's tag from it. STABLE reference (keyed off the evaluation's own
@@ -250,7 +280,7 @@ const SampleAcceptanceReview = ({
             defaultMessage="Intake Acceptance"
           />
         </h4>
-        <p className="sac-subtitle">
+        <div className="sac-subtitle">
           <FormattedMessage
             id="sampleAcceptance.review.subtitle"
             defaultMessage="Select a sample to complete its acceptance checklist"
@@ -264,7 +294,7 @@ const SampleAcceptanceReview = ({
               })}
             />
           )}
-        </p>
+        </div>
       </div>
 
       <Table size="md" useZebraStyles className="sac-review-table">
@@ -312,7 +342,7 @@ const SampleAcceptanceReview = ({
                 onClick={() => setSelectedKey(entry.key)}
                 className="sac-review-row"
               >
-                <TableCell>{labNumber || "—"}</TableCell>
+                <TableCell>{unitName(entry)}</TableCell>
                 <TableCell>{typeLabel}</TableCell>
                 <TableCell>
                   {mins !== null ? formatTransit(mins) : "—"}

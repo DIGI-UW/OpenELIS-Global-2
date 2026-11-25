@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet id="135-analyzer-accept-notes-on-their-analysis" author="oe">
+        <comment>The note a reviewer writes when accepting an analyzer result is kept on the result's analysis, but the code that introduced it (the subject 'Analyzer Result Note') saved it under the result's id while naming the analysis table, so Validation showed it on whichever analysis happened to have that id, or nowhere. The subject arrived with that code and the fix ships with this changeset, so every note still carrying a result's id belongs to that result's analysis.</comment>
+        <sql>
+            UPDATE clinlims.note n
+               SET reference_id = r.analysis_id
+              FROM clinlims.result r
+             WHERE n.subject = 'Analyzer Result Note'
+               AND n.reference_table = (SELECT id FROM clinlims.reference_tables WHERE name = 'ANALYSIS')
+               AND r.id = n.reference_id
+               AND r.analysis_id &lt;&gt; n.reference_id
+        </sql>
+        <!-- The result a moved note came from is not recorded, so the move is not undone. -->
+        <rollback/>
+    </changeSet>
+</databaseChangeLog>

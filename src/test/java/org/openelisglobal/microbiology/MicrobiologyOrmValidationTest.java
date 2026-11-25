@@ -26,7 +26,6 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis;
 import org.openelisglobal.microbiology.valueholder.MicroCaseInoculation;
 import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
 import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication;
-import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
 import org.openelisglobal.microbiology.valueholder.MicroInventoryUsageLink;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationEvent;
@@ -60,7 +59,6 @@ public class MicrobiologyOrmValidationTest extends BaseWebContextSensitiveTest {
         assertNotNull(metamodel.entity(MicroBreakpointStandard.class));
         assertNotNull(metamodel.entity(MicroBreakpointRule.class));
         assertNotNull(metamodel.entity(MicroBreakpointActivationEvent.class));
-        assertNotNull(metamodel.entity(MicroCultureSetup.class));
         assertNotNull(metamodel.entity(MicroPatientOrigin.class));
         assertNotNull(metamodel.entity(MicroPatientOriginDefault.class));
         assertNotNull(metamodel.entity(MicroCase.class));
@@ -91,18 +89,6 @@ public class MicrobiologyOrmValidationTest extends BaseWebContextSensitiveTest {
         EntityManager entityManager = entityManagerFactory.createEntityManager();
         try {
             assertNotNull(entityManager.createQuery("from MicroCaseAnalysis", MicroCaseAnalysis.class));
-        } finally {
-            entityManager.close();
-        }
-    }
-
-    @Test
-    public void microbiologyOrderDetailDraftHqlCompiles() {
-        EntityManager entityManager = entityManagerFactory.createEntityManager();
-        try {
-            assertNotNull(entityManager.createQuery(
-                    "from MicroCaseOrderDetail d where d.sampleId = :sampleId and d.caseId is null",
-                    MicroCaseOrderDetail.class));
         } finally {
             entityManager.close();
         }

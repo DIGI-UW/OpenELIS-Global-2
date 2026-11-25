@@ -9,16 +9,26 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   activateAnalyzer,
+  getAnalyzerDeliveryIssues,
+  startAnalyzerSetupReception,
+  retryAnalyzerDelivery,
   getAnalyzerActivationReadiness,
+  resetAnalyzerProfile,
   testConnection,
   updateAnalyzer,
 } from "../../../services/analyzerService";
 import messages from "../../../languages/en.json";
-import AnalyzerConnectionSetup from "./AnalyzerConnectionSetup";
+import AnalyzerConnectionSetup, {
+  receivedSenders,
+} from "./AnalyzerConnectionSetup";
 
 vi.mock("../../../services/analyzerService", () => ({
   activateAnalyzer: vi.fn(),
+  startAnalyzerSetupReception: vi.fn(),
+  retryAnalyzerDelivery: vi.fn(),
   getAnalyzerActivationReadiness: vi.fn(),
+  getAnalyzerDeliveryIssues: vi.fn(),
+  resetAnalyzerProfile: vi.fn(),
   testConnection: vi.fn(),
   updateAnalyzer: vi.fn(),
 }));
@@ -172,8 +182,13 @@ const candidate = {
 };
 
 const renderConnection = ({
+  shown = candidate,
   onCandidateChange = vi.fn(),
   onClose = vi.fn(),
+  onVerifyMappings,
+  onProfileReset,
+  onContinue,
+  protocol,
 } = {}) => {
   const history = createMemoryHistory({
     initialEntries: [
@@ -184,9 +199,13 @@ const renderConnection = ({
     <Router history={history}>
       <IntlProvider locale="en" messages={messages}>
         <AnalyzerConnectionSetup
-          candidate={candidate}
+          candidate={shown}
+          protocol={protocol}
           onCandidateChange={onCandidateChange}
           onClose={onClose}
+          onVerifyMappings={onVerifyMappings}
+          onProfileReset={onProfileReset}
+          onContinue={onContinue}
         />
       </IntlProvider>
     </Router>,
@@ -211,12 +230,188 @@ describe("AnalyzerConnectionSetup", () => {
     );
   });
 
+  it("keeps unavailable-type recovery visible in the connect-first wizard", async () => {
+    const onProfileReset = vi.fn();
+    resetAnalyzerProfile.mockImplementation((_id, callback) =>
+      callback({ ok: true }),
+    );
+    renderConnection({
+      shown: {
+        ...candidate,
+        connection: {
+          ...connection,
+          readiness: {
+            ready: false,
+            blockers: [
+              {
+                key: "profile-unavailable",
+                messageKey: "analyzer.connection.readiness.profileUnavailable",
+              },
+            ],
+          },
+        },
+      },
+      onContinue: vi.fn(),
+      onProfileReset,
+    });
+    expect(
+      await screen.findByText(/which the Analyzer Bridge no longer has/),
+    ).toBeVisible();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Reset analyzer type" }),
+    );
+    expect(resetAnalyzerProfile).toHaveBeenCalledWith(
+      "42",
+      expect.any(Function),
+    );
+    expect(onProfileReset).toHaveBeenCalledOnce();
+  });
+
+  it("says why the Bridge set this connection aside", async () => {
+    renderConnection({
+      shown: {
+        ...candidate,
+        connection: {
+          ...connection,
+          fields: [],
+          actualRuntimeState: "ERROR",
+          readiness: {
+            ready: false,
+            blockers: [
+              {
+                key: "profile-unavailable",
+                messageKey: "analyzer.connection.readiness.profileUnavailable",
+                fieldKeys: [],
+                detail: "raw Bridge text",
+              },
+              {
+                key: "runtime-restore-failed",
+                messageKey: "analyzer.connection.readiness.restoreFailed",
+                fieldKeys: [],
+                detail: "raw Bridge text",
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    expect(
+      await screen.findByText(
+        `This connection is pinned to ${profileRef.profileId} revision ${profileRef.revision}, which the Analyzer Bridge no longer has. Reset the analyzer type, then choose an available one to reconnect it. The analyzer keeps its name, lab units, connection and history.`,
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        "The Analyzer Bridge could not restart this connection. Activate it again; if it still fails, check the Bridge log.",
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText("raw Bridge text")).not.toBeInTheDocument();
+  });
+
+  describe("when the Bridge no longer has the analyzer's type", () => {
+    const stranded = {
+      ...candidate,
+      connection: {
+        ...connection,
+        fields: [],
+        actualRuntimeState: "ERROR",
+        readiness: {
+          ready: false,
+          blockers: [
+            {
+              key: "profile-unavailable",
+              messageKey: "analyzer.connection.readiness.profileUnavailable",
+              fieldKeys: [],
+            },
+          ],
+        },
+      },
+    };
+
+    it("resets the analyzer type and hands the analyzer back for setup again", async () => {
+      const onProfileReset = vi.fn();
+      resetAnalyzerProfile.mockImplementation((_id, callback) =>
+        callback({ ok: true }),
+      );
+      renderConnection({ shown: stranded, onProfileReset });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Reset analyzer type" }),
+      );
+
+      expect(resetAnalyzerProfile).toHaveBeenCalledWith(
+        "42",
+        expect.any(Function),
+      );
+      expect(onProfileReset).toHaveBeenCalledTimes(1);
+    });
+
+    it("says so when the reset is refused, and keeps the analyzer as it is", async () => {
+      const onProfileReset = vi.fn();
+      resetAnalyzerProfile.mockImplementation((_id, callback) =>
+        callback({
+          ok: false,
+          messageKey: "analyzer.reset.error.profileAvailable",
+        }),
+      );
+      renderConnection({ shown: stranded, onProfileReset });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Reset analyzer type" }),
+      );
+
+      expect(
+        await screen.findByText(
+          "This analyzer's type is still available. Adopt a newer revision to move it.",
+        ),
+      ).toBeVisible();
+      expect(onProfileReset).not.toHaveBeenCalled();
+    });
+
+    it("says it once when the activation check reports the same thing", async () => {
+      getAnalyzerActivationReadiness.mockImplementation((_id, callback) =>
+        callback({
+          analyzerId: "42",
+          status: "INACTIVE",
+          ready: false,
+          activated: false,
+          blockers: [
+            { code: "analyzer.connection.readiness.profileUnavailable" },
+          ],
+        }),
+      );
+      renderConnection({ shown: stranded, onProfileReset: vi.fn() });
+
+      await screen.findByRole("button", { name: "Reset analyzer type" });
+      await waitFor(() =>
+        expect(getAnalyzerActivationReadiness).toHaveBeenCalled(),
+      );
+      expect(
+        screen.getAllByText(/which the Analyzer Bridge no longer has/),
+      ).toHaveLength(1);
+    });
+
+    it("offers no reset while the type is available", async () => {
+      renderConnection({ onProfileReset: vi.fn() });
+
+      await screen.findByLabelText("Transport");
+      expect(
+        screen.queryByRole("button", { name: "Reset analyzer type" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   it("renders and saves generic Bridge fields without analyzer-specific branching", async () => {
     const onClose = vi.fn();
     const history = renderConnection({ onClose });
 
-    expect(await screen.findByLabelText("Transport")).toHaveValue("TCP/IP");
-    expect(screen.getByLabelText("Connection role")).toHaveValue("SERVER");
+    expect(await screen.findByLabelText("Transport")).toHaveDisplayValue(
+      "Network (TCP/IP)",
+    );
+    expect(screen.getByLabelText("Connection role")).toHaveDisplayValue(
+      "Server",
+    );
     expect(screen.getByRole("spinbutton", { name: "Port" })).toHaveValue(55000);
     expect(
       screen.queryByRole("textbox", { name: "Host" }),
@@ -235,11 +430,14 @@ describe("AnalyzerConnectionSetup", () => {
 
     await userEvent.selectOptions(
       screen.getByLabelText("Connection role"),
-      "CLIENT",
+      "Client",
     );
     expect(screen.getByRole("textbox", { name: "Host" })).toBeVisible();
 
-    await userEvent.selectOptions(screen.getByLabelText("Transport"), "RS-232");
+    await userEvent.selectOptions(
+      screen.getByLabelText("Transport"),
+      "Serial (RS-232)",
+    );
     expect(screen.queryByLabelText("Connection role")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("textbox", { name: "Host" }),
@@ -305,7 +503,7 @@ describe("AnalyzerConnectionSetup", () => {
 
     await userEvent.selectOptions(
       await screen.findByLabelText("Connection role"),
-      "CLIENT",
+      "Client",
     );
     await userEvent.click(
       screen.getByRole("button", { name: "Test connection" }),
@@ -352,6 +550,135 @@ describe("AnalyzerConnectionSetup", () => {
     expect(screen.getByText("Bridge listener")).toBeVisible();
   });
 
+  it.each([
+    [
+      "FAILED",
+      "remote.refused",
+      "Connection override",
+      "Connection override",
+      "The analyzer refused the connection.",
+    ],
+    [
+      "TIMED_OUT",
+      "remote.timeout",
+      "Profile default",
+      "Analyzer type default",
+      "The analyzer did not respond before the timeout.",
+    ],
+    [
+      "FAILED",
+      "remote.host.unknown",
+      "Bridge default",
+      "Bridge default",
+      "The analyzer address could not be resolved.",
+    ],
+    [
+      "PASSED",
+      "remote.hl7.ready",
+      "Profile default",
+      "Analyzer type default",
+      "The analyzer completed the HL7 handshake.",
+    ],
+  ])(
+    "shows the attempted destination and source for %s / %s",
+    async (status, messageKey, portSource, sourceLabel, outcome) => {
+      testConnection.mockImplementation((_id, callback) =>
+        callback({
+          schemaVersion: "1.0",
+          requestId: "probe-destination",
+          connectionId: connection.connectionId,
+          profileRef,
+          configRevision: connection.configRevision,
+          configFingerprint: connection.configFingerprint,
+          nonMutating: true,
+          status: status === "PASSED" ? "SUCCEEDED" : "FAILED",
+          checks: [
+            {
+              key: "listener",
+              status: "PASSED",
+              messageKey: "listener.ready",
+              details: { port: 32001 },
+            },
+            {
+              key: "remote-protocol",
+              status,
+              messageKey,
+              details: {
+                host: "bench.example.test",
+                port: 6501,
+                portSource,
+                remediation: "Server text is not an untranslated UI label",
+                token: "DO-NOT-RENDER",
+              },
+            },
+          ],
+        }),
+      );
+      renderConnection();
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Test connection" }),
+      );
+      expect(await screen.findByText(outcome)).toBeVisible();
+      expect(
+        screen.getByText("Destination: bench.example.test, port 6501"),
+      ).toBeVisible();
+      expect(
+        screen.getByText(`Port selected from: ${sourceLabel}`),
+      ).toBeVisible();
+      expect(screen.getByText("Bridge listener port: 32001")).toBeVisible();
+      const remediation =
+        "Check the analyzer address, destination port, listening service and network access, then test again.";
+      if (status === "PASSED")
+        expect(screen.queryByText(remediation)).not.toBeInTheDocument();
+      else {
+        expect(screen.getByText(remediation)).toBeVisible();
+        expect(screen.getByText("Connection failed")).toBeVisible();
+      }
+      expect(screen.queryByText("DO-NOT-RENDER")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Server text is not an untranslated UI label"),
+      ).not.toBeInTheDocument();
+      await userEvent.selectOptions(
+        screen.getByLabelText("Transport"),
+        "Serial (RS-232)",
+      );
+      expect(
+        screen.queryByText("Destination: bench.example.test, port 6501"),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it("keeps old probe responses usable without inventing a destination or port source", async () => {
+    testConnection.mockImplementation((_id, callback) =>
+      callback({
+        schemaVersion: "1.0",
+        requestId: "probe-old",
+        connectionId: connection.connectionId,
+        profileRef,
+        configRevision: connection.configRevision,
+        configFingerprint: connection.configFingerprint,
+        nonMutating: true,
+        status: "FAILED",
+        checks: [
+          {
+            key: "remote-protocol",
+            status: "FAILED",
+            messageKey: "remote.refused",
+          },
+        ],
+      }),
+    );
+    renderConnection();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Test connection" }),
+    );
+    expect(
+      await screen.findByText("The analyzer refused the connection."),
+    ).toBeVisible();
+    expect(screen.queryByText(/^Destination:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Port selected from:/)).not.toBeInTheDocument();
+  });
+
   it("renders structured failure evidence when an equivalent saved revision advances", async () => {
     testConnection.mockImplementation((_id, callback) =>
       callback({
@@ -391,6 +718,206 @@ describe("AnalyzerConnectionSetup", () => {
     ).not.toBeInTheDocument();
   });
 
+  describe("when the analyzer dials the Bridge", () => {
+    const serverProbe = (status, checks) => ({
+      schemaVersion: "1.0",
+      requestId: "probe-server-1",
+      connectionId: connection.connectionId,
+      profileRef,
+      configRevision: connection.configRevision,
+      configFingerprint: connection.configFingerprint,
+      nonMutating: true,
+      status,
+      startedAt: "2026-09-23T00:01:00Z",
+      completedAt: "2026-09-23T00:01:01Z",
+      checks,
+    });
+    const listenerReady = {
+      key: "listener",
+      status: "PASSED",
+      messageKey: "listener.ready",
+      durationMillis: 2,
+      details: { port: 55000 },
+    };
+
+    const probeWith = async (result) => {
+      testConnection.mockImplementation((_id, callback) => callback(result));
+      renderConnection();
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Test connection" }),
+      );
+    };
+
+    it("explains an unchecked analyzer without reporting a failure", async () => {
+      await probeWith(
+        serverProbe("SUCCEEDED", [
+          listenerReady,
+          {
+            key: "analyzer",
+            status: "SKIPPED",
+            messageKey: "analyzer.address.missing",
+            durationMillis: 0,
+          },
+        ]),
+      );
+
+      expect(await screen.findByText("Connection ready")).toBeVisible();
+      expect(screen.getByText("Analyzer (for information)")).toBeVisible();
+      expect(
+        screen.getByText(
+          "No analyzer address is saved, so the analyzer was not checked. Results arriving from the analyzer prove the connection works.",
+        ),
+      ).toBeVisible();
+      expect(
+        screen.queryByText("Connection check failed."),
+      ).not.toBeInTheDocument();
+    });
+
+    it("explains an unreachable analyzer without reporting a failure", async () => {
+      await probeWith(
+        serverProbe("SUCCEEDED", [
+          listenerReady,
+          {
+            key: "analyzer",
+            status: "FAILED",
+            messageKey: "analyzer.unreachable",
+            durationMillis: 1500,
+            details: { host: "10.1.2.3" },
+          },
+        ]),
+      );
+
+      expect(await screen.findByText("Connection ready")).toBeVisible();
+      expect(
+        screen.getByText(
+          "The Bridge could not reach the analyzer at 10.1.2.3. Analyzers that connect to the Bridge often cannot be reached from it (a firewall, NAT, or a hosted server). Results arriving from the analyzer prove the connection works.",
+        ),
+      ).toBeVisible();
+      expect(
+        screen.queryByText("Connection check failed."),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Connection failed")).not.toBeInTheDocument();
+    });
+
+    it("directs missing shared-listener configuration to the Bridge administrator", async () => {
+      await probeWith(
+        serverProbe("BLOCKED", [
+          {
+            key: "listener",
+            status: "SKIPPED",
+            messageKey: "listener.configuration.missing",
+            durationMillis: 0,
+          },
+        ]),
+      );
+
+      expect(
+        await screen.findByText("Connection settings are incomplete"),
+      ).toBeVisible();
+      expect(
+        screen.getByText(
+          "The shared Bridge listener is not configured. Ask the Bridge administrator to check its listener settings.",
+        ),
+      ).toBeVisible();
+      expect(
+        screen.queryByText("This check could not be run."),
+      ).not.toBeInTheDocument();
+    });
+
+    it("explains that incoming HTTP messages need delivered-result evidence", async () => {
+      await probeWith(
+        serverProbe("FAILED", [
+          {
+            key: "http-input",
+            status: "FAILED",
+            messageKey: "http.input.verify.with.delivery",
+            durationMillis: 0,
+          },
+        ]),
+      );
+
+      expect(
+        await screen.findByText("Incoming analyzer messages"),
+      ).toBeVisible();
+      expect(
+        screen.getByText(
+          "This analyzer sends messages to the Bridge, so this connection must be verified by delivering a result.",
+        ),
+      ).toBeVisible();
+      expect(
+        screen.queryByText("Connection check failed."),
+      ).not.toBeInTheDocument();
+    });
+
+    it("reports a listener failure as an error", async () => {
+      await probeWith(
+        serverProbe("FAILED", [
+          {
+            key: "listener",
+            status: "FAILED",
+            messageKey: "listener.not.listening",
+            durationMillis: 2,
+            details: { port: 55000 },
+          },
+          {
+            key: "analyzer",
+            status: "PASSED",
+            messageKey: "analyzer.reachable",
+            durationMillis: 4,
+            details: { host: "10.1.2.3" },
+          },
+        ]),
+      );
+
+      const outcome = await screen.findByText("Connection failed");
+      expect(outcome.closest(".cds--inline-notification")).toHaveClass(
+        "cds--inline-notification--error",
+      );
+      expect(
+        screen.getByText("The Bridge listener is not accepting connections."),
+      ).toBeVisible();
+      expect(
+        screen.getByText("The Bridge reached the analyzer at 10.1.2.3."),
+      ).toBeVisible();
+    });
+  });
+
+  describe("when activation is blocked", () => {
+    const blockedBy = (...codes) =>
+      getAnalyzerActivationReadiness.mockImplementation((_id, callback) =>
+        callback({
+          analyzerId: "42",
+          status: "SETUP",
+          ready: false,
+          activated: false,
+          blockers: codes.map((code) => ({ code, args: {} })),
+        }),
+      );
+
+    it("offers to verify mappings when the pinned mappings are stale", async () => {
+      blockedBy("analyzer.activation.blocker.recognition");
+      const onVerifyMappings = vi.fn();
+      renderConnection({ onVerifyMappings });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Verify mappings" }),
+      );
+      expect(onVerifyMappings).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not offer mapping verification for unrelated blockers", async () => {
+      blockedBy("analyzer.activation.blocker.labUnit");
+      renderConnection({ onVerifyMappings: vi.fn() });
+
+      expect(
+        await screen.findByText("Assign at least one active lab unit."),
+      ).toBeVisible();
+      expect(
+        screen.queryByRole("button", { name: "Verify mappings" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   it("does not resend a masked secret unless the user replaces it", async () => {
     renderConnection();
 
@@ -401,6 +928,44 @@ describe("AnalyzerConnectionSetup", () => {
     await waitFor(() => expect(updateAnalyzer).toHaveBeenCalledTimes(1));
     const payload = updateAnalyzer.mock.calls[0][1];
     expect(payload.connectionValues).not.toHaveProperty("apiToken");
+  });
+
+  it("offers activation again to an active analyzer whose connection the Bridge could not restart", async () => {
+    getAnalyzerActivationReadiness.mockImplementation((_id, callback) =>
+      callback({
+        analyzerId: "42",
+        status: "ACTIVE",
+        ready: true,
+        activated: true,
+        blockers: [],
+      }),
+    );
+    renderConnection({
+      shown: {
+        ...candidate,
+        status: "ACTIVE",
+        connection: {
+          ...connection,
+          actualRuntimeState: "ERROR",
+          readiness: {
+            ready: false,
+            blockers: [
+              {
+                key: "runtime-restore-failed",
+                messageKey: "analyzer.connection.readiness.restoreFailed",
+                fieldKeys: [],
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Finish and activate" }),
+    );
+
+    await waitFor(() => expect(activateAnalyzer).toHaveBeenCalledTimes(1));
   });
 
   it("saves an active analyzer without offering or repeating activation", async () => {
@@ -432,4 +997,117 @@ describe("AnalyzerConnectionSetup", () => {
     expect(activateAnalyzer).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+});
+
+describe("receivedSenders", () => {
+  it("offers each sender the Bridge holds unowned or for this connection, once", () => {
+    const rows = [
+      { sender: "CPHL^GeneXpert^6.2", connectionId: null },
+      { sender: "CPHL^GeneXpert^6.2", connectionId: null },
+      { sender: "MBT^Bruker^4.1", connectionId: "bridge-9" },
+      { sender: "EPICENTER^EpiCenter", connectionId: "bridge-other" },
+      { sender: null, connectionId: null },
+    ];
+
+    expect(receivedSenders(rows, "bridge-9")).toEqual([
+      "CPHL^GeneXpert^6.2",
+      "MBT^Bruker^4.1",
+    ]);
+  });
+});
+
+describe("adopting an observed sender", () => {
+  it.each([true, false])(
+    "starts setup before retrying the original receipt (acknowledged: %s)",
+    async (receiving) => {
+      vi.resetAllMocks();
+      const source = {
+        id: "recv-v1:123",
+        state: "DMQ",
+        connectionId: null,
+        sender: "GeneXpert PC^GeneXpert^1.0",
+        sourceId: "10.1.2.3",
+        listenerPort: 12001,
+        protocol: "ASTM",
+        transport: "TCP",
+        failureReason: "UNREGISTERED_SOURCE",
+      };
+      const shown = {
+        ...candidate,
+        connection: {
+          ...connection,
+          fields: [
+            {
+              key: "connectionRole",
+              inputKind: "TEXT",
+              currentValue: "SERVER",
+            },
+            { key: "host", inputKind: "TEXT" },
+            { key: "senderId", inputKind: "TEXT" },
+            { key: "port", inputKind: "NUMBER", currentValue: 12001 },
+          ],
+        },
+      };
+      getAnalyzerActivationReadiness.mockImplementation((_id, callback) =>
+        callback({
+          analyzerId: "42",
+          ready: false,
+          activated: false,
+          blockers: [],
+        }),
+      );
+      getAnalyzerDeliveryIssues.mockImplementation((callback) =>
+        callback({ status: "success", data: { rows: [source] } }),
+      );
+      updateAnalyzer.mockImplementation((_id, _body, callback) =>
+        callback(shown),
+      );
+      startAnalyzerSetupReception.mockImplementation((_id, callback) =>
+        callback({
+          analyzerId: "42",
+          receiving,
+          status: receiving ? "VALIDATION" : "SETUP",
+          blockers: [],
+        }),
+      );
+      retryAnalyzerDelivery.mockImplementation((id, callback) =>
+        callback({ id, status: "accepted", state: "QUEUED" }),
+      );
+      renderConnection({ shown, protocol: "ASTM", onContinue: vi.fn() });
+      await userEvent.click(
+        screen.getByRole("button", { name: "This is my analyzer" }),
+      );
+      expect(updateAnalyzer).toHaveBeenCalledWith(
+        "42",
+        expect.objectContaining({
+          connectionValues: {
+            connectionRole: "SERVER",
+            host: source.sourceId,
+            senderId: source.sender,
+            port: 12001,
+          },
+        }),
+        expect.any(Function),
+      );
+      expect(startAnalyzerSetupReception).toHaveBeenCalledWith(
+        "42",
+        expect.any(Function),
+      );
+      if (receiving) {
+        expect(retryAnalyzerDelivery).toHaveBeenCalledWith(
+          source.id,
+          expect.any(Function),
+        );
+        expect(
+          startAnalyzerSetupReception.mock.invocationCallOrder[0],
+        ).toBeLessThan(retryAnalyzerDelivery.mock.invocationCallOrder[0]);
+        expect(screen.getByText(/Setup sample queued/)).toBeVisible();
+      } else {
+        expect(retryAnalyzerDelivery).not.toHaveBeenCalled();
+        expect(
+          screen.queryByText(/Setup sample queued/),
+        ).not.toBeInTheDocument();
+      }
+    },
+  );
 });

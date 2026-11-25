@@ -61,22 +61,26 @@ test.describe("Sidenav", () => {
     await expect(content).not.toHaveClass(/content-nav-locked/);
   });
 
-  test("storage subnav updates active state", async ({ page }) => {
+  /**
+   * Storage Management is a single link now, not an expandable parent over
+   * six rows. The active-state guarantee it carries is that the one row goes
+   * current for every /Storage route and clears when you leave the section.
+   */
+  test("storage nav row updates active state", async ({ page }) => {
     const sidenav = new Sidenav(page);
-    await sidenav.gotoStorage("sample-items");
+    await page.goto("/Dashboard", { waitUntil: "domcontentloaded" });
 
-    // Expand menus to see items
     await sidenav.expandMenu("Storage");
-    await sidenav.expandMenu("Storage Management");
+    await sidenav.expectMenuInactive("Storage Management");
 
-    // Check initial active state
-    await sidenav.expectMenuActive("Sample Items");
+    await sidenav.clickMenu("Storage Management");
+    await expect(page).toHaveURL(/\/Storage$/);
+    await sidenav.expectMenuActive("Storage Management");
 
-    // Navigate and verify active state changes
-    await sidenav.clickMenu("Rooms");
-    await expect(page).toHaveURL(/\/Storage\/rooms/);
-    await sidenav.expectMenuActive("Rooms");
-    await sidenav.expectMenuInactive("Sample Items");
+    // A level deep link is still inside the section, so the row stays current.
+    await sidenav.gotoStorage("rooms");
+    await sidenav.expandMenu("Storage");
+    await sidenav.expectMenuActive("Storage Management");
   });
 
   test("cold storage subnav updates active state", async ({ page }) => {
@@ -111,9 +115,8 @@ test.describe("Sidenav", () => {
 
     // Expand a parent menu and click a child to navigate
     await sidenav.expandMenu("Storage");
-    await sidenav.expandMenu("Storage Management");
-    await sidenav.clickMenu("Rooms");
-    await expect(page).toHaveURL(/\/Storage\/rooms/);
+    await sidenav.clickMenu("Storage Management");
+    await expect(page).toHaveURL(/\/Storage$/);
 
     // After navigation, verify no collapsed parent has grey active background
     await sidenav.expectNoActiveGreyBackground();

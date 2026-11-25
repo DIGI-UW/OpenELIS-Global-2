@@ -24,6 +24,7 @@ public class History extends BaseObject<String> {
 
     private String id;
     private String referenceId;
+    private String referenceKey;
     private String referenceTable;
     private Timestamp timestamp;
     private String activity;
@@ -56,6 +57,18 @@ public class History extends BaseObject<String> {
 
     public void setReferenceId(String referenceId) {
         this.referenceId = referenceId;
+    }
+
+    /**
+     * The audited row's key when that table is keyed by a non-numeric id (a UUID);
+     * {@link #getReferenceId()} is then null.
+     */
+    public String getReferenceKey() {
+        return referenceKey;
+    }
+
+    public void setReferenceKey(String referenceKey) {
+        this.referenceKey = referenceKey;
     }
 
     public String getReferenceTable() {

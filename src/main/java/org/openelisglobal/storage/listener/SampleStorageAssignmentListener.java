@@ -52,23 +52,63 @@ public class SampleStorageAssignmentListener {
                 continue;
             }
 
-            String sampleItemId = sampleItem.getId();
-
-            java.util.Map<String, Object> existing = sampleStorageService.getSampleItemLocation(sampleItemId);
-            boolean alreadyAssigned = existing != null && !existing.isEmpty();
-
-            logger.info("Storage assignment [v2]: sampleItemId={}, alreadyAssigned={}, locationId={}, locationType={}",
-                    sampleItemId, alreadyAssigned, storageLocationId, storageLocationType);
-
-            if (alreadyAssigned) {
-                sampleStorageService.moveSampleItemWithLocation(sampleItemId, storageLocationId, storageLocationType,
-                        storagePositionCoordinate, "Reassignment on order save", "");
-            } else {
-                sampleStorageService.assignSampleItemWithLocation(sampleItemId, storageLocationId, storageLocationType,
-                        storagePositionCoordinate, "Auto-assigned on order creation");
-            }
-
-            logger.info("Successfully processed storage location for SampleItem {}", sampleItemId);
+            applyStorage(sampleItem.getId(), storageLocationId, storageLocationType, storagePositionCoordinate,
+                    sampleTestCollection.storageNotes);
         }
+    }
+
+    /**
+     * Stores the sample item where the save says, as one of three cases: a first
+     * assignment, a move to a different place, or the same place with only the
+     * notes changed. An item never stored reads back without a location id (its
+     * quantity snapshot is still reported), so the id decides, not the map.
+     */
+    void applyStorage(String sampleItemId, String storageLocationId, String storageLocationType,
+            String storagePositionCoordinate, String storageNotes) {
+        java.util.Map<String, Object> existing = sampleStorageService.getSampleItemLocation(sampleItemId);
+        boolean alreadyAssigned = existing != null && existing.get("locationId") != null
+                && !String.valueOf(existing.get("locationId")).isBlank();
+
+        logger.info("Storage assignment [v2]: sampleItemId={}, alreadyAssigned={}, locationId={}, locationType={}",
+                sampleItemId, alreadyAssigned, storageLocationId, storageLocationType);
+
+        String notes = storageNotes == null ? "" : storageNotes.trim();
+        if (alreadyAssigned
+                && sameLocation(existing, storageLocationId, storageLocationType, storagePositionCoordinate)) {
+            if (!notes.equals(existing.get("notes"))) {
+                sampleStorageService.updateAssignmentMetadata(sampleItemId, storagePositionCoordinate, notes);
+            }
+        } else if (alreadyAssigned) {
+            sampleStorageService.moveSampleItemWithLocation(sampleItemId, storageLocationId, storageLocationType,
+                    storagePositionCoordinate, "Reassignment on order save", notes);
+        } else {
+            sampleStorageService.assignSampleItemWithLocation(sampleItemId, storageLocationId, storageLocationType,
+                    storagePositionCoordinate, notes.isEmpty() ? "Auto-assigned on order creation" : notes);
+        }
+
+        logger.info("Successfully processed storage location for SampleItem {}", sampleItemId);
+    }
+
+    /**
+     * A save that repeats the sample's current location is not a move: only its
+     * notes may have changed. The location read back carries the location id and
+     * type when the storage service reports them; without them the position alone
+     * decides.
+     */
+    private static boolean sameLocation(java.util.Map<String, Object> existing, String locationId, String locationType,
+            String positionCoordinate) {
+        Object existingId = existing.get("locationId");
+        Object existingType = existing.get("locationType");
+        if (existingId != null && existingType != null) {
+            return locationId.equals(String.valueOf(existingId)) && locationType.equals(String.valueOf(existingType))
+                    && samePosition(existing, positionCoordinate);
+        }
+        return false;
+    }
+
+    private static boolean samePosition(java.util.Map<String, Object> existing, String positionCoordinate) {
+        String current = existing.get("positionCoordinate") == null ? ""
+                : String.valueOf(existing.get("positionCoordinate"));
+        return current.equals(positionCoordinate == null ? "" : positionCoordinate);
     }
 }

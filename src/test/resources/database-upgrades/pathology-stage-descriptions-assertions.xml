@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet id="assert-pathology-stage-descriptions-rewritten"
+        author="openelis">
+        <preConditions onFail="HALT" onError="HALT">
+            <sqlCheck expectedResult="7">
+                SELECT COUNT(*) FROM clinlims.site_information
+                WHERE name LIKE 'pathology.stage.%.enabled'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.site_information
+                WHERE name LIKE 'pathology.stage.%.enabled'
+                AND description LIKE '%skipped%'
+            </sqlCheck>
+            <sqlCheck expectedResult="7">
+                SELECT COUNT(*) FROM clinlims.site_information
+                WHERE name LIKE 'pathology.stage.%.enabled'
+                AND description LIKE '%cannot be chosen%'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.site_information
+                WHERE name = 'pathology.stage.COVERSLIPPING.enabled'
+                AND value = 'false'
+            </sqlCheck>
+            <sqlCheck expectedResult="6">
+                SELECT COUNT(*) FROM clinlims.site_information
+                WHERE name LIKE 'pathology.stage.%.enabled'
+                AND name != 'pathology.stage.COVERSLIPPING.enabled'
+                AND value = 'true'
+            </sqlCheck>
+        </preConditions>
+        <sql>SELECT 1;</sql>
+    </changeSet>
+</databaseChangeLog>

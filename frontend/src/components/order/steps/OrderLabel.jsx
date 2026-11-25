@@ -40,6 +40,7 @@ import {
 } from "../../common/CustomNotification";
 import LocationPickerInline from "../../storage/LocationPicker/LocationPickerInline";
 import OrderReferOutSection from "./referOut/OrderReferOutSection";
+import useSiteDateFormat from "../../common/useSiteDateFormat";
 import {
   getDeepestLocationSelection,
   positionToCoordinate,
@@ -48,8 +49,8 @@ import {
 import {
   postToOpenElisServerJsonResponse,
   patchToOpenElisServerJsonResponse,
-  putToOpenElisServer,
 } from "../../utils/Utils";
+import { orderSavedMessage } from "../orderSavedMessage";
 
 /**
  * OrderLabel - Step 3: Label & Store
@@ -65,6 +66,7 @@ import {
 
 const OrderLabel = () => {
   const intl = useIntl();
+  const siteDate = useSiteDateFormat();
   const history = useHistory();
   const location = useLocation();
   const workflowPrefix = useWorkflowPrefix();
@@ -78,9 +80,10 @@ const OrderLabel = () => {
     orderId,
     storageSkipped,
     setStorageSkipped,
-    loadOrder,
     isLoading,
+    setIsSubmitting,
   } = useOrderContext();
+  const labelSaveInFlight = useRef(false);
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
@@ -88,39 +91,32 @@ const OrderLabel = () => {
   const labNumber =
     contextLabNumber || orderData?.sampleOrderItems?.labNo || null;
 
-  // Deep-link support: if the URL carries ?labNumber and no order is loaded,
-  // fetch it before falling back to the Step 1 redirect. Lets external links
-  // (dashboard widgets, tests) land directly on Step 3 without walking the
-  // wizard.
-  const urlLabNumber = new URLSearchParams(location.search).get("labNumber");
+  // Deep links and refreshes address the order with ?order= or ?labNumber=.
+  // OrderContext loads it once the site's date locale is known (OGC-1192), so
+  // this step waits for that load and returns to Enter Order only when the
+  // URL names no order or the load ended without one.
+  const urlParams = new URLSearchParams(location.search);
+  const urlLabNumber = urlParams.get("order") || urlParams.get("labNumber");
+  const urlLoadSeen = useRef(false);
 
   // Persist storageSkipped using the resolved labNumber (context labNumber may be
   // null on fresh creation flow before loadOrder has been called)
   const handleStorageSkippedChange = useCallback(
     (checked) => {
-      setStorageSkipped(checked);
-      if (labNumber) {
-        putToOpenElisServer(
-          `/rest/order/storage-skipped?labNumber=${encodeURIComponent(labNumber)}&storageSkipped=${checked}`,
-          null,
-          Function.prototype,
-        );
-      }
+      setStorageSkipped(checked, labNumber);
     },
     [labNumber, setStorageSkipped],
   );
 
-  // Redirect to enter step if no order is loaded
+  useEffect(() => {
+    if (isLoading) urlLoadSeen.current = true;
+  }, [isLoading]);
+
   useEffect(() => {
     if (orderId || labNumber || isLoading) return;
-    if (urlLabNumber) {
-      loadOrder(urlLabNumber).catch(() => {
-        history.replace(`${workflowPrefix}/enter`);
-      });
-      return;
-    }
+    if (urlLabNumber && !urlLoadSeen.current) return;
     history.replace(`${workflowPrefix}/enter`);
-  }, [orderId, labNumber, isLoading, urlLabNumber, loadOrder, history]);
+  }, [orderId, labNumber, isLoading, urlLabNumber, history]);
 
   // Label printing state - order label + one entry per sample
   const [labelQuantities, setLabelQuantities] = useState(() => {
@@ -272,9 +268,12 @@ const OrderLabel = () => {
   ).length;
 
   // Build patient info for order label
-  const patientName = orderData?.patientProperties
-    ? `${orderData.patientProperties.lastName || ""}, ${orderData.patientProperties.firstName || ""}`.trim()
-    : "---";
+  const patientName = [
+    orderData?.patientProperties?.lastName,
+    orderData?.patientProperties?.firstName,
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   // Build label rows - Order label + one row per printable sample.
   //
@@ -306,7 +305,12 @@ const OrderLabel = () => {
       id: "label.type.order",
       defaultMessage: "Order Label",
     }),
-    content: `${labNrPrefix}: ${labNumber || "---"} | ${patientPrefix}: ${patientName}`,
+    content: [
+      `${labNrPrefix}: ${labNumber || "---"}`,
+      patientName ? `${patientPrefix}: ${patientName}` : siteName,
+    ]
+      .filter(Boolean)
+      .join(" | "),
     barcode: labNumber || "---",
   };
 
@@ -322,7 +326,7 @@ const OrderLabel = () => {
       sample.sampleTypeName || sample.name || labelFallbackSampleName;
     const contentParts = [typeName];
     if (siteName) contentParts.push(siteName);
-    contentParts.push(sample.collectionDate || "---");
+    contentParts.push(siteDate.formatIsoDate(sample.collectionDate) || "---");
     return {
       id: `sample-${index}`,
       name: `${intl.formatMessage({
@@ -360,7 +364,9 @@ const OrderLabel = () => {
           : labNumber || "---";
     const poolContentParts = [pool.name];
     if (siteName) poolContentParts.push(siteName);
-    poolContentParts.push(first?.collectionDate || "---");
+    poolContentParts.push(
+      siteDate.formatIsoDate(first?.collectionDate) || "---",
+    );
     return {
       id: `pool-${pool.key}`,
       kind: "pool",
@@ -685,7 +691,22 @@ const OrderLabel = () => {
     }
   };
 
-  const handleSave = async () => {
+  /** One click, one save: a second click while the first runs does nothing. */
+  const guardLabelSave = (save) => async () => {
+    if (labelSaveInFlight.current) {
+      return;
+    }
+    labelSaveInFlight.current = true;
+    setIsSubmitting(true);
+    try {
+      await save();
+    } finally {
+      labelSaveInFlight.current = false;
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSave = guardLabelSave(async () => {
     try {
       await savePendingStorageAssignments();
       await updateStorageNotes();
@@ -696,7 +717,10 @@ const OrderLabel = () => {
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "save.order.success.msg" }),
+        message: orderSavedMessage(
+          intl,
+          labNumber || orderData?.sampleOrderItems?.labNo,
+        ),
       });
       setNotificationVisible(true);
     } catch (error) {
@@ -708,9 +732,9 @@ const OrderLabel = () => {
       });
       setNotificationVisible(true);
     }
-  };
+  });
 
-  const handleSaveAndNext = async () => {
+  const handleSaveAndNext = guardLabelSave(async () => {
     try {
       await savePendingStorageAssignments();
       await updateStorageNotes();
@@ -733,7 +757,7 @@ const OrderLabel = () => {
       });
       setNotificationVisible(true);
     }
-  };
+  });
 
   // Check if all samples have storage assigned
   const allSamplesHaveStorage =

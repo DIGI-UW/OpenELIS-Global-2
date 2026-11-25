@@ -18,10 +18,12 @@ import org.openelisglobal.program.valueholder.pathology.PathologyConclusion;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion.ConclusionType;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestType;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
+import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 import org.openelisglobal.program.valueholder.pathology.PathologyTechnique.TechniqueType;
 import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.systemuser.service.SystemUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -38,6 +40,8 @@ public class ImmunohistochemistryDisplayServiceImpl implements Immunohistochemis
     private QuestionnaireStorageService questionnaireStorageService;
     @Autowired
     private OrganizationService organizationService;
+    @Autowired
+    private SystemUserService systemUserService;
 
     @Override
     @Transactional
@@ -111,6 +115,10 @@ public class ImmunohistochemistryDisplayServiceImpl implements Immunohistochemis
             pathologySample.getSlides().size();
             displayItem.setBlocks(pathologySample.getBlocks());
             displayItem.setSlides(pathologySample.getSlides());
+            displayItem.setStainNames(PathologyDisplayServiceImpl.dictionaryNames(
+                    pathologySample.getSlides().stream().map(PathologySlide::getStainId), dictionaryService));
+            displayItem.setLabelVerifications(
+                    PathologyDisplayServiceImpl.labelVerifications(pathologySample.getSlides(), systemUserService));
             displayItem.setGrossExam(pathologySample.getGrossExam());
             displayItem.setMicroscopyExam(pathologySample.getMicroscopyExam());
 

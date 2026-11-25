@@ -97,8 +97,8 @@ public class ViewTestCatalogIntegrationTest extends BaseWebContextSensitiveTest 
     public void showTestCatalog_skipsUnresolvableDictionaryValues_insteadOfFailingTheCatalog() {
         TestCatalogForm form = controller.showTestCatalog(new MockHttpServletRequest());
 
-        assertNotNull(form.getTestCatalogList());
-        assertNotNull(form.getTestSectionList());
+        assertFalse("testCatalogList must not be empty", form.getTestCatalogList().isEmpty());
+        assertFalse("testSectionList must not be empty", form.getTestSectionList().isEmpty());
         TestCatalog seeded = form.getTestCatalogList().stream()
                 .filter(catalog -> String.valueOf(TEST_ID).equals(catalog.getId())).findFirst().orElse(null);
         assertNotNull("the seeded test is missing from the catalog", seeded);

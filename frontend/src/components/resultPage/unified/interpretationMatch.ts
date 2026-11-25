@@ -1,3 +1,4 @@
+import { normalizeScientificNotation } from "../scientificNotation";
 /**
  * OGC-1026 (R7, FR-G1) — matches an entered result value against an
  * interpretation bucket's valueMatch expression (configured per component in
@@ -27,7 +28,7 @@ export const bucketMatches = (
     return false;
   }
   const expression = valueMatch.trim();
-  const numeric = Number(value);
+  const numeric = Number(normalizeScientificNotation(value));
   const hasNumeric = Number.isFinite(numeric);
 
   const oneSided = expression.match(/^(>=|<=|>|<)\s*(-?\d+(?:\.\d+)?)$/);

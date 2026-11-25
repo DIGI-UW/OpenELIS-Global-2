@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+  <changeSet id="479-001-reporting-export-jobs" author="pmanko">
+    <createTable tableName="reporting_export_job">
+      <column name="id" type="varchar(36)"><constraints primaryKey="true" nullable="false"/></column>
+      <column name="last_updated" type="timestamp"/>
+      <column name="owner_id" type="varchar(36)"><constraints nullable="false"/></column>
+      <column name="client_request_id" type="varchar(80)"><constraints nullable="false"/></column>
+      <column name="source_id" type="varchar(80)"><constraints nullable="false"/></column>
+      <column name="layout" type="varchar(20)"><constraints nullable="false"/></column>
+      <column name="request_json" type="text"><constraints nullable="false"/></column>
+      <column name="request_hash" type="varchar(64)"><constraints nullable="false"/></column>
+      <column name="submitted_at" type="timestamp"><constraints nullable="false"/></column>
+      <column name="parent_id" type="varchar(36)"/>
+      <column name="state" type="varchar(20)"><constraints nullable="false"/></column>
+      <column name="started_at" type="timestamp"/>
+      <column name="completed_at" type="timestamp"/>
+      <column name="expires_at" type="timestamp"/>
+      <column name="worker_id" type="varchar(36)"/>
+      <column name="lease_until" type="timestamp"/>
+      <column name="row_count" type="bigint"/>
+      <column name="file_size" type="bigint"/>
+      <column name="failure_code" type="varchar(120)"/>
+    </createTable>
+    <addUniqueConstraint tableName="reporting_export_job" columnNames="owner_id,client_request_id"
+      constraintName="reporting_job_submission_unique"/>
+    <createIndex tableName="reporting_export_job" indexName="reporting_job_owner_submitted">
+      <column name="owner_id"/><column name="submitted_at"/>
+    </createIndex>
+    <createIndex tableName="reporting_export_job" indexName="reporting_job_state_submitted">
+      <column name="state"/><column name="submitted_at"/>
+    </createIndex>
+    <createIndex tableName="reporting_export_job" indexName="reporting_job_expiry">
+      <column name="state"/><column name="expires_at"/>
+    </createIndex>
+    <rollback><dropTable tableName="reporting_export_job"/></rollback>
+  </changeSet>
+  <changeSet id="479-002-reporting-menu" author="pmanko">
+    <preConditions onFail="HALT">
+      <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_reports'</sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq"/>
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_reports')"/>
+      <column name="presentation_order" valueNumeric="0"/>
+      <column name="element_id" value="menu_reports_custom_data_export"/>
+      <column name="action_url" value="/CustomDataExport"/>
+      <column name="display_key" value="reporting.title"/>
+      <column name="new_window" valueBoolean="false"/>
+      <column name="is_active" valueBoolean="true"/>
+    </insert>
+    <rollback>
+      <delete tableName="menu" schemaName="clinlims"><where>element_id = 'menu_reports_custom_data_export'</where></delete>
+    </rollback>
+  </changeSet>
+  <changeSet id="479-003-report-definition-updated-by" author="pmanko">
+    <preConditions onFail="HALT">
+      <tableExists tableName="report_definition" schemaName="clinlims"/>
+      <not><columnExists tableName="report_definition" columnName="updated_by" schemaName="clinlims"/></not>
+    </preConditions>
+    <addColumn tableName="report_definition" schemaName="clinlims">
+      <column name="updated_by" type="varchar(50)"/>
+    </addColumn>
+    <rollback>
+      <dropColumn tableName="report_definition" schemaName="clinlims" columnName="updated_by"/>
+    </rollback>
+  </changeSet>
+</databaseChangeLog>

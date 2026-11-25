@@ -1,5 +1,14 @@
 package org.openelisglobal.common.util;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.StringReader;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.Charset;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -20,6 +29,57 @@ import java.util.Map;
 public final class CsvParsingUtil {
 
     private CsvParsingUtil() {
+    }
+
+    /**
+     * Opens a CSV file the way a spreadsheet saved it. Excel's "CSV UTF-8" starts
+     * with a byte order mark, which is dropped so it never becomes part of the
+     * first column name; a file that is not valid UTF-8 is Excel's plain "CSV",
+     * which is Windows-1252, and is read as such so its accented letters survive.
+     */
+    public static BufferedReader openCsvReader(InputStream in) throws IOException {
+        byte[] bytes = in.readAllBytes();
+        int start = bytes.length >= 3 && (bytes[0] & 0xFF) == 0xEF && (bytes[1] & 0xFF) == 0xBB
+                && (bytes[2] & 0xFF) == 0xBF ? 3 : 0;
+        ByteBuffer body = ByteBuffer.wrap(bytes, start, bytes.length - start);
+        String text;
+        try {
+            text = StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(CodingErrorAction.REPORT).decode(body).toString();
+        } catch (CharacterCodingException notUtf8) {
+            text = new String(bytes, start, bytes.length - start, Charset.forName("windows-1252"));
+        }
+        return new BufferedReader(new StringReader(text));
+    }
+
+    /** Reads a complete record, preserving newlines inside quoted cells. */
+    public static String readCsvRecord(BufferedReader reader) throws IOException {
+        String line = reader.readLine();
+        if (line == null || isSkippableLine(line)) {
+            return line;
+        }
+        StringBuilder record = new StringBuilder();
+        boolean quoted = false;
+        while (true) {
+            record.append(line);
+            for (int i = 0; i < line.length(); i++) {
+                if (line.charAt(i) == '"') {
+                    if (quoted && i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                        i++;
+                    } else {
+                        quoted = !quoted;
+                    }
+                }
+            }
+            if (!quoted) {
+                return record.toString();
+            }
+            line = reader.readLine();
+            if (line == null) {
+                throw new IOException("Unterminated quoted CSV field");
+            }
+            record.append('\n');
+        }
     }
 
     /**
@@ -63,9 +123,17 @@ public final class CsvParsingUtil {
     public static Map<String, Integer> createColumnMap(String[] headers) {
         Map<String, Integer> columnMap = new HashMap<>();
         for (int i = 0; i < headers.length; i++) {
-            columnMap.put(headers[i].trim().toLowerCase(), i);
+            String header = headers[i];
+            if (i == 0) {
+                header = stripByteOrderMark(header);
+            }
+            columnMap.put(header.trim().toLowerCase(), i);
         }
         return columnMap;
+    }
+
+    public static String stripByteOrderMark(String value) {
+        return value != null && !value.isEmpty() && value.charAt(0) == '\uFEFF' ? value.substring(1) : value;
     }
 
     /** Returns the trimmed cell at index, or {@code ""} when out of range/null. */
@@ -92,7 +160,7 @@ public final class CsvParsingUtil {
      */
     public static int findColumn(String[] headers, String name) {
         for (int i = 0; i < headers.length; i++) {
-            if (headers[i] != null && name.equalsIgnoreCase(headers[i].trim())) {
+            if (headers[i] != null && name.equalsIgnoreCase(stripByteOrderMark(headers[i]).trim())) {
                 return i;
             }
         }

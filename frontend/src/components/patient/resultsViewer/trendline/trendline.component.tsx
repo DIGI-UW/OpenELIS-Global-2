@@ -12,6 +12,7 @@ import RangeSelector from "./range-selector.component";
 //import styles from './trendline.scss';
 import "./trendline.scss";
 
+import { normalizeScientificNotation } from "../../../resultPage/scientificNotation";
 enum ScaleTypes {
   TIME = "time",
   LINEAR = "linear",
@@ -173,7 +174,7 @@ const Trendline: React.FC<TrendlineProps> = ({
 
     data.push({
       date: new Date(Date.parse(obs.obsDatetime)),
-      value: parseFloat(obs.value),
+      value: parseFloat(normalizeScientificNotation(obs.value)),
       group: chartTitle,
       ...range,
     });
@@ -183,7 +184,7 @@ const Trendline: React.FC<TrendlineProps> = ({
       date: formatDate(parseDate(obs.obsDatetime)),
       time: formatTime(parseDate(obs.obsDatetime)),
       value: {
-        value: parseFloat(obs.value),
+        value: parseFloat(normalizeScientificNotation(obs.value)),
         interpretation: obs.interpretation,
       },
     });

@@ -197,6 +197,9 @@ function AssignedTestsSection({ labUnitId, onChange }) {
     );
   }, [runBulkAction, selectedIds, destinationId]);
 
+  const destinationInactive =
+    labUnits.find((unit) => String(unit.id) === String(destinationId))
+      ?.isActive === false;
   const destinationName =
     labUnits.find((unit) => String(unit.id) === String(destinationId))?.name ||
     "";
@@ -465,8 +468,26 @@ function AssignedTestsSection({ labUnitId, onChange }) {
                 id: "placeholder.labUnit.tests.reassign.destination",
               })}
             />
+            {/* OGC-189 (M2, decision D4): reassign destinations are
+                DELIBERATELY unfiltered — inactive units included. Ruled
+                acceptable 2026-09-01 ("fine with moving to a switched off
+                lab"), because emptying a unit into a deactivated one is a
+                legitimate reorganisation step. This is the documented
+                exception to the chooser rule that the test editor's lab unit
+                picker follows; do not "fix" it by filtering on isActive. */}
             {labUnits.map((unit) => (
-              <SelectItem key={unit.id} value={unit.id} text={unit.name} />
+              <SelectItem
+                key={unit.id}
+                value={unit.id}
+                text={
+                  unit.isActive === false
+                    ? intl.formatMessage(
+                        { id: "label.labUnit.inactiveOption" },
+                        { name: unit.name },
+                      )
+                    : unit.name
+                }
+              />
             ))}
           </Select>
           <div>
@@ -484,9 +505,20 @@ function AssignedTestsSection({ labUnitId, onChange }) {
               ))}
             </ul>
           </div>
-          <p style={{ fontSize: "13px", color: "var(--cds-text-secondary)" }}>
-            <FormattedMessage id="label.labUnit.tests.reassign.explain" />
-          </p>
+          {destinationInactive ? (
+            <InlineNotification
+              kind="warning"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({
+                id: "label.labUnit.tests.reassign.inactiveDestination",
+              })}
+            />
+          ) : (
+            <p style={{ fontSize: "13px", color: "var(--cds-text-secondary)" }}>
+              <FormattedMessage id="label.labUnit.tests.reassign.explain" />
+            </p>
+          )}
         </Stack>
       </Modal>
     </Stack>

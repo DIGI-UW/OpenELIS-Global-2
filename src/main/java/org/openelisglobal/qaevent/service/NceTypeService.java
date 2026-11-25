@@ -18,4 +18,7 @@ public interface NceTypeService extends BaseObjectService<NceType, Integer> {
     List<NceType> getNceTypesByCategoryId(Integer categoryId);
 
     List<IdValuePair> getActiveTypesAsIdValuePairs();
+
+    /** All catalog labels for historical views, including inactive rows. */
+    List<IdValuePair> getAllTypesAsIdValuePairs();
 }

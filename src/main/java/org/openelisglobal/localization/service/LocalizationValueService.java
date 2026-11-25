@@ -69,4 +69,14 @@ public interface LocalizationValueService extends BaseObjectService<Localization
      * @return the saved LocalizationValue
      */
     LocalizationValue setTranslation(String localizationId, String locale, String value, String sysUserId);
+
+    /**
+     * Write a label OpenELIS ships (a configuration file, an upgrade; OGC-1507). On
+     * a value that ships with a display key a lab's own label for that locale is
+     * kept unless it already reads the same.
+     *
+     * @param keepSiteLabel true when the value ships with a display key
+     */
+    LocalizationValue setSystemTranslation(String localizationId, String locale, String value, String sysUserId,
+            boolean keepSiteLabel);
 }

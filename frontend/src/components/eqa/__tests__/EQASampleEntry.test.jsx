@@ -79,20 +79,29 @@ describe("EQASampleEntry", () => {
     expect(checkbox.checked).toBe(true);
   });
 
-  test("clicking checkbox triggers patient search for NULL placeholder", () => {
-    // Replaced inline utils require
+  test("ticking EQA leaves the order with no patient rather than a placeholder", () => {
+    const withPatient = {
+      ...defaultOrderFormValues,
+      patientProperties: { patientPK: "42", lastName: "Doe", firstName: "Jo" },
+    };
     renderWithIntl(
       <EQASampleEntry
-        orderFormValues={defaultOrderFormValues}
+        orderFormValues={withPatient}
         setOrderFormValues={mockSetOrderFormValues}
       />,
     );
-    const checkbox = screen.getByRole("checkbox");
-    fireEvent.click(checkbox);
-    expect(getFromOpenElisServer).toHaveBeenCalledWith(
-      expect.stringContaining("patient-search-results"),
-      expect.any(Function),
-    );
+    fireEvent.click(screen.getByRole("checkbox"));
+    const result = mockSetOrderFormValues.mock.calls[0][0](withPatient);
+    expect(result.sampleOrderItems.isEQASample).toBe(true);
+    expect(result.patientProperties).toMatchObject({
+      lastName: "",
+      firstName: "",
+      nationalId: "",
+      birthDateForDisplay: "",
+      gender: "",
+    });
+    expect(result.patientProperties.patientPK).toBeUndefined();
+    expect(getFromOpenElisServer).not.toHaveBeenCalled();
   });
 
   test("unchecking checkbox resets EQA fields and patient properties", () => {

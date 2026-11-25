@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <image id="9841" description="R1 laboratory logo"
+        image="iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAIAAAAC64paAAAAGUlEQVR4nGNgSFlAPhrVPKp5VPOo5oHVDABH7ZZQiGRLQgAAAABJRU5ErkJggg=="
+        lastupdated="2026-10-01 12:00:00" />
+    <site_information id="9841" name="headerLeftImage"
+        value="9841" encrypted="false" value_type="text"
+        lastupdated="2026-10-01 12:00:00" />
+</dataset>

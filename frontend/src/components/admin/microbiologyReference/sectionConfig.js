@@ -2,6 +2,7 @@ export const MICROBIOLOGY_REFERENCE_BASE =
   "/MasterListsPage/MicrobiologyReference";
 
 export const MICROBIOLOGY_REFERENCE_SECTIONS = [
+  { key: "dst-bindings", label: "microbiology.m6.bindings" },
   {
     key: "organisms",
     label: "microbiology.admin.organisms.title",
@@ -14,10 +15,7 @@ export const MICROBIOLOGY_REFERENCE_SECTIONS = [
     key: "ast-panels",
     label: "microbiology.admin.astPanels.title",
   },
-  {
-    key: "culture-setups",
-    label: "microbiology.admin.cultureSetups.title",
-  },
+  { key: "ast-rules", label: "microbiology.admin.astRules.title" },
   {
     key: "breakpoints",
     label: "microbiology.admin.breakpoints.title",

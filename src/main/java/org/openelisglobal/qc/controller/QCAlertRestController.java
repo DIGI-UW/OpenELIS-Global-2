@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/rest/qc/alerts")
-@PreAuthorize("hasAnyRole('ANALYSER_IMPORT', 'ADMIN')")
+@PreAuthorize("hasRole('ADMIN')")
 public class QCAlertRestController {
 
     @Autowired

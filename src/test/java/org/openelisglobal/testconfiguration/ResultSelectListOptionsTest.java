@@ -4,6 +4,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
+import java.util.UUID;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -24,6 +25,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 public class ResultSelectListOptionsTest extends BaseWebContextSensitiveTest {
 
     private static final long PRESENT = 96601L;
+    private static final long TEST_ID = 96603L;
     private static final String MISSING_DICTIONARY_ID = "9660499";
     private static final long[] TEST_RESULTS = { 96605L, 96606L, 96607L };
 
@@ -43,7 +45,13 @@ public class ResultSelectListOptionsTest extends BaseWebContextSensitiveTest {
         cleanup();
 
         Long categoryId = jdbc.queryForObject("SELECT min(id) FROM clinlims.dictionary_category", Long.class);
-        Long testId = jdbc.queryForObject("SELECT min(id) FROM clinlims.test", Long.class);
+        // Its own test rather than borrowing one: a fixture that names localization
+        // truncates it with CASCADE, and test.name_localization_id takes every test
+        // row with it, so a borrowed id can come back null.
+        jdbc.update(
+                "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
+                        + " VALUES (?, ?, ?, 'Y', ?, NOW())",
+                TEST_ID, "RenameOptionsTest", "RenameOptionsTest", UUID.randomUUID().toString());
 
         jdbc.update(
                 "INSERT INTO clinlims.dictionary (id, is_active, dict_entry, local_abbrev,"
@@ -52,9 +60,9 @@ public class ResultSelectListOptionsTest extends BaseWebContextSensitiveTest {
 
         // One resolvable result, one naming a dictionary row that does not exist, one
         // naming nothing at all. The last two are what the screen used to choke on.
-        insertTestResult(TEST_RESULTS[0], testId, String.valueOf(PRESENT));
-        insertTestResult(TEST_RESULTS[1], testId, MISSING_DICTIONARY_ID);
-        insertTestResult(TEST_RESULTS[2], testId, "");
+        insertTestResult(TEST_RESULTS[0], TEST_ID, String.valueOf(PRESENT));
+        insertTestResult(TEST_RESULTS[1], TEST_ID, MISSING_DICTIONARY_ID);
+        insertTestResult(TEST_RESULTS[2], TEST_ID, "");
     }
 
     private void insertTestResult(long id, Long testId, String value) {
@@ -91,5 +99,6 @@ public class ResultSelectListOptionsTest extends BaseWebContextSensitiveTest {
             jdbc.update("DELETE FROM clinlims.test_result WHERE id = ?", id);
         }
         jdbc.update("DELETE FROM clinlims.dictionary WHERE id = ?", PRESENT);
+        jdbc.update("DELETE FROM clinlims.test WHERE id = ?", TEST_ID);
     }
 }

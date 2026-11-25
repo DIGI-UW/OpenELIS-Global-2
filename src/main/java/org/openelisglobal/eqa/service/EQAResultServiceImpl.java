@@ -38,7 +38,7 @@ public class EQAResultServiceImpl extends BaseObjectServiceImpl<EQAResult, Long>
 
     @Override
     public EQAResult submitResult(Long distributionId, Long organizationId, Long testId, BigDecimal resultValue,
-            EQASubmissionMethod method) {
+            EQASubmissionMethod method, String sysUserId) {
 
         EQADistribution distribution = eqaDistributionDAO.get(distributionId)
                 .orElseThrow(() -> new IllegalArgumentException("Distribution not found: " + distributionId));
@@ -51,15 +51,51 @@ public class EQAResultServiceImpl extends BaseObjectServiceImpl<EQAResult, Long>
                     "Submission deadline has passed. Supervisor approval is required for late submissions.");
         }
 
-        // T115: Result value validation — reject biologically implausible values
+        requirePlausible(resultValue);
+        return upsert(distribution, organizationId, testId, null, resultValue, null, method, sysUserId);
+    }
+
+    @Override
+    public EQAResult submitReportedValue(Long distributionId, Long organizationId, Long testId, Long panelSampleId,
+            String reported, EQASubmissionMethod method, String sysUserId) {
+        if (reported == null || reported.isBlank()) {
+            throw new IllegalArgumentException("A reported value is required");
+        }
+        EQADistribution distribution = eqaDistributionDAO.get(distributionId)
+                .orElseThrow(() -> new IllegalArgumentException("Distribution not found: " + distributionId));
+        String trimmed = reported.trim();
+        BigDecimal numeric;
+        try {
+            numeric = new BigDecimal(trimmed);
+        } catch (NumberFormatException e) {
+            numeric = null;
+        }
+        if (numeric != null) {
+            requirePlausible(numeric);
+        }
+        return upsert(distribution, organizationId, testId, panelSampleId, numeric, numeric == null ? trimmed : null,
+                method, sysUserId);
+    }
+
+    // T115: Result value validation — reject biologically implausible values
+    private static void requirePlausible(BigDecimal resultValue) {
         if (resultValue != null && (resultValue.compareTo(BigDecimal.ZERO) < 0
                 || resultValue.compareTo(new BigDecimal("999999")) > 0)) {
             throw new IllegalArgumentException("Result value out of plausible range: " + resultValue);
         }
+    }
+
+    private EQAResult upsert(EQADistribution distribution, Long organizationId, Long testId, Long panelSampleId,
+            BigDecimal resultValue, String resultText, EQASubmissionMethod method, String sysUserId) {
+        Long distributionId = distribution.getId();
+        Timestamp now = new Timestamp(System.currentTimeMillis());
 
         // Check for existing result (duplicate handling with overwrite)
-        Optional<EQAResult> existing = eqaResultDAO.findByDistributionAndOrgAndTest(distributionId, organizationId,
-                testId);
+        // A result that answers a panel sample is that sample's row; two samples of
+        // one test are two results, not one overwritten by the other.
+        Optional<EQAResult> existing = panelSampleId != null
+                ? eqaResultDAO.findByDistributionAndOrgAndPanelSample(distributionId, organizationId, panelSampleId)
+                : eqaResultDAO.findByDistributionAndOrgAndTest(distributionId, organizationId, testId);
 
         EQAResult result;
         if (existing.isPresent()) {
@@ -70,17 +106,24 @@ public class EQAResultServiceImpl extends BaseObjectServiceImpl<EQAResult, Long>
             result.setPreviousSubmissionMethod(result.getSubmissionMethod());
             // Update with new values
             result.setResultValue(resultValue);
+            result.setResultText(resultText);
             result.setSubmissionMethod(method);
-            result.setSubmissionDate(new Timestamp(System.currentTimeMillis()));
+            result.setSubmissionDate(now);
+            result.setSysUserId(sysUserId);
             result = eqaResultDAO.update(result);
         } else {
             result = new EQAResult();
             result.setEqaDistribution(distribution);
             result.setParticipantOrganizationId(organizationId);
             result.setTestId(testId);
+            result.setPanelSampleId(panelSampleId);
             result.setResultValue(resultValue);
+            result.setResultText(resultText);
             result.setSubmissionMethod(method);
-            result.setSubmissionDate(new Timestamp(System.currentTimeMillis()));
+            result.setSubmissionDate(now);
+            // sys_user_id is NOT NULL; the V1 path never set it, so no row had ever been
+            // written through this entity (the oversight suites seeded results in SQL).
+            result.setSysUserId(sysUserId);
 
             // Check if late submission (for approved late submissions that bypass deadline
             // check)

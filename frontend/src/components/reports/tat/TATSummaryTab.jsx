@@ -3,7 +3,9 @@ import { Tile, InlineNotification, SkeletonText } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import TATBreakdownTable from "./TATBreakdownTable";
 import { formatTat } from "./tatUtils";
+import { QASparseList } from "../../qa/common/QAEmptyState";
 
+import useInAppNavigation from "../../common/useInAppNavigation";
 const STAT_CARDS = [
   { key: "totalCount", labelId: "reports.tat.totalResults", isCount: true },
   { key: "mean", labelId: "reports.tat.meanTat" },
@@ -16,6 +18,7 @@ const STAT_CARDS = [
 
 function TATSummaryTab({ data, loading, filters }) {
   const intl = useIntl();
+  const navigate = useInAppNavigation();
 
   if (loading) {
     return (
@@ -53,6 +56,7 @@ function TATSummaryTab({ data, loading, filters }) {
           />
           <a
             href="/MasterListsPage/calendarManagement"
+            onClick={navigate("/MasterListsPage/calendarManagement")}
             style={{ fontSize: "12px", marginTop: "0.25rem", display: "inline-block" }}
           >
             <FormattedMessage id="reports.tat.manageCalendar" />
@@ -70,6 +74,7 @@ function TATSummaryTab({ data, loading, filters }) {
           />
           <a
             href="/MasterListsPage/calendarManagement"
+            onClick={navigate("/MasterListsPage/calendarManagement")}
             style={{ fontSize: "12px", marginTop: "0.25rem", display: "inline-block" }}
           >
             <FormattedMessage id="reports.tat.manageCalendar" />
@@ -169,10 +174,20 @@ function TATSummaryTab({ data, loading, filters }) {
         </div>
       )}
 
-      {/* Breakdown Table */}
-      {data.breakdown && data.breakdown.length > 0 && (
-        <TATBreakdownTable breakdown={data.breakdown} />
-      )}
+      {/* Breakdown: full table at 3+ categories, labeled list when sparse */}
+      {data.breakdown?.length > 0 &&
+        (data.breakdown.length >= 3 ? (
+          <TATBreakdownTable breakdown={data.breakdown} />
+        ) : (
+          <QASparseList
+            headlineKey="qa.empty.sparse.labUnits"
+            headlineValues={{ count: data.breakdown.length }}
+            items={data.breakdown.map((b) => ({
+              label: b.dimensionValue,
+              value: formatTat(b.mean),
+            }))}
+          />
+        ))}
     </div>
   );
 }

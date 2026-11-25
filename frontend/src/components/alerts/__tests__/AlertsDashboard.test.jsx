@@ -1,11 +1,12 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen, within, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
 import messages from "../../../languages/en.json";
 import AlertsDashboard from "../AlertsDashboard";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import { getFromOpenElisServer, putToOpenElisServer } from "../../utils/Utils";
 
 vi.mock("../../utils/Utils", async (importOriginal) => {
   const actual = await importOriginal();
@@ -26,6 +27,14 @@ const renderWithIntl = (component) => {
     </IntlProvider>,
   );
 };
+
+const alertTypes = [
+  "EQA_DEADLINE",
+  "SAMPLE_EXPIRATION",
+  "EQA_SUBMISSION_FAILED",
+  "MICROBIOLOGY_CRITICAL",
+  "REFERRAL_REJECTED",
+];
 
 const mockSummary = {
   criticalAlerts: 3,
@@ -53,8 +62,16 @@ const mockDashboard = {
       message: "Sample expiring soon",
       startTime: "2026-01-15T11:00:00Z",
     },
+    {
+      id: 3,
+      alertType: "EQA_SUBMISSION_FAILED",
+      severity: "CRITICAL",
+      status: "OPEN",
+      message: "Automatic EQA submission failed 5 times",
+      startTime: "2026-01-15T12:00:00Z",
+    },
   ],
-  totalCount: 2,
+  totalCount: 3,
   page: 0,
   pageSize: 25,
 };
@@ -64,7 +81,9 @@ describe("AlertsDashboard", () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     getFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url.includes("/summary")) {
+      if (url.includes("/types")) {
+        callback(alertTypes);
+      } else if (url.includes("/summary")) {
         callback(mockSummary);
       } else if (url.includes("/alerts/dashboard")) {
         callback(mockDashboard);
@@ -110,6 +129,132 @@ describe("AlertsDashboard", () => {
     expect(screen.getByText("Sample expiring soon")).toBeTruthy();
   });
 
+  // Every alert type the enum can produce needs a label, or the Type column
+  // prints the raw enum beside rows that read as English.
+  test("every alert type reads as a label, not as its enum", () => {
+    renderWithIntl(<AlertsDashboard />);
+
+    // The filter's own options carry the same labels, so read the table.
+    const table = document.querySelector("table");
+    expect(within(table).getByText("EQA Deadline")).toBeTruthy();
+    expect(within(table).getByText("EQA Submission Failed")).toBeTruthy();
+    expect(within(table).queryByText("EQA_SUBMISSION_FAILED")).toBeNull();
+  });
+
+  test("Created column shows the time as the server formatted it", () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("/types")) {
+        callback(alertTypes);
+      } else if (url.includes("/summary")) {
+        callback(mockSummary);
+      } else if (url.includes("/alerts/dashboard")) {
+        callback({
+          alerts: [
+            {
+              ...mockDashboard.alerts[0],
+              startTime: "2026-01-15T10:00:00+03:00",
+              startTimeForDisplay: "15/01/2026 10:00",
+            },
+          ],
+          totalCount: 1,
+        });
+      }
+    });
+
+    renderWithIntl(<AlertsDashboard />);
+
+    const table = document.querySelector("table");
+    expect(within(table).getByText("15/01/2026 10:00")).toBeTruthy();
+  });
+
+  test("Alert Type filter offers the types the server lists, by label", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderWithIntl(<AlertsDashboard />);
+
+    const box = screen.getByRole("combobox", { name: "Alert Type" });
+    await user.click(box);
+
+    expect(
+      within(document.getElementById(box.getAttribute("aria-controls")))
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual([
+      "EQA Deadline",
+      "Sample Expiration",
+      "EQA Submission Failed",
+      "Microbiology Critical",
+      "Referral Rejected",
+    ]);
+  });
+
+  test("Alert Type is searched by typing and filters the alerts by the chosen type (OGC-1515)", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderWithIntl(<AlertsDashboard />);
+    const box = screen.getByRole("combobox", { name: "Alert Type" });
+
+    await user.type(box, "eqa");
+    expect(
+      within(document.getElementById(box.getAttribute("aria-controls")))
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["EQA Deadline", "EQA Submission Failed"]);
+    await user.click(
+      screen.getByRole("option", { name: "EQA Submission Failed" }),
+    );
+
+    await act(async () => {
+      vi.runOnlyPendingTimers();
+    });
+    const dashboardCalls = getFromOpenElisServer.mock.calls
+      .map(([url]) => url)
+      .filter((url) => url.startsWith("/rest/alerts/dashboard?"));
+    expect(dashboardCalls[dashboardCalls.length - 1]).toContain(
+      "type=EQA_SUBMISSION_FAILED",
+    );
+  });
+
+  test("an acknowledged alert offers Resolve, which posts the comment to resolve", () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("/types")) {
+        callback(alertTypes);
+      } else if (url.includes("/summary")) {
+        callback(mockSummary);
+      } else if (url.includes("/alerts/dashboard")) {
+        callback({
+          alerts: [{ ...mockDashboard.alerts[1], status: "ACKNOWLEDGED" }],
+          totalCount: 1,
+        });
+      }
+    });
+    renderWithIntl(<AlertsDashboard />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Resolve" }));
+    const modal = document.querySelector(".cds--modal.is-visible");
+    fireEvent.change(within(modal).getByRole("textbox"), {
+      target: { value: "Sample re-run" },
+    });
+    fireEvent.click(within(modal).getByRole("button", { name: "Resolve" }));
+
+    expect(putToOpenElisServer).toHaveBeenCalledWith(
+      "/rest/alerts/dashboard/2/resolve",
+      JSON.stringify({ notes: "Sample re-run" }),
+      expect.any(Function),
+    );
+  });
+
+  test("a failed acknowledge is reported instead of passing silently", () => {
+    putToOpenElisServer.mockImplementation((url, payload, callback) =>
+      callback(500),
+    );
+    renderWithIntl(<AlertsDashboard />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Acknowledge" })[1]);
+    const modal = document.querySelector(".cds--modal.is-visible");
+    fireEvent.click(within(modal).getByRole("button", { name: "Acknowledge" }));
+
+    expect(within(modal).getByText("Failed to acknowledge alert")).toBeTruthy();
+  });
+
   test("renders filter controls", () => {
     renderWithIntl(<AlertsDashboard />);
     expect(screen.getByText("Alert Type")).toBeTruthy();
@@ -135,14 +280,22 @@ describe("AlertsDashboard", () => {
     expect(getFromOpenElisServer).toHaveBeenCalled();
   });
 
-  test("offers the microbiology critical alert type filter", () => {
+  test("offers the microbiology critical alert type filter", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderWithIntl(<AlertsDashboard />);
-    expect(screen.getByText("Microbiology Critical")).toBeTruthy();
+
+    await user.click(screen.getByRole("combobox", { name: "Alert Type" }));
+
+    expect(
+      screen.getByRole("option", { name: "Microbiology Critical" }),
+    ).toBeTruthy();
   });
 
   test("renders a microbiology critical alert row", () => {
     getFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url.includes("/summary")) {
+      if (url.includes("/types")) {
+        callback(alertTypes);
+      } else if (url.includes("/summary")) {
         callback(mockSummary);
       } else if (url.includes("/alerts/dashboard")) {
         callback({

@@ -12,11 +12,15 @@ import {
 } from "@carbon/react";
 import { Printer, Warning } from "@carbon/icons-react";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
-import SaveFailureNotice from "../SaveFailureNotice";
+import SaveFailureNotice, { saveFailureMessage } from "../SaveFailureNotice";
 import InlineNceForm from "../../nonconform/common/InlineNceForm";
 import { useOrderContext } from "../OrderContext";
 import { useNewOrderReset } from "../useNewOrderReset";
-import { describeUnmetRequirements } from "../saveRequirements";
+import {
+  describeUnmetRequirements,
+  fieldOrderRequirements,
+} from "../saveRequirements";
+import SaveRequirementsNotice from "../SaveRequirementsNotice";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -29,9 +33,20 @@ import CollectionConditionsSection from "./sections/CollectionConditionsSection"
 import ProgramSection from "./sections/ProgramSection";
 import RequesterSection from "./sections/RequesterSection";
 import SampleTestSection from "./sections/SampleTestSection";
-import ComplianceStandardsSection from "./sections/ComplianceStandardsSection";
+import MicroOrderPreview, {
+  MicroSampleCaseNote,
+  useMicroOrderPreview,
+} from "./sections/MicroOrderPreview";
+import ComplianceStandardsSection, {
+  selectedStandardIds,
+} from "./sections/ComplianceStandardsSection";
+import EnvironmentalOrderBranch, {
+  orderBranchOf,
+  REGULATION_DRIVEN,
+} from "./sections/EnvironmentalOrderBranch";
 import { currentLocalTime, todayLocalIso } from "../dateUtils";
 import "../order-workflow.scss";
+import { orderSavedMessage } from "../orderSavedMessage";
 
 const WORKFLOW_TYPE = "environmental";
 const WORKFLOW_PREFIX = "/order/environmental";
@@ -43,6 +58,7 @@ const EnvironmentalOrderEnter = () => {
   const {
     orderData,
     setOrderData,
+    seedOrderData,
     samples,
     setSamples,
     labNumber,
@@ -64,13 +80,14 @@ const EnvironmentalOrderEnter = () => {
   const [printLabelsExpanded, setPrintLabelsExpanded] = useState(false);
   const [errors, setErrors] = useState({});
   const [showNceForm, setShowNceForm] = useState(false);
+  const [planTestIds, setPlanTestIds] = useState(null);
 
   // Seed workflowType + clear patient status on mount.
   useEffect(() => {
     const current =
       orderData?.sampleOrderItems?.environmentalFields?.workflowType;
     if (current !== WORKFLOW_TYPE) {
-      setOrderData((prev) => ({
+      seedOrderData((prev) => ({
         ...prev,
         patientUpdateStatus: "NO_ACTION",
         patientProperties: {
@@ -102,9 +119,9 @@ const EnvironmentalOrderEnter = () => {
   }, [labNumber, orderData?.sampleOrderItems?.labNo, location.pathname]);
 
   const handleLabNumberChange = useCallback(
-    (newLabNo) => {
+    (newLabNo, { generated = false } = {}) => {
       setLocalLabNumber(newLabNo);
-      setOrderData((prev) => ({
+      (generated ? seedOrderData : setOrderData)((prev) => ({
         ...prev,
         sampleOrderItems: {
           ...prev.sampleOrderItems,
@@ -112,42 +129,47 @@ const EnvironmentalOrderEnter = () => {
         },
       }));
     },
-    [setOrderData],
+    [setOrderData, seedOrderData],
   );
 
   const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
+  const microPreview = useMicroOrderPreview({
+    samples,
+    savedOrder: isReadOnly || isEditMode,
+    domain: "ENVIRONMENTAL",
+    samplingSiteId: envFields.samplingSiteId,
+    samplingSiteName: envFields.samplingSiteName,
+  });
   const hasPatientOrSite = !!(
     envFields.samplingSiteId ||
     envFields.samplingSiteName ||
     envFields.vecCollectionSiteId ||
     envFields.vecCollectionSiteName
   );
-  const hasSampleTypes = samples.some((s) => s.sampleTypeId);
-  const allSamplesHaveTests = samples
-    .filter((s) => s.sampleTypeId)
-    .every((s) => (s.tests?.length || 0) + (s.panels?.length || 0) > 0);
+  const orderBranch = orderBranchOf(orderData);
+  const regulationDriven = orderBranch === REGULATION_DRIVEN;
   const saveRequirements = [
+    ...fieldOrderRequirements({
+      labNumber: localLabNumber,
+      hasSite: hasPatientOrSite,
+      siteLabelId: "order.save.requirement.samplingSite",
+      sampleOrderItems: orderData?.sampleOrderItems,
+      samples,
+    }),
     {
-      met: Boolean(localLabNumber),
-      labelId: "order.save.requirement.labNumber",
-    },
-    { met: hasPatientOrSite, labelId: "order.save.requirement.samplingSite" },
-    { met: hasSampleTypes, labelId: "order.save.requirement.sampleType" },
-    {
-      met: hasSampleTypes && allSamplesHaveTests,
-      labelId: "order.save.requirement.testsPerSample",
+      met: !regulationDriven || selectedStandardIds(orderData).length > 0,
+      labelId: "order.save.requirement.complianceStandard",
     },
   ];
   const canSave = saveRequirements.every((requirement) => requirement.met);
   const canProceed = canSave;
 
   // Stamp collection date/time on samples that don't already have one.
-  // Environmental collects date per-sample in the manifest; fall back to now
-  // so the backend always receives a valid collection date.
-  const buildStampedSamples = () => {
-    const now = new Date();
-    const todayIso = todayLocalIso(now);
-    const currentTime = currentLocalTime(now);
+  // Environmental collects date per-sample in the manifest; fall back to the
+  // lab's clock so the backend always receives a valid collection date.
+  const buildStampedSamples = async () => {
+    const todayIso = todayLocalIso();
+    const currentTime = currentLocalTime();
     const stamped = samples.map((s) =>
       s.sampleTypeId
         ? {
@@ -173,20 +195,23 @@ const EnvironmentalOrderEnter = () => {
       setNotificationVisible(true);
       return;
     }
-    const stamped = buildStampedSamples();
+    const stamped = await buildStampedSamples();
     try {
       await saveOrder(false, false, stamped);
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "save.order.success.msg" }),
+        message: orderSavedMessage(
+          intl,
+          labNumber || orderData?.sampleOrderItems?.labNo,
+        ),
       });
       setNotificationVisible(true);
     } catch (error) {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message: saveFailureMessage(intl, error),
       });
       setNotificationVisible(true);
     }
@@ -194,20 +219,22 @@ const EnvironmentalOrderEnter = () => {
 
   const handleSaveAndNext = async () => {
     if (!canSave) return;
-    const stamped = buildStampedSamples();
+    const stamped = await buildStampedSamples();
     try {
       await saveOrder(false, false, stamped);
       markStepComplete("enter");
+      const savedLabNumber =
+        labNumber || orderData?.sampleOrderItems?.labNo || "";
       history.push(
-        labNumber
-          ? `/order/environmental/label?order=${encodeURIComponent(labNumber)}`
+        savedLabNumber
+          ? `/order/environmental/label?order=${encodeURIComponent(savedLabNumber)}`
           : "/order/environmental/label",
       );
     } catch (error) {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message: saveFailureMessage(intl, error),
       });
       setNotificationVisible(true);
     }
@@ -223,7 +250,7 @@ const EnvironmentalOrderEnter = () => {
       setNotificationVisible(true);
       return;
     }
-    const stamped = buildStampedSamples();
+    const stamped = await buildStampedSamples();
     try {
       await saveOrder(true, false, stamped);
       addNotification({
@@ -239,7 +266,7 @@ const EnvironmentalOrderEnter = () => {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message: saveFailureMessage(intl, error),
       });
       setNotificationVisible(true);
     }
@@ -249,6 +276,7 @@ const EnvironmentalOrderEnter = () => {
     <OrderWorkflowLayout
       title="order.step.enter"
       canProceed={canProceed}
+      canSave={canSave}
       onSave={handleSave}
       onSaveAndNext={handleSaveAndNext}
       extraButtons={
@@ -366,6 +394,12 @@ const EnvironmentalOrderEnter = () => {
           </Accordion>
         </Tile>
 
+        <EnvironmentalOrderBranch
+          orderData={orderData}
+          setOrderData={setOrderData}
+          isReadOnly={isReadOnly && !isEditMode}
+        />
+
         {/* Sampling Site */}
         <VectorSection
           orderData={orderData}
@@ -386,6 +420,7 @@ const EnvironmentalOrderEnter = () => {
           orderData={orderData}
           setOrderData={setOrderData}
           isReadOnly={isReadOnly && !isEditMode}
+          domain="ENVIRONMENTAL"
         />
 
         {/* Requester / Ordering Provider */}
@@ -396,12 +431,17 @@ const EnvironmentalOrderEnter = () => {
           workflowType={WORKFLOW_TYPE}
         />
 
-        {/* Applicable Compliance Standards */}
-        <ComplianceStandardsSection
-          orderData={orderData}
-          setOrderData={setOrderData}
-          isReadOnly={isReadOnly && !isEditMode}
-        />
+        {/* Applicable Compliance Standards (regulation-driven orders) */}
+        {regulationDriven && (
+          <ComplianceStandardsSection
+            orderData={orderData}
+            setOrderData={setOrderData}
+            isReadOnly={isReadOnly && !isEditMode}
+            samples={samples}
+            setSamples={setSamples}
+            onPlanChange={setPlanTestIds}
+          />
+        )}
 
         {/* Sample & Test Selection */}
         <SampleTestSection
@@ -411,7 +451,13 @@ const EnvironmentalOrderEnter = () => {
           setOrderData={setOrderData}
           isReadOnly={isReadOnly && !isEditMode}
           workflowType={WORKFLOW_TYPE}
+          planTestIds={regulationDriven ? planTestIds : null}
+          regulationDriven={regulationDriven}
+          renderSampleNote={(index) => (
+            <MicroSampleCaseNote preview={microPreview} sampleIndex={index} />
+          )}
         />
+        <MicroOrderPreview preview={microPreview} />
 
         {showNceForm && labNumber && (
           <InlineNceForm
@@ -426,6 +472,7 @@ const EnvironmentalOrderEnter = () => {
           labNumber={localLabNumber}
           isReadOnly={isReadOnly && !isEditMode}
         />
+        <SaveRequirementsNotice requirements={saveRequirements} />
       </Stack>
     </OrderWorkflowLayout>
   );

@@ -5,9 +5,10 @@
  */
 import React from "react";
 import { vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
+import { MemoryRouter } from "react-router-dom";
 import messages from "../../languages/en.json";
 import ValidationReviewPanel from "./ValidationReviewPanel";
 
@@ -21,16 +22,21 @@ vi.mock("../utils/Utils", async (importOriginal) => {
 });
 
 vi.mock("../esignature/ESignatureButton", () => ({
-  default: ({ children, onSign, disabled }) => (
+  default: ({ children, onSign, disabled, ariaDescribedBy, meaning }) => (
     <button
       type="button"
       disabled={disabled}
-      onClick={() => onSign && onSign()}
+      aria-describedby={ariaDescribedBy}
+      data-meaning={meaning}
+      onClick={() => onSign && onSign(globalThis.__nextSignature)}
     >
       {children}
     </button>
   ),
-  SignatureMeaning: { VALIDATED_AND_RELEASED: "VALIDATED_AND_RELEASED" },
+  SignatureMeaning: {
+    VALIDATED_AND_RELEASED: "VALIDATED_AND_RELEASED",
+    REVIEWED: "REVIEWED",
+  },
 }));
 
 vi.mock("../nonconform/common/InlineNceForm", () => ({
@@ -51,7 +57,10 @@ vi.mock("../nonconform/common/InlineNceForm", () => ({
   ),
 }));
 
-import { postToOpenElisServerJsonResponse } from "../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../utils/Utils";
 
 const row = (overrides = {}) => ({
   id: 0,
@@ -81,14 +90,17 @@ const row = (overrides = {}) => ({
 const renderPanel = (data, props = {}) =>
   render(
     <IntlProvider locale="en" messages={messages}>
-      <ValidationReviewPanel
-        data={data}
-        rows={props.rows || [data]}
-        configurationProperties={props.configurationProperties || {}}
-        qcAck={props.qcAck || { required: false, satisfied: true }}
-        onActionDone={props.onActionDone || vi.fn()}
-        onStale={props.onStale}
-      />
+      <MemoryRouter>
+        <ValidationReviewPanel
+          data={data}
+          rows={props.rows || [data]}
+          configurationProperties={props.configurationProperties || {}}
+          qcAck={props.qcAck || { required: false, satisfied: true }}
+          onActionDone={props.onActionDone || vi.fn()}
+          onStale={props.onStale}
+          onQcHold={props.onQcHold}
+        />
+      </MemoryRouter>
     </IntlProvider>,
   );
 
@@ -101,6 +113,14 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
   beforeEach(() => {
     postToOpenElisServerJsonResponse.mockReset();
     window.localStorage.clear();
+  });
+
+  it("keeps a scientific-notation result on one line", () => {
+    renderPanel(row({ result: "1.5 x 10^4" }));
+
+    const value = screen.getByTestId("review-result-value");
+    expect(value).toHaveTextContent("1.5 x 10^4");
+    expect(value.style.whiteSpace).toBe("nowrap");
   });
 
   it("leads with a read-only summary: Method and Analyzer as two fields, entered by/when, ranges, QC", () => {
@@ -122,6 +142,124 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
     expect(screen.getByTestId("flag-NORMAL")).toBeInTheDocument();
     expect(screen.getByTestId("review-qc")).toHaveTextContent("QC passed");
     expect(screen.queryByTestId("review-before-release")).toBeNull();
+  });
+
+  it("shows a QC verdict only when one exists; a patient result has no QC line at all (OGC-1226 FR-10)", () => {
+    renderPanel(row({ qcStatus: "UNKNOWN" }));
+    expect(screen.queryByTestId("review-qc")).toBeNull();
+    expect(screen.queryByText(/QC not evaluated/)).toBeNull();
+
+    cleanup();
+    renderPanel(row({ qcStatus: "FAIL" }));
+    expect(screen.getByTestId("review-qc")).toHaveTextContent("QC failed");
+  });
+
+  // OGC-1200 FR-G3: the run's verdict and what it recorded about the test.
+  const runQc = (overrides = {}) => ({
+    runId: 12,
+    runLabel: "RUN-12",
+    verdict: "FAIL",
+    decision: "ACCEPT_DESPITE",
+    reason: "Checked against a second run",
+    nceNumber: "NCE-2026-00041",
+    controls: [
+      {
+        id: "c1",
+        level: "NORMAL",
+        lotNumber: "LOT-N",
+        observed: "120",
+        expected: "100 ± 5",
+        verdict: "FAIL",
+        verdictSource: "COMPUTED",
+        operator: "Ama Kila",
+        recordedAt: null,
+      },
+    ],
+    ...overrides,
+  });
+
+  const openQcSection = () =>
+    fireEvent.click(
+      screen
+        .getByTestId("ref-section-qc")
+        .querySelector(".unifiedRefSectionHeader"),
+    );
+
+  it("reads a result's QC from the run it came from: the run, the decision and each control", () => {
+    const consoleError = vi.spyOn(console, "error");
+    renderPanel(row({ qcStatus: "FAIL", runQc: runQc() }));
+
+    expect(screen.getByTestId("review-qc")).toHaveTextContent("QC failed");
+    expect(screen.getByTestId("ref-section-qc")).toHaveTextContent(
+      "QC failed · RUN-12",
+    );
+    openQcSection();
+    expect(screen.getByTestId("run-qc-provenance-run")).toHaveTextContent(
+      "RUN-12",
+    );
+    expect(screen.getByTestId("run-qc-provenance-run")).toHaveAttribute(
+      "href",
+      "/Results?run=12",
+    );
+    expect(screen.getByTestId("run-qc-provenance-verdict")).toHaveTextContent(
+      "Fail",
+    );
+    expect(screen.getByTestId("run-qc-provenance-decision")).toHaveTextContent(
+      "Accept despite QC failure · Reason: Checked against a second run · Non-conformity NCE-2026-00041",
+    );
+    expect(
+      screen.getByTestId("run-qc-provenance-control-c1"),
+    ).toHaveTextContent(
+      "Fail NORMAL · LOT-N · 120 against 100 ± 5 · Judged against the QC target · Ama Kila",
+    );
+    expect(
+      screen.getByText("No reagent lot is recorded on this run."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Reagent and control lots for this analysis are reviewed on the Results Entry page.",
+      ),
+    ).toBeNull();
+    expect(
+      consoleError.mock.calls.filter((call) =>
+        String(call[0]).includes("validateDOMNesting"),
+      ),
+    ).toEqual([]);
+    consoleError.mockRestore();
+  });
+
+  it("names the run with no QC line when the run recorded no control for the test", () => {
+    renderPanel(
+      row({
+        qcStatus: "UNKNOWN",
+        runQc: runQc({
+          verdict: "NOT_REQUIRED",
+          decision: null,
+          reason: null,
+          nceNumber: null,
+          controls: [],
+        }),
+      }),
+    );
+
+    expect(screen.queryByTestId("review-qc")).toBeNull();
+    expect(screen.getByTestId("ref-section-qc")).toHaveTextContent("RUN-12");
+    openQcSection();
+    expect(screen.getByTestId("run-qc-provenance-verdict")).toHaveTextContent(
+      "Not required",
+    );
+    expect(screen.queryByTestId("run-qc-provenance-decision")).toBeNull();
+  });
+
+  it("points a result from no run to Results Entry for its lots", () => {
+    renderPanel(row({ qcStatus: "UNKNOWN" }));
+    openQcSection();
+    expect(screen.queryByTestId("run-qc-provenance")).toBeNull();
+    expect(
+      screen.getByText(
+        "Reagent and control lots for this analysis are reviewed on the Results Entry page.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("a missing method or analyzer reads 'Not recorded' instead of blank", () => {
@@ -185,6 +323,41 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
 
     expect(screen.getByLabelText("Internal")).toBeChecked();
     expect(screen.queryByTestId("review-note-external-warning")).toBeNull();
+  });
+
+  it("Modify starts from the value as entered, not as rounded for display (OGC-1544)", () => {
+    renderPanel(row({ result: "0.9", displayResult: "1" }));
+    fireEvent.click(screen.getByTestId("review-modify"));
+    expect(screen.getByDisplayValue("0.9")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("review-cancel-modification"));
+    fireEvent.click(screen.getByTestId("review-modify"));
+    expect(screen.getByDisplayValue("0.9")).toBeInTheDocument();
+  });
+
+  it("release submits the full clinical value while showing its reporting value", () => {
+    renderPanel(
+      row({ result: "1.176", displayResult: "1", resultFlag: "CRITICAL" }),
+    );
+    expect(screen.getByTestId("review-result-value")).toHaveTextContent("1");
+    expect(
+      screen.getByText("Value used for clinical decisions: 1.176"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Validate & release"));
+    const [, body] = lastPost();
+    expect(JSON.parse(body).result).toBe("1.176");
+  });
+
+  it("a viral load shown as its count starts Modify from that count (OGC-1544)", () => {
+    renderPanel(
+      row({
+        result: "1234 (3.09)",
+        displayResult: "1234",
+        displayResultAsLog: true,
+      }),
+    );
+    fireEvent.click(screen.getByTestId("review-modify"));
+    expect(screen.getByDisplayValue("1234")).toBeInTheDocument();
   });
 
   it("a modification reason defaults to Internal unless the validator chose a visibility", () => {
@@ -292,6 +465,62 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
     );
   });
 
+  it("a result a failed control holds cannot be released while the lab blocks on QC", () => {
+    renderPanel(row({ qcHold: true }), {
+      configurationProperties: { QC_FAIL_BLOCKS_VALIDATION: "true" },
+    });
+    expect(screen.getByText("Validate & release")).toBeDisabled();
+    expect(screen.getByTestId("review-qc-hold-hint")).toHaveTextContent(
+      "Release blocked: a failed QC control holds this result, through an open non-conformity or a failed control in the run it came from.",
+    );
+    expect(screen.getByText("Validate & release")).toHaveAttribute(
+      "aria-describedby",
+      screen.getByTestId("review-qc-hold-hint").id,
+    );
+  });
+
+  it("a held result that also waits on a QC acknowledgment names both hints", () => {
+    renderPanel(row({ qcHold: true }), {
+      configurationProperties: { QC_FAIL_BLOCKS_VALIDATION: "true" },
+      qcAck: { required: true, satisfied: false },
+    });
+    expect(screen.getByText("Validate & release")).toHaveAttribute(
+      "aria-describedby",
+      `${screen.getByTestId("review-qc-ack-hint").id} ${screen.getByTestId("review-qc-hold-hint").id}`,
+    );
+  });
+
+  it("a release the server refuses for a QC hold goes to the page, not to a success", () => {
+    const onActionDone = vi.fn();
+    const onQcHold = vi.fn();
+    renderPanel(row(), { onActionDone, onQcHold });
+
+    fireEvent.click(screen.getByText("Validate & release"));
+    lastPost()[2]({ error: "qcHold", status: 409 });
+
+    expect(onQcHold).toHaveBeenCalledTimes(1);
+    expect(onActionDone).not.toHaveBeenCalled();
+  });
+
+  it("a warn-only lab can still release a held result", () => {
+    renderPanel(row({ qcHold: true }), {
+      configurationProperties: { QC_FAIL_BLOCKS_VALIDATION: "false" },
+    });
+    expect(screen.getByText("Validate & release")).toBeEnabled();
+    expect(screen.queryByTestId("review-qc-hold-hint")).toBeNull();
+  });
+
+  // OGC-1200 FR-C4: a run's failed control holds its results whatever the site says.
+  it("a result its run holds on a failed control cannot be released, even in a warn-only lab", () => {
+    renderPanel(row({ qcHold: true, qcHoldBlocksRelease: true }), {
+      configurationProperties: { QC_FAIL_BLOCKS_VALIDATION: "false" },
+    });
+    expect(screen.getByText("Validate & release")).toBeDisabled();
+    expect(screen.getByTestId("review-qc-hold-hint")).toHaveTextContent(
+      "Release blocked: a failed QC control holds this result",
+    );
+  });
+
   it("Modify needs a reason when the lab requires one, then posts the new value as a modification", () => {
     renderPanel(row(), {
       configurationProperties: { notesRequiredForModifyResults: "true" },
@@ -322,6 +551,74 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
     expect(payload.noteVisibility).toBe("I");
   });
 
+  it("OGC-1417: a correction the server refuses as critical is acknowledged in the modal and sent again", () => {
+    const onActionDone = vi.fn();
+    const answers = [
+      {
+        status: 422,
+        code: "ACKNOWLEDGEMENT_REQUIRED",
+        customCriticalMessage: "Call the clinician now",
+        acknowledgementRequired: [
+          {
+            kind: "CRITICAL",
+            value: "75",
+            testName: "Lead(Serum)",
+            analysisId: "100",
+          },
+        ],
+      },
+      { analysisId: "100", outcome: "modified" },
+    ];
+    postToOpenElisServerJsonResponse.mockImplementation((url, body, callback) =>
+      callback(answers.shift()),
+    );
+    renderPanel(row(), {
+      configurationProperties: { notesRequiredForModifyResults: "false" },
+      onActionDone,
+    });
+
+    fireEvent.click(screen.getByTestId("review-modify"));
+    fireEvent.change(screen.getByLabelText("New result"), {
+      target: { value: "75" },
+    });
+    fireEvent.click(screen.getByTestId("review-save-modification"));
+
+    expect(
+      screen.getByTestId("result-alert-critical-message"),
+    ).toHaveTextContent("Call the clinician now");
+    expect(onActionDone).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByText("Acknowledge and save", { selector: "button" }),
+    );
+
+    const [url, body] = lastPost();
+    expect(url).toBe("/rest/AccessionValidation/analysis/100/modify");
+    expect(JSON.parse(body).criticalAcknowledged).toBe(true);
+    expect(JSON.parse(body).result).toBe("75");
+    expect(onActionDone).toHaveBeenCalledWith("modified", expect.anything());
+  });
+
+  // OGC-1458 review: the server's choices start with a blank ("0", ""); the list
+  // offers one empty choice, not two.
+  it("a select-list Modify offers one empty choice and the options", () => {
+    renderPanel(
+      row({
+        resultType: "D",
+        dictionaryResults: [
+          { id: "0", value: "" },
+          { id: "1959", value: "2" },
+          { id: "1958", value: "1" },
+        ],
+      }),
+    );
+    fireEvent.click(screen.getByTestId("review-modify"));
+
+    const options = Array.from(
+      screen.getByLabelText("New result").querySelectorAll("option"),
+    ).map((option) => option.textContent);
+    expect(options).toEqual(["", "2", "1"]);
+  });
+
   it("multi-select results are not edited here — the panel points to Results Entry", () => {
     renderPanel(row({ resultType: "M", multiSelectResultValues: "{}" }));
     fireEvent.click(screen.getByTestId("review-modify"));
@@ -335,7 +632,7 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
     renderPanel(row());
     expect(screen.getByTestId("review-refer")).toHaveAttribute(
       "href",
-      "/result?type=order&doRange=false&accessionNumber=ACC0",
+      "/Results?accessionNumber=ACC0",
     );
   });
 
@@ -423,5 +720,160 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
     expect(list).toHaveTextContent("Result Note (Validation)");
     expect(list).toHaveTextContent("Internal");
     expect(list).toHaveTextContent("Val One");
+  });
+});
+
+describe("ValidationReviewPanel attachments (review only)", () => {
+  it("attachments stay read-only on validation: the section lists files but offers no upload", () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (typeof url === "string" && url.endsWith("/attachments") && cb) {
+        cb([
+          {
+            id: 9,
+            fileName: "worksheet.pdf",
+            fileSizeBytes: 4096,
+            analysisId: "",
+          },
+        ]);
+      }
+    });
+    renderPanel(row());
+    fireEvent.click(screen.getByRole("button", { name: /Attachments/ }));
+    expect(screen.getByText("worksheet.pdf")).toBeInTheDocument();
+    expect(screen.queryByTestId("attachment-upload")).toBeNull();
+    expect(screen.queryByText("Add attachment")).toBeNull();
+    expect(document.querySelector('input[type="file"]')).toBeNull();
+  });
+});
+
+test("the entry actor sees why validation is disabled", () => {
+  renderPanel(row({ selfValidationBlocked: true }));
+  expect(
+    screen.getByTestId("review-release").querySelector("button"),
+  ).toBeDisabled();
+  expect(
+    screen.getByText(messages["microbiology.testing.selfValidationBlocked"]),
+  ).toBeInTheDocument();
+});
+
+describe("ValidationReviewPanel sequential sign-off (OGC-1364 v2)", () => {
+  beforeEach(() => {
+    postToOpenElisServerJsonResponse.mockReset();
+    window.localStorage.clear();
+    globalThis.__nextSignature = undefined;
+  });
+
+  const signOff = (level, name, extra = {}) => ({
+    level,
+    levels: 2,
+    signerName: name,
+    roleName: "Validation",
+    signedAt: "2026-11-13T09:02:00Z",
+    signedWhen: "13/11/2026 12:02",
+    ...extra,
+  });
+
+  it("an earlier level is signed as a review, not a release, with the e-signature it carries", () => {
+    globalThis.__nextSignature = { signatureId: 55 };
+    renderPanel(row({ reviewLevels: 2, reviewLevel: 1 }));
+
+    const sign = screen.getByRole("button", { name: "Sign level 1 of 2" });
+    expect(sign).toHaveAttribute("data-meaning", "REVIEWED");
+    expect(screen.getByTestId("review-sign-offs")).toHaveTextContent(
+      "No levels signed in this pass.",
+    );
+    fireEvent.click(sign);
+
+    const [url, body] = lastPost();
+    expect(url).toBe("/rest/AccessionValidation/analysis/100/release");
+    expect(JSON.parse(body).signatureId).toBe(55);
+  });
+
+  it("the last level validates and releases, and lists who signed before", () => {
+    renderPanel(
+      row({
+        reviewLevels: 2,
+        reviewLevel: 2,
+        signOffs: [signOff(1, "Ama Kila")],
+      }),
+    );
+
+    const release = screen.getByRole("button", {
+      name: "Validate & release",
+    });
+    expect(release).toHaveAttribute("data-meaning", "VALIDATED_AND_RELEASED");
+    expect(screen.getByTestId("review-sign-off-1")).toHaveTextContent(
+      /Level 1 of 2: Ama Kila, Validation/,
+    );
+  });
+
+  // QA on OGC-1364: the time read the browser's format and zone, unlike History.
+  it("shows each signature's time as the server wrote it, in any browser time zone", () => {
+    renderPanel(
+      row({
+        reviewLevels: 2,
+        reviewLevel: 2,
+        signOffs: [signOff(1, "Ama Kila")],
+        supersededSignOffs: [
+          signOff(1, "Bo Lin", {
+            signedAt: "2026-11-12T22:15:00Z",
+            signedWhen: "13/11/2026 01:15",
+            supersededReason: "MODIFIED",
+          }),
+        ],
+      }),
+    );
+
+    expect(screen.getByTestId("review-sign-off-1")).toHaveTextContent(
+      "Level 1 of 2: Ama Kila, Validation, 13/11/2026 12:02",
+    );
+    expect(screen.getByTestId("review-sign-off-superseded")).toHaveTextContent(
+      "Level 1 of 2: Bo Lin, 13/11/2026 01:15 (superseded, value modified)",
+    );
+  });
+
+  it("a level this person cannot sign is disabled and says why", () => {
+    renderPanel(
+      row({
+        reviewLevels: 2,
+        reviewLevel: 2,
+        reviewRoleName: "Pathologist",
+        reviewBlockedReason: "roleRequired",
+      }),
+    );
+
+    expect(screen.getByTestId("review-level-blocked")).toHaveTextContent(
+      "Level 2 requires Pathologist.",
+    );
+    expect(
+      screen.getByRole("button", { name: "Validate & release" }),
+    ).toBeDisabled();
+  });
+
+  it("signatures a modification superseded stay listed, struck through", () => {
+    renderPanel(
+      row({
+        reviewLevels: 2,
+        reviewLevel: 1,
+        supersededSignOffs: [
+          signOff(1, "John Doe", { supersededReason: "MODIFIED" }),
+        ],
+      }),
+    );
+
+    const superseded = screen.getByTestId("review-sign-off-superseded");
+    expect(superseded).toHaveTextContent(
+      /Level 1 of 2: John Doe, .*\(superseded, value modified\)/,
+    );
+    expect(superseded.querySelector("s")).not.toBeNull();
+  });
+
+  it("a single-level row keeps today's release without a sign-off list", () => {
+    renderPanel(row());
+
+    expect(
+      screen.getByRole("button", { name: "Validate & release" }),
+    ).toBeEnabled();
+    expect(screen.queryByTestId("review-sign-offs")).not.toBeInTheDocument();
   });
 });

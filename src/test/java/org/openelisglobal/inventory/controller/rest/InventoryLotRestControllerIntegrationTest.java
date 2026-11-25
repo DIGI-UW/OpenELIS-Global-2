@@ -5,10 +5,12 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.After;
@@ -16,7 +18,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.config.AppConfig;
+import org.openelisglobal.inventory.service.InventoryLotService;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.storage.service.SampleStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -35,6 +40,9 @@ public class InventoryLotRestControllerIntegrationTest extends BaseWebContextSen
 
     @Autowired
     private InventoryLotRestController inventoryLotRestController;
+
+    @Autowired
+    private InventoryLotService inventoryLotService;
 
     private ObjectMapper objectMapper;
 
@@ -119,6 +127,51 @@ public class InventoryLotRestControllerIntegrationTest extends BaseWebContextSen
         assertTrue("Should have seen lot OGC657-LOT-002 with its location", sawLot7001);
     }
 
+    @Test
+    public void getAll_exposesTheDerivedUsabilityFlagsTheBoardMarksUseFirstWith() throws Exception {
+        assertEquals("both fixture lots start usable", QCStatus.PASSED, inventoryLotService.get(7001L).getQcStatus());
+
+        Map<String, JsonNode> beforeByLotNumber = lotsByLotNumber();
+        assertTrue("a usable lot must carry the flag, not omit it",
+                beforeByLotNumber.get("OGC657-LOT-001").get("availableForUse").asBoolean());
+        assertTrue(beforeByLotNumber.get("OGC657-LOT-002").get("availableForUse").asBoolean());
+        // java.sql.Timestamp is not a java.time type, so it ships as epoch
+        // milliseconds.
+        JsonNode effectiveExpiry = beforeByLotNumber.get("OGC657-LOT-001").get("effectiveExpirationDate");
+        assertTrue("the board sorts on this value, so it has to be a number", effectiveExpiry.isNumber());
+        assertEquals(Timestamp.valueOf("2026-12-31 00:00:00").getTime(), effectiveExpiry.asLong());
+
+        inventoryLotService.updateQCStatus(7001L, QCStatus.FAILED, "board contract test", TEST_SYS_USER_ID);
+
+        Map<String, JsonNode> afterByLotNumber = lotsByLotNumber();
+        assertFalse("a QC-failed lot must read as unusable so the board skips it for use-first",
+                afterByLotNumber.get("OGC657-LOT-002").get("availableForUse").asBoolean());
+        assertTrue("its sibling is untouched",
+                afterByLotNumber.get("OGC657-LOT-001").get("availableForUse").asBoolean());
+    }
+
+    @Test
+    public void getAll_exposesWhetherALotCountsTowardsOnHand() throws Exception {
+        inventoryLotService.updateQCStatus(7001L, QCStatus.PENDING, "board contract test", TEST_SYS_USER_ID);
+
+        JsonNode pending = lotsByLotNumber().get("OGC657-LOT-002");
+        assertTrue("a lot awaiting QC is on the shelf and counts", pending.get("countsAsAvailableStock").asBoolean());
+        assertFalse("but it cannot be used yet", pending.get("availableForUse").asBoolean());
+
+        inventoryLotService.updateQCStatus(7001L, QCStatus.QUARANTINED, "board contract test", TEST_SYS_USER_ID);
+
+        assertFalse(lotsByLotNumber().get("OGC657-LOT-002").get("countsAsAvailableStock").asBoolean());
+    }
+
+    private Map<String, JsonNode> lotsByLotNumber() throws Exception {
+        MvcResult result = mockMvc.perform(get("/rest/inventory/lots")).andExpect(status().isOk()).andReturn();
+        Map<String, JsonNode> byLotNumber = new HashMap<>();
+        for (JsonNode lot : objectMapper.readTree(result.getResponse().getContentAsString())) {
+            byLotNumber.put(lot.get("lotNumber").asText(), lot);
+        }
+        return byLotNumber;
+    }
+
     // ==========================================================================
     // Full REST round-trip through InventoryLotStorageRestController, driving
     // the exact same POST bodies the frontend sends.
@@ -195,6 +248,33 @@ public class InventoryLotRestControllerIntegrationTest extends BaseWebContextSen
         JsonNode movements = objectMapper.readTree(movementsResult.getResponse().getContentAsString());
         assertTrue("Should be an array of movements", movements.isArray());
         assertEquals("One movement for the assign, one for the move", 2, movements.size());
+    }
+
+    @Test
+    public void put_keepsTheStoredBarcode_whenTheBodyOmitsIt() throws Exception {
+        UserSessionData usd = new UserSessionData();
+        usd.setSytemUserId(1);
+        // The fields a partial update carries, with no barcode among them.
+        Map<String, Object> body = new HashMap<>();
+        body.put("inventoryItem", Map.of("id", 7000));
+        body.put("lotNumber", "OGC657-LOT-001-RELABELLED");
+        body.put("initialQuantity", 10.0);
+        body.put("currentQuantity", 3.0);
+        body.put("qcStatus", "PASSED");
+        body.put("status", "ACTIVE");
+        body.put("version", 0);
+
+        mockMvc.perform(put("/rest/inventory/lots/7000").contentType(MediaType.APPLICATION_JSON)
+                .sessionAttr("userSessionData", usd).content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk());
+
+        MvcResult result = mockMvc.perform(get("/rest/inventory/lots/7000")).andExpect(status().isOk()).andReturn();
+        JsonNode lot = objectMapper.readTree(result.getResponse().getContentAsString());
+        assertEquals("A PUT without a barcode must not orphan the printed label", "OGC657-TEST-REAGENT-OGC657-LOT-001",
+                lot.get("barcode").asText());
+        assertEquals("The fields the body did carry must still be applied", "OGC657-LOT-001-RELABELLED",
+                lot.get("lotNumber").asText());
+        assertEquals("A PUT never moves stock; adjust does", 10.0, lot.get("currentQuantity").asDouble(), 0.001);
     }
 
     @Test

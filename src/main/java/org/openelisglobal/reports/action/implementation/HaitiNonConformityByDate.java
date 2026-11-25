@@ -13,26 +13,14 @@
  */
 package org.openelisglobal.reports.action.implementation;
 
-import org.openelisglobal.common.util.ConfigurationProperties;
-import org.openelisglobal.common.util.ConfigurationProperties.Property;
-
 public class HaitiNonConformityByDate extends NonConformityByDate implements IReportCreator {
 
     public HaitiNonConformityByDate() {
     }
 
+    /** The routine menu's report leaves out the site subject number. */
     @Override
-    protected String getHeaderName() {
-        return "GeneralHeader.jasper";
-    }
-
-    @Override
-    protected void createReportParameters() throws IllegalStateException {
-        super.createReportParameters();
-        reportParameters.put("supportStudy", "false");
-        reportParameters.put("supportService", "false");
-        reportParameters.put("supportSiteSubject", "false");
-        reportParameters.put("labName1", ConfigurationProperties.getInstance().getPropertyValue(Property.SiteName));
-        reportParameters.put("labName2", "");
+    protected boolean showSiteSubjectNumber() {
+        return false;
     }
 }

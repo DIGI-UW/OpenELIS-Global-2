@@ -1,5 +1,6 @@
 package org.openelisglobal.barcode.labeltype;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -125,6 +126,118 @@ public class SlideLabelTest {
         assertFalse(fields.stream().anyMatch(field -> "H&E".equals(field.getValue())));
         assertFalse(fields.stream().anyMatch(field -> "B-4".equals(field.getValue())));
         assertFalse(fields.stream().anyMatch(field -> "C-9".equals(field.getValue())));
+    }
+
+    @Test
+    public void designation_isPrintedInsteadOfTheLegacyNumber() {
+        when(configurationProperties.getPropertyValue(any(Property.class))).thenAnswer(invocation -> {
+            Property property = invocation.getArgument(0);
+            switch (property) {
+            case SLIDE_LABEL_BARCODE_WIDTH:
+            case SLIDE_LABEL_BARCODE_HEIGHT:
+                return "2";
+            case SLIDE_LABEL_FIELD_PATIENT_ID:
+                return "false";
+            case SLIDE_LABEL_FIELD_SLIDE_ID:
+                return "true";
+            case SLIDE_LABEL_FIELD_STAIN_TYPE:
+            case SLIDE_LABEL_FIELD_BLOCK_ID:
+            case SLIDE_LABEL_FIELD_CASE_NUMBER:
+                return "false";
+            case MAX_SLIDE_LABEL_PRINTED:
+                return "10";
+            default:
+                return "";
+            }
+        });
+
+        PathologySlide slide = new PathologySlide();
+        slide.setSlideNumber(7);
+        slide.setDesignation("L1");
+
+        SlideLabel label = new SlideLabel(null, new Sample(), new PathologySample(), slide, "ACC-1", "H&E", "B-4", "C-9");
+        List<LabelField> fields = collect(label.getAboveFields());
+
+        assertTrue(fields.stream().anyMatch(field -> "L1".equals(field.getValue())));
+        assertFalse(fields.stream().anyMatch(field -> "7".equals(field.getValue())));
+        assertEquals("the barcode still carries the lab number", "ACC-1", label.getCode());
+    }
+
+    @Test
+    public void aSlideWithNoStain_printsTheStainFieldBlank() {
+        when(configurationProperties.getPropertyValue(any(Property.class))).thenAnswer(invocation -> {
+            Property property = invocation.getArgument(0);
+            switch (property) {
+            case SLIDE_LABEL_BARCODE_WIDTH:
+            case SLIDE_LABEL_BARCODE_HEIGHT:
+                return "2";
+            case SLIDE_LABEL_FIELD_STAIN_TYPE:
+                return "true";
+            case SLIDE_LABEL_FIELD_PATIENT_ID:
+            case SLIDE_LABEL_FIELD_SLIDE_ID:
+            case SLIDE_LABEL_FIELD_BLOCK_ID:
+            case SLIDE_LABEL_FIELD_CASE_NUMBER:
+                return "false";
+            case MAX_SLIDE_LABEL_PRINTED:
+                return "10";
+            default:
+                return "";
+            }
+        });
+
+        SlideLabel label = new SlideLabel(null, new Sample(), new PathologySample(), new PathologySlide(), "ACC-1",
+                null, "B-4", "C-9");
+        List<LabelField> fields = collect(label.getAboveFields());
+
+        assertEquals("the stain field is still printed, so the preset's layout holds", 1, fields.size());
+        assertEquals("but blank rather than the word null", "", fields.get(0).getValue());
+    }
+
+    /**
+     * Every slide label carried the lab number as its symbol, so a scanned slide
+     * read the same as its block and its order and could not be checked against
+     * either. The symbol is now the slide's own barcode; the print count stays
+     * keyed on the lab number.
+     */
+    @Test
+    public void theSymbol_isTheSlidesOwnBarcode() {
+        printSlideIdOnly();
+        PathologySlide slide = new PathologySlide();
+        slide.setDesignation("1");
+        slide.setBarcode("ACC-1.A1.1");
+
+        SlideLabel label = new SlideLabel(null, new Sample(), new PathologySample(), slide, "ACC-1", null, "A1", "C-9");
+
+        assertEquals("the scanned symbol names this slide under its block", "ACC-1.A1.1", label.getCode());
+        assertEquals("the print count is still kept per order for slide labels", "ACC-1-S", label.labelInfoCode());
+    }
+
+    @Test
+    public void aSlideWithNoBarcode_stillScansToItsOrder() {
+        printSlideIdOnly();
+        PathologySlide slide = new PathologySlide();
+        slide.setDesignation("1");
+        slide.setBarcode("  ");
+
+        SlideLabel label = new SlideLabel(null, new Sample(), new PathologySample(), slide, "ACC-1", null, "A1", "C-9");
+
+        assertEquals("a row with no barcode prints the lab number rather than nothing", "ACC-1", label.getCode());
+        assertEquals("and keeps the same print count", "ACC-1-S", label.labelInfoCode());
+    }
+
+    private void printSlideIdOnly() {
+        when(configurationProperties.getPropertyValue(any(Property.class))).thenAnswer(invocation -> {
+            Property property = invocation.getArgument(0);
+            switch (property) {
+            case SLIDE_LABEL_BARCODE_WIDTH:
+            case SLIDE_LABEL_BARCODE_HEIGHT:
+                return "2";
+            case SLIDE_LABEL_FIELD_SLIDE_ID:
+                return "true";
+            default:
+                return "false";
+            }
+        });
     }
 
     private List<LabelField> collect(Iterable<LabelField> fields) {

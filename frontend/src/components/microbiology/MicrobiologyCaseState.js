@@ -59,9 +59,6 @@ const CASE_INFO_STEP = {
 };
 
 export const getMicrobiologyCurrentStep = (caseDetail = {}) => {
-  if (caseDetail.workflowType === "UNASSIGNED") {
-    return CASE_INFO_STEP;
-  }
   if (caseDetail.finalReleaseState === "AMENDMENT_IN_PROGRESS") {
     return {
       section: "amendment",

@@ -29,6 +29,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { ConfigurationContext } from "../../layout/Layout";
 import { jpSet } from "../../utils/JsonPath";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { labNow } from "../../utils/labClock";
 
 // eslint-disable-next-line prefer-const -- preserve the original JavaScript runtime declaration
 let breadcrumbs = [
@@ -135,8 +136,8 @@ function LabNumberManagement() {
   const fetchCurrentLabNumberNoIncrement = () => {
     getFromOpenElisServer(
       "/rest/SampleEntryGenerateScanProvider?noIncrement=true",
-      (res: { status?: boolean; body: string }) => {
-        if (res.status) {
+      (res: { status?: boolean; body: string } | undefined) => {
+        if (res?.status) {
           if (configurationProperties.AccessionFormat != "ALPHANUM") {
             setCurrentLabNumForDisplay(res.body);
           } else {
@@ -151,7 +152,7 @@ function LabNumberManagement() {
 
   const generateSampleLabNum = () => {
     // eslint-disable-next-line prefer-const -- preserve the original JavaScript declaration
-    let dateDigits = new Date().getFullYear() % 100;
+    let dateDigits = labNow().getFullYear() % 100;
     let labNumber = "" + dateDigits;
     if (labNumberValues.usePrefix && labNumberValues.alphanumPrefix) {
       labNumber = labNumber + labNumberValues.alphanumPrefix;
@@ -163,8 +164,8 @@ function LabNumberManagement() {
   const fetchLegacyLabNumNoIncrement = () => {
     getFromOpenElisServer(
       "/rest/SampleEntryGenerateScanProvider?noIncrement=true&format=SITEYEARNUM",
-      (res: { status?: boolean; body: string }) => {
-        if (res.status) {
+      (res: { status?: boolean; body: string } | undefined) => {
+        if (res?.status) {
           setSampleLabNumForDisplay(res.body);
         }
       },

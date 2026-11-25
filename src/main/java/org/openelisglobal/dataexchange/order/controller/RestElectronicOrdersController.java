@@ -26,6 +26,7 @@ import org.openelisglobal.dataexchange.order.form.ElectronicOrderPaging;
 import org.openelisglobal.dataexchange.order.form.ElectronicOrderViewForm;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrderDisplayItem;
+import org.openelisglobal.dataexchange.service.order.ElectronicOrderLabUnitScope;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
@@ -55,6 +56,8 @@ public class RestElectronicOrdersController extends BaseController {
     private StatusOfSampleService statusOfSampleService;
     @Autowired
     private ElectronicOrderService electronicOrderService;
+    @Autowired
+    private ElectronicOrderLabUnitScope electronicOrderLabUnitScope;
     @Autowired
     private PatientService patientService;
     @Autowired
@@ -90,7 +93,8 @@ public class RestElectronicOrdersController extends BaseController {
         String requestedPage = request.getParameter("page");
         if (GenericValidator.isBlankOrNull(requestedPage)) {
             if (form.getSearchType() != null) {
-                electronicOrders = electronicOrderService.searchForElectronicOrders(form);
+                electronicOrders = electronicOrderLabUnitScope.restrictToUserLabUnits(
+                        electronicOrderService.searchForElectronicOrders(form), getSysUserId(request));
                 eOrderDisplayItems = convertToDisplayItem(electronicOrders, form.getUseAllInfo());
                 paging.setDatabaseResults(request, form, eOrderDisplayItems);
             }
@@ -175,16 +179,18 @@ public class RestElectronicOrdersController extends BaseController {
                     displayItem.setTestName(test.getLocalizedTestName().getLocalizedValue());
                 }
 
-                String patientUuid = serviceRequest.getSubject().getReferenceElement().getIdPart();
-                org.hl7.fhir.r4.model.Patient fhirPatient = fhirClient.read()
-                        .resource(org.hl7.fhir.r4.model.Patient.class).withId(patientUuid).execute();
+                if (FhirUtil.refersToPatient(serviceRequest.getSubject())) {
+                    String patientUuid = serviceRequest.getSubject().getReferenceElement().getIdPart();
+                    org.hl7.fhir.r4.model.Patient fhirPatient = fhirClient.read()
+                            .resource(org.hl7.fhir.r4.model.Patient.class).withId(patientUuid).execute();
 
-                for (Identifier identifier : fhirPatient.getIdentifier()) {
-                    if ("passport".equals(identifier.getSystem())) {
-                        displayItem.setPassportNumber(identifier.getId());
-                    }
-                    if ((fhirConfig.getOeFhirSystem() + "/pat_subjectNumber").equals(identifier.getSystem())) {
-                        displayItem.setSubjectNumber(identifier.getId());
+                    for (Identifier identifier : fhirPatient.getIdentifier()) {
+                        if ("passport".equals(identifier.getSystem())) {
+                            displayItem.setPassportNumber(identifier.getId());
+                        }
+                        if ((fhirConfig.getOeFhirSystem() + "/pat_subjectNumber").equals(identifier.getSystem())) {
+                            displayItem.setSubjectNumber(identifier.getId());
+                        }
                     }
                 }
             }

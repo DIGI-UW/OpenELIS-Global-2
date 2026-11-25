@@ -1,5 +1,6 @@
 package org.openelisglobal.shipment.dao;
 
+import java.util.Collection;
 import java.util.List;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
@@ -73,6 +74,23 @@ public class ShipmentDAOImpl extends BaseDAOImpl<Shipment, Integer> implements S
         } catch (Exception e) {
             logger.error("Error finding Shipments by courier", e);
             throw new LIMSRuntimeException("Error finding Shipments by courier", e);
+        }
+    }
+
+    @Override
+    public List<Object[]> findLatestShippedDatesByEqaCycleIds(Collection<Long> eqaCycleIds) {
+        if (eqaCycleIds == null || eqaCycleIds.isEmpty()) {
+            return List.of();
+        }
+        try {
+            String hql = "SELECT b.eqaCycleId, MAX(s.shippedDate) FROM Shipment s JOIN s.shippingBox b"
+                    + " WHERE b.eqaCycleId IN :eqaCycleIds AND s.shippedDate IS NOT NULL GROUP BY b.eqaCycleId";
+            Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(hql, Object[].class);
+            query.setParameterList("eqaCycleIds", eqaCycleIds);
+            return query.list();
+        } catch (Exception e) {
+            logger.error("Error finding latest shipped dates by EQA cycle ids", e);
+            throw new LIMSRuntimeException("Error finding latest shipped dates by EQA cycle ids", e);
         }
     }
 }

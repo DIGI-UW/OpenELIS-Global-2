@@ -123,6 +123,10 @@ const QCSummaryTiles = ({ summary, loading }) => {
               {passRate}%
             </span>
             <ProgressBar
+              label={intl.formatMessage({
+                id: "qc.dashboard.summary.passRate",
+              })}
+              hideLabel
               value={passRate}
               max={100}
               size="small"

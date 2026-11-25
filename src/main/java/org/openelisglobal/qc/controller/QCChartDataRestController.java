@@ -31,11 +31,14 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/rest/qc/charts")
-@PreAuthorize("hasAnyRole('ANALYSER_IMPORT', 'ADMIN')")
+@PreAuthorize("hasRole('ADMIN')")
 public class QCChartDataRestController {
 
     @Autowired
     private QCChartDataService chartDataService;
+
+    @Autowired
+    private org.openelisglobal.qc.service.QCControlLotService controlLotService;
 
     /**
      * Get chart data for a specific control lot with optional filtering. GET
@@ -73,7 +76,8 @@ public class QCChartDataRestController {
             // Build response
             ChartDataResponse response = new ChartDataResponse();
             response.setControlLotId(controlLotId);
-            response.setDataPoints(buildDataPoints(results, violations));
+            var lot = controlLotService.get(controlLotId);
+            response.setDataPoints(buildDataPoints(results, violations, lot == null ? null : lot.getControlLevel()));
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -93,12 +97,13 @@ public class QCChartDataRestController {
     public ResponseEntity<ChartStatisticsResponse> getChartStatistics(
             @PathVariable("controlLotId") String controlLotId) {
         try {
-            QCStatistics stats = chartDataService.getLatestStatistics(controlLotId);
+            QCChartDataService.StatsWithSigma statsWithSigma = chartDataService.getStatisticsWithSigma(controlLotId);
 
-            if (stats == null) {
+            if (statsWithSigma == null || statsWithSigma.statistics() == null) {
                 return ResponseEntity.notFound().build();
             }
 
+            QCStatistics stats = statsWithSigma.statistics();
             ChartStatisticsResponse response = new ChartStatisticsResponse();
             response.setControlLotId(controlLotId);
             response.setMean(stats.getMean() != null ? stats.getMean().doubleValue() : 0.0);
@@ -117,6 +122,11 @@ public class QCChartDataRestController {
             response.setMinus2SD(mean - 2 * sd);
             response.setMinus3SD(mean - 3 * sd);
 
+            // OGC-704: Westgard sigma metric (mean/SD + per-test TEa, bias 0).
+            // Shared with the OGC-706 export via QCChartDataService#getStatisticsWithSigma.
+            response.setSigma(statsWithSigma.sigma().sigma());
+            response.setSigmaCategory(statsWithSigma.sigma().category());
+
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             LogEvent.logError("QCChartDataRestController", "getChartStatistics", e.getMessage());
@@ -124,12 +134,14 @@ public class QCChartDataRestController {
         }
     }
 
-    private List<ChartDataPoint> buildDataPoints(List<QCResult> results, List<QCRuleViolation> violations) {
+    private List<ChartDataPoint> buildDataPoints(List<QCResult> results, List<QCRuleViolation> violations,
+            String controlLevel) {
         List<ChartDataPoint> dataPoints = new ArrayList<>();
 
         for (QCResult result : results) {
             ChartDataPoint point = new ChartDataPoint();
             point.setResultId(result.getId());
+            point.setControlLevel(controlLevel);
             point.setTimestamp(result.getRunDateTime() != null ? result.getRunDateTime().toInstant().toString() : null);
             point.setValue(result.getResultValue() != null ? result.getResultValue().doubleValue() : null);
             point.setZScore(result.getZScore() != null ? result.getZScore().doubleValue() : null);
@@ -142,10 +154,8 @@ public class QCChartDataRestController {
             point.setHasViolation(!violatedRules.isEmpty());
 
             // Determine severity (highest among violations)
-            String severity = violations.stream().filter(v -> result.getId().equals(v.getTriggeringResultId()))
-                    .map(QCRuleViolation::getSeverity).filter(s -> "REJECTION".equals(s)).findFirst()
-                    .orElse(violatedRules.isEmpty() ? null : "WARNING");
-            point.setSeverity(severity);
+            point.setSeverity(QCRuleViolation.worstSeverity(
+                    violations.stream().filter(v -> result.getId().equals(v.getTriggeringResultId())).toList()));
 
             dataPoints.add(point);
         }
@@ -180,6 +190,15 @@ public class QCChartDataRestController {
 
     /** Individual data point for the chart. */
     public static class ChartDataPoint {
+        private String controlLevel;
+
+        public String getControlLevel() {
+            return controlLevel;
+        }
+
+        public void setControlLevel(String controlLevel) {
+            this.controlLevel = controlLevel;
+        }
 
         private String resultId;
         private String timestamp;
@@ -260,6 +279,9 @@ public class QCChartDataRestController {
         private double minus1SD;
         private double minus2SD;
         private double minus3SD;
+        // OGC-704: sigma metric; null sigma when NOT_CALCULABLE
+        private Double sigma;
+        private String sigmaCategory;
 
         public String getControlLotId() {
             return controlLotId;
@@ -347,6 +369,22 @@ public class QCChartDataRestController {
 
         public void setMinus3SD(double minus3SD) {
             this.minus3SD = minus3SD;
+        }
+
+        public Double getSigma() {
+            return sigma;
+        }
+
+        public void setSigma(Double sigma) {
+            this.sigma = sigma;
+        }
+
+        public String getSigmaCategory() {
+            return sigmaCategory;
+        }
+
+        public void setSigmaCategory(String sigmaCategory) {
+            this.sigmaCategory = sigmaCategory;
         }
     }
 }

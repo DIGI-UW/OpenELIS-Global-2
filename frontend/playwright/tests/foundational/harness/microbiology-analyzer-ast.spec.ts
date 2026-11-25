@@ -1,15 +1,18 @@
+import { randomUUID } from "node:crypto";
 import { expect, test } from "../../../helpers/test-base";
 import type { Page } from "@playwright/test";
+import { withAuthedPage } from "../../../helpers/api-session";
+import { activateShippedGeneXpert } from "../../../helpers/analyzer-setup-flow";
 import {
   seedAnalyzerReviewMicrobiologyCase,
   submitQcFailedAstAnalyzerResults,
   submitUnmatchedAstAnalyzerResults,
 } from "../../../helpers/seed-microbiology-data";
-import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 // Exercise normalized AST review with a real configured harness connection.
 // Instrument parsing and protocol compatibility have their own harness journeys.
-const SOURCE_ANALYZER = "Cepheid GeneXpert (ASTM Mode)";
+const run = randomUUID().slice(0, 8);
+const SOURCE_ANALYZER = `AST source ${run}`;
 
 const frameBelowHeader = async (page: Page, testId: string) => {
   const target = page.getByTestId(testId);
@@ -26,6 +29,12 @@ const frameBelowHeader = async (page: Page, testId: string) => {
 };
 
 test.describe("Microbiology analyzer AST review", () => {
+  test.beforeAll(async ({ browser }) => {
+    await withAuthedPage(browser, (page) =>
+      activateShippedGeneXpert(page, SOURCE_ANALYZER, `GX-AST-${run}`),
+    );
+  });
+
   test("Analyzer AST results expose QC evidence, resolve explicitly, and become reviewable", async ({
     page,
   }, testInfo) => {
@@ -45,7 +54,7 @@ test.describe("Microbiology analyzer AST review", () => {
     const row = page.getByTestId(
       `microbiology-worklist-row-${seeded.astRunId}`,
     );
-    await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(row).toBeVisible();
     await expect(row).toContainText("Awaiting Results");
 
     const browserIngressAttempt = await page.request.post(
@@ -63,7 +72,7 @@ test.describe("Microbiology analyzer AST review", () => {
     await page.goto(`/Microbiology/worklist?${resultsQuery}`, {
       waitUntil: "domcontentloaded",
     });
-    await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(row).toBeVisible();
     await expect(row).toContainText("QC Failed");
     await row.focus();
     await page.keyboard.press("Enter");
@@ -78,38 +87,42 @@ test.describe("Microbiology analyzer AST review", () => {
       );
     });
 
-    await expect(page.getByRole("heading", { name: "Manual AST" })).toBeVisible(
-      { timeout: LONG_TIMEOUT },
-    );
-    const astCard = page.getByTestId("microbiology-ast-card");
+    const astTestId = `ast-run-${seeded.astRunId}`;
+    const astCard = page.getByTestId(astTestId);
+    await expect(astCard).toBeVisible();
     await expect(astCard.getByText("Analyzer QC failed")).toBeVisible();
     await expect(astCard.getByText(SOURCE_ANALYZER)).toBeVisible();
     await expect(astCard.getByText(/UAT-AST-CARD-/)).toBeVisible();
     await expect(
-      page.getByRole("cell", { name: "Ciprofloxacin (UAT)", exact: true }),
+      astCard.getByRole("cell", { name: /^Ciprofloxacin \(UAT\)(?:\s|$)/ }),
     ).toBeVisible();
     await expect(page.getByText("Analyzer: Susceptible")).toBeVisible();
-    await frameBelowHeader(page, "microbiology-ast-card");
+    await frameBelowHeader(page, astTestId);
     await testInfo.attach("analyzer-ast-qc-failed", {
       body: await page.screenshot(),
       contentType: "image/png",
     });
 
-    const reason = page.getByLabel("Reason and corrective action");
-    await reason.fill("QC control investigated; supervisor accepts this run");
-    const overrideQc = page.getByRole("button", { name: "Override QC flag" });
-    await expect(overrideQc).toBeEnabled();
-    await overrideQc.click();
+    await astCard
+      .getByRole("button", { name: "Override quality control hold" })
+      .click();
+    let modal = page.getByRole("dialog");
+    await modal
+      .getByLabel("Reason", { exact: true })
+      .fill("QC control investigated; supervisor accepts this run");
+    await modal.getByRole("button", { name: "Save", exact: true }).click();
     await expect(
-      page.getByText("Analyzer results ready for review"),
+      astCard.getByText("Analyzer results ready for review"),
     ).toBeVisible();
-    const accept = page.getByRole("button", { name: "Accept results" });
-    await expect(accept).toBeEnabled();
-    await accept.click();
-    await expect(page.getByTestId("microbiology-ast-run-status")).toContainText(
-      "Reviewed",
-    );
-    await frameBelowHeader(page, "microbiology-ast-card");
+    await astCard
+      .getByRole("button", { name: "Validate run", exact: true })
+      .click();
+    modal = page.getByRole("dialog");
+    await modal.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(
+      astCard.getByRole("button", { name: /Validated/ }),
+    ).toBeVisible();
+    await frameBelowHeader(page, astTestId);
     await testInfo.attach("analyzer-ast-reviewed", {
       body: await page.screenshot(),
       contentType: "image/png",
@@ -128,22 +141,22 @@ test.describe("Microbiology analyzer AST review", () => {
     await page.goto("/Dashboard", {
       waitUntil: "domcontentloaded",
     });
-    const adminMenu = page.getByRole("button", { name: "Admin", exact: true });
-    await expect(adminMenu).toBeVisible({ timeout: LONG_TIMEOUT });
+    // Admin opens its dashboard in one click, and the stuck analyzer events
+    // are one of its tiles, inside the admin shell.
+    const adminMenu = page.getByRole("link", { name: "Admin", exact: true });
+    await expect(adminMenu).toBeVisible();
     await adminMenu.click();
     await page
-      .getByRole("link", { name: "Stuck analyzer events", exact: true })
+      .getByTestId("admin-dashboard-tile")
+      .filter({ hasText: "Stuck analyzer events" })
       .click();
-    await page.waitForURL((url) => {
-      return (
-        url.pathname === "/AnalyzerResults" &&
-        url.searchParams.get("view") === "import-issues"
-      );
-    });
+    await page.waitForURL((url) =>
+      url.pathname.endsWith("/stuckAnalyzerEvents"),
+    );
 
     await expect(
       page.getByRole("heading", { name: "Analyzer import issues" }),
-    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    ).toBeVisible();
     const row = page.getByRole("row").filter({ hasText: unmatched.sourceId });
     await expect(row).toContainText("AST result available");
     await expect(row).toContainText(
@@ -156,7 +169,7 @@ test.describe("Microbiology analyzer AST review", () => {
       `/AnalyzerResults?id=${seeded.analyzerInstrumentId}`,
     );
     await expect(
-      page.getByRole("button", { name: /retry|reprocess/i }),
+      row.getByRole("button", { name: /retry|reprocess/i }),
     ).toHaveCount(0);
   });
 });

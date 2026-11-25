@@ -1,0 +1,222 @@
+/**
+ * QA Overview layout. Colours are Carbon tokens; the three status tones come
+ * from the shared QA stylesheet (--qa-green / --qa-amber / --qa-red), which
+ * QAOverview.jsx imports alongside this file so the overview and the QI
+ * surfaces band identically.
+ */
+
+.qa-overview-subtitle,
+.qa-cs-caption,
+.qa-live-caption {
+  color: var(--cds-text-secondary, #525252);
+  font-size: 0.75rem;
+}
+
+.qa-overview-subtitle {
+  font-size: 0.875rem;
+  margin: 0.25rem 0 1.5rem;
+}
+
+.qa-overview-section {
+  margin-bottom: 2rem;
+}
+
+.qa-sec-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+  padding-bottom: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.qa-sec-link {
+  font-size: 0.75rem;
+  text-decoration: none;
+}
+
+.qa-sec-head h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+/* ComingSoon placeholders — deliberately muted (gray, ticket-annotated) */
+.qa-overview-section .qa-cs {
+  background-color: var(--cds-layer-01, #f4f4f4);
+  color: var(--cds-text-secondary, #525252);
+  min-height: 0;
+}
+
+.qa-cs-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.qa-cs-caption {
+  color: var(--cds-text-helper, #6f6f6f);
+  margin-top: 0.125rem;
+}
+
+.qa-cs-ticket {
+  flex-shrink: 0;
+  margin: 0.5rem 0 0;
+}
+
+.qa-cs-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.qa-cs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-left: 3px solid var(--cds-border-subtle-02, #c6c6c6);
+  padding: 0.625rem 1rem;
+}
+
+.qa-cs-row .qa-cs-ticket {
+  margin: 0;
+}
+
+.qa-cs-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.qa-cs-grid-tiles {
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+}
+
+.qa-cs-grid-stats {
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+}
+
+.qa-cs-grid-pillars {
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+}
+
+.qa-cs-tile.cds--tile {
+  min-height: 6.5rem;
+}
+
+/* Live (wired) rows and chips */
+.qa-live-green {
+  color: var(--qa-green);
+}
+
+.qa-live-amber {
+  color: var(--qa-amber);
+}
+
+.qa-live-red {
+  color: var(--qa-red);
+}
+
+.qa-live-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  border: none;
+  border-left: 3px solid var(--cds-border-subtle-02, #c6c6c6);
+  background: var(--cds-background, #ffffff);
+  padding: 0.625rem 1rem;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.qa-live-row-alert {
+  border-left-color: var(--qa-red);
+}
+
+.qa-live-row-alert .qa-live-badge {
+  background: var(--qa-red);
+  color: var(--cds-text-on-color, #ffffff);
+}
+
+.qa-live-badge {
+  min-width: 1.75rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  background: var(--cds-layer-accent, #e0e0e0);
+  color: var(--cds-text-primary, #161616);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.qa-live-arrow {
+  margin-left: auto;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.qa-cs-stat.cds--tile {
+  min-height: 4.5rem;
+  padding: 0.75rem 1rem;
+}
+
+/* Live aggregators (OGC-694) */
+.qa-live-stat.cds--tile {
+  background-color: var(--cds-background, #ffffff);
+  color: var(--cds-text-primary, #161616);
+}
+
+.qa-live-stat-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.qa-pillar-chip.cds--tile {
+  cursor: pointer;
+  background-color: var(--cds-background, #ffffff);
+  border-left: 3px solid var(--cds-border-subtle-02, #c6c6c6);
+  min-height: 5rem;
+}
+
+.qa-pillar-green.cds--tile {
+  border-left-color: var(--qa-green);
+}
+
+.qa-pillar-amber.cds--tile {
+  border-left-color: var(--qa-amber);
+}
+
+.qa-pillar-red.cds--tile {
+  border-left-color: var(--qa-red);
+}
+
+.qa-pillar-icon {
+  font-weight: 600;
+}
+
+.qa-live-row .qa-cs-body {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.qa-activity-row {
+  display: flex;
+  gap: 1rem;
+  border-left: 3px solid var(--cds-border-subtle-02, #c6c6c6);
+  background: var(--cds-background, #ffffff);
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+.qa-activity-time {
+  flex-shrink: 0;
+  min-width: 6rem;
+  color: var(--cds-text-secondary, #525252);
+  font-variant-numeric: tabular-nums;
+}

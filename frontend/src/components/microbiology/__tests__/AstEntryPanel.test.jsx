@@ -26,7 +26,6 @@ const inProgressRun = {
     {
       antibioticId: "abx-1",
       displayOrder: 1,
-      tier: 1,
       reportBehavior: "ALWAYS",
     },
   ],
@@ -141,7 +140,6 @@ const renderPanel = (service, props = {}) =>
     <IntlProvider locale="en" messages={messages}>
       <AstEntryPanel
         caseId="case-1"
-        workflowType="BACTERIOLOGY"
         isolates={[isolate]}
         service={service}
         saving={false}
@@ -666,7 +664,6 @@ describe("AstEntryPanel", () => {
         {
           antibioticId: "abx-2",
           displayOrder: 2,
-          tier: 1,
           reportBehavior: "ALWAYS",
         },
       ],

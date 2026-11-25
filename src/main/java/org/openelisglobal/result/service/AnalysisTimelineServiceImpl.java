@@ -21,6 +21,7 @@ import org.openelisglobal.qaevent.valueholder.NceSpecimen;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.result.valueholder.ResultEntryAcknowledgement;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.service.TestServiceImpl;
@@ -47,6 +48,14 @@ public class AnalysisTimelineServiceImpl implements AnalysisTimelineService {
     private NceSpecimenService nceSpecimenService;
     @Autowired
     private NCEventService ncEventService;
+    @Autowired
+    private ResultEntryAcknowledgementService acknowledgementService;
+    @Autowired
+    private org.openelisglobal.validationpolicy.dao.AnalysisReviewSignOffDAO signOffDAO;
+    @Autowired
+    private org.openelisglobal.role.service.RoleService roleService;
+    @Autowired
+    private org.openelisglobal.validationpolicy.service.AnalysisAutoReleaseService autoReleaseService;
 
     @Override
     @Transactional(readOnly = true)
@@ -60,8 +69,67 @@ public class AnalysisTimelineServiceImpl implements AnalysisTimelineService {
         addReflexEvents(analysis, events);
         addReferralEvents(analysis, events);
         addNceEvents(analysis, events);
+        addAcknowledgementEvents(analysis, events);
+        addSignOffEvents(analysis, events);
+        addAutoReleaseEvents(analysis, events);
         events.sort(Comparator.comparingLong(AnalysisTimelineEvent::getTimestamp).reversed());
         return events;
+    }
+
+    /**
+     * OGC-1364 v2: each review level signed, and each review a modification, retest
+     * or rejection restarted.
+     */
+    private void addSignOffEvents(Analysis analysis, List<AnalysisTimelineEvent> events) {
+        try {
+            for (org.openelisglobal.validationpolicy.valueholder.AnalysisReviewSignOff signOff : signOffDAO
+                    .findByAnalysisIds(List.of(Integer.valueOf(analysis.getId())))) {
+                org.openelisglobal.role.valueholder.Role role = roleService
+                        .getRoleById(String.valueOf(signOff.getRoleId()));
+                String roleName = role == null ? "" : role.getName().trim();
+                SystemUser signer = systemUserService.get(String.valueOf(signOff.getSignerId()));
+                events.add(new AnalysisTimelineEvent("SIGN_OFF", signOff.getSignedAt().toInstant().toEpochMilli(),
+                        DateUtil.convertTimestampToStringDateAndTime(Timestamp.from(signOff.getSignedAt().toInstant())),
+                        org.openelisglobal.internationalization.MessageUtil.getMessage("validation.signOff.level",
+                                new Object[] { signOff.getLevel(), signOff.getReviewLevels(), roleName }),
+                        signer != null ? signer.getDisplayName() : ""));
+                if (signOff.isSuperseded()) {
+                    SystemUser by = signOff.getSupersededBy() == null ? null
+                            : systemUserService.get(String.valueOf(signOff.getSupersededBy()));
+                    events.add(new AnalysisTimelineEvent("REVIEW_RESTARTED",
+                            signOff.getSupersededAt().toInstant().toEpochMilli(),
+                            DateUtil.convertTimestampToStringDateAndTime(
+                                    Timestamp.from(signOff.getSupersededAt().toInstant())),
+                            org.openelisglobal.internationalization.MessageUtil.getMessage(
+                                    "validation.signOff.superseded." + signOff.getSupersededReason().name(),
+                                    new Object[] { signOff.getLevel(), signOff.getReviewLevels(),
+                                            signer != null ? signer.getNameForDisplay() : "" }),
+                            by != null ? by.getDisplayName() : ""));
+                }
+            }
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+        }
+    }
+
+    /**
+     * OGC-1017: each release at entry without a validator, with the rule that
+     * released it and who saved the result.
+     */
+    private void addAutoReleaseEvents(Analysis analysis, List<AnalysisTimelineEvent> events) {
+        try {
+            for (org.openelisglobal.validationpolicy.valueholder.AnalysisAutoRelease release : autoReleaseService
+                    .releasesOf(analysis.getId())) {
+                SystemUser by = release.getReleasedBy() == null ? null
+                        : systemUserService.get(String.valueOf(release.getReleasedBy()));
+                events.add(new AnalysisTimelineEvent("AUTO_RELEASE", release.getReleasedAt().toInstant().toEpochMilli(),
+                        DateUtil.convertTimestampToStringDateAndTime(
+                                Timestamp.from(release.getReleasedAt().toInstant())),
+                        autoReleaseService.describe(release), by != null ? by.getDisplayName() : ""));
+            }
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+        }
     }
 
     /** OGC-1023 (R4): the test-referred event, from the Referral record itself. */
@@ -75,6 +143,35 @@ public class AnalysisTimelineServiceImpl implements AnalysisTimelineService {
             events.add(new AnalysisTimelineEvent("REFERRAL", when != null ? when.getTime() : 0,
                     when != null ? DateUtil.convertTimestampToStringDateAndTime(when) : "",
                     referral.getOrganizationName() != null ? referral.getOrganizationName() : "", ""));
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+        }
+    }
+
+    /**
+     * OGC-1417: a critical value acknowledged, or a value outside the valid range
+     * confirmed, by the person who entered it, with the message they were shown.
+     */
+    private void addAcknowledgementEvents(Analysis analysis, List<AnalysisTimelineEvent> events) {
+        try {
+            for (ResultEntryAcknowledgement acknowledgement : acknowledgementService
+                    .getByAnalysisId(analysis.getId())) {
+                Timestamp when = acknowledgement.getAcknowledgedAt();
+                SystemUser by = systemUserService.get(acknowledgement.getAcknowledgedBy());
+                String type = ResultEntryAcknowledgement.KIND_CRITICAL.equals(acknowledgement.getKind())
+                        ? "CRITICAL_ACK"
+                        : "INVALID_CONFIRMED";
+                String message = GenericValidator.isBlankOrNull(acknowledgement.getMessage()) ? ""
+                        : " — " + acknowledgement.getMessage();
+                AnalysisTimelineEvent event = new AnalysisTimelineEvent(type, when != null ? when.getTime() : 0,
+                        when != null ? DateUtil.convertTimestampToStringDateAndTime(when) : "",
+                        acknowledgement.getResultValue() + message, by != null ? by.getDisplayName() : "");
+                if (!GenericValidator.isBlankOrNull(acknowledgement.getResultId())) {
+                    Result result = resultService.get(acknowledgement.getResultId());
+                    event.setComponentId(result != null ? componentOfResult(result) : null);
+                }
+                events.add(event);
+            }
         } catch (RuntimeException e) {
             LogEvent.logError(e);
         }
@@ -163,9 +260,14 @@ public class AnalysisTimelineServiceImpl implements AnalysisTimelineService {
 
     /**
      * Prior revisions of this test on the same sample item — each one is a retest
-     * that this analysis superseded.
+     * that this analysis superseded. A vector pool's analysis is anchored to the
+     * pool, not a sample item, so it has no such revisions; asking would throw
+     * inside a transactional call and roll back the whole timeline read.
      */
     private void addRetestEvents(Analysis analysis, List<AnalysisTimelineEvent> events) {
+        if (analysis.getSampleItem() == null || analysis.getTest() == null) {
+            return;
+        }
         try {
             for (Analysis revision : analysisService
                     .getRevisionHistoryOfAnalysesBySampleAndTest(analysis.getSampleItem(), analysis.getTest(), false)) {

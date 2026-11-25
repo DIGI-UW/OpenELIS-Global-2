@@ -1,31 +1,24 @@
 package org.openelisglobal.compliance.controller.rest;
 
-import com.itextpdf.text.BaseColor;
-import com.itextpdf.text.Document;
-import com.itextpdf.text.DocumentException;
-import com.itextpdf.text.Element;
-import com.itextpdf.text.Font;
-import com.itextpdf.text.PageSize;
-import com.itextpdf.text.Phrase;
-import com.itextpdf.text.pdf.PdfPCell;
-import com.itextpdf.text.pdf.PdfPTable;
-import com.itextpdf.text.pdf.PdfWriter;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.compliance.service.ComplianceEvaluationResult;
 import org.openelisglobal.compliance.service.ComplianceEvaluationService;
 import org.openelisglobal.compliance.service.ComplianceReportGenerationService;
 import org.openelisglobal.compliance.service.LhuAmendmentService;
+import org.openelisglobal.compliance.valueholder.ComplianceStandard;
 import org.openelisglobal.esig.service.ElectronicSignatureService;
 import org.openelisglobal.esig.valueholder.ElectronicSignature;
 import org.openelisglobal.esig.valueholder.SignatureMeaning;
+import org.openelisglobal.microbiology.form.MicroPatientReportForm;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.sample.dao.SampleComplianceStandardDAO;
@@ -34,6 +27,7 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sample.valueholder.SampleComplianceStandard;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openpdf.text.DocumentException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -60,6 +54,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/rest/complianceReport")
 @PreAuthorize("hasAnyRole('RESULTS', 'VALIDATION', 'ADMIN')")
 public class ComplianceReportRestController {
+
+    @Autowired
+    private org.openelisglobal.microbiology.service.MicroEnvironmentalReportService microbiologyReports;
 
     private static final DateTimeFormatter DISPLAY_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     private static final String RECORD_TYPE_SAMPLE = "SAMPLE";
@@ -113,16 +110,30 @@ public class ComplianceReportRestController {
         return ResponseEntity.ok(statuses);
     }
 
+    /**
+     * The most orders a lab number search returns; a full lab number finds one, a
+     * short prefix is narrowed by typing more.
+     */
+    private static final int LAB_NUMBER_MATCHES = 200;
+
+    /**
+     * The orders for the Compliance Report. A lab number (OGC-1619) finds the
+     * orders whose lab number starts with it, whatever their date; the other
+     * filters still apply.
+     */
     @GetMapping
     public ResponseEntity<ComplianceReportDTO> getReport(@RequestParam(required = false) String dateFrom,
             @RequestParam(required = false) String dateTo, @RequestParam(required = false) String siteId,
             @RequestParam(required = false) String standardId, @RequestParam(required = false) String complianceStatus,
-            @RequestParam(required = false) String generationStatus) {
+            @RequestParam(required = false) String generationStatus, @RequestParam(required = false) String labNumber) {
 
         List<Sample> samples;
         String from = toSystemDateFormat(dateFrom);
         String to = toSystemDateFormat(dateTo);
-        if (from != null && to != null) {
+        if (labNumber != null && !labNumber.isBlank()) {
+            samples = sampleService.getEnvironmentalSamplesWithAccessionNumberStartingWith(labNumber.trim(),
+                    LAB_NUMBER_MATCHES);
+        } else if (from != null && to != null) {
             samples = sampleService.getSamplesReceivedInDateRange(from, to);
         } else {
             java.time.LocalDate today = java.time.LocalDate.now();
@@ -134,6 +145,7 @@ public class ComplianceReportRestController {
         int ineligibleCount = 0;
         int generatedCount = 0;
         int notYetGeneratedCount = 0;
+        int labNumberMatches = 0;
 
         for (Sample sample : samples) {
             String workflowType = observationHistoryService.getRawValueForSample(ObservationType.ENV_WORKFLOW_TYPE,
@@ -141,6 +153,7 @@ public class ComplianceReportRestController {
             if (!"environmental".equalsIgnoreCase(workflowType)) {
                 continue;
             }
+            labNumberMatches++;
 
             // Exclude orders not yet collected (e.g. a fresh resample draft awaiting
             // re-collection): no specimen has a collection date.
@@ -151,7 +164,12 @@ public class ComplianceReportRestController {
             }
 
             List<SampleComplianceStandard> links = sampleComplianceStandardDAO.getAllForSample(sample.getId());
-            if (links.isEmpty()) {
+            if (standardId != null && !standardId.isEmpty()
+                    && links.stream().noneMatch(link -> link.getComplianceStandard().getId().equals(standardId))) {
+                continue;
+            }
+            String ineligibleReason = ineligibleReason(sample);
+            if (ineligibleReason != null) {
                 ineligibleCount++;
                 // Show ineligible orders in the table unless the user is filtering
                 // by a specific compliance status or generation status (ineligible
@@ -161,21 +179,17 @@ public class ComplianceReportRestController {
                 boolean filteringByGeneration = generationStatus != null && !generationStatus.isEmpty()
                         && !"all".equalsIgnoreCase(generationStatus);
                 if (!filteringByStatus && !filteringByGeneration) {
-                    ComplianceReportOrderDTO ineligibleDto = buildOrderDTO(sample, null, null, false);
+                    ComplianceReportOrderDTO ineligibleDto = buildOrderDTO(sample, links, null, false);
                     ineligibleDto.setComplianceStatus("INELIGIBLE");
+                    ineligibleDto.setIneligibleReason(ineligibleReason);
                     orders.add(ineligibleDto);
                 }
                 continue;
             }
 
-            SampleComplianceStandard primaryLink = links.get(0);
-            if (standardId != null && !standardId.isEmpty()
-                    && !primaryLink.getComplianceStandard().getId().equals(standardId)) {
-                continue;
-            }
-
             ComplianceEvaluationResult eval = complianceEvaluationService.evaluate(sample);
-            String orderStatus = eval != null ? eval.getOverallStatus().name() : "NONE";
+            String orderStatus = links.isEmpty() ? ComplianceReportOrderDTO.KIND_RESULTS
+                    : eval != null ? eval.getOverallStatus().name() : "NONE";
 
             if (complianceStatus != null && !complianceStatus.isEmpty() && !"all".equalsIgnoreCase(complianceStatus)
                     && !orderStatus.equalsIgnoreCase(complianceStatus)) {
@@ -194,7 +208,7 @@ public class ComplianceReportRestController {
                 }
             }
 
-            ComplianceReportOrderDTO dto = buildOrderDTO(sample, primaryLink, eval, hasBeenGenerated);
+            ComplianceReportOrderDTO dto = buildOrderDTO(sample, links, eval, hasBeenGenerated);
 
             if (siteId != null && !siteId.isEmpty()) {
                 if (!siteId.equals(dto.getSiteCode())) {
@@ -216,6 +230,10 @@ public class ComplianceReportRestController {
         response.setGeneratedCount(generatedCount);
         response.setNotYetGeneratedCount(notYetGeneratedCount);
         response.setOrders(orders);
+        if (labNumber != null && !labNumber.isBlank()) {
+            response.setLabNumberMatches(labNumberMatches);
+            response.setLabNumberLimited(samples.size() >= LAB_NUMBER_MATCHES);
+        }
         return ResponseEntity.ok(response);
     }
 
@@ -242,7 +260,8 @@ public class ComplianceReportRestController {
      * reports nobody downloaded.
      */
     @PostMapping("/exportPdf")
-    public void exportPdf(@RequestBody ExportRequest request, HttpServletResponse response) throws IOException {
+    public void exportPdf(@RequestBody ExportRequest request, HttpServletResponse response,
+            jakarta.servlet.http.HttpServletRequest httpRequest) throws IOException {
         Long sampleId = request == null ? null : request.getSampleId();
         if (sampleId == null) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "sampleId is required");
@@ -255,11 +274,27 @@ public class ComplianceReportRestController {
         }
 
         List<SampleComplianceStandard> links = sampleComplianceStandardDAO.getAllForSample(sample.getId());
-        SampleComplianceStandard primaryLink = links.isEmpty() ? null : links.get(0);
+        String ineligible = ineligibleReason(sample);
+        if (ineligible != null) {
+            response.sendError(HttpServletResponse.SC_CONFLICT,
+                    ComplianceReportOrderDTO.INELIGIBLE_NO_TESTS.equals(ineligible) ? "The order has no test to report"
+                            : "Every test must be validated before the report is generated");
+            return;
+        }
+        List<MicroPatientReportForm> releasedMicrobiology;
+        try {
+            releasedMicrobiology = microbiologyReports.released(sample.getId(),
+                    org.openelisglobal.common.util.ControllerUtills.getSysUserId(httpRequest));
+        } catch (IllegalStateException e) {
+            response.sendError(HttpServletResponse.SC_CONFLICT,
+                    "The microbiology report must be released before the report is generated");
+            return;
+        }
         ComplianceEvaluationResult eval = complianceEvaluationService.evaluate(sample);
-        ComplianceReportOrderDTO dto = buildOrderDTO(sample, primaryLink, eval,
+        ComplianceReportOrderDTO dto = buildOrderDTO(sample, links, eval,
                 reportGenerationService.getLastGenerated(sampleId).isPresent());
 
+        dto.setMicrobiology(releasedMicrobiology);
         String safeFilename = sample.getAccessionNumber().replaceAll("[^a-zA-Z0-9\\-]", "");
         response.setContentType("application/pdf");
         response.setHeader("Content-Disposition", "attachment; filename=\"LH-" + safeFilename + ".pdf\"");
@@ -290,39 +325,7 @@ public class ComplianceReportRestController {
     }
 
     private byte[] buildOriginalPdfBytes(ComplianceReportOrderDTO dto) throws DocumentException, IOException {
-        Font titleFont = new Font(Font.FontFamily.HELVETICA, 14, Font.BOLD);
-        Font sectionFont = new Font(Font.FontFamily.HELVETICA, 11, Font.BOLD);
-        Font headerFont = new Font(Font.FontFamily.HELVETICA, 9, Font.BOLD, BaseColor.WHITE);
-        Font cellFont = new Font(Font.FontFamily.HELVETICA, 9);
-        Font labelFont = new Font(Font.FontFamily.HELVETICA, 9, Font.BOLD);
-
-        ByteArrayOutputStream buf = new ByteArrayOutputStream();
-        Document document = new Document(PageSize.A4);
-        PdfWriter.getInstance(document, buf);
-        document.open();
-
-        document.add(new Phrase("LAPORAN HASIL — CERTIFICATE OF TEST RESULTS\n\n", titleFont));
-        document.add(new Phrase("Lab Number: " + dto.getLabNumber() + "\n", cellFont));
-        document.add(new Phrase("Standard: " + safe(dto.getStandardName()) + "\n", cellFont));
-        document.add(new Phrase("Collection Date: " + safe(dto.getCollectionDate()) + "\n\n", cellFont));
-
-        addTwoColSection(document, sectionFont, labelFont, cellFont, "SITE INFORMATION",
-                new String[][] { { "Site", safe(dto.getSiteName()) },
-                        { "GPS Coordinates", safe(dto.getGpsCoordinates()) },
-                        { "Collection Date/Time", safe(dto.getCollectionDate()) },
-                        { "Collection Method", safe(dto.getCollectionMethod()) },
-                        { "PP No.", safe(dto.getRegulationNumber()) }, { "Standard", safe(dto.getStandardName()) } });
-
-        addTwoColSection(document, sectionFont, labelFont, cellFont, "COLLECTION CONDITIONS",
-                new String[][] { { "Water Temp", safe(dto.getWaterTemp()) },
-                        { "Ambient Temp", safe(dto.getAmbientTemp()) }, { "Weather", safe(dto.getWeather()) },
-                        { "Preservation", safe(dto.getPreservation()) } });
-
-        addComplianceTable(document, dto, sectionFont, headerFont, cellFont);
-        addSignatureTable(document, dto, sectionFont, labelFont, cellFont);
-
-        document.close();
-        return buf.toByteArray();
+        return EnvironmentalReportPdf.build(dto, null);
     }
 
     public static class ReissueRequest {
@@ -347,8 +350,8 @@ public class ComplianceReportRestController {
     }
 
     @PostMapping("/reissue")
-    public ResponseEntity<?> reissue(@RequestBody ReissueRequest request, HttpServletResponse response)
-            throws IOException {
+    public ResponseEntity<?> reissue(@RequestBody ReissueRequest request, HttpServletResponse response,
+            jakarta.servlet.http.HttpServletRequest httpRequest) throws IOException {
         if (request.getReason() == null || request.getReason().trim().isEmpty()) {
             return ResponseEntity.badRequest().body("Amendment reason must not be blank");
         }
@@ -362,6 +365,23 @@ public class ComplianceReportRestController {
         if (!lhuAmendmentService.hasBeenReleased(request.getSampleId())) {
             return ResponseEntity.status(404).body("Sample has not been released; nothing to amend");
         }
+        if (!reportIssued(sample)) {
+            return ResponseEntity.status(HttpServletResponse.SC_CONFLICT)
+                    .body("The report has not been issued yet; generate it before reissuing");
+        }
+        if (ineligibleReason(sample) != null) {
+            return ResponseEntity.status(HttpServletResponse.SC_CONFLICT)
+                    .body("Every test must be validated before the report is reissued");
+        }
+
+        List<MicroPatientReportForm> releasedMicrobiology;
+        try {
+            releasedMicrobiology = microbiologyReports.released(sample.getId(),
+                    org.openelisglobal.common.util.ControllerUtills.getSysUserId(httpRequest));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpServletResponse.SC_CONFLICT)
+                    .body("The microbiology report must be released before the report is reissued");
+        }
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String userId = auth != null ? auth.getName() : null;
@@ -371,9 +391,10 @@ public class ComplianceReportRestController {
         if (!archiveService.findBySampleIdAndAmendmentNumber(request.getSampleId(), 0).isPresent()) {
             try {
                 List<SampleComplianceStandard> origLinks = sampleComplianceStandardDAO.getAllForSample(sample.getId());
-                SampleComplianceStandard origPrimaryLink = origLinks.isEmpty() ? null : origLinks.get(0);
                 ComplianceEvaluationResult origEval = complianceEvaluationService.evaluate(sample);
-                ComplianceReportOrderDTO origDto = buildOrderDTO(sample, origPrimaryLink, origEval, true);
+                ComplianceReportOrderDTO origDto = buildOrderDTO(sample, origLinks, origEval, true);
+                origDto.setMicrobiology(microbiologyReports.released(sample.getId(),
+                        org.openelisglobal.common.util.ControllerUtills.getSysUserId(httpRequest)));
                 byte[] origPdfBytes = buildOriginalPdfBytes(origDto);
                 archiveService.archiveIfAbsent(request.getSampleId(), 0, origPdfBytes, userId);
             } catch (Exception e) {
@@ -389,11 +410,11 @@ public class ComplianceReportRestController {
         // Refresh sample to get updated amendmentNumber, then regenerate PDF
         sample = sampleService.get(String.valueOf(request.getSampleId()));
         List<SampleComplianceStandard> links = sampleComplianceStandardDAO.getAllForSample(sample.getId());
-        SampleComplianceStandard primaryLink = links.isEmpty() ? null : links.get(0);
         ComplianceEvaluationResult eval = complianceEvaluationService.evaluate(sample);
-        ComplianceReportOrderDTO dto = buildOrderDTO(sample, primaryLink, eval,
+        ComplianceReportOrderDTO dto = buildOrderDTO(sample, links, eval,
                 reportGenerationService.getLastGenerated(request.getSampleId()).isPresent());
 
+        dto.setMicrobiology(releasedMicrobiology);
         String safeFilename = sample.getAccessionNumber().replaceAll("[^a-zA-Z0-9\\-]", "");
         response.setContentType("application/pdf");
         response.setHeader("Content-Disposition",
@@ -420,62 +441,58 @@ public class ComplianceReportRestController {
 
     private byte[] buildAmendmentPdfBytes(Sample sample, ComplianceReportOrderDTO dto)
             throws DocumentException, IOException {
-        Font titleFont = new Font(Font.FontFamily.HELVETICA, 14, Font.BOLD);
-        Font sectionFont = new Font(Font.FontFamily.HELVETICA, 11, Font.BOLD);
-        Font headerFont = new Font(Font.FontFamily.HELVETICA, 9, Font.BOLD, BaseColor.WHITE);
-        Font cellFont = new Font(Font.FontFamily.HELVETICA, 9);
-        Font labelFont = new Font(Font.FontFamily.HELVETICA, 9, Font.BOLD);
-
-        ByteArrayOutputStream buf = new ByteArrayOutputStream();
-        Document document = new Document(PageSize.A4);
-        PdfWriter.getInstance(document, buf);
-        document.open();
-
-        String certNumber = lhuAmendmentService.certificateNumberWithAmendmentSuffix(sample.getAccessionNumber(),
+        String certificateNumber = lhuAmendmentService.certificateNumberWithAmendmentSuffix(sample.getAccessionNumber(),
                 sample.getAmendmentNumber());
-        document.add(new Phrase("LAPORAN HASIL — CERTIFICATE OF TEST RESULTS (AMENDMENT)\n\n", titleFont));
-        document.add(new Phrase("Certificate No.: " + certNumber + "\n", labelFont));
-        document.add(new Phrase("Lab Number: " + dto.getLabNumber() + "\n", cellFont));
-
-        if (sample.getAmendmentNumber() != null && sample.getAmendmentNumber() >= 1) {
-            document.add(new Phrase("\nAMENDMENT NOTICE\n\n", sectionFont));
-            document.add(new Phrase("Amendment No.: " + sample.getAmendmentNumber() + "\n", cellFont));
-            document.add(new Phrase("Supersedes: " + safe(sample.getAmendsLhuNumber()) + "\n", cellFont));
-            document.add(new Phrase("Amendment reason: " + safe(sample.getAmendmentReason()) + "\n\n", cellFont));
-        }
-
-        document.add(new Phrase("Standard: " + safe(dto.getStandardName()) + "\n", cellFont));
-        document.add(new Phrase("Collection Date: " + safe(dto.getCollectionDate()) + "\n\n", cellFont));
-
-        addTwoColSection(document, sectionFont, labelFont, cellFont, "SITE INFORMATION",
-                new String[][] { { "Site", safe(dto.getSiteName()) },
-                        { "GPS Coordinates", safe(dto.getGpsCoordinates()) },
-                        { "Collection Date/Time", safe(dto.getCollectionDate()) },
-                        { "Collection Method", safe(dto.getCollectionMethod()) },
-                        { "PP No.", safe(dto.getRegulationNumber()) }, { "Standard", safe(dto.getStandardName()) } });
-
-        addTwoColSection(document, sectionFont, labelFont, cellFont, "COLLECTION CONDITIONS",
-                new String[][] { { "Water Temp", safe(dto.getWaterTemp()) },
-                        { "Ambient Temp", safe(dto.getAmbientTemp()) }, { "Weather", safe(dto.getWeather()) },
-                        { "Preservation", safe(dto.getPreservation()) } });
-
-        addComplianceTable(document, dto, sectionFont, headerFont, cellFont);
-        addSignatureTable(document, dto, sectionFont, labelFont, cellFont);
-
-        document.close();
-        return buf.toByteArray();
+        return EnvironmentalReportPdf.build(dto, new EnvironmentalReportPdf.Amendment(certificateNumber,
+                sample.getAmendmentNumber(), sample.getAmendsLhuNumber(), sample.getAmendmentReason()));
     }
 
-    private ComplianceReportOrderDTO buildOrderDTO(Sample sample, SampleComplianceStandard link,
+    /**
+     * A released report is issued when it is first generated, which archives its
+     * original; validating and releasing the results does not issue it.
+     */
+    private boolean reportIssued(Sample sample) {
+        Integer amendmentNumber = sample.getAmendmentNumber();
+        return (amendmentNumber != null && amendmentNumber > 0)
+                || archiveService.findBySampleIdAndAmendmentNumber(Long.parseLong(sample.getId()), 0).isPresent();
+    }
+
+    /**
+     * Why an order has no report yet (OGC-552, OGC-1620): a test still waits for a
+     * result or validation, or the order has no test. An order without a compliance
+     * standard prints a results report (OGC-1617).
+     */
+    private String ineligibleReason(Sample sample) {
+        if (complianceEvaluationService.orderedTestCount(sample) == 0) {
+            return ComplianceReportOrderDTO.INELIGIBLE_NO_TESTS;
+        }
+        return complianceEvaluationService.awaitsValidation(sample) ? ComplianceReportOrderDTO.INELIGIBLE_NOT_VALIDATED
+                : null;
+    }
+
+    private static String joinStandards(List<SampleComplianceStandard> links,
+            Function<ComplianceStandard, String> part) {
+        return links.stream().map(SampleComplianceStandard::getComplianceStandard).map(part)
+                .filter(text -> text != null && !text.isBlank()).distinct().collect(Collectors.joining(", "));
+    }
+
+    /**
+     * The report row and certificate for an order. Every standard linked to the
+     * order is named, in link order, since each one is evaluated (FR-02).
+     */
+    private ComplianceReportOrderDTO buildOrderDTO(Sample sample, List<SampleComplianceStandard> links,
             ComplianceEvaluationResult eval, boolean hasBeenGenerated) {
         ComplianceReportOrderDTO dto = new ComplianceReportOrderDTO();
         dto.setSampleId(Long.parseLong(sample.getId()));
         dto.setLabNumber(sample.getAccessionNumber());
 
-        if (link != null) {
-            dto.setStandardName(link.getComplianceStandard().getName());
-            dto.setRegulationNumber(link.getComplianceStandard().getRegulationNumber());
+        if (links != null && !links.isEmpty()) {
+            dto.setStandardName(joinStandards(links, standard -> standard.getName()));
+            dto.setRegulationNumber(joinStandards(links, standard -> standard.getRegulationNumber()));
         }
+        dto.setReportKind(links != null && !links.isEmpty() ? ComplianceReportOrderDTO.KIND_COMPLIANCE
+                : ComplianceReportOrderDTO.KIND_RESULTS);
+        dto.setReportRows(complianceEvaluationService.reportRows(sample));
 
         List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());
         if (!sampleItems.isEmpty()) {
@@ -508,6 +525,9 @@ public class ComplianceReportRestController {
                 org.openelisglobal.vector.valueholder.VectorSamplingSite site = vectorSamplingSiteService
                         .get(Integer.parseInt(siteIdStr));
                 if (site != null) {
+                    if (siteName == null || siteName.isBlank())
+                        dto.setSiteName(site.getName());
+                    dto.setSiteCode(site.getCode());
                     String lat = site.getGpsLatitude();
                     String lon = site.getGpsLongitude();
                     if (lat != null && !lat.isEmpty() && lon != null && !lon.isEmpty()) {
@@ -526,17 +546,17 @@ public class ComplianceReportRestController {
         dto.setPreservation(
                 observationHistoryService.getRawValueForSample(ObservationType.ENV_PRESERVATION_METHOD, sampleId));
 
+        dto.setTestCount(complianceEvaluationService.orderedTestCount(sample));
         if (eval != null) {
             dto.setComplianceStatus(eval.getOverallStatus().name());
             dto.setParameterResults(eval.getParameterResults());
-            dto.setTestCount(eval.getParameterResults().size());
         } else {
             dto.setComplianceStatus("NONE");
-            dto.setTestCount(0);
         }
 
         reportGenerationService.getLastGenerated(Long.parseLong(sample.getId())).ifPresent(dto::setLastGenerated);
         dto.setHasBeenReleased(lhuAmendmentService.hasBeenReleased(Long.parseLong(sample.getId())));
+        dto.setReportIssued(reportIssued(sample));
 
         // Both RESULT_BATCH (AUTHORED) and VALIDATION_BATCH (VALIDATED_AND_RELEASED)
         // store record_id = analysis.id.
@@ -584,75 +604,6 @@ public class ComplianceReportRestController {
             dto.setSignedAt(sig.getSignedAt().toLocalDateTime().format(DISPLAY_FMT));
         }
         return dto;
-    }
-
-    private void addComplianceTable(Document doc, ComplianceReportOrderDTO dto, Font sectionFont, Font headerFont,
-            Font cellFont) throws DocumentException {
-        doc.add(new Phrase("\nCOMPLIANCE SUMMARY\n\n", sectionFont));
-        PdfPTable compTable = new PdfPTable(4);
-        compTable.setWidthPercentage(100);
-        compTable.setWidths(new float[] { 3f, 2f, 2.5f, 1.5f });
-        for (String h : new String[] { "Parameter", "Result", "Threshold", "Status" }) {
-            PdfPCell hCell = new PdfPCell(new Phrase(h, headerFont));
-            hCell.setBackgroundColor(new BaseColor(33, 82, 149));
-            hCell.setHorizontalAlignment(Element.ALIGN_CENTER);
-            hCell.setPadding(4);
-            compTable.addCell(hCell);
-        }
-        if (dto.getParameterResults() != null) {
-            for (ComplianceEvaluationResult.ParameterResult pr : dto.getParameterResults()) {
-                compTable.addCell(new Phrase(safe(pr.getDisplayName()), cellFont));
-                String rv = safe(pr.getResultValue());
-                if (pr.getUnits() != null && !pr.getUnits().isEmpty()) {
-                    rv += " " + pr.getUnits();
-                }
-                compTable.addCell(new Phrase(rv, cellFont));
-                compTable.addCell(new Phrase(safe(pr.getThresholdDisplay()), cellFont));
-                compTable.addCell(new Phrase(pr.getStatus() != null ? pr.getStatus().toString() : "–", cellFont));
-            }
-        }
-        doc.add(compTable);
-    }
-
-    private void addSignatureTable(Document doc, ComplianceReportOrderDTO dto, Font sectionFont, Font labelFont,
-            Font cellFont) throws DocumentException {
-        doc.add(new Phrase("\n\nSIGNATURES\n\n", sectionFont));
-        PdfPTable sigTable = new PdfPTable(2);
-        sigTable.setWidthPercentage(100);
-        sigTable.addCell(buildSignatureCell(dto.getAnalystSignature(), "Lab Analyst", labelFont, cellFont));
-        sigTable.addCell(buildSignatureCell(dto.getManagerSignature(), "Lab Manager", labelFont, cellFont));
-        doc.add(sigTable);
-    }
-
-    private void addTwoColSection(Document doc, Font sectionFont, Font labelFont, Font cellFont, String title,
-            String[][] rows) throws DocumentException {
-        doc.add(new Phrase("\n" + title + "\n\n", sectionFont));
-        PdfPTable table = new PdfPTable(2);
-        table.setWidthPercentage(100);
-        table.setWidths(new float[] { 2f, 4f });
-        for (String[] row : rows) {
-            table.addCell(new Phrase(row[0], labelFont));
-            table.addCell(new Phrase(row[1], cellFont));
-        }
-        doc.add(table);
-    }
-
-    private PdfPCell buildSignatureCell(ComplianceReportOrderDTO.SignatureDTO sig, String defaultRole, Font labelFont,
-            Font cellFont) {
-        PdfPCell cell = new PdfPCell();
-        cell.setPadding(8);
-        if (sig != null) {
-            cell.addElement(new Phrase(safe(sig.getSignerName()), labelFont));
-            cell.addElement(new Phrase(safe(sig.getSignerRole()), cellFont));
-            cell.addElement(new Phrase(safe(sig.getSignedAt()), cellFont));
-        } else {
-            cell.addElement(new Phrase(defaultRole + "\n–", cellFont));
-        }
-        return cell;
-    }
-
-    private String safe(String s) {
-        return s != null ? s : "–";
     }
 
     private String toSystemDateFormat(String isoDate) {

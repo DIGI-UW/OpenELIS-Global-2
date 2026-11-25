@@ -16,7 +16,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,16 +27,53 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * InventoryLot assign/move/movements over the occupant-generalized
- * {@link SampleStorageService} (OGC-657).
+ * {@link SampleStorageService} (OGC-657). The role guard matches the /Storage
+ * route in App.jsx.
  */
 @RestController
 @RequestMapping("/rest/storage/inventory-lots")
+@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS', 'ADMIN')")
 public class InventoryLotStorageRestController extends BaseRestController {
 
     private static final Logger logger = LoggerFactory.getLogger(InventoryLotStorageRestController.class);
 
     @Autowired
     private SampleStorageService sampleStorageService;
+
+    /**
+     * List every InventoryLot that has an assignment row; a lot never assigned
+     * storage is absent.
+     */
+    @GetMapping("")
+    public ResponseEntity<List<Map<String, Object>>> getInventoryLots() {
+        try {
+            return ResponseEntity.ok(sampleStorageService.getAllInventoryLotsWithAssignments());
+        } catch (Exception e) {
+            logger.error("Error listing inventory lots with assignments", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Update an assignment's position and notes without moving the lot, the lot
+     * counterpart of PATCH /rest/storage/sample-items/{sampleItemId}.
+     */
+    @PatchMapping("/{inventoryLotId}")
+    public ResponseEntity<Map<String, Object>> updateAssignmentMetadata(@PathVariable String inventoryLotId,
+            @RequestBody Map<String, String> updates) {
+        try {
+            Map<String, Object> result = sampleStorageService.updateInventoryLotAssignmentMetadata(inventoryLotId,
+                    updates.get("positionCoordinate"), updates.get("notes"));
+            return ResponseEntity.ok(result);
+        } catch (LIMSRuntimeException e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (Exception e) {
+            logger.error("Error updating inventory lot assignment metadata", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 
     /**
      * Get storage location for a specific InventoryLot GET

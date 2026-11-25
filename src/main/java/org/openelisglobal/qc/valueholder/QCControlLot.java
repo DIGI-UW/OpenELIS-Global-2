@@ -1,5 +1,6 @@
 package org.openelisglobal.qc.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import java.sql.Timestamp;
@@ -48,8 +49,24 @@ public class QCControlLot extends BaseObject<String> {
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String testId;
 
-    @NotNull
-    @Column(name = "instrument_id", nullable = false)
+    @Transient
+    private String testName;
+
+    @JsonProperty("testName")
+    public String getTestName() {
+        return testName;
+    }
+
+    public void setTestName(String testName) {
+        this.testName = testName;
+    }
+
+    // Nullable since OGC-1147: a bench control lot for a manual method has no
+    // analyzer to point at. qc-024 dropped the NOT NULL; the Bean Validation
+    // @NotNull that used to sit here is enforced by Hibernate on insert, so it had
+    // to go too or the relaxed column would still be unreachable. Analyzer lots
+    // keep populating it and the FK from qc-008 simply skips the check when NULL.
+    @Column(name = "instrument_id")
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String instrumentId;
 
@@ -79,6 +96,19 @@ public class QCControlLot extends BaseObject<String> {
 
     @Column(name = "sys_user_id", nullable = false)
     private Integer systemUserId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "qc_frequency_type", nullable = false, length = 20)
+    private QCFrequencyType qcFrequencyType = QCFrequencyType.DAILY;
+
+    @Column(name = "qc_frequency_hours")
+    private Integer qcFrequencyHours;
+
+    @Column(name = "shift_definition_hours")
+    private Integer shiftDefinitionHours = 8;
+
+    @Column(name = "qc_required", nullable = false)
+    private Boolean qcRequired = Boolean.TRUE;
 
     @PrePersist
     protected void onCreate() {
@@ -218,5 +248,37 @@ public class QCControlLot extends BaseObject<String> {
 
     public void setSystemUserId(Integer systemUserId) {
         this.systemUserId = systemUserId;
+    }
+
+    public QCFrequencyType getQcFrequencyType() {
+        return qcFrequencyType;
+    }
+
+    public void setQcFrequencyType(QCFrequencyType qcFrequencyType) {
+        this.qcFrequencyType = qcFrequencyType;
+    }
+
+    public Integer getQcFrequencyHours() {
+        return qcFrequencyHours;
+    }
+
+    public void setQcFrequencyHours(Integer qcFrequencyHours) {
+        this.qcFrequencyHours = qcFrequencyHours;
+    }
+
+    public Integer getShiftDefinitionHours() {
+        return shiftDefinitionHours;
+    }
+
+    public void setShiftDefinitionHours(Integer shiftDefinitionHours) {
+        this.shiftDefinitionHours = shiftDefinitionHours;
+    }
+
+    public Boolean getQcRequired() {
+        return qcRequired;
+    }
+
+    public void setQcRequired(Boolean qcRequired) {
+        this.qcRequired = qcRequired;
     }
 }

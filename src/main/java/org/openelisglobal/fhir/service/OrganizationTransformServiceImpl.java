@@ -9,13 +9,16 @@ import org.hl7.fhir.r4.model.Address;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.Identifier;
+import org.hl7.fhir.r4.model.Identifier.IdentifierUse;
 import org.hl7.fhir.r4.model.ResourceType;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
+import org.openelisglobal.organization.service.OrganizationIdentifierService;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
+import org.openelisglobal.organization.valueholder.OrganizationIdentifier;
 import org.openelisglobal.organization.valueholder.OrganizationType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -29,7 +32,7 @@ public class OrganizationTransformServiceImpl implements OrganizationTransformSe
 
     private static final int CITY_LIMIT = 30;
 
-    private static final int STATE_LIMIT = 2;
+    private static final int STATE_LIMIT = 100;
 
     private static final int POSTAL_CODE_LIMIT = 10;
 
@@ -37,6 +40,8 @@ public class OrganizationTransformServiceImpl implements OrganizationTransformSe
     private FhirConfig fhirConfig;
     @Autowired
     private OrganizationService organizationService;
+    @Autowired
+    private OrganizationIdentifierService identifierService;
     @Autowired
     private FhirCommonTransformService common;
 
@@ -61,6 +66,26 @@ public class OrganizationTransformServiceImpl implements OrganizationTransformSe
                     organization.getOrganization().getFhirUuidAsString()));
         }
         return fhirOrganization;
+    }
+
+    @Override
+    public org.hl7.fhir.r4.model.Location transformToFhirLocation(Organization organization) {
+        if (organization == null || organization.getFhirUuid() == null) {
+            return null;
+        }
+        org.hl7.fhir.r4.model.Location location = new org.hl7.fhir.r4.model.Location();
+        location.setId(organization.getFhirUuidAsString());
+        location.getMeta().setLastUpdated(organization.getLastupdated());
+        location.setName(organization.getOrganizationName());
+        location.setStatus(IActionConstants.NO.equals(organization.getIsActive())
+                ? org.hl7.fhir.r4.model.Location.LocationStatus.INACTIVE
+                : org.hl7.fhir.r4.model.Location.LocationStatus.ACTIVE);
+        location.setMode(org.hl7.fhir.r4.model.Location.LocationMode.INSTANCE);
+        location.setPhysicalType(new CodeableConcept()
+                .addCoding(new Coding("http://terminology.hl7.org/CodeSystem/location-physical-type", "si", "Site")));
+        location.setManagingOrganization(
+                common.createReferenceFor(ResourceType.Organization, organization.getFhirUuidAsString()));
+        return location;
     }
 
     @Transactional(readOnly = true)
@@ -120,9 +145,18 @@ public class OrganizationTransformServiceImpl implements OrganizationTransformSe
             fhirOrganization.addIdentifier(new Identifier().setSystem(fhirConfig.getOeFhirSystem() + "/org_code")
                     .setValue(organization.getCode()));
         }
-        if (!GenericValidator.isBlankOrNull(organization.getCode())) {
+        if (organization.getFhirUuid() != null) {
             fhirOrganization.addIdentifier(new Identifier().setSystem(fhirConfig.getOeFhirSystem() + "/org_uuid")
                     .setValue(organization.getFhirUuidAsString()));
+        }
+        if (organization.getId() != null && organization.getId().matches("\\d+")) {
+            for (OrganizationIdentifier identifier : identifierService
+                    .getForOrganization(Integer.valueOf(organization.getId()))) {
+                fhirOrganization.addIdentifier(new Identifier()
+                        .setSystem(fhirConfig.getOeFhirSystem() + "/org_identifier")
+                        .setType(new CodeableConcept().setText(identifier.getLabel())).setValue(identifier.getValue())
+                        .setUse(identifier.isReporting() ? IdentifierUse.OFFICIAL : IdentifierUse.SECONDARY));
+            }
         }
         Identifier facilityId = common.createFacilityIdentifier();
         if (facilityId != null) {
@@ -161,7 +195,8 @@ public class OrganizationTransformServiceImpl implements OrganizationTransformSe
         Set<OrganizationType> orgTypes = organizationService.get(organization.getId()).getOrganizationTypes();
         for (OrganizationType orgType : orgTypes) {
             fhirOrganization.addType(new CodeableConcept() //
-                    .setText(orgType.getDescription()) //
+                    .setText(GenericValidator.isBlankOrNull(orgType.getDescription()) ? orgType.getName()
+                            : orgType.getDescription()) //
                     .addCoding(new Coding() //
                             .setSystem(fhirConfig.getOeFhirSystem() + "/orgType") //
                             .setCode(orgType.getName())));

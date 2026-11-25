@@ -38,12 +38,12 @@ public class AnalyzerActivationRecord extends BaseObject<String> {
     private Analyzer analyzer;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "site_binding_revision_id", updatable = false)
-    private AnalyzerSiteBindingRevision siteBindingRevision;
+    @JoinColumn(name = "mapping_id", updatable = false)
+    private AnalyzerMapping mapping;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "verification_confirmation_id", updatable = false)
-    private AnalyzerSiteBindingConfirmation verificationConfirmation;
+    private AnalyzerMappingConfirmation verificationConfirmation;
 
     @Column(name = "bridge_connection_id", length = 255, nullable = false, updatable = false)
     private String bridgeConnectionId;
@@ -89,19 +89,19 @@ public class AnalyzerActivationRecord extends BaseObject<String> {
         this.analyzer = analyzer;
     }
 
-    public AnalyzerSiteBindingRevision getSiteBindingRevision() {
-        return siteBindingRevision;
+    public AnalyzerMapping getMapping() {
+        return mapping;
     }
 
-    public void setSiteBindingRevision(AnalyzerSiteBindingRevision siteBindingRevision) {
-        this.siteBindingRevision = siteBindingRevision;
+    public void setMapping(AnalyzerMapping mapping) {
+        this.mapping = mapping;
     }
 
-    public AnalyzerSiteBindingConfirmation getVerificationConfirmation() {
+    public AnalyzerMappingConfirmation getVerificationConfirmation() {
         return verificationConfirmation;
     }
 
-    public void setVerificationConfirmation(AnalyzerSiteBindingConfirmation verificationConfirmation) {
+    public void setVerificationConfirmation(AnalyzerMappingConfirmation verificationConfirmation) {
         this.verificationConfirmation = verificationConfirmation;
     }
 

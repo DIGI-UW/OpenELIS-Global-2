@@ -11,4 +11,10 @@ public interface EQALabProgramEnrollmentDAO extends BaseDAO<EQALabProgramEnrollm
     List<EQALabProgramEnrollment> findByIsActive(Boolean isActive);
 
     List<String> findDistinctProviders();
+
+    /**
+     * Test ids with EQA cover (directly or via a mapped panel, active enrollment
+     * only) for the ISO 15189:2022 §7.3.7.3 check, as strings like test.id.
+     */
+    List<String> findEqaCoveredTestIds();
 }

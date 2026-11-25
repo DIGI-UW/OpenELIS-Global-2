@@ -15,16 +15,19 @@ import {
   SelectItem,
   Checkbox,
   TextArea,
-  DatePicker,
   DatePickerInput,
 } from "@carbon/react";
+import { DatePicker } from "../../../common/DatePicker";
 import { ChevronDown, ChevronUp } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import { useOrderContext } from "../../OrderContext";
 import { ConfigurationContext } from "../../../layout/Layout";
+import { labNow } from "../../../utils/labClock";
+import { RequiredMarker, requiredProps } from "../../../common/RequiredMarker";
+import useSiteDateFormat from "../../../common/useSiteDateFormat";
 
 const todayIso = () => {
-  const d = new Date();
+  const d = labNow();
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
@@ -65,10 +68,12 @@ function SectionHeader({ title }) {
   );
 }
 
-function FieldLabel({ label, required }) {
+function FieldLabel({ label, required, htmlFor }) {
   return (
-    <p
+    <label
+      htmlFor={htmlFor}
       style={{
+        display: "block",
         fontSize: "0.75rem",
         fontWeight: 600,
         color: "#525252",
@@ -76,8 +81,8 @@ function FieldLabel({ label, required }) {
       }}
     >
       {label}
-      {required && <span style={{ color: "#da1e28" }}> *</span>}
-    </p>
+      <RequiredMarker required={required} />
+    </label>
   );
 }
 
@@ -151,7 +156,10 @@ function SelectedCard({ onClear, isNew, isLocked, onUnlock, children }) {
 
 function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
   const intl = useIntl();
-  const { samples, setSamples } = useOrderContext();
+  const siteDate = useSiteDateFormat();
+  const [todayEnd] = useState(() => labNow().setHours(23, 59, 59, 999));
+  const { samples, setSamples, hydrateOrderData, hydrateSamples } =
+    useOrderContext();
 
   const isEnv = workflowType === "environmental";
 
@@ -200,16 +208,15 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
     });
   }, []);
 
-  const initialCollectionDate =
+  const collectionDate = (
     orderData?.sampleOrderItems?.environmentalFields?.[COLLECTION_DATE_KEY] ||
     samples?.[0]?.collectionDate ||
-    todayIso();
-  const [collectionDate, setCollectionDate] = useState(initialCollectionDate);
+    todayIso()
+  ).slice(0, 10);
 
   const handleCollectionDateChange = useCallback(
     (isoDate) => {
       if (!isoDate) return;
-      setCollectionDate(isoDate);
       setOrderData((prev) => ({
         ...prev,
         sampleOrderItems: {
@@ -230,7 +237,7 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
   useEffect(() => {
     if (!samples || samples.length === 0) return;
     if (samples.every((s) => s.collectionDate)) return;
-    setSamples(
+    hydrateSamples(
       samples.map((s) =>
         s.collectionDate ? s : { ...s, collectionDate: collectionDate },
       ),
@@ -265,7 +272,7 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
       if (match) {
         setSelectedSite(match);
         setIsSamplingSiteLocked(true);
-        setOrderData((prev) => ({
+        hydrateOrderData((prev) => ({
           ...prev,
           sampleOrderItems: {
             ...prev.sampleOrderItems,
@@ -455,9 +462,10 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
         <div style={{ maxWidth: "240px" }}>
           <DatePicker
             datePickerType="single"
-            dateFormat="Y-m-d"
-            value={collectionDate}
-            maxDate={todayIso()}
+            dateFormat={siteDate.dateFormat}
+            parseDate={siteDate.parseDate}
+            value={siteDate.formatIsoDate(collectionDate)}
+            maxDate={todayEnd}
             onChange={(dates) => {
               if (!dates || dates.length === 0) return;
               const d = dates[0];
@@ -470,7 +478,7 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
             <DatePickerInput
               id="vec-collection-date"
               labelText=""
-              placeholder="YYYY-MM-DD"
+              placeholder={siteDate.placeholder}
               disabled={isReadOnly}
             />
           </DatePicker>
@@ -502,6 +510,7 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
             defaultMessage: "Site name or code",
           })}
           required
+          htmlFor="vec-site-search"
         />
         {selectedSite ? (
           <SelectedCard
@@ -542,6 +551,7 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
             <TextInput
               id="vec-site-search"
               labelText=""
+              {...requiredProps()}
               placeholder={intl.formatMessage({
                 id: "vector.order.site.placeholder",
                 defaultMessage: "Search by site name or code...",

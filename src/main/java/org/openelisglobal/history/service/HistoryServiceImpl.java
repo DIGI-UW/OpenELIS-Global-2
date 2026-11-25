@@ -2,12 +2,17 @@ package org.openelisglobal.history.service;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.audittrail.dao.HistoryDAO;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.referencetables.service.ReferenceTablesService;
+import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +22,11 @@ public class HistoryServiceImpl extends AuditableBaseObjectServiceImpl<History, 
     @Autowired
     protected HistoryDAO baseObjectDAO;
 
+    @Autowired
+    private ReferenceTablesService referenceTablesService;
+
+    private Map<String, String> systemAuditReferenceTableIds;
+
     HistoryServiceImpl() {
         super(History.class);
         disableLogging();
@@ -25,6 +35,22 @@ public class HistoryServiceImpl extends AuditableBaseObjectServiceImpl<History, 
     @Override
     protected HistoryDAO getBaseObjectDAO() {
         return baseObjectDAO;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public synchronized Map<String, String> getSystemAuditReferenceTableIds() {
+        if (systemAuditReferenceTableIds == null) {
+            Map<String, String> nameToId = new LinkedHashMap<>();
+            for (String tableName : SYSTEM_AUDIT_ENTITY_TABLES) {
+                ReferenceTables referenceTable = referenceTablesService.getReferenceTableByName(tableName);
+                if (referenceTable != null) {
+                    nameToId.put(tableName, referenceTable.getId());
+                }
+            }
+            systemAuditReferenceTableIds = Collections.unmodifiableMap(nameToId);
+        }
+        return systemAuditReferenceTableIds;
     }
 
     @Override

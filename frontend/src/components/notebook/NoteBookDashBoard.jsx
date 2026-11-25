@@ -43,7 +43,9 @@ import {
   List,
 } from "@carbon/react/icons";
 import "./NoteBook.css";
+import { labNow } from "../utils/labClock";
 
+import useInAppNavigation from "../common/useInAppNavigation";
 function NoteBookDashBoard() {
   const componentMounted = useRef(false);
 
@@ -73,6 +75,7 @@ function NoteBookDashBoard() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
   const intl = useIntl();
+  const navigate = useInAppNavigation();
 
   const setStatusList = (statusList) => {
     if (componentMounted.current) {
@@ -166,23 +169,23 @@ function NoteBookDashBoard() {
   };
 
   const openNoteBookView = (id) => {
-    window.location.href = "/NoteBookEntryForm/" + id;
+    navigate("/NoteBookEntryForm/" + id)();
   };
 
   const openNoteBookEntryForm = () => {
-    window.location.href = "/NoteBookEntryForm";
+    navigate("/NoteBookEntryForm")();
   };
 
   const openNoteBookInstanceEntryForm = () => {
-    window.location.href = "/NoteBookInstanceEntryForm/" + selectedNoteBook.id;
+    navigate("/NoteBookInstanceEntryForm/" + selectedNoteBook.id)();
   };
 
   const openNoteBookInstanceView = (id) => {
-    window.location.href = "/NoteBookInstanceEditForm/" + id + "?mode=view";
+    navigate("/NoteBookInstanceEditForm/" + id + "?mode=view")();
   };
 
   const openNoteBookInstanceEdit = (id) => {
-    window.location.href = "/NoteBookInstanceEditForm/" + id + "?mode=edit";
+    navigate("/NoteBookInstanceEditForm/" + id + "?mode=edit")();
   };
 
   useEffect(() => {
@@ -214,7 +217,7 @@ function NoteBookDashBoard() {
   }
 
   const getPastWeek = () => {
-    var currentDate = new Date();
+    var currentDate = labNow();
 
     var pastWeekDate = new Date(currentDate);
     pastWeekDate.setDate(currentDate.getDate() - 7);
@@ -316,12 +319,10 @@ function NoteBookDashBoard() {
 
       <Grid fullWidth={true}>
         <Column lg={16}>
-          <Section>
-            <Section>
-              <Heading>
-                <FormattedMessage id="notebook.page.title" />
-              </Heading>
-            </Section>
+          <Section level={1}>
+            <Heading className="page-heading-04">
+              <FormattedMessage id="notebook.page.title" />
+            </Heading>
           </Section>
         </Column>
       </Grid>
@@ -369,11 +370,13 @@ function NoteBookDashBoard() {
             headers={[
               {
                 key: "title",
-                header: <FormattedMessage id="notebook.label.title" />,
+                header: intl.formatMessage({ id: "notebook.label.title" }),
               },
               {
                 key: "entriesCount",
-                header: <FormattedMessage id="notebook.table.header.entries" />,
+                header: intl.formatMessage({
+                  id: "notebook.table.header.entries",
+                }),
               },
             ]}
             isSortable

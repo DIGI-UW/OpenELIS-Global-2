@@ -15,7 +15,6 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
 import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
 import org.openelisglobal.microbiology.valueholder.MicroCulturePurpose;
-import org.openelisglobal.sample.valueholder.Sample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,7 +60,7 @@ public class MicroCaseOrderDetailServiceImpl implements MicroCaseOrderDetailServ
 
         MicroCaseOrderDetail detail = orderDetailDAO.getByCaseId(caseId);
         boolean isNew = detail == null;
-        String previousPurpose = isNew ? null : detail.getCulturePurpose();
+        String previousPurpose = microCase.getCulturePurpose();
         if (isNew) {
             detail = new MicroCaseOrderDetail();
             detail.setCaseId(caseId);
@@ -71,7 +70,11 @@ public class MicroCaseOrderDetailServiceImpl implements MicroCaseOrderDetailServ
             detail.setUpdatedAt(MicroCaseServiceImpl.now());
             detail.setUpdatedBy(performedBy);
         }
+        detail.setCulturePurpose(previousPurpose);
         apply(detail, request, false);
+        String purpose = detail.getCulturePurpose() == null ? previousPurpose : detail.getCulturePurpose();
+        microCase.setCulturePurpose(MicroCulturePurpose.validate(purpose, microCase.getSiteId() != null));
+        caseDAO.update(microCase);
         detail.setCultureMethodId(microCase.getCultureMethodId());
 
         if (isNew) {
@@ -86,70 +89,10 @@ public class MicroCaseOrderDetailServiceImpl implements MicroCaseOrderDetailServ
     @Override
     @Transactional(readOnly = true)
     public MicroCaseOrderDetail getOrderDetail(String caseId) {
-        return orderDetailDAO.getByCaseId(caseId);
-    }
-
-    @Override
-    @Transactional
-    public MicroCaseOrderDetail saveOrderDraft(Sample sample, MicroCaseOrderDetailRequestForm request,
-            String performedBy) {
-        if (sample == null || sample.getId() == null || sample.getId().trim().isEmpty()) {
-            throw new IllegalArgumentException("Saved sample is required for microbiology order detail");
-        }
-        if (request == null) {
-            throw new IllegalArgumentException("Microbiology order detail is required");
-        }
-        MicroCaseOrderDetail detail = orderDetailDAO.getAnyDraftBySampleId(sample.getId());
-        boolean isNew = detail == null;
-        if (detail != null && detail.getDiscardedAt() != null) {
-            // The order qualifies again, so the retired draft comes back rather
-            // than a second row fighting the one-draft-per-sample constraint.
-            detail.setDiscardedAt(null);
-            detail.setDiscardedBy(null);
-        }
-        if (isNew) {
-            detail = new MicroCaseOrderDetail();
-            detail.setSampleId(sample.getId());
-            detail.setCreatedAt(MicroCaseServiceImpl.now());
-            detail.setCreatedBy(performedBy);
-        } else {
-            detail.setUpdatedAt(MicroCaseServiceImpl.now());
-            detail.setUpdatedBy(performedBy);
-        }
-        apply(detail, request, isNew);
-        if (isNew) {
-            orderDetailDAO.insert(detail);
-        } else {
-            orderDetailDAO.update(detail);
-        }
+        var detail = orderDetailDAO.getByCaseId(caseId);
+        if (detail != null)
+            detail.setCulturePurpose(caseDAO.get(caseId).orElseThrow().getCulturePurpose());
         return detail;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public MicroCaseOrderDetailRequestForm getOrderDraft(String sampleId) {
-        MicroCaseOrderDetail detail = orderDetailDAO.getDraftBySampleId(sampleId);
-        if (detail == null) {
-            return null;
-        }
-        MicroCaseOrderDetailRequestForm form = new MicroCaseOrderDetailRequestForm();
-        form.cultureMethodId = detail.getCultureMethodId();
-        form.patientOrigin = detail.getPatientOrigin();
-        form.culturePurpose = detail.getCulturePurpose();
-        form.admissionDate = detail.getAdmissionDate() == null ? null : detail.getAdmissionDate().toString();
-        form.numberOfSets = detail.getNumberOfSets();
-        form.clinicalHistory = detail.getClinicalHistory();
-        form.antibioticExposure = detail.getAntibioticExposure();
-        return form;
-    }
-
-    @Override
-    @Transactional
-    public void discardOrderDraft(String sampleId, String performedBy) {
-        if (sampleId == null || sampleId.trim().isEmpty()) {
-            return;
-        }
-        orderDetailDAO.discardDraftBySampleId(sampleId, MicroCaseServiceImpl.now(), performedBy);
     }
 
     private void apply(MicroCaseOrderDetail detail, MicroCaseOrderDetailRequestForm request,
@@ -163,10 +106,8 @@ public class MicroCaseOrderDetailServiceImpl implements MicroCaseOrderDetailServ
         detail.setCultureMethodId(request.cultureMethodId);
         detail.setPatientOrigin(patientOrigin);
         String culturePurpose = normalizeCulturePurpose(request.culturePurpose, requireCulturePurpose);
-        if (culturePurpose == null && detail.getCulturePurpose() != null) {
-            throw new IllegalArgumentException("Culture purpose is required once classified");
-        }
-        detail.setCulturePurpose(culturePurpose);
+        if (culturePurpose != null)
+            detail.setCulturePurpose(culturePurpose);
         detail.setAdmissionDate(parseAdmissionDate(request.admissionDate, patientOrigin));
         detail.setNumberOfSets(request.numberOfSets);
         detail.setClinicalHistory(request.clinicalHistory);
@@ -182,7 +123,11 @@ public class MicroCaseOrderDetailServiceImpl implements MicroCaseOrderDetailServ
             return null;
         }
         try {
-            return MicroCulturePurpose.valueOf(normalized).name();
+            return switch (normalized) {
+            case "CLINICAL_DIAGNOSTIC" -> "DIAGNOSTIC";
+            case "ACTIVE_SCREENING" -> "SCREENING";
+            default -> MicroCulturePurpose.valueOf(normalized).name();
+            };
         } catch (IllegalArgumentException exception) {
             throw new IllegalArgumentException("Unsupported culture purpose", exception);
         }

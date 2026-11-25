@@ -4,6 +4,8 @@ import jakarta.annotation.PostConstruct;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.address.service.AddressPartService;
 import org.openelisglobal.address.service.PersonAddressService;
@@ -69,15 +71,12 @@ public class PersonServiceImpl extends AuditableBaseObjectServiceImpl<Person, St
     @Override
     @Transactional(readOnly = true)
     public String getLastFirstName(Person person) {
-        String lastName = getLastName(person);
-        String firstName = getFirstName(person);
-        if (!GenericValidator.isBlankOrNull(lastName) && !GenericValidator.isBlankOrNull(firstName)) {
-            lastName += ", ";
-        }
-
-        lastName += firstName;
-
-        return lastName;
+        // Both name columns are nullable, and a record can legitimately have neither
+        // - a blinded external-quality-assessment order creates a patient with no
+        // name at all. Concatenating a null String yields the literal "null", so the
+        // present parts are joined instead, and an absent name reads as blank.
+        return Stream.of(getLastName(person), getFirstName(person))
+                .filter(namePart -> !GenericValidator.isBlankOrNull(namePart)).collect(Collectors.joining(", "));
     }
 
     @Override

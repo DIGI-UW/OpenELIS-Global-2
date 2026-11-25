@@ -14,11 +14,11 @@ import org.openelisglobal.common.valueholder.BaseObject;
  * Prerequisite for the v2 Reagents tab (OGC-762).
  *
  * <p>
- * A "reagent" is an {@code inventory_item} with {@code item_type = 'REAGENT'}
- * (see {@code org.openelisglobal.inventory}); there is no standalone reagent
- * table, so {@code reagentId} is a FK to {@code inventory_item.id}.
- * {@code test_id} (a {@code numeric(10)} FK to {@code test.id}) maps to String
- * via {@code LIMSStringNumberUserType}, the established OpenELIS idiom (see
+ * A "reagent" is any {@code inventory_item} (see
+ * {@code org.openelisglobal.inventory}); there is no standalone reagent table,
+ * so {@code reagentId} is a FK to {@code inventory_item.id}. {@code test_id} (a
+ * {@code numeric(10)} FK to {@code test.id}) maps to String via
+ * {@code LIMSStringNumberUserType}, the established OpenELIS idiom (see
  * {@code TestResultComponent}). {@code reagent_id} is a {@code bigint} FK to
  * {@code inventory_item.id} ({@code Long}) and is mapped as a plain
  * {@code Long} — {@code LIMSStringNumberUserType} is int-only and would
@@ -108,4 +108,35 @@ public class TestReagentLink extends BaseObject<String> {
     public void setQuantityUnit(String quantityUnit) {
         this.quantityUnit = quantityUnit;
     }
+
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "sample_type_id")
+    @org.hibernate.annotations.Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String sampleTypeId;
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "culture_duration")
+    private java.math.BigDecimal cultureDuration;
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "culture_duration_unit")
+    private String cultureDurationUnit;
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "culture_check_interval_hours")
+    private java.math.BigDecimal cultureCheckIntervalHours;
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "culture_loop_volume")
+    private java.math.BigDecimal cultureLoopVolume;
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "culture_atmosphere_id")
+    @org.hibernate.annotations.Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String cultureAtmosphereId;
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "culture_temperature")
+    private java.math.BigDecimal cultureTemperature;
 }

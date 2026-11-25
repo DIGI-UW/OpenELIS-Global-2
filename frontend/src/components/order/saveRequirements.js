@@ -1,3 +1,5 @@
+import { sampleTimesValid } from "./dateUtils";
+
 /**
  * What a lane still needs before its order can be saved.
  *
@@ -9,6 +11,21 @@
  */
 export const unmetRequirements = (requirements) =>
   requirements.filter((requirement) => !requirement.met);
+
+/**
+ * The server refuses an environmental or vector order that names neither a
+ * requesting organisation nor a requestor contact; this is the same check, so
+ * Save is not offered for an order that would be refused.
+ */
+export const hasRequesterOrRequestor = (sampleOrderItems = {}) =>
+  [
+    "referringSiteId",
+    "referringSiteName",
+    "newRequesterName",
+    "requestorPersonId",
+    "requestorFirstName",
+    "requestorLastName",
+  ].some((field) => String(sampleOrderItems?.[field] ?? "").trim() !== "");
 
 /**
  * Renders the unmet requirements as one sentence, e.g.
@@ -28,4 +45,41 @@ export const describeUnmetRequirements = (intl, requirements) => {
           id: "order.save.incomplete.and",
         })} ${missing[missing.length - 1]}`;
   return intl.formatMessage({ id: "order.save.incomplete.fields" }, { fields });
+};
+
+/**
+ * The save gate of an environmental or vector order: a lab number, the lane's
+ * site, a requesting organisation or requestor, a sample type, and a test or
+ * panel on every sample that has a type (the vector lane lacked it, so an order
+ * saved with a sample and no test, OGC-1060), and sample times that read as
+ * times (OGC-1657).
+ */
+export const fieldOrderRequirements = ({
+  labNumber,
+  hasSite,
+  siteLabelId,
+  sampleOrderItems,
+  samples = [],
+}) => {
+  const typed = samples.filter((sample) => sample.sampleTypeId);
+  const everySampleHasATest = typed.every(
+    (sample) => (sample.tests?.length || 0) + (sample.panels?.length || 0) > 0,
+  );
+  return [
+    { met: Boolean(labNumber), labelId: "order.save.requirement.labNumber" },
+    { met: Boolean(hasSite), labelId: siteLabelId },
+    {
+      met: hasRequesterOrRequestor(sampleOrderItems),
+      labelId: "order.save.requirement.requesterOrRequestor",
+    },
+    { met: typed.length > 0, labelId: "order.save.requirement.sampleType" },
+    {
+      met: typed.length > 0 && everySampleHasATest,
+      labelId: "order.save.requirement.testsPerSample",
+    },
+    {
+      met: samples.every(sampleTimesValid),
+      labelId: "order.save.requirement.sampleTimes",
+    },
+  ];
 };

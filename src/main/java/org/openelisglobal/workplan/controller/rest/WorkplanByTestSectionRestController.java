@@ -72,7 +72,7 @@ public class WorkplanByTestSectionRestController extends WorkplanRestController 
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
         WorkplanForm form = new WorkplanForm();
-        WorkplanPaging paging = new WorkplanPaging();
+        WorkplanPaging paging = new WorkplanPaging("testSection:" + testSectionId);
         List<TestResultItem> workplanTests = new ArrayList<TestResultItem>();
         List<TestResultItem> filteredTests = new ArrayList<TestResultItem>();
         String requestedPage = request.getParameter("page");
@@ -115,7 +115,8 @@ public class WorkplanByTestSectionRestController extends WorkplanRestController 
         if (!(GenericValidator.isBlankOrNull(testSectionId))) {
 
             String sectionId = testSectionId;
-            testList = analysisService.getAllAnalysisByTestSectionAndStatus(sectionId, statusList, true);
+            testList = withoutReferredOut(
+                    analysisService.getAllAnalysisByTestSectionAndStatus(sectionId, statusList, true));
 
             if (testList.isEmpty()) {
                 return new ArrayList<>();
@@ -150,8 +151,10 @@ public class WorkplanByTestSectionRestController extends WorkplanRestController 
                 }
 
                 testResultItem = new TestResultItem();
+                testResultItem.setAnalysisId(analysis.getId());
                 testResultItem.setTestName(analysisService.getTestDisplayName(analysis));
                 testResultItem.setAccessionNumber(currentAccessionNumber);
+                markEqaSample(testResultItem, sample);
                 testResultItem.setReceivedDate(getReceivedDateDisplay(sample));
                 testResultItem.setSampleGroupingNumber(sampleGroupingNumber);
                 testResultItem.setTestId(analysis.getTest().getId());

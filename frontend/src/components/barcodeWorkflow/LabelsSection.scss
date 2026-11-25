@@ -42,3 +42,31 @@
   font-weight: 600;
   margin-top: spacing.$spacing-03;
 }
+
+// Print actions (OGC-1422): a printer icon beside each column name, one per
+// row, and Print all next to the running total.
+.labels-section__col-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.labels-section__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.labels-section__pending {
+  margin-left: 0.5rem;
+}
+
+.prepare-labels-section__error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}

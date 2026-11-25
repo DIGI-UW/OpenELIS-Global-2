@@ -30,8 +30,6 @@ public class ResourceLocator {
 
     public static final String AJAX_PROPERTIES = "/AjaxResources.properties";
 
-    public static final String REPORTS_PROPERTIES = "/Reports.properties";
-
     // bugzilla 1550
     public static final String XMIT_PROPERTIES = "/Transmission.properties";
 

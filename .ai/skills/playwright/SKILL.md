@@ -52,6 +52,14 @@ For AI-assisted development, prefer this sequence:
 - NEVER use `.catch(() => false)` on `isVisible()` — it returns boolean
   directly.
 - ALWAYS include at least one `expect()` assertion per test.
+- Isolation (Constitution V.7): write and read only data the spec seeded. Scope
+  every list, count, rate, or enabled state to your seeded IDs or assert a
+  before and after delta; a date window is not a scope. Never widen an assertion
+  because other data might be present. Use explicit dates and freeze or inject
+  the clock used by the code under test when it reads the current time,
+  including the server clock when applicable. A live server's "today" is not
+  pinned time. For current-date behavior, set that clock to the dates or
+  boundaries being exercised.
 
 ## Execution Invariants
 
@@ -59,8 +67,8 @@ For AI-assisted development, prefer this sequence:
   Always use `npm run pw:test` and related scripts (`pw:test:ui`,
   `pw:test:headed`, `pw:test:video`, `pw:test:harness`, `pw:test:core-demo`,
   `pw:test:harness-demo`, `pw:test:demo` alias).
-- For `harness`, `harness-demo`, and `harness-demo-video`, verify analyzer
-  harness stack preflight before execution (see `/restart-analyzer-harness`).
+- The `harness-*` projects need the analyzer stack: run `scripts/dev-stack up`,
+  then `eval "$(scripts/dev-stack env)"` before the tests.
 - `TEST_USER` and `TEST_PASS` must be set for all Playwright projects.
 - Utility exceptions are allowed: `npx playwright show-trace` and
   `npx playwright install`.

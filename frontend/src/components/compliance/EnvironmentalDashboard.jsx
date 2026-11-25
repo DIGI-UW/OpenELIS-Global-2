@@ -13,7 +13,6 @@ import {
   Select,
   SelectItem,
   MultiSelect,
-  DatePicker,
   DatePickerInput,
   InlineLoading,
   DataTable,
@@ -27,12 +26,17 @@ import {
   Pagination,
   Tag,
 } from "@carbon/react";
+import { DatePicker } from "../common/DatePicker";
 import { LineChart, SimpleBarChart } from "@carbon/charts-react";
+import { format } from "date-fns";
 import "@carbon/charts/styles.css";
 import { FormattedMessage, useIntl } from "react-intl";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
-import { getFromOpenElisServer } from "../utils/Utils";
+import { ConfigurationContext } from "../layout/Layout";
+import { getFromOpenElisServer, toLocalIsoDate } from "../utils/Utils";
 import { generateCompliancePdf } from "./utils/compliancePdfGenerator";
+import { labNow } from "../utils/labClock";
+import useSiteDateFormat from "../common/useSiteDateFormat";
 
 const KPI_KEYS = [
   { key: "totalOrders", i18n: "compliance.dashboard.kpi.totalOrders" },
@@ -46,20 +50,19 @@ const KPI_KEYS = [
 ];
 
 function todayStr() {
-  // Add 1 day to avoid timezone skew cutting off samples collected today in UTC+N zones
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return d.toISOString().slice(0, 10);
+  return toLocalIsoDate(labNow());
 }
 function monthsAgoStr(n) {
-  const d = new Date();
+  const d = labNow();
   d.setMonth(d.getMonth() - n);
-  return d.toISOString().slice(0, 10);
+  return toLocalIsoDate(d);
 }
 
 export default function EnvironmentalDashboard() {
   const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const { configurationProperties } = useContext(ConfigurationContext) || {};
+  const siteDate = useSiteDateFormat();
 
   const excHeaders = [
     {
@@ -182,6 +185,7 @@ export default function EnvironmentalDashboard() {
         setLoadingComparison(false);
       },
     );
+    setExcPage(1);
     fetchExceedances(q, 0, excPageSize);
   }, [buildQuery, fetchExceedances, excPageSize]);
 
@@ -229,10 +233,12 @@ export default function EnvironmentalDashboard() {
 
   const comparisonData = React.useMemo(() => {
     if (!Array.isArray(comparison)) return [];
-    return comparison.map((s) => ({
-      group: s.siteName,
-      value: s.complianceRate,
-    }));
+    return comparison
+      .filter((s) => s.complianceRate != null)
+      .map((s) => ({
+        group: s.siteName,
+        value: s.complianceRate,
+      }));
   }, [comparison]);
 
   const trendOptions = {
@@ -283,11 +289,7 @@ export default function EnvironmentalDashboard() {
   const handleExport = async () => {
     setExportLoading(true);
     try {
-      const labName = await new Promise((resolve) =>
-        getFromOpenElisServer("/rest/site-information?name=siteName", (r) =>
-          resolve((r && r.value) || "OpenELIS Lab"),
-        ),
-      );
+      const labName = configurationProperties?.BANNER_TEXT || "OpenELIS Lab";
       const preparedBy = (
         (userSessionDetails && userSessionDetails.firstName
           ? userSessionDetails.firstName
@@ -305,10 +307,26 @@ export default function EnvironmentalDashboard() {
       const resolvedSiteName =
         (siteParams && siteParams.siteName) || singleSite;
       await generateCompliancePdf(
-        { summary, trend, siteParams, comparison, exceedances },
+        {
+          summary,
+          trend,
+          siteParams,
+          comparison,
+          exceedances: exceedances && {
+            ...exceedances,
+            items: (exceedances.items || []).map((item) => ({
+              ...item,
+              date: siteDate.formatIsoDate(item.date),
+            })),
+          },
+        },
         {
           labName,
-          period: startDate + " – " + endDate,
+          period:
+            siteDate.formatIsoDate(startDate) +
+            " – " +
+            siteDate.formatIsoDate(endDate),
+          generatedAt: format(labNow(), `${siteDate.pattern} HH:mm`),
           standard:
             (standards.find((s) => String(s.id) === standardId) || {}).name ||
             intl.formatMessage({
@@ -330,7 +348,7 @@ export default function EnvironmentalDashboard() {
     exceedances && exceedances.items ? exceedances.items : []
   ).map((item, i) => ({
     id: String(i),
-    date: item.date,
+    date: siteDate.formatIsoDate(item.date),
     labNumber: item.labNumber,
     siteName: item.siteName,
     parameter: item.parameter,
@@ -355,15 +373,11 @@ export default function EnvironmentalDashboard() {
         <Column lg={3} md={4} sm={4}>
           <DatePicker
             datePickerType="single"
-            dateFormat="Y-m-d"
-            value={startDate}
+            dateFormat={siteDate.dateFormat}
+            parseDate={siteDate.parseDate}
+            value={siteDate.formatIsoDate(startDate)}
             onChange={([s]) => {
-              if (s)
-                setStartDate(
-                  typeof s.toISOString === "function"
-                    ? s.toISOString().slice(0, 10)
-                    : s,
-                );
+              if (s) setStartDate(toLocalIsoDate(s));
             }}
           >
             <DatePickerInput
@@ -372,22 +386,18 @@ export default function EnvironmentalDashboard() {
                 id: "compliance.dashboard.filter.dateRange",
                 defaultMessage: "Start date",
               })}
-              placeholder="yyyy-mm-dd"
+              placeholder={siteDate.placeholder}
             />
           </DatePicker>
         </Column>
         <Column lg={3} md={4} sm={4}>
           <DatePicker
             datePickerType="single"
-            dateFormat="Y-m-d"
-            value={endDate}
+            dateFormat={siteDate.dateFormat}
+            parseDate={siteDate.parseDate}
+            value={siteDate.formatIsoDate(endDate)}
             onChange={([e]) => {
-              if (e)
-                setEndDate(
-                  typeof e.toISOString === "function"
-                    ? e.toISOString().slice(0, 10)
-                    : e,
-                );
+              if (e) setEndDate(toLocalIsoDate(e));
             }}
           >
             <DatePickerInput
@@ -396,7 +406,7 @@ export default function EnvironmentalDashboard() {
                 id: "compliance.dashboard.filter.dateRangeEnd",
                 defaultMessage: "End date",
               })}
-              placeholder="yyyy-mm-dd"
+              placeholder={siteDate.placeholder}
             />
           </DatePicker>
         </Column>
@@ -480,9 +490,11 @@ export default function EnvironmentalDashboard() {
                 ) : (
                   <>
                     <p style={{ fontSize: "2rem", fontWeight: 600 }}>
-                      {summary ? summary[kpi.key] + (kpi.suffix || "") : "—"}
+                      {summary && summary[kpi.key] != null
+                        ? summary[kpi.key] + (kpi.suffix || "")
+                        : "—"}
                     </p>
-                    {summary && summary.trend && (
+                    {summary && summary.trend?.[kpi.key] != null && (
                       <p
                         style={{
                           fontSize: "0.75rem",

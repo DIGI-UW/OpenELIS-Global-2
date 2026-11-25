@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    logicalFilePath="inventory/null-blank-lot-barcodes.xml"
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    inventory_lot.barcode is UNIQUE and nullable, so "no barcode" must be NULL.
+    Saving a lot with a blank barcode stored an empty string instead, and the
+    unique index then rejected the next one ("Key (barcode)=() already exists"),
+    blocking any further edit of a barcode-less lot. The write paths now
+    normalize blank to NULL; this clears the row already stored that way.
+    -->
+    <changeSet id="OGC-657-null-blank-lot-barcodes" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT CASE WHEN EXISTS (
+                    SELECT 1 FROM clinlims.inventory_lot WHERE barcode IS NOT NULL AND trim(barcode) = ''
+                ) THEN 1 ELSE 0 END;
+            </sqlCheck>
+        </preConditions>
+        <comment>Blank lot barcodes become NULL so the UNIQUE index stops rejecting them</comment>
+        <sql>
+            UPDATE clinlims.inventory_lot SET barcode = NULL WHERE barcode IS NOT NULL AND trim(barcode) = '';
+        </sql>
+        <rollback/>
+    </changeSet>
+
+</databaseChangeLog>

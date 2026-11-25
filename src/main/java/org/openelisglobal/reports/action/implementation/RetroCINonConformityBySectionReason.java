@@ -14,9 +14,4 @@
 package org.openelisglobal.reports.action.implementation;
 
 public class RetroCINonConformityBySectionReason extends NonConformityBySectionReason {
-
-    @Override
-    protected String getHeaderName() {
-        return "RetroCIHeader.jasper";
-    }
 }

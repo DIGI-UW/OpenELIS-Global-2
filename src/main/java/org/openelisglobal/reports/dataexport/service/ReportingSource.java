@@ -1,0 +1,30 @@
+package org.openelisglobal.reports.dataexport.service;
+
+import java.io.IOException;
+import java.io.Writer;
+import java.util.List;
+import org.openelisglobal.reports.dataexport.form.ExportSnapshot;
+import org.openelisglobal.reports.dataexport.form.ReportSourceConfig;
+import org.openelisglobal.reports.dataexport.form.ReportingVariable;
+
+public interface ReportingSource {
+    String id();
+
+    List<ReportingVariable> catalog();
+
+    default List<String> defaultResultStatuses() {
+        return List.of();
+    }
+
+    /**
+     * The dates a user may apply the reporting period to, besides the definition's
+     * own date (OGC-1655). Empty when the report type offers no choice.
+     */
+    default List<String> dateBases() {
+        return List.of();
+    }
+
+    void validateConfiguration(ReportSourceConfig configuration);
+
+    long write(Writer output, ExportSnapshot request) throws IOException;
+}

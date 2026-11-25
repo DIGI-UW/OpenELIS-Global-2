@@ -14,6 +14,7 @@ import {
   postToOpenElisServer,
   putToOpenElisServer,
 } from "../../utils/Utils";
+import { RequiredMarker, requiredProps } from "../../common/RequiredMarker";
 
 const TRAP_URL = "/rest/admin/vector/trap-types";
 const GROUPS_URL = "/rest/admin/vector/sample-types";
@@ -43,7 +44,7 @@ function SampleTypeCheckboxes({ groups, selectedIds, onChange }) {
           id="vector.admin.trapType.sampleTypes"
           defaultMessage="Sample types"
         />
-        <span style={{ color: "#da1e28" }}> *</span>
+        <RequiredMarker announce />
       </p>
       <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem 1.5rem" }}>
         {groups.map((g) => (
@@ -93,6 +94,7 @@ function TrapForm({ initial = emptyForm, groups, onSave, onCancel, isNew }) {
         }}
       >
         <TextInput
+          {...requiredProps()}
           id={`trap-name-${isNew ? "new" : form.name}`}
           labelText={
             <>
@@ -100,7 +102,7 @@ function TrapForm({ initial = emptyForm, groups, onSave, onCancel, isNew }) {
                 id="vector.admin.trapType.name"
                 defaultMessage="Trap name"
               />
-              <span style={{ color: "#da1e28" }}> *</span>
+              <RequiredMarker />
             </>
           }
           value={form.name}

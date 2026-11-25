@@ -4,8 +4,6 @@ import type {
   PatientMergeRequest,
   PatientMergeResult,
   PatientRecord,
-  PatientSearchCriteria,
-  PatientSearchResponse,
 } from "../types";
 
 /**
@@ -120,44 +118,6 @@ export const executePatientMerge = async (
 
   if (!response.ok) {
     throw await readErrorData(response, "Merge execution failed");
-  }
-
-  return response.json();
-};
-
-/**
- * Search patients (using existing patient search endpoint)
- * @param {Object} searchParams - Search parameters
- * @returns {Promise<Object>} Search results
- */
-export const searchPatients = async (
-  searchParams: PatientSearchCriteria,
-): Promise<PatientSearchResponse> => {
-  const queryParams = new URLSearchParams({
-    lastName: searchParams.lastName || "",
-    firstName: searchParams.firstName || "",
-    STNumber: searchParams.patientId || "",
-    subjectNumber: searchParams.patientId || "",
-    nationalID: searchParams.patientId || "",
-    labNumber: searchParams.labNumber || "",
-    guid: searchParams.guid || "",
-    dateOfBirth: searchParams.dateOfBirth || "",
-    gender: searchParams.gender || "",
-    suppressExternalSearch: String(
-      searchParams.suppressExternalSearch || "true",
-    ),
-  });
-
-  const response = await fetch(
-    `${config.serverBaseUrl}/rest/patient-search-results?${queryParams}`,
-    {
-      credentials: "include",
-      method: "GET",
-    },
-  );
-
-  if (!response.ok) {
-    throw new Error("Failed to search patients");
   }
 
   return response.json();

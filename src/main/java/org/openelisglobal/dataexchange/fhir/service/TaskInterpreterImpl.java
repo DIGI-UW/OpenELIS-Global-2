@@ -18,7 +18,6 @@ import org.hl7.fhir.r4.model.StringType;
 import org.hl7.fhir.r4.model.Task;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.ITestIdentityService;
-import org.openelisglobal.common.services.TestIdentityService;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.order.action.IOrderInterpreter.InterpreterResults;
@@ -105,6 +104,7 @@ public class TaskInterpreterImpl implements TaskInterpreter {
     // OGC-1145 FR-8: the order's code is specimen-ambiguous and the message
     // carried no specimen — TaskWorker queues it AwaitingSpecimen, not Entered.
     private boolean specimenClarificationNeeded = false;
+    @Autowired
     private ITestIdentityService testIdentityService;
 
     @Override
@@ -359,9 +359,8 @@ public class TaskInterpreterImpl implements TaskInterpreter {
                     }
                 }
 
-                if ((test == null || !getTestIdentityService().doesActiveTestExistForLoinc(test.getLoinc()))
-                        && (panel == null
-                                || !getTestIdentityService().doesActivePanelExistForLoinc(panel.getLoinc()))) {
+                if ((test == null || !testIdentityService.doesActiveTestExistForLoinc(test.getLoinc()))
+                        && (panel == null || !testIdentityService.doesActivePanelExistForLoinc(panel.getLoinc()))) {
                     results.add(InterpreterResults.UNSUPPORTED_TESTS);
                 }
             }
@@ -415,14 +414,6 @@ public class TaskInterpreterImpl implements TaskInterpreter {
     @Override
     public List<String> getUnsupportedPanels() {
         return unsupportedPanels;
-    }
-
-    private ITestIdentityService getTestIdentityService() {
-        if (testIdentityService == null) {
-            testIdentityService = TestIdentityService.getInstance();
-        }
-
-        return testIdentityService;
     }
 
     public void setTestIdentityService(ITestIdentityService testIdentityService) {
