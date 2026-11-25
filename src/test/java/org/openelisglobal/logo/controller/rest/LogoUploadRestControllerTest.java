@@ -65,8 +65,7 @@ public class LogoUploadRestControllerTest {
                 eq(""), same(logoInformation));
 
         mockMvc.perform(multipart("/rest/logoUpload").file(logoFile()).param("logoName", "headerLogo"))
-                .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.error").value("saveFailed"));
+                .andExpect(status().isInternalServerError()).andExpect(jsonPath("$.error").value("saveFailed"));
     }
 
     @Test
@@ -75,8 +74,7 @@ public class LogoUploadRestControllerTest {
         doThrow(new LIMSRuntimeException("Remove failed")).when(logoUploadService).removeImage(image, logoInformation);
 
         mockMvc.perform(post("/rest/logoUpload").param("logoName", "headerLogo").param("removeImage", "true"))
-                .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.error").value("saveFailed"));
+                .andExpect(status().isInternalServerError()).andExpect(jsonPath("$.error").value("saveFailed"));
     }
 
     @Test
