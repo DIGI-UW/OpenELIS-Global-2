@@ -59,7 +59,7 @@ public class TbSampleServiceImplTest {
         previousMessageUtilInstance = ReflectionTestUtils.getField(MessageUtil.class, "instance");
         ReflectionTestUtils.setField(SpringContext.class, "factory", beanFactory);
 
-        when(beanFactory.getBean(IStatusService.class)).thenReturn(statusService);
+        Mockito.lenient().when(beanFactory.getBean(IStatusService.class)).thenReturn(statusService);
         when(beanFactory.getBean(DefaultConfigurationProperties.class)).thenReturn(configurationProperties);
         when(statusService.getStatusID(OrderStatus.Entered)).thenReturn("1");
         when(configurationProperties.getPropertyValue(any(ConfigurationProperties.Property.class))).thenReturn("X");
