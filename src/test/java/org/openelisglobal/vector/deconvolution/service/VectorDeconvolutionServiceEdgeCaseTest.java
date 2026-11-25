@@ -8,6 +8,7 @@ import java.util.UUID;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionInitiateRequest;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionOutcome;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionResult;
@@ -58,6 +59,27 @@ public class VectorDeconvolutionServiceEdgeCaseTest extends BaseWebContextSensit
                         + " VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 POOL_ANALYSIS_ID, INTAKE_POOL_ID, 700, 700, 0, 701, "1", now, now, "MANUAL", false, false, false, false,
                 "Mosquito", UUID.fromString("00000000-0000-4000-8000-000000000900"), now);
+    }
+
+    @Test
+    public void initiate_withMoreSubPoolsThanMembers_isRefusedBeforeCreatingAnything() {
+        int poolsBefore = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM clinlims.vector_pool", Integer.class);
+        DeconvolutionInitiateRequest request = new DeconvolutionInitiateRequest();
+        request.setVectorPoolId(INTAKE_POOL_ID_LONG);
+        request.setPoolCount(1_000_000);
+        request.setOrganismsPerPool(1);
+        request.setMemberAssignments(Map.of(700L, 1));
+
+        try {
+            deconvolutionService.initiate(request, SYS_USER_ID);
+            fail("a million sub-pools were accepted");
+        } catch (LocalizedValidationException refused) {
+            assertEquals("vectorDec.error.poolCountExceedsMembers", refused.getErrorCode());
+            assertEquals(Map.of("max", "6", "requested", "1000000"), refused.getParams());
+        }
+
+        assertEquals(poolsBefore,
+                (int) jdbcTemplate.queryForObject("SELECT COUNT(*) FROM clinlims.vector_pool", Integer.class));
     }
 
     @Test
