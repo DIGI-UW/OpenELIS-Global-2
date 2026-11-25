@@ -1,5 +1,5 @@
 import { test, expect } from "../../../helpers/test-base";
-import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
+import { NAV_TIMEOUT } from "../../../helpers/timeouts";
 
 /**
  * Pathology stage switches on Result Entry Configuration.
@@ -21,19 +21,22 @@ import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
  * configuration is left exactly as it was found.
  */
 
-/** The configuration page names each switch by its configuration row name. */
+/** A switch's configuration row name, shown when it has no translated name. */
 const stageSwitchName = (stage: string) => `pathology.stage.${stage}.enabled`;
 
-/** The seven stages a deployment may choose not to run. */
+/**
+ * The seven stages a deployment may choose not to run, by the name the page
+ * shows for each switch (OGC-1547: translated, no longer the row name).
+ */
 const OPTIONAL_STAGE_SWITCHES = [
-  "DECALCIFICATION",
-  "PROCESSING",
-  "EMBEDDING",
-  "MICROTOMY",
-  "STAINING",
-  "COVERSLIPPING",
-  "UNDER_REVIEW",
-].map(stageSwitchName);
+  "Pathology stage: Decalcification",
+  "Pathology stage: Processing",
+  "Pathology stage: Embedding",
+  "Pathology stage: Microtomy",
+  "Pathology stage: Staining",
+  "Pathology stage: Coverslipping & QC",
+  "Pathology stage: Under Pathologist Review",
+];
 
 /**
  * The four stages every case passes through. Offering a switch for any of
@@ -46,15 +49,6 @@ const MANDATORY_STAGE_SWITCHES = [
   "COMPLETED",
 ].map(stageSwitchName);
 
-/**
- * The range the pagination reports once the whole table is on one page: it
- * starts at the first row and its last row is the last row there is. The
- * backreference is what carries the meaning, so the assertion cannot be
- * satisfied by a partial page. Carbon's own wording uses an en dash, this
- * deployment's message bundle a hyphen, so either is accepted.
- */
-const WHOLE_TABLE_ON_ONE_PAGE = /^1[-–](\d+) of \1 items?$/;
-
 test.describe("Pathology stage switches on Result Entry Configuration", () => {
   test("Result Configuration lists the seven stage switches", async ({
     page,
@@ -65,52 +59,29 @@ test.describe("Pathology stage switches on Result Entry Configuration", () => {
 
     await expect(
       page.getByRole("heading", {
-        name: "Result Entry Configuration",
+        name: "Result & Validation Configuration",
         exact: true,
       }),
     ).toBeVisible({ timeout: NAV_TIMEOUT });
 
-    // This page's column headers are not sortable, so the accessible name is
-    // the header text alone.
-    await expect(page.getByRole("columnheader", { name: "Name" })).toBeVisible({
-      timeout: NAV_TIMEOUT,
-    });
-
-    // The table paginates, and a row on a second page is as invisible to a
-    // locator as a row that does not exist, which would make the absence
-    // assertions below quietly vacuous. So widen to the largest page size the
-    // control offers and then prove, rather than assume, that the whole table
-    // now fits on this one page. The pagination control labels its
-    // items-per-page select through an associated label element.
-    const pagination = page.locator(".cds--pagination");
-    await expect(pagination).toBeVisible({ timeout: UI_TIMEOUT });
-    await pagination.getByLabel("Items per page").selectOption("50");
-
-    // Carbon gives the range text no role of its own, so it is read by the
-    // class the pagination puts on it. If this domain ever outgrows one page
-    // of 50 rows, this fails loudly here instead of silently weakening the
-    // absence assertions that follow.
-    await expect(
-      pagination.locator(".cds--pagination__items-count"),
-    ).toHaveText(WHOLE_TABLE_ON_ONE_PAGE, { timeout: UI_TIMEOUT });
+    // OGC-1364 v3: the settings are switches grouped by purpose, every one on
+    // the page at once, so an absent switch is really absent.
+    const pathology = page.getByTestId("settings-group-pathology");
+    await expect(pathology).toBeVisible({ timeout: NAV_TIMEOUT });
 
     for (const switchName of OPTIONAL_STAGE_SWITCHES) {
-      // The row is found by the cell holding the switch's own name, and the
-      // value is then read from a sibling cell of that same row, so a value
-      // belonging to some other row can never satisfy the assertion.
-      const switchRow = page
-        .getByRole("row")
-        .filter({ has: page.getByRole("cell", { name: switchName }) });
-      await expect(switchRow).toHaveCount(1);
-
-      // Exact: the description in the next cell also contains the word true.
-      await expect(
-        switchRow.getByRole("cell", { name: "true", exact: true }),
-      ).toBeVisible();
+      const stageSwitch = pathology.getByRole("switch", {
+        name: switchName,
+        exact: true,
+      });
+      await expect(stageSwitch).toHaveCount(1);
+      await expect(stageSwitch).toHaveAttribute("aria-checked", "true");
     }
 
+    // A mandatory stage has no translated name, so a switch offered for one
+    // would show its raw name.
     for (const switchName of MANDATORY_STAGE_SWITCHES) {
-      await expect(page.getByRole("cell", { name: switchName })).toHaveCount(0);
+      await expect(page.getByText(switchName, { exact: true })).toHaveCount(0);
     }
   });
 });

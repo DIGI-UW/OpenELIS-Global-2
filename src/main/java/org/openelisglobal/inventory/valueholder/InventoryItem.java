@@ -1,14 +1,13 @@
 package org.openelisglobal.inventory.valueholder;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -17,7 +16,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.sql.Timestamp;
 import java.time.LocalDate;
@@ -28,11 +27,11 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.BatchSize;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 
 @Getter
 @Setter
 @Entity
+@JsonIgnoreProperties(ignoreUnknown = true)
 @Table(name = "inventory_item")
 @Access(AccessType.FIELD)
 public class InventoryItem extends BaseObject<Long> {
@@ -53,17 +52,12 @@ public class InventoryItem extends BaseObject<Long> {
     private String code;
 
     @Column(name = "name", nullable = false, length = 255)
-    @NotNull
-    @Size(min = 1, max = 255)
+    @NotBlank
+    @Size(max = 255)
     private String name;
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
-
-    /** Superseded by tags; still NOT NULL, so insert fills it in. */
-    @Column(name = "item_type", nullable = false, length = 50)
-    @Enumerated(EnumType.STRING)
-    private ItemType itemType;
 
     /** Eager: items go straight to the browser from several endpoints. */
     @ElementCollection(fetch = FetchType.EAGER)
@@ -76,9 +70,11 @@ public class InventoryItem extends BaseObject<Long> {
     private String category;
 
     @Column(name = "manufacturer", length = 255)
+    @Size(max = 255)
     private String manufacturer;
 
     @Column(name = "catalog_number", length = 100)
+    @Size(max = 100)
     private String catalogNumber;
 
     @Column(name = "upc", length = 64)
@@ -92,8 +88,8 @@ public class InventoryItem extends BaseObject<Long> {
     private Integer quantityPerUnit;
 
     @Column(name = "units", nullable = false, length = 50)
-    @NotNull
-    @Size(min = 1, max = 50)
+    @NotBlank
+    @Size(max = 50)
     private String units;
 
     @Column(name = "low_stock_threshold")
@@ -163,32 +159,21 @@ public class InventoryItem extends BaseObject<Long> {
 
     // Business logic helper methods
     @JsonIgnore
-    public boolean isReagent() {
-        return itemType == ItemType.REAGENT;
-    }
-
-    @JsonIgnore
-    public boolean isCartridge() {
-        return itemType == ItemType.CARTRIDGE;
-    }
-
-    @JsonIgnore
-    public boolean isRDT() {
-        return itemType == ItemType.RDT;
-    }
-
-    @JsonIgnore
-    public boolean isHIVKit() {
-        return itemType == ItemType.HIV_KIT;
-    }
-
-    @JsonIgnore
-    public boolean isSyphilisKit() {
-        return itemType == ItemType.SYPHILIS_KIT;
-    }
-
-    @JsonIgnore
     public boolean isActive() {
         return "Y".equals(isActive);
     }
+
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "microbiology_medium")
+    private boolean microbiologyMedium;
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "usual_atmosphere_id")
+    @org.hibernate.annotations.Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String usualAtmosphereId;
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "usual_temperature")
+    private java.math.BigDecimal usualTemperature;
 }

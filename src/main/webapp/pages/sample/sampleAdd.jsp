@@ -1,3 +1,4 @@
+<%@ taglib prefix="enc" uri="/WEB-INF/taglib/output-encoding.tld" %>
 <%@page import="org.openelisglobal.common.action.IActionConstants"%>
 <%@ page language="java" contentType="text/html; charset=UTF-8"
 	import="org.openelisglobal.common.formfields.FormFields,
@@ -77,7 +78,7 @@ function addNewSamples(element){
 	var sampleTypeValue = typeElement.options[typeIndex].value;
 	var currentTime = getCurrentTime();
 	
-	addTypeToTable(addTable, sampleDescription, sampleTypeValue, currentTime, '${entryDate}' );
+    addTypeToTable(addTable, sampleDescription, sampleTypeValue, currentTime, '${enc:js(entryDate)}' );
     var newIndex = SampleTypes.length;
     SampleTypes[newIndex] = new SampleType(sampleTypeValue, sampleDescription);
 	
@@ -1078,7 +1079,7 @@ if (useInitialSampleCondition) {
 		title='<spring:message/>' id='prototypeID'>
 		<c:forEach var="optionValue"
 			items="${form.initialSampleConditionList}">
-			<option value='${optionValue.id}'>${optionValue.value}</option>
+            <option value='${enc:attribute(optionValue.id)}'>${enc:html(optionValue.value)}</option>
 		</c:forEach>
 	</form:select>
 </div>
@@ -1104,7 +1105,7 @@ if (useSampleNature) {
 		class="testSectionSelector">
 		<option value='0'></option>
 		<c:forEach var="optionValue" items="${form.testSectionList}">
-			<option value='${optionValue.id}'>${optionValue.value}</option>
+            <option value='${enc:attribute(optionValue.id)}'>${enc:html(optionValue.value)}</option>
 		</c:forEach>
 	</select>
 </div>
@@ -1129,7 +1130,7 @@ if (useSampleNature) {
 		id='rejectPrototypeID'>
 		<option value=''></option>
 		<c:forEach var="optionValue" items="${form.rejectReasonList}">
-			<option value='${optionValue.id}'>${optionValue.value}</option>
+            <option value='${enc:attribute(optionValue.id)}'>${enc:html(optionValue.value)}</option>
 		</c:forEach>
 	</form:select>
 </div>
@@ -1146,7 +1147,7 @@ if (useSampleNature) {
 			id="sampleTypeSelect">
 				<option value="" label="" />
 				<c:forEach items="${form.sampleTypes}" var="sampleType">
-					<option value="${sampleType.id}">${sampleType.value}</option>
+                    <option value="${enc:attribute(sampleType.id)}">${enc:html(sampleType.value)}</option>
 				</c:forEach>
 		</select></td>
 	</tr>

@@ -1,4 +1,5 @@
 import { Page, expect } from "@playwright/test";
+import { chooseCarbonOption } from "./carbon-select";
 
 /** API context path — the JSESSIONID is scoped to the /api/OpenELIS-Global webapp. */
 const API_PREFIX = "/api/OpenELIS-Global";
@@ -125,7 +126,7 @@ export async function seedVectorPositivity(
     .locator(".search-results tr", { hasText: siteCode })
     .getByRole("button", { name: "Select" })
     .click();
-  await page.locator("#sampleType-0").selectOption({ label: "Mosquito" });
+  await chooseCarbonOption(page.locator("#sampleType-0"), "Mosquito");
 
   // Order both pathogen tests. Filter the test list, then click the (Carbon
   // visually-hidden) checkbox via its label.

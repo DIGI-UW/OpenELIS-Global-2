@@ -70,13 +70,24 @@ public class AnswerTerminologyConfigurationHandlerIntegrationTest extends BaseWe
     @Test
     public void anAnswerTerminologyCsvAddsCodesInOtherSystemsAndMergesOnReimport() throws Exception {
         String header = "category,dictEntry,source,code,relationship,displayName\n";
-        load(answerTerminologyHandler, "answer-terminology.csv", header + CATEGORY + "," + ANSWER
-                + ",SNOMED,260373001,,Detected\n" + CATEGORY + "," + ANSWER + ",CIEL,1301,SAME_AS,\n");
+        load(answerTerminologyHandler, "answer-terminology.csv",
+                header + CATEGORY + "," + ANSWER + ",SNOMED,260373001,,Detected\n" + CATEGORY + "," + ANSWER
+                        + ",CIEL,1301,SAME_AS,\n" + CATEGORY + "," + ANSWER + ",CPHL,DET,,\n");
 
         load(answerTerminologyHandler, "answer-terminology.csv",
                 header + CATEGORY + "," + ANSWER + ",snomed,260373001,BROADER_THAN,Detected\n");
 
-        assertEquals(Map.of("LOINC|LA11882-0", "SAME_AS", "SNOMED|260373001", "BROADER_THAN", "CIEL|1301", "SAME_AS"),
+        assertEquals(Map.of("LOINC|LA11882-0", "SAME_AS", "SNOMED|260373001", "BROADER_THAN", "CIEL|1301", "SAME_AS",
+                "CPHL|DET", "SAME_AS"), activeMappings());
+    }
+
+    @Test
+    public void customSystemsSpelledDifferentlyAreDifferentSystems() throws Exception {
+        String header = "category,dictEntry,source,code,relationship,displayName\n";
+        load(answerTerminologyHandler, "answer-terminology.csv",
+                header + CATEGORY + "," + ANSWER + ",CPHL,DET,,\n" + CATEGORY + "," + ANSWER + ",cphl,DET,,\n");
+
+        assertEquals(Map.of("LOINC|LA11882-0", "SAME_AS", "CPHL|DET", "SAME_AS", "cphl|DET", "SAME_AS"),
                 activeMappings());
     }
 

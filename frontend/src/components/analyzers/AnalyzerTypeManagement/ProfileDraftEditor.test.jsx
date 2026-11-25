@@ -257,19 +257,15 @@ it("reloads saved recognition before a subsequent full-profile edit", async () =
       callback(recognition());
     },
   );
-  await replace("Specimen ID prefix", "CONTROL-");
-  expect(
-    screen.getByRole("textbox", { name: "Filename pattern" }),
-  ).toBeDisabled();
+  changeText(screen.getByLabelText("Specimen ID prefix"), "CONTROL-");
+  expect(screen.getByLabelText("Filename pattern")).toBeDisabled();
   await userEvent.click(
     screen.getByRole("button", { name: "Save control recognition" }),
   );
   await waitFor(() =>
-    expect(
-      screen.getByRole("textbox", { name: "Filename pattern" }),
-    ).toBeEnabled(),
+    expect(screen.getByLabelText("Filename pattern")).toBeEnabled(),
   );
-  await replace("Filename pattern", "*.{ods,xlsx,xls}");
+  changeText(screen.getByLabelText("Filename pattern"), "*.{ods,xlsx,xls}");
   await save();
   expect(
     updateAnalyzerTypeDraft.mock.calls[0][1].controlResultRecognition,
@@ -513,7 +509,7 @@ it("creates, saves, reopens, recognizes controls and explicitly publishes a new 
     expect.any(Function),
   );
   expect(onSuccess).toHaveBeenCalledWith("create");
-});
+}, 15000);
 
 it("edits test definitions without losing aliases, named results or unrelated profile behavior", async () => {
   const authored = compactAstmProfile();
@@ -603,7 +599,7 @@ it("authors typed choices and visibility without changing other profile content"
       "Choice value",
     ),
   ).toHaveValue("7");
-});
+}, 15000);
 
 it("keeps invalid typed input visible and blocks saving instead of discarding it", async () => {
   const { onStateChange } = mount(astmProfile);

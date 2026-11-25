@@ -1,3 +1,4 @@
+<%@ taglib prefix="enc" uri="/WEB-INF/taglib/output-encoding.tld" %>
 
 <%@ page language="java" contentType="text/html; charset=UTF-8" %>
 <%@ page import="org.openelisglobal.common.action.IActionConstants,
@@ -237,7 +238,7 @@ function createRow(table, firstName, lastName, gender, DOB, stNumber, subjectNum
 		var selectionCell = newRow.insertCell(++cellCounter);
 		if( !localDB){
 			var dataSourceCell = newRow.insertCell(++cellCounter);
-			dataSourceCell.innerHTML = nonNullString( dataSourceName );
+            dataSourceCell.textContent = nonNullString( dataSourceName );
 		}
 		var lastNameCell = newRow.insertCell(++cellCounter);
 		var firstNameCell = newRow.insertCell(++cellCounter);
@@ -247,23 +248,27 @@ function createRow(table, firstName, lastName, gender, DOB, stNumber, subjectNum
 		var stCell = supportSTNumber ? newRow.insertCell(++cellCounter) : null;
 		var subjectNumberCell = supportSubjectNumber ? newRow.insertCell(++cellCounter) : null;
 		var nationalCell = supportNationalID ? newRow.insertCell(++cellCounter) : null;
-		selectionCell.innerHTML = getSelectionHtml( row, pk );
-		lastNameCell.innerHTML = nonNullString( lastName );
-		firstNameCell.innerHTML = nonNullString( firstName );
-		genderCell.innerHTML = nonNullString( gender );
-		if( supportSTNumber){stCell.innerHTML = nonNullString( stNumber );}
-		if( supportSubjectNumber){subjectNumberCell.innerHTML = nonNullString( subjectNumber );}
-		if( supportNationalID){nationalCell.innerHTML = nonNullString( nationalID );}
+        var selection = document.createElement("input");
+        selection.type = "radio";
+        selection.name = "selPatient";
+        selection.id = "sel_" + row;
+        selection.value = pk;
+        selection.addEventListener("click", function () { selectPatient(this.value); });
+        selectionCell.appendChild(selection);
+        lastNameCell.textContent = nonNullString( lastName );
+        firstNameCell.textContent = nonNullString( firstName );
+        genderCell.textContent = nonNullString( gender );
+        if( supportSTNumber){stCell.textContent = nonNullString( stNumber );}
+        if( supportSubjectNumber){subjectNumberCell.textContent = nonNullString( subjectNumber );}
+        if( supportNationalID){nationalCell.textContent = nonNullString( nationalID );}
 
-		dobCell.innerHTML = nonNullString( DOB );
-		if(supportMothersName){motherCell.innerHTML = nonNullString( mother );}
+        dobCell.textContent = nonNullString( DOB );
+        if(supportMothersName){motherCell.textContent = nonNullString( mother );}
 
 		return row;
 }
 
-function getSelectionHtml( row, key){
-	return "<input name='selPatient' id='sel_" + row + "' value='" + key + "' onclick='selectPatient(this.value)' type='radio'>";
-}
+
 
 function /*String*/ nonNullString( target ){
 	return target == "null" ? "" : target;
@@ -412,12 +417,12 @@ function handleSelectedPatient(){
     $("searchResultsDiv").style.display = "none";
    /*  var form = document.getElementById("mainForm");
     form.method = "get";
-    form.action = '${form.formAction}'.sub('Form','') + "?accessionNumber=" + accessionNumber + "&patientID=" + patientSelectID;
+    form.action = '${enc:js(form.formAction)}'.sub('Form','') + "?accessionNumber=" + accessionNumber + "&patientID=" + patientSelectID;
     if( !(typeof requestType === 'undefined') ){
         form.action += "&type=" + requestType;
     }
     form.submit(); */
-    var searchUrl = '${form.formAction}'.sub('Form','') + "?accessionNumber=" + accessionNumber + "&patientID=" + patientSelectID;
+    var searchUrl = '${enc:js(form.formAction)}'.sub('Form','') + "?accessionNumber=" + accessionNumber + "&patientID=" + patientSelectID;
     if( !(typeof requestType === 'undefined') ){
     	searchUrl += "&type=" + requestType;
     }
@@ -531,7 +536,7 @@ function handleSelectedPatient(){
 				class="patientEnhancedSearch">
 					<option value=" "></option>
 					<c:forEach var="pair" items="${patientEnhancedSearch.genders}">
-						<option value="${pair.id}">${pair.value}</option>
+                        <option value="${enc:attribute(pair.id)}">${enc:html(pair.value)}</option>
 					</c:forEach>
 			</select></td>
 			<td><input type="button" name="enhancedSearchButton"
@@ -610,7 +615,7 @@ function handleSelectedPatient(){
 		<br/>
 		 <c:if test="${!empty patientEnhancedSearch.selectedPatientActionButtonText}">
             <input type="button"
-                   value="${patientEnhancedSearch.selectedPatientActionButtonText}"
+                   value="${enc:attribute(patientEnhancedSearch.selectedPatientActionButtonText)}"
                    id="selectPatientButtonID"
                    onclick="handleSelectedPatient()" />
         </c:if> 

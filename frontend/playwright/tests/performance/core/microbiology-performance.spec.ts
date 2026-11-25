@@ -4,7 +4,6 @@ import {
   MICROBIOLOGY_CASE_READY_MARK,
   MICROBIOLOGY_WORKLIST_READY_MARK,
 } from "../../../../src/components/microbiology/MicrobiologyPerformance";
-import { parseMicrobiologyWorklistSearch } from "../../../../src/components/microbiology/MicrobiologyRoutes";
 import {
   seedDenseMicrobiologyCase,
   seedMicrobiologyAstWorklistCases,
@@ -20,7 +19,7 @@ import {
 const WARMUPS = 2;
 const MEASURED = P95_MEASURED_ITERATIONS;
 const CULTURE_WORKLIST_URL =
-  "/Microbiology/worklist?sort=priority&page=1&pageSize=100";
+  "/Microbiology/worklist?grain=cultures&sort=priority&page=1&pageSize=100";
 const AST_WORKLIST_URL =
   "/Microbiology/worklist?grain=ast&sort=priority&page=1&pageSize=100";
 const CULTURE_WORKLIST_ENDPOINT =
@@ -74,8 +73,7 @@ const measureSummaryFilter = async (
   const startedAt = await page.evaluate(() => performance.now());
   await Promise.all([
     page.waitForURL(
-      (url) =>
-        parseMicrobiologyWorklistSearch(url.search).status === expectedStatus,
+      (url) => (url.searchParams.get("status") ?? "") === expectedStatus,
     ),
     page.getByTestId(activate ? activeTestId : allTestId).click(),
   ]);
@@ -164,7 +162,7 @@ test.describe("Microbiology browser performance qualification", () => {
         () =>
           measureNavigation(
             page,
-            `/Microbiology/cases/${denseCase.caseId}`,
+            `/Microbiology/cases/${denseCase.caseId}?view=workbench`,
             MICROBIOLOGY_CASE_READY_MARK,
           ),
       ),

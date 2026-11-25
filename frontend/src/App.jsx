@@ -1,5 +1,6 @@
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import { IntlProvider } from "react-intl";
+import { Loading } from "@carbon/react";
 import {
   Route,
   Redirect,
@@ -7,13 +8,16 @@ import {
   Switch,
 } from "react-router-dom";
 import RedirectOldUI from "./RedirectOldUI";
+import ModuleRoutes from "./modules/ModuleRoutes";
 import UserSessionDetailsContext from "./UserSessionDetailsContext";
+import FacilityAutoLocation from "./components/admin/generalConfig/facilityLocation/FacilityAutoLocation";
 import { Admin } from "./components";
 import ChangePassword from "./components/ChangePassword";
 import Home from "./components/Home";
 import Layout from "./components/layout/Layout";
 import StorageManagementPage from "./components/storage/StorageManagementPage";
 import AlertsDashboard from "./components/alerts/AlertsDashboard";
+import ManagementDashboard from "./components/dashboards/management/ManagementDashboard";
 import EQAProgramManagement from "./components/eqa/EQAProgram/ProgramManagement";
 import MyCyclesPage from "./components/eqa/MyCycles/MyCyclesPage";
 import ProviderSchemeList from "./components/eqa/Provider/ProviderSchemeList";
@@ -39,7 +43,11 @@ import CallbackReport from "./components/qa/qi/CallbackReport";
 import ESignatureLog from "./components/qa/qms/ESignatureLog";
 import CapaRegister from "./components/qa/qms/CapaRegister";
 import Accreditation from "./components/qa/qms/Accreditation";
-import InventoryManagement from "./components/inventory/InventoryManagement";
+import {
+  InventoryItemsPage,
+  InventoryReceivePage,
+  InventoryReportsPage,
+} from "./components/inventory/InventoryManagement";
 import ShipmentDashboard from "./components/shipment/ShipmentDashboard";
 import BoxCreation from "./components/shipment/BoxCreation";
 import BoxDetails from "./components/shipment/BoxDetails";
@@ -88,7 +96,7 @@ import {
 import { getFromOpenElisServer } from "./components/utils/Utils";
 import { loadLabClock } from "./components/utils/labClock";
 import { loadAndApplyBranding } from "./components/utils/BrandingUtils";
-import { resolveMessagesForLocale } from "./languages";
+import useLocaleMessages from "./languages/useLocaleMessages";
 import {
   getMicrobiologyCaseUrl,
   getMicrobiologyWorklistUrl,
@@ -107,6 +115,7 @@ import PatientMerge from "./components/patient/PatientMerge";
 import Aliquot from "./components/sample/Aliquot";
 import Workplan from "./components/workplan/Workplan";
 import BatchWorkplan from "./components/workplan/BatchWorkplan";
+import BatchWorkplanPrint from "./components/workplan/batch/BatchWorkplanPrint";
 import AddOrder from "./components/addOrder/Index";
 import FindOrder from "./components/modifyOrder/Index";
 import ModifyOrder from "./components/modifyOrder/ModifyOrder";
@@ -142,6 +151,8 @@ import NonConformIndex from "./components/nonconform/index";
 import SampleBatchEntrySetup from "./components/batchOrderEntry/SampleBatchEntrySetup";
 import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index";
 import LaporanHasilReport from "./components/reports/compliance/LaporanHasilReport";
+import ReportPrintQueue from "./components/reports/printQueue/ReportPrintQueue";
+import SentMessages from "./components/reports/sentMessages/SentMessages";
 import ManualEntryHelper from "./components/reports/vectorSurveillance/ManualEntryHelper";
 import { Roles } from "./components/utils/Utils";
 import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm";
@@ -217,13 +228,16 @@ export default function App() {
   // The stored preference, or the browser's full tag (region kept: fr-MG
   // resolves to its own bundle, not just fr). The resolver accepts either
   // spelling (fr_MG / fr-MG) and always returns usable messages, so a stale
-  // stored value can never break startup.
-  const initial = resolveMessagesForLocale(
-    localStorage.getItem("locale") || navigator.language,
-  );
-
-  const [locale, setLocale] = useState(initial.code);
-  const [messages, setMessages] = useState(initial.messages);
+  // stored value can never break startup. A locale's bundle is its own chunk,
+  // downloaded next to the session check on the first render with that
+  // locale; the page renders once it is here, with English alone if it never
+  // comes.
+  const {
+    code: locale,
+    messages,
+    ready: messagesReady,
+    switchLocale,
+  } = useLocaleMessages(localStorage.getItem("locale") || navigator.language);
 
   const [userSessionDetails, setUserSessionDetails] = useState({});
   const [errorLoadingSessionDetails, setErrorLoadingSessionDetails] =
@@ -378,10 +392,14 @@ export default function App() {
     // underscore or hyphen, any casing. Resolve it to the canonical code and
     // the best bundle (exact, then base language, then English) so a
     // configured locale like fr_MG lands on its own translations.
-    const resolved = resolveMessagesForLocale(lang);
-    setLocale(resolved.code);
-    setMessages(resolved.messages);
-    localStorage.setItem("locale", resolved.code);
+    // The bundle downloads first, so the page never shows the old language's
+    // strings under the new locale while it is on its way; a switch overtaken
+    // by a later one applies nothing and stores nothing.
+    switchLocale(lang).then((loaded) => {
+      if (loaded) {
+        localStorage.setItem("locale", loaded.code);
+      }
+    });
   };
 
   const changeLanguageBackend = async (lang) => {
@@ -452,6 +470,10 @@ export default function App() {
     messageKey: "errorBoundary.route.analyzerResults.message",
   };
 
+  if (!messagesReady) {
+    return <Loading />;
+  }
+
   return (
     <IntlProvider
       locale={locale}
@@ -469,6 +491,7 @@ export default function App() {
         }}
       >
         <>
+          <FacilityAutoLocation />
           <Router>
             <Layout onChangeLanguage={onChangeLanguage}>
               <Switch>
@@ -937,7 +960,14 @@ export default function App() {
                   path="/Alerts"
                   exact
                   render={() => <AlertsDashboard />}
-                  role={[Roles.RECEPTION, Roles.RESULTS]}
+                  role={[Roles.GLOBAL_ADMIN, Roles.RECEPTION, Roles.RESULTS]}
+                />
+                <SecureRoute
+                  path="/dashboards/management"
+                  exact
+                  render={() => <ManagementDashboard />}
+                  permission="dashboards.view.management"
+                  role={Roles.GLOBAL_ADMIN}
                 />
                 {/* QA v0.5 IA rehome (OGC-691): EQA and QC pages moved under
                     /qa/*. Kept so bookmarks and anything still linking an old
@@ -1366,9 +1396,21 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
+                  path="/inventory/receive"
+                  exact
+                  render={() => <InventoryReceivePage />}
+                  role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/inventory/reports"
+                  exact
+                  render={() => <InventoryReportsPage />}
+                  role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
                   path="/inventory"
                   exact
-                  render={() => <InventoryManagement />}
+                  render={() => <InventoryItemsPage />}
                   role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
@@ -1604,6 +1646,12 @@ export default function App() {
                   role={Roles.RESULTS}
                 />
                 <SecureRoute
+                  path="/Workplan/batch/:id/print"
+                  exact
+                  component={() => <BatchWorkplanPrint />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
                   path="/WorkPlanByTestSection"
                   exact
                   render={() => <Workplan type="unit" />}
@@ -1719,6 +1767,18 @@ export default function App() {
                   role={Roles.REPORTS}
                 />
                 <SecureRoute
+                  path="/ReportPrintQueue"
+                  exact
+                  render={() => <ReportPrintQueue />}
+                  role={Roles.REPORTS}
+                />
+                <SecureRoute
+                  path="/SentMessages"
+                  exact
+                  render={() => <SentMessages />}
+                  role={[Roles.REPORTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
                   path="/VectorManualEntry"
                   exact
                   render={() => <ManualEntryHelper />}
@@ -1777,6 +1837,8 @@ export default function App() {
                   )}
                   role={ANALYZER_RESULTS_ROLES}
                 />
+                {/* Pages of installed modules, /m/<module id>/..., before the catch-all */}
+                <Route path="/m/:moduleId" render={() => <ModuleRoutes />} />
                 <Route path="*" render={() => <RedirectOldUI />} />
               </Switch>
             </Layout>

@@ -54,19 +54,22 @@ public class MicrobiologyQualificationDataServiceTest {
     @Mock
     private MicroCaseService caseService;
 
+    @Mock
+    private org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures fixtures;
+
     private MicrobiologyQualificationDataService service;
 
     @Before
     public void setUp() {
         service = new MicrobiologyQualificationDataService(scenarioService, referenceService, breakpointService,
-                configurationService, isolateService, astService, caseService, true);
+                configurationService, isolateService, astService, caseService, fixtures, true);
     }
 
     @Test
     public void ordinaryDeploymentCannotBuildQualificationData() {
         MicrobiologyQualificationDataService disabled = new MicrobiologyQualificationDataService(scenarioService,
                 referenceService, breakpointService, configurationService, isolateService, astService, caseService,
-                false);
+                fixtures, false);
 
         try {
             disabled.buildWorklist("run-a", 200, "7");

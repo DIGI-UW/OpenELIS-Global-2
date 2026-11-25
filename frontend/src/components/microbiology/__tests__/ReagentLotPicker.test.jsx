@@ -125,6 +125,57 @@ describe("ReagentLotPicker", () => {
     });
   });
 
+  it("has a message for every role, QC status and blocking reason", () => {
+    const onError = vi.fn();
+    const lot = requirements[0].lots[0];
+    const reasons = [
+      "INVENTORY_LOT_EXPIRED",
+      "INVENTORY_LOT_CONSUMED",
+      "INVENTORY_LOT_DISPOSED",
+      "INVENTORY_LOT_QUARANTINED",
+      "INVENTORY_LOT_STATUS_UNKNOWN",
+      "INVENTORY_LOT_QC_FAILED",
+      "INVENTORY_LOT_QC_NOT_PASSED",
+      "INVENTORY_LOT_INSUFFICIENT_QUANTITY",
+    ];
+    const qcStatuses = ["PENDING", "PASSED", "FAILED", "QUARANTINED"];
+    // react-intl reports a fallback message only when the locale is not the default, as for an en-US browser
+    render(
+      <IntlProvider
+        locale="en-US"
+        defaultLocale="en"
+        messages={messages}
+        timeZone="UTC"
+        onError={onError}
+      >
+        <ReagentLotPicker
+          id="culture-lots"
+          selectedLots={{}}
+          onChange={vi.fn()}
+          requirements={["PRIMARY", "SECONDARY"].map((usageType) => ({
+            ...requirements[0],
+            linkId: usageType,
+            usageType,
+            lots: [
+              ...reasons.map((unavailableReason) => ({
+                ...lot,
+                id: unavailableReason,
+                unavailableReason,
+              })),
+              ...qcStatuses.map((qcStatus) => ({
+                ...lot,
+                id: qcStatus,
+                qcStatus,
+              })),
+            ],
+          }))}
+        />
+      </IntlProvider>,
+    );
+
+    expect(onError.mock.calls.map(([error]) => error.message)).toEqual([]);
+  });
+
   it("does not invent a mandatory policy when no links are configured", () => {
     renderPicker({ requirements: [] });
 

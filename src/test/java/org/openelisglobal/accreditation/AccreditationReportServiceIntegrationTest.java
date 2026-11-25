@@ -201,6 +201,33 @@ public class AccreditationReportServiceIntegrationTest extends AccreditationInte
         assertTrue(resolved.getNotesLine(), resolved.getNotesLine().contains("Body 4"));
     }
 
+    @Test
+    public void namesTheClaimedBodiesInDisplayOrder() {
+        Long first = createBody("ISO15189", "ISO 15189", TODAY.plusYears(1), LogoVisibilityMode.ANY_ACCREDITED_TEST,
+                (short) 80, (short) 1);
+        Long second = createBody("SANAS", "SANAS", TODAY.plusYears(1), LogoVisibilityMode.ANY_ACCREDITED_TEST,
+                (short) 80, (short) 2);
+        enrollWithLogo(second, TEST_GLUCOSE);
+        enrollWithLogo(first, TEST_GLUCOSE);
+
+        AccreditationReportData resolved = accreditationReportService.resolve(List.of(TEST_GLUCOSE), TODAY);
+
+        assertEquals(List.of("ISO 15189", "SANAS"), resolved.getBodyNames());
+    }
+
+    @Test
+    public void onlyTestsUnderABodyValidOnTheReleaseDateAreInScope() {
+        Long body = createBody("ISO15189", "ISO 15189", TODAY.plusYears(1), LogoVisibilityMode.ANY_ACCREDITED_TEST,
+                (short) 80, (short) 0);
+        enrollWithLogo(body, TEST_GLUCOSE);
+
+        assertEquals(java.util.Set.of(TEST_GLUCOSE),
+                accreditationReportService.testsInAccreditedScope(List.of(TEST_GLUCOSE, TEST_SODIUM), TODAY));
+        assertTrue("a body that had expired by the release date puts nothing in scope",
+                accreditationReportService.testsInAccreditedScope(List.of(TEST_GLUCOSE), TODAY.plusYears(2)).isEmpty());
+        assertTrue(accreditationReportService.testsInAccreditedScope(List.of(), TODAY).isEmpty());
+    }
+
     // ---- helpers ----
 
     /** Enrolls the test under the body and gives the body a distinct logo. */

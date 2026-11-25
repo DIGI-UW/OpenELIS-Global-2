@@ -186,10 +186,30 @@ public class AnalyzerInstanceRestControllerTest {
     }
 
     @Test
+    public void retiredAnalyzersAreHiddenUnlessAskedForAndAnAnalyzerWithNoTypeCanBeSearched() {
+        AnalyzerInstanceState retired = new AnalyzerInstanceState("43", "Old bench", List.of(), "fixture.old", 1,
+                "sha256:" + "1".repeat(64), null, Analyzer.AnalyzerStatus.RETIRED, 0L);
+        AnalyzerInstanceState untyped = new AnalyzerInstanceState("44", "Migrated bench", List.of(), null, 0, null,
+                null, Analyzer.AnalyzerStatus.INACTIVE, 0L);
+        when(service.list()).thenReturn(List.of(retired, untyped));
+
+        assertEquals(List.of("44"), ids(controller.list(null, null, false)));
+        assertEquals(List.of("43", "44"), ids(controller.list(null, null, true)));
+        assertEquals(List.of("43"), ids(controller.list(null, "RETIRED", false)));
+        assertEquals(List.of("44"), ids(controller.list("migrated", null, false)));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Object> ids(ResponseEntity<Map<String, Object>> response) {
+        return ((List<Map<String, Object>>) response.getBody().get("analyzers")).stream().map(row -> row.get("id"))
+                .toList();
+    }
+
+    @Test
     public void listsReferenceOnlyAnalyzerSummaries() {
         when(service.list()).thenReturn(List.of(connectedView().state()));
 
-        ResponseEntity<Map<String, Object>> response = controller.list("synthetic", "SETUP");
+        ResponseEntity<Map<String, Object>> response = controller.list("synthetic", "SETUP", false);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         @SuppressWarnings("unchecked")

@@ -25,7 +25,7 @@ public final class AnalyzerTestProfileCatalog {
 
     public static BridgeProfileCatalog catalog() {
         return new BridgeProfileCatalog("1.0", PROFILE_FINGERPRINT, List.of(astmProfile(), hl7Profile(),
-                unknownCapableProfile(), adoptableProfile(1), adoptableProfile(2)));
+                unknownCapableProfile(), mockHematologyProfile(), adoptableProfile(1), adoptableProfile(2)));
     }
 
     public static String adoptableFingerprint(int revision) {
@@ -61,6 +61,16 @@ public final class AnalyzerTestProfileCatalog {
         return new BridgeProfileCatalog.ProfileRevision(profile, JsonNodeFactory.instance.objectNode(),
                 new BridgeProfileCatalog.ControlRecognitionSummary("sha256:" + "2".repeat(64), "RULES", null, false,
                         List.of()));
+    }
+
+    /** Profile identity used by the normalized QC delivery contract fixture. */
+    private static BridgeProfileCatalog.ProfileRevision mockHematologyProfile() {
+        BridgeProfileCatalog.ProfileRevision base = unknownCapableProfile();
+        ObjectNode profile = ((ObjectNode) base.profile()).deepCopy();
+        ((ObjectNode) profile.path("profileMeta")).put("id", "site.mock-hematology");
+        ((ObjectNode) profile.path("catalog")).put("revision", 1);
+        return new BridgeProfileCatalog.ProfileRevision(profile, JsonNodeFactory.instance.objectNode(),
+                base.controlRecognitionSummary());
     }
 
     private static BridgeProfileCatalog.ProfileRevision astmProfile() {

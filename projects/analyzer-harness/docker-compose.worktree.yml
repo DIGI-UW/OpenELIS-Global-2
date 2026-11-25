@@ -1,4 +1,6 @@
 # Worktree-local analyzer harness overrides used only through scripts/dev-stack.
+# Application services run the published development images; `up --build`
+# points the DEV_STACK_*_IMAGE variables at images built from the checkout.
 services:
   certs:
     container_name: !reset null
@@ -14,7 +16,6 @@ services:
 
   oe.openelis.org:
     container_name: !reset null
-    image: ${DEV_STACK_PROJECT}-backend:dev
     ports: !override
       - name: http
         target: 8080
@@ -54,7 +55,6 @@ services:
 
   frontend.openelis.org:
     container_name: !reset null
-    image: ${DEV_STACK_PROJECT}-frontend:dev
 
   proxy:
     container_name: !reset null
@@ -72,7 +72,7 @@ services:
 
   astm-simulator:
     container_name: !reset null
-    image: ${DEV_STACK_PROJECT}-analyzer-mock:dev
+    image: ${DEV_STACK_MOCK_IMAGE:-itechuw/openelis-global-2-analyzer-mock:develop}
     ports: !override
       - name: astm
         target: 9600
@@ -99,7 +99,7 @@ services:
 
   openelis-analyzer-bridge:
     container_name: !reset null
-    image: ${DEV_STACK_PROJECT}-analyzer-bridge:dev
+    image: ${DEV_STACK_BRIDGE_IMAGE:-itechuw/openelis-global-2-analyzer-bridge:develop}
     ports: !override
       - name: https
         target: 8443

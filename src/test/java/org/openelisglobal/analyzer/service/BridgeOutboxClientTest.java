@@ -47,6 +47,21 @@ public class BridgeOutboxClientTest {
         assertEquals("OE_REJECTED", rows.get(0).path("failureReason").asText());
     }
 
+    /**
+     * A Bridge that is not paired yet is a state OpenELIS knows, so it has its own
+     * key rather than reading as an unreachable Bridge.
+     */
+    @Test
+    public void anUnpairedBridgeIsReportedAsNotPaired() throws Exception {
+        when(httpClient.get(eq(BASE_URL + "/admin/outbox?state=DMQ&limit=1000&offset=0"), eq(TIMEOUT)))
+                .thenThrow(new BridgeHttpClient.BridgeNotPairedException());
+
+        BridgeAnalyzerConnectionException failure = assertThrows(BridgeAnalyzerConnectionException.class,
+                () -> client.list("DMQ"));
+
+        assertEquals("analyzer.deliveryIssues.error.bridgeNotPaired", failure.messageKey());
+    }
+
     @Test
     public void readsEveryPageOfALargeBacklog() throws Exception {
         when(httpClient.get(eq(BASE_URL + "/admin/outbox?state=DMQ&limit=1000&offset=0"), eq(TIMEOUT)))
@@ -99,7 +114,7 @@ public class BridgeOutboxClientTest {
     @Test
     public void retriesAndDismissesOneEntryById() throws Exception {
         when(httpClient.post(eq(BASE_URL + "/admin/outbox/" + RECEIPT_ID + "/retry"), eq("{}"), eq(TIMEOUT)))
-                .thenReturn(new BridgeHttpClient.BridgeResponse(200, "{\"id\":\"ob-1\",\"state\":\"PENDING\"}"));
+                .thenReturn(new BridgeHttpClient.BridgeResponse(200, "{\"id\":\"" + RECEIPT_ID + "\",\"state\":\"PENDING\"}"));
         when(httpClient.post(eq(BASE_URL + "/admin/outbox/ob-2/dismiss"), eq("{}"), eq(TIMEOUT)))
                 .thenReturn(new BridgeHttpClient.BridgeResponse(200, "{\"id\":\"ob-2\"}"));
 
@@ -108,6 +123,14 @@ public class BridgeOutboxClientTest {
 
         verify(httpClient).post(BASE_URL + "/admin/outbox/" + RECEIPT_ID + "/retry", "{}", TIMEOUT);
         verify(httpClient).post(BASE_URL + "/admin/outbox/ob-2/dismiss", "{}", TIMEOUT);
+    }
+
+    @Test
+    public void refusesToAcknowledgeRetryWithoutAValidQueueResponse() throws Exception {
+        when(httpClient.post(eq(BASE_URL + "/admin/outbox/" + RECEIPT_ID + "/retry"), eq("{}"), eq(TIMEOUT)))
+                .thenReturn(new BridgeHttpClient.BridgeResponse(200, "{}"));
+        assertEquals("analyzer.deliveryIssues.error.bridgeInvalidResponse",
+                assertThrows(BridgeAnalyzerConnectionException.class, () -> client.retry(RECEIPT_ID)).messageKey());
     }
 
     @Test

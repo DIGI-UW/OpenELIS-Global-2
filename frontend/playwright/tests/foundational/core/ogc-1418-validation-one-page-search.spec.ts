@@ -4,6 +4,7 @@ import {
   enterResults,
 } from "../../../helpers/seed-tat-data";
 import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 
 /**
  * OGC-1418 — Validation is one page with one search, like Results Entry.
@@ -135,7 +136,9 @@ test.describe("OGC-1418 — Validation one-page search", () => {
         timeout: NAV_TIMEOUT,
       });
       await expect(main.locator("#validationSearch")).toBeVisible();
-      await expect(main.getByLabel("Lab Unit")).toBeVisible();
+      await expect(
+        main.getByRole("combobox", { name: "Lab Unit" }),
+      ).toBeVisible();
       await expect(main.locator("#validationFromDate")).toBeVisible();
       await expect(main.locator("#validationToDate")).toBeVisible();
       await expect(
@@ -144,9 +147,10 @@ test.describe("OGC-1418 — Validation one-page search", () => {
     });
 
     await test.step("picking the Lab Unit opens that unit's queue", async () => {
-      await main
-        .getByLabel("Lab Unit")
-        .selectOption({ label: created.labUnitName });
+      await chooseCarbonOption(
+        main.getByRole("combobox", { name: "Lab Unit" }),
+        created.labUnitName,
+      );
       await expect(main.getByText(accession).first()).toBeVisible({
         timeout: UI_TIMEOUT,
       });

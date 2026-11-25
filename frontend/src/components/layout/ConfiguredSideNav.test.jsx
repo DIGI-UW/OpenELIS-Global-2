@@ -284,3 +284,41 @@ describe("internal links that open in a new window", () => {
     expect(click.defaultPrevented).toBe(true);
   });
 });
+
+describe("module menu entries", () => {
+  const moduleMenus = menus([
+    { elementId: "menu_core", displayKey: "core.key", actionURL: "/Core" },
+    {
+      elementId: "menu_mod_alpha",
+      displayKey: "mod.alpha.menu.title",
+      actionURL: "/m/alpha/home",
+    },
+  ]);
+  const renderNav = (extra) =>
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <IntlProvider
+          locale="en"
+          messages={{ ...messages, ...extra }}
+          onError={() => {}}
+        >
+          <SideNav expanded aria-label="Side navigation">
+            <SideNavItems>
+              <ConfiguredSideNav menus={moduleMenus} />
+            </SideNavItems>
+          </SideNav>
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+
+  it("hides a module entry until the shell has its label", () => {
+    renderNav({});
+    expect(screen.getByText("core.key")).toBeInTheDocument();
+    expect(screen.queryByText("mod.alpha.menu.title")).toBeNull();
+  });
+
+  it("shows the module entry once its label is known", () => {
+    renderNav({ "mod.alpha.menu.title": "Specimen Follow-up" });
+    expect(screen.getByText("Specimen Follow-up")).toBeInTheDocument();
+  });
+});

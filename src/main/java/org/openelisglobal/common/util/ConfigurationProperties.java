@@ -214,9 +214,10 @@ public abstract class ConfigurationProperties {
         MAX_SLIDE_LABEL_PRINTED("numMaxSlideLabels", "text"), // Max slides that can be printed
         MAX_BLOCK_LABEL_PRINTED("numMaxBlockLabels", "text"), // Max block labels that can be printed
         MAX_FREEZER_LABEL_PRINTED("numMaxFreezerLabels", "text"), // Max freezer labels that can be printed
-        MAX_REQUEST_LABEL_QUANTITY("numMaxRequestLabelQuantity", "text"), // Hard upper bound on the per-request
-        // quantity parameter, applied even when override=true (defends against
-        // unbounded PDF render loops)
+        // Per-quantity safety bound, applied even when override=true.
+        MAX_REQUEST_LABEL_QUANTITY("numMaxRequestLabelQuantity", "text"),
+        // Total copies in one PDF, including all sets/specimens.
+        MAX_REQUEST_LABEL_TOTAL("numMaxRequestLabelTotal", "text"),
         DEFAULT_ORDER_LABEL_PRINTED("numDefaultOrderLabels", "text"), // Max order labels that can be printed
         DEFAULT_SPECIMEN_LABEL_PRINTED("numDefaultSpecimenLabels", "text"), // Max specimen labels that can be printed
         DEFAULT_ALIQUOT_LABEL_PRINTED("numDefaultAliquotLabels", "text"), // Max aliquots that can be printed
@@ -334,6 +335,10 @@ public abstract class ConfigurationProperties {
         RETEST_NOTE_REQUIRED("retestNoteRequired", "text"),
         // OGC-1147: does an open QC failure block release, or only warn
         QC_FAIL_BLOCKS_VALIDATION("qcFailBlocksValidation", "text"),
+        BLOCK_SELF_VALIDATION("blockSelfValidation", "text"),
+        // OGC-1364: when true the validation policy decides which results wait
+        // for review instead of ALWAYS_VALIDATE_RESULTS.
+        USE_MULTI_LEVEL_VALIDATION("useMultiLevelValidation", "text"),
 
         // FR-2.3: per-deployment switches for the optional pathology bench
         // stages. The mandatory stages (ACCESSIONED, GROSSING, READY_PATHOLOGIST,
@@ -344,7 +349,17 @@ public abstract class ConfigurationProperties {
         PATHOLOGY_STAGE_MICROTOMY_ENABLED("pathology.stage.MICROTOMY.enabled", "text"),
         PATHOLOGY_STAGE_STAINING_ENABLED("pathology.stage.STAINING.enabled", "text"),
         PATHOLOGY_STAGE_COVERSLIPPING_ENABLED("pathology.stage.COVERSLIPPING.enabled", "text"),
-        PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED("pathology.stage.UNDER_REVIEW.enabled", "text");
+        PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED("pathology.stage.UNDER_REVIEW.enabled", "text"),
+
+        // Whether a slide label must be scanned against its block before sectioning.
+        PATHOLOGY_SCAN_VERIFICATION_REQUIRED("pathology.microtomy.scanVerificationRequired", "boolean"),
+
+        // FR-9.3: how a deployment names and barcodes the cassettes, blocks and
+        // slides cut from a case. A missing row means the scheme below.
+        PATHOLOGY_IDENTIFIER_PART_SCHEME("pathology.identifier.partScheme", "text"),
+        PATHOLOGY_IDENTIFIER_BLOCK_FORMAT("pathology.identifier.blockFormat", "text"),
+        PATHOLOGY_IDENTIFIER_SLIDE_FORMAT("pathology.identifier.slideFormat", "text"),
+        PATHOLOGY_IDENTIFIER_SEPARATOR("pathology.identifier.separator", "text");
 
         // visible on
         // the ui

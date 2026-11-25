@@ -109,6 +109,12 @@ public class CriticalCallbackServiceImpl extends BaseObjectServiceImpl<CriticalC
 
     @Override
     @Transactional(readOnly = true)
+    public List<CriticalCallback> getCallbacksForAnalyses(Collection<String> analysisIds) {
+        return baseObjectDAO.getCallbacksForAnalyses(analysisIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public CallbackSummaryResponse getSummary(LocalDate fromDate, LocalDate toDate) {
         ResolvedConfig config = qiConfigService.resolve(QiIndicator.CALLBACK.name(), null);
         CallbackSummaryResponse response = new CallbackSummaryResponse();

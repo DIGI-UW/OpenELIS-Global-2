@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import {
   Button,
   InlineNotification,
@@ -12,7 +12,12 @@ import {
 import PatientInfo from "./PatientInfo";
 import AddSample from "./AddSample";
 import { newSampleKey, rejectedWithoutReason } from "./sampleTypeUpdate";
-import { samplesMissingTests, samplesWithTests } from "./orderSamples";
+import {
+  missingTestsTitle,
+  samplesMissingTests,
+  samplesWithTests,
+} from "./orderSamples";
+import useSampleTypeNames from "./useSampleTypeNames";
 import AddOrder from "./AddOrder";
 import "./add-order.scss";
 import { createSampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
@@ -79,6 +84,7 @@ const Index = () => {
   const [isLoadingReferral, setIsLoadingReferral] = useState(false);
   const isEQAFromUrl =
     new URLSearchParams(window.location.search).get("isEQA") === "true";
+  const loadedReferralId = useRef(null);
   const [orderFormValues, setOrderFormValues] = useState(
     createSampleOrderFormValues,
   );
@@ -153,7 +159,10 @@ const Index = () => {
   }, [orderFormValues.sampleOrderItems.externalOrderNumber]);
 
   const checkOrderReferral = (externalOrderNumber) => {
-    if (externalOrderNumber) {
+    if (
+      externalOrderNumber &&
+      externalOrderNumber !== loadedReferralId.current
+    ) {
       getLabOrder(externalOrderNumber, processLabOrderSuccess);
     }
   };
@@ -298,6 +307,7 @@ const Index = () => {
           labNo: labNumber,
         },
       };
+      loadedReferralId.current = externalId;
       setOrderFormValues(newOrderFormValues);
       // A pure awaiting-specimen order carries no pre-bound sample types; keep
       // the blank sample entry so the Add Sample step stays usable while the
@@ -848,6 +858,7 @@ const Index = () => {
   };
 
   const missingTestSamples = samplesMissingTests(samples);
+  const sampleTypeNames = useSampleTypeNames();
 
   const navigateForward = () => {
     if (currentStepIndex < visibleSteps.length - 1) {
@@ -1053,9 +1064,11 @@ const Index = () => {
                       kind="error"
                       lowContrast
                       hideCloseButton
-                      title={intl.formatMessage(
-                        { id: "order.sample.missingTests" },
-                        { sampleNumber },
+                      title={missingTestsTitle(
+                        intl,
+                        samples,
+                        sampleNumber,
+                        sampleTypeNames,
                       )}
                       data-testid="order-sample-missing-tests"
                     />

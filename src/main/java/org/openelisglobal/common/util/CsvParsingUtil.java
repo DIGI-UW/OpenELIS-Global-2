@@ -52,6 +52,36 @@ public final class CsvParsingUtil {
         return new BufferedReader(new StringReader(text));
     }
 
+    /** Reads a complete record, preserving newlines inside quoted cells. */
+    public static String readCsvRecord(BufferedReader reader) throws IOException {
+        String line = reader.readLine();
+        if (line == null || isSkippableLine(line)) {
+            return line;
+        }
+        StringBuilder record = new StringBuilder();
+        boolean quoted = false;
+        while (true) {
+            record.append(line);
+            for (int i = 0; i < line.length(); i++) {
+                if (line.charAt(i) == '"') {
+                    if (quoted && i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                        i++;
+                    } else {
+                        quoted = !quoted;
+                    }
+                }
+            }
+            if (!quoted) {
+                return record.toString();
+            }
+            line = reader.readLine();
+            if (line == null) {
+                throw new IOException("Unterminated quoted CSV field");
+            }
+            record.append('\n');
+        }
+    }
+
     /**
      * Parses a CSV line into trimmed fields, honoring double-quoted cells.
      *
@@ -93,9 +123,17 @@ public final class CsvParsingUtil {
     public static Map<String, Integer> createColumnMap(String[] headers) {
         Map<String, Integer> columnMap = new HashMap<>();
         for (int i = 0; i < headers.length; i++) {
-            columnMap.put(headers[i].trim().toLowerCase(), i);
+            String header = headers[i];
+            if (i == 0) {
+                header = stripByteOrderMark(header);
+            }
+            columnMap.put(header.trim().toLowerCase(), i);
         }
         return columnMap;
+    }
+
+    public static String stripByteOrderMark(String value) {
+        return value != null && !value.isEmpty() && value.charAt(0) == '\uFEFF' ? value.substring(1) : value;
     }
 
     /** Returns the trimmed cell at index, or {@code ""} when out of range/null. */
@@ -122,7 +160,7 @@ public final class CsvParsingUtil {
      */
     public static int findColumn(String[] headers, String name) {
         for (int i = 0; i < headers.length; i++) {
-            if (headers[i] != null && name.equalsIgnoreCase(headers[i].trim())) {
+            if (headers[i] != null && name.equalsIgnoreCase(stripByteOrderMark(headers[i]).trim())) {
                 return i;
             }
         }

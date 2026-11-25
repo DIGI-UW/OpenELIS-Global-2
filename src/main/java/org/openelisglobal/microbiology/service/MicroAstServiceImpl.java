@@ -20,10 +20,14 @@ import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseAmendmentDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroInterpretationRuleDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
+import org.openelisglobal.microbiology.dao.MicroReportingRuleDAO;
 import org.openelisglobal.microbiology.form.MicroAstOverrideEventForm;
 import org.openelisglobal.microbiology.form.MicroAstSetupForm;
+import org.openelisglobal.microbiology.form.MicroReportingRulePreviewForm;
+import org.openelisglobal.microbiology.form.MicroReportingRulePreviewResultForm;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
@@ -45,10 +49,12 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
 import org.openelisglobal.microbiology.valueholder.MicroCaseAmendment;
 import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
+import org.openelisglobal.microbiology.valueholder.MicroInterpretationRule;
 import org.openelisglobal.microbiology.valueholder.MicroInventoryUsageContext;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
+import org.openelisglobal.microbiology.valueholder.MicroReportingRule;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.systemuser.service.SystemUserService;
@@ -57,7 +63,16 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class MicroAstServiceImpl implements MicroAstService {
-
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroCaseAuthorizationService authorization;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.resultvalidation.service.ResultSelfValidationPolicy selfValidation;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroAstReportChoiceService reportChoices;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroAstPanelAssignmentService panelAssignments;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroAstQcService astQc;
     private final String defaultBreakpointAuthority;
     private final String defaultBreakpointVersion;
 
@@ -78,6 +93,10 @@ public class MicroAstServiceImpl implements MicroAstService {
     private final MicroAstPanelAntibioticDAO panelAntibioticDAO;
     private final MicroAstRunAntibioticDAO runAntibioticDAO;
     private final MicroAntibioticDAO antibioticDAO;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroReportingRuleDAO reportingRuleDAO;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroInterpretationRuleDAO interpretationRuleDAO;
 
     public MicroAstServiceImpl(MicroAstRunDAO runDAO, MicroAstReadingDAO readingDAO, MicroIsolateDAO isolateDAO,
             MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO, MicroBreakpointService breakpointService,
@@ -158,6 +177,7 @@ public class MicroAstServiceImpl implements MicroAstService {
     @Transactional
     public MicroAstRun startRun(MicroAstRunSetupCommand command, String performedBy) {
         MicroCaseServiceImpl.requireText(command.isolateId(), "isolateId");
+        String clinicalContext = MicroBreakpointClinicalContext.validate(command.clinicalContext());
         MicroAstTechnique technique = command.technique();
         if (technique == null) {
             throw new IllegalArgumentException("AST_TECHNIQUE_REQUIRED");
@@ -172,10 +192,25 @@ public class MicroAstServiceImpl implements MicroAstService {
                 || isolate.getOrganismId() == null || isolate.getOrganismId().trim().isEmpty()) {
             throw new IllegalStateException("AST_ISOLATE_IDENTIFICATION_REQUIRED");
         }
+        authorization.requireWrite(isolate.getCaseId(), performedBy,
+                org.openelisglobal.common.constants.Constants.ROLE_RESULTS);
         MicroCase microCase = requireMutableCase(isolate.getCaseId());
         MicroOrganism organism = organismDAO.get(isolate.getOrganismId())
                 .orElseThrow(() -> new IllegalArgumentException("AST_ORGANISM_NOT_FOUND"));
         PanelSelection panelSelection = resolvePanel(organism, command.panelId());
+        if (isolate.getCancelledAt() != null)
+            throw new MicroAstConflictException("ISOLATE_CANCELLED");
+        MicroAstPanelAssignmentService.requireCompatible(organism, panelSelection.panel);
+        for (MicroAstRun existing : runDAO.getByIsolateId(isolate.getId())) {
+            if (List.of("CANCELLED", "INVALIDATED", "RERUN_REQUIRED").contains(existing.getStatus()))
+                continue;
+            MicroAstPanel existingPanel = panelDAO.get(existing.getPanelId()).orElseThrow();
+            if (java.util.Objects.equals(existingPanel.getLogicalKey(), panelSelection.panel.getLogicalKey()))
+                throw new MicroAstConflictException("AST_PANEL_ALREADY_ACTIVE");
+        }
+        if (panelAssignments.getAssignments(isolate.getId()).stream()
+                .noneMatch(a -> a.getPanelId().equals(panelSelection.panel.getId())))
+            panelAssignments.assign(isolate.getId(), panelSelection.panel.getId(), performedBy);
         OrderedSelection orderedSelection = resolveOrderedAntibiotics(panelSelection.panel.getId(),
                 command.orderedAntibioticIds());
         boolean adjusted = panelSelection.adjusted || orderedSelection.adjusted;
@@ -191,6 +226,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         run.setPanelAdjustmentReason(adjusted ? command.panelAdjustmentReason().trim() : null);
         run.setBreakpointStandardId(standard.getId());
         run.setBreakpointVersion(standard.getVersion());
+        run.setClinicalContext(clinicalContext);
         run.setAttemptType(MicroAstAttemptType.ORIGINAL.name());
         run.setTechnique(technique.name());
         run.setMethod(technique.measurementType().name());
@@ -205,7 +241,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         run.setStartedAt(MicroCaseServiceImpl.now());
         run.setStartedBy(performedBy);
         runDAO.insert(run);
-        snapshotOrderedAntibiotics(run.getId(), orderedSelection.antibiotics);
+        snapshotOrderedAntibiotics(run, orderedSelection.antibiotics);
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_RUN_CREATED, performedBy, "AST run created",
                 "{\"astRunId\":\"" + run.getId() + "\"}");
         reagentLotService.recordSelections(isolate.getCaseId(), MicroInventoryUsageContext.AST_SETUP, run.getId(),
@@ -228,8 +264,9 @@ public class MicroAstServiceImpl implements MicroAstService {
         MicroAstSetupForm form = new MicroAstSetupForm();
         form.isolateId = isolateId;
         form.panelProvenance = "UNASSIGNED";
-        if (organism.getDefaultAstPanelId() != null && !organism.getDefaultAstPanelId().isBlank()) {
-            MicroAstPanel panel = panelDAO.get(organism.getDefaultAstPanelId())
+        String defaultPanelId = MicroAstPanelAssignmentService.defaultPanelId(organism);
+        if (defaultPanelId != null && !defaultPanelId.isBlank()) {
+            MicroAstPanel panel = panelDAO.get(defaultPanelId)
                     .orElseThrow(() -> new IllegalStateException("AST_ORDERED_PANEL_NOT_FOUND"));
             form.orderedPanelId = panel.getId();
             form.orderedPanelLabel = panel.getName();
@@ -289,8 +326,11 @@ public class MicroAstServiceImpl implements MicroAstService {
         }
         MicroIsolate isolate = isolateDAO.get(source.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        authorization.requireWrite(isolate.getCaseId(), performedBy,
+                org.openelisglobal.common.constants.Constants.ROLE_RESULTS);
         MicroCase microCase = requireMutableCase(isolate.getCaseId());
-        if (isAmendmentInProgress(microCase) && !source.isReportable()) {
+        if (isAmendmentInProgress(microCase) && reportChoices.getSelectedReadings(isolate.getId()).stream()
+                .noneMatch(r -> source.getId().equals(r.getAstRunId()))) {
             throw new MicroAstConflictException("AST_AMENDMENT_SOURCE_MUST_BE_REPORTABLE");
         }
         List<MicroAstRunAntibiotic> scopedOrder = resolveRepeatOrder(source, orderedAntibioticIds);
@@ -303,6 +343,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         run.setPanelAdjustmentReason(source.getPanelAdjustmentReason());
         run.setBreakpointStandardId(source.getBreakpointStandardId());
         run.setBreakpointVersion(source.getBreakpointVersion());
+        run.setClinicalContext(source.getClinicalContext());
         run.setAttemptType(attemptType.name());
         run.setSourceRunId(source.getId());
         run.setAttemptReason(reason.trim());
@@ -356,9 +397,11 @@ public class MicroAstServiceImpl implements MicroAstService {
         }
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        authorization.requireWrite(isolate.getCaseId(), performedBy,
+                org.openelisglobal.common.constants.Constants.ROLE_RESULTS);
         MicroCase microCase = requireMutableRun(run, isolate.getCaseId());
         MicroBreakpointRule rule = findRule(run, isolate, microCase, antibioticId, method);
-        MicroAstInterpretation interpretation = interpretationService.interpret(rule, method, rawValue);
+        MicroAstInterpretation interpretation = interpretReading(run, rule, method, rawValue);
 
         MicroAstReading reading = new MicroAstReading();
         reading.setAstRunId(runId);
@@ -374,7 +417,11 @@ public class MicroAstServiceImpl implements MicroAstService {
                 : defaultUnits(method));
         reading.setCreatedAt(MicroCaseServiceImpl.now());
         reading.setCreatedBy(performedBy);
+        reading.setEntrySequence(readingDAO.getByRunId(reading.getAstRunId()).stream()
+                .mapToLong(MicroAstReading::getEntrySequence).max().orElse(0) + 1);
         readingDAO.insert(reading);
+        applyInterpretationRule(run, isolate, reading, performedBy);
+        applyReportDefault(run, antibioticId, effectiveInterpretation(reading));
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_READING_RECORDED, performedBy,
                 "AST reading recorded", "{\"astRunId\":\"" + runId + "\",\"readingId\":\"" + reading.getId() + "\"}");
         return reading;
@@ -396,13 +443,17 @@ public class MicroAstServiceImpl implements MicroAstService {
         requireUnreviewedRun(run);
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        authorization.requireWrite(isolate.getCaseId(), performedBy,
+                org.openelisglobal.common.constants.Constants.ROLE_VALIDATION);
         requireMutableRun(run, isolate.getCaseId());
         String fromInterpretation = effectiveInterpretation(reading);
         reading.setOverrideInterpretation(overrideInterpretation.name());
         reading.setOverrideReason(overrideReason.trim());
+        reading.setOverrideRuleId(null);
         recordOverrideEvent(readingId, MicroAstOverrideAction.OVERRIDE, fromInterpretation,
-                overrideInterpretation.name(), overrideReason, performedBy);
+                overrideInterpretation.name(), overrideReason, performedBy, null);
         MicroAstReading updated = readingDAO.update(reading);
+        applyReportDefault(run, reading.getAntibioticId(), overrideInterpretation.name());
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_READING_OVERRIDDEN, performedBy,
                 "AST interpretation overridden", "{\"readingId\":\"" + readingId + "\"}");
         return updated;
@@ -422,12 +473,17 @@ public class MicroAstServiceImpl implements MicroAstService {
                 .orElseThrow(() -> new IllegalArgumentException("AST run not found"));
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        authorization.requireWrite(isolate.getCaseId(), performedBy,
+                org.openelisglobal.common.constants.Constants.ROLE_VALIDATION);
         requireMutableRun(run, isolate.getCaseId());
+        requireUnreviewedRun(run);
         recordOverrideEvent(readingId, MicroAstOverrideAction.REVERT, reading.getOverrideInterpretation(),
-                reading.getInterpretation(), reason, performedBy);
+                reading.getInterpretation(), reason, performedBy, null);
         reading.setOverrideInterpretation(null);
         reading.setOverrideReason(null);
+        reading.setOverrideRuleId(null);
         MicroAstReading updated = readingDAO.update(reading);
+        applyReportDefault(run, reading.getAntibioticId(), reading.getInterpretation());
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_READING_OVERRIDDEN, performedBy,
                 "AST interpretation override reverted", "{\"readingId\":\"" + readingId + "\"}");
         return updated;
@@ -450,6 +506,7 @@ public class MicroAstServiceImpl implements MicroAstService {
             form.performedBy = event.getPerformedBy();
             form.performedByDisplay = MicrobiologyUserDisplayResolver.resolve(systemUserService, event.getPerformedBy(),
                     userDisplayById);
+            form.ruleId = event.getRuleId();
             return form;
         }).toList();
     }
@@ -461,28 +518,25 @@ public class MicroAstServiceImpl implements MicroAstService {
         MicroAstRun run = runDAO.get(runId).orElseThrow(() -> new IllegalArgumentException("AST run not found"));
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        authorization.requireWrite(isolate.getCaseId(), performedBy,
+                org.openelisglobal.common.constants.Constants.ROLE_VALIDATION);
         requireMutableRun(run, isolate.getCaseId());
+        if (astQc.blocksValidation(runId))
+            throw new MicroAstConflictException("AST_QC_HOLD");
         requireReviewableLifecycle(run);
+        if (selfValidation.blockedForEntryUsers(java.util.stream.Stream
+                .concat(latestReadings(runId).stream().map(MicroAstReading::getCreatedBy),
+                        overrideEventDAO.getByRunId(runId).stream().map(MicroAstOverrideEvent::getPerformedBy))
+                .toList(), performedBy))
+            throw new org.springframework.security.access.AccessDeniedException("MICROBIOLOGY_SELF_VALIDATION_BLOCKED");
         requireCompleteOrderedResults(runId);
         requireResolvedAnalyzerFlags(run, latestReadings(runId));
         run.setStatus(MicroAstRunStatus.REVIEWED.name());
         run.setReviewedAt(MicroCaseServiceImpl.now());
         run.setReviewedBy(performedBy);
-        List<MicroAstRun> reviewedSiblings = runDAO.getByIsolateId(run.getIsolateId()).stream()
-                .filter(candidate -> !run.getId().equals(candidate.getId()))
-                .filter(candidate -> MicroAstRunStatus.REVIEWED.name().equals(candidate.getStatus())).toList();
-        if (reviewedSiblings.isEmpty()) {
-            run.setReportable(true);
-        } else {
-            run.setReportable(false);
-            for (MicroAstRun sibling : reviewedSiblings) {
-                if (sibling.isReportable()) {
-                    sibling.setReportable(false);
-                    runDAO.update(sibling);
-                }
-            }
-        }
         MicroAstRun updated = runDAO.update(run);
+        reportChoices.defaultFromReviewedRun(updated, performedBy);
+        synchronizeReportableRuns(run.getIsolateId());
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_REVIEWED, performedBy, "AST reviewed",
                 "{\"astRunId\":\"" + runId + "\"}");
         return updated;
@@ -578,6 +632,8 @@ public class MicroAstServiceImpl implements MicroAstService {
         MicroAstRun run = requireRun(runId);
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        authorization.requireWrite(isolate.getCaseId(), performedBy,
+                org.openelisglobal.common.constants.Constants.ROLE_VALIDATION);
         requireMutableRun(run, isolate.getCaseId());
         run.setAnalyzerFlagsAcknowledgedAt(MicroCaseServiceImpl.now());
         run.setAnalyzerFlagsAcknowledgedBy(performedBy);
@@ -595,6 +651,8 @@ public class MicroAstServiceImpl implements MicroAstService {
         MicroAstRun run = requireRun(runId);
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        authorization.requireWrite(isolate.getCaseId(), performedBy,
+                org.openelisglobal.common.constants.Constants.ROLE_VALIDATION);
         requireMutableRun(run, isolate.getCaseId());
         if (!MicroAstRunStatus.QC_FAILED.name().equals(run.getStatus())) {
             throw new MicroAstConflictException("AST_QC_FAILURE_NOT_ACTIVE");
@@ -617,6 +675,8 @@ public class MicroAstServiceImpl implements MicroAstService {
         MicroAstRun source = requireRun(runId);
         MicroIsolate isolate = isolateDAO.get(source.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        authorization.requireWrite(isolate.getCaseId(), performedBy,
+                org.openelisglobal.common.constants.Constants.ROLE_RESULTS);
         requireMutableRun(source, isolate.getCaseId());
         if (!MicroAstRunStatus.QC_FAILED.name().equals(source.getStatus())
                 && !MicroAstRunStatus.RESULTS_IN.name().equals(source.getStatus())) {
@@ -643,6 +703,28 @@ public class MicroAstServiceImpl implements MicroAstService {
 
     @Override
     @Transactional
+    public MicroAstRun cancelRun(String runId, String reason, String performedBy) {
+        requireAttemptReason(reason);
+        MicroAstRun run = requireRun(runId);
+        MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
+                .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        authorization.requireWrite(isolate.getCaseId(), performedBy,
+                org.openelisglobal.common.constants.Constants.ROLE_RESULTS);
+        requireMutableRun(run, isolate.getCaseId());
+        if (!Set.of(MicroAstRunStatus.IN_PROGRESS.name(), MicroAstRunStatus.AWAITING_RESULTS.name())
+                .contains(run.getStatus()) || !readingDAO.getByRunId(runId).isEmpty()) {
+            throw new MicroAstConflictException("AST_RUN_CANNOT_BE_CANCELLED");
+        }
+        run.setStatus(MicroAstRunStatus.CANCELLED.name());
+        run.setReportable(false);
+        MicroAstRun updated = runDAO.update(run);
+        recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_RUN_CANCELLED, performedBy, reason.trim(),
+                "{\"astRunId\":\"" + runId + "\"}");
+        return updated;
+    }
+
+    @Override
+    @Transactional
     public MicroAstRun selectReportableRun(String runId, String performedBy) {
         MicroCaseServiceImpl.requireText(runId, "runId");
         MicroAstRun selected = runDAO.get(runId).orElseThrow(() -> new IllegalArgumentException("AST run not found"));
@@ -651,18 +733,146 @@ public class MicroAstServiceImpl implements MicroAstService {
         }
         MicroIsolate isolate = isolateDAO.get(selected.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        authorization.requireWrite(isolate.getCaseId(), performedBy,
+                org.openelisglobal.common.constants.Constants.ROLE_VALIDATION);
         requireMutableCase(isolate.getCaseId());
-        for (MicroAstRun run : runDAO.getByIsolateId(selected.getIsolateId())) {
-            if (run.isReportable()) {
-                run.setReportable(false);
-                runDAO.update(run);
-            }
-        }
-        selected.setReportable(true);
-        runDAO.update(selected);
+        for (MicroAstReading reading : reportChoices.latest(runId))
+            reportChoices.select(selected.getIsolateId(), reading.getAntibioticId(), reading.getId(),
+                    "Select validated attempt", performedBy);
+        synchronizeReportableRuns(selected.getIsolateId());
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_REPORTABLE_SELECTED, performedBy,
                 "Reportable AST attempt selected", "{\"astRunId\":\"" + selected.getId() + "\"}");
         return selected;
+    }
+
+    @Override
+    @Transactional
+    public MicroAstRunAntibiotic setReported(String runId, String antibioticId, boolean reported, String performedBy) {
+        MicroAstRun run = requireRun(runId);
+        MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
+                .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        authorization.requireWrite(isolate.getCaseId(), performedBy,
+                org.openelisglobal.common.constants.Constants.ROLE_RESULTS,
+                org.openelisglobal.common.constants.Constants.ROLE_VALIDATION);
+        requireOpenRun(run);
+        MicroAstRunAntibiotic ordered = runAntibioticDAO.getByRunIdAndAntibioticId(runId, antibioticId)
+                .orElseThrow(() -> new MicroAstConflictException("AST_ANTIBIOTIC_NOT_ORDERED"));
+        ordered.setReported(reported);
+        ordered.setReportManual(true);
+        MicroAstRunAntibiotic updated = runAntibioticDAO.update(ordered);
+        String agent = antibioticDAO.get(antibioticId).map(MicroAntibiotic::getDisplayName).orElse(antibioticId);
+        recordActivity(isolate.getCaseId(), MicroCaseActivityType.REPORT_CHOICE_CHANGED, performedBy, agent
+                + (reported ? ": changed from not reported to reported" : ": changed from reported to not reported"),
+                "{\"astRunId\":\"" + runId + "\",\"antibioticId\":\"" + antibioticId + "\",\"reported\":" + reported
+                        + "}");
+        return updated;
+    }
+
+    @Override
+    @Transactional
+    public void resetReportDefaults(String isolateId, String performedBy) {
+        MicroCaseServiceImpl.requireText(isolateId, "isolateId");
+        MicroIsolate isolate = isolateDAO.get(isolateId)
+                .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        authorization.requireWrite(isolate.getCaseId(), performedBy,
+                org.openelisglobal.common.constants.Constants.ROLE_RESULTS,
+                org.openelisglobal.common.constants.Constants.ROLE_VALIDATION);
+        for (MicroAstRun run : runDAO.getByIsolateId(isolateId)) {
+            Map<String, String> interpretations = latestReadings(run.getId()).stream().collect(
+                    Collectors.toMap(MicroAstReading::getAntibioticId, MicroAstReportChoiceService::interpretation));
+            for (MicroAstRunAntibiotic ordered : runAntibioticDAO.getByRunId(run.getId())) {
+                ordered.setReportManual(false);
+                ordered.setReported(
+                        defaultReported(ordered.getReportBehavior(), interpretations.get(ordered.getAntibioticId())));
+                runAntibioticDAO.update(ordered);
+            }
+        }
+        recordActivity(isolate.getCaseId(), MicroCaseActivityType.REPORT_CHOICE_CHANGED, performedBy,
+                "Report choices reset to defaults", "{\"isolateId\":\"" + isolateId + "\"}");
+    }
+
+    @Override
+    @Transactional
+    public void reapplyReportingRules(String antibioticId, String performedBy) {
+        Set<String> changedCaseIds = new LinkedHashSet<>();
+        for (MicroAstRunAntibiotic ordered : runAntibioticDAO.getByAntibioticIdForCasesNotFinalReleased(antibioticId)) {
+            MicroAstRun run = runDAO.get(ordered.getAstRunId()).orElse(null);
+            if (run == null || !reapplyReportingRule(run, ordered)) {
+                continue;
+            }
+            MicroIsolate isolate = isolateDAO.get(run.getIsolateId()).orElse(null);
+            if (isolate != null) {
+                changedCaseIds.add(isolate.getCaseId());
+            }
+        }
+        for (String caseId : changedCaseIds) {
+            recordActivity(caseId, MicroCaseActivityType.REPORT_CHOICE_CHANGED, performedBy,
+                    "Report choices updated by a reporting rule change", "{\"antibioticId\":\"" + antibioticId + "\"}");
+        }
+    }
+
+    @Override
+    @Transactional
+    public void reapplyRulesForIsolate(String isolateId, String performedBy) {
+        MicroCaseServiceImpl.requireText(isolateId, "isolateId");
+        MicroIsolate isolate = isolateDAO.get(isolateId).orElse(null);
+        if (isolate == null) {
+            return;
+        }
+        MicroCase microCase = caseDAO.get(isolate.getCaseId()).orElse(null);
+        if (microCase != null
+                && MicroCaseFinalReleaseState.FINAL_RELEASED.name().equals(microCase.getFinalReleaseState())) {
+            return;
+        }
+        for (MicroAstRun run : runDAO.getByIsolateId(isolateId)) {
+            if (Set.of("REVIEWED", "INVALIDATED", "RERUN_REQUIRED", "CANCELLED").contains(run.getStatus())) {
+                continue;
+            }
+            for (MicroAstReading reading : latestReadings(run.getId())) {
+                if (reading.getOverrideRuleId() != null) {
+                    String reason = "Expert rule no longer applies after re-identification";
+                    recordOverrideEvent(reading.getId(), MicroAstOverrideAction.REVERT,
+                            reading.getOverrideInterpretation(), reading.getInterpretation(), reason, performedBy,
+                            reading.getOverrideRuleId());
+                    reading.setOverrideInterpretation(null);
+                    reading.setOverrideReason(null);
+                    reading.setOverrideRuleId(null);
+                    readingDAO.update(reading);
+                    recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_READING_OVERRIDDEN, performedBy,
+                            reason, "{\"readingId\":\"" + reading.getId() + "\"}");
+                }
+                applyInterpretationRule(run, isolate, reading, performedBy);
+            }
+        }
+        boolean changed = false;
+        for (MicroAstRun run : runDAO.getByIsolateId(isolateId)) {
+            for (MicroAstRunAntibiotic ordered : runAntibioticDAO.getByRunId(run.getId())) {
+                changed |= reapplyReportingRule(run, ordered);
+            }
+        }
+        if (changed) {
+            recordActivity(isolate.getCaseId(), MicroCaseActivityType.REPORT_CHOICE_CHANGED, performedBy,
+                    "Report choices updated after re-identification", "{\"isolateId\":\"" + isolateId + "\"}");
+        }
+    }
+
+    private boolean reapplyReportingRule(MicroAstRun run, MicroAstRunAntibiotic ordered) {
+        String antibioticId = ordered.getAntibioticId();
+        var rule = findReportingRule(run, antibioticId);
+        String reportBehavior = reportBehavior(rule);
+        ordered.setReportBehavior(reportBehavior);
+        ordered.setReportRuleId(rule.map(MicroReportingRule::getId).orElse(null));
+        boolean changed = false;
+        if (!ordered.isReportManual()) {
+            String interpretation = latestReadings(run.getId()).stream()
+                    .filter(reading -> antibioticId.equals(reading.getAntibioticId()))
+                    .map(MicroAstReportChoiceService::interpretation).findFirst().orElse(null);
+            boolean reported = defaultReported(reportBehavior, interpretation);
+            changed = reported != ordered.isReported();
+            ordered.setReported(reported);
+        }
+        runAntibioticDAO.update(ordered);
+        return changed;
     }
 
     @Override
@@ -690,8 +900,8 @@ public class MicroAstServiceImpl implements MicroAstService {
         return panelAntibioticDAO.getByPanelId(panelId);
     }
 
-    private void snapshotPanelAntibiotics(String runId, String panelId) {
-        snapshotOrderedAntibiotics(runId, resolveOrderedAntibiotics(panelId, null).antibiotics);
+    private void snapshotPanelAntibiotics(MicroAstRun run, String panelId) {
+        snapshotOrderedAntibiotics(run, resolveOrderedAntibiotics(panelId, null).antibiotics);
     }
 
     private void requireCompleteOrderedResults(String runId) {
@@ -725,12 +935,17 @@ public class MicroAstServiceImpl implements MicroAstService {
                 && run.getAnalyzerFlagsAcknowledgedAt() == null) {
             throw new MicroAstConflictException("AST_ANALYZER_FLAGS_UNRESOLVED");
         }
-        if (latestReadings.stream().anyMatch(reading -> "NONE".equals(reading.getMatchedBy())
+        if (latestReadings.stream().anyMatch(reading -> ("NONE".equals(reading.getMatchedBy())
+                || MicroAstInterpretation.NO_BREAKPOINT.name().equals(reading.getInterpretation()))
                 && (reading.getOverrideInterpretation() == null || reading.getOverrideInterpretation().isBlank()))) {
             throw new MicroAstConflictException("AST_NO_BREAKPOINT_UNRESOLVED");
         }
         if (latestReadings.stream().anyMatch(this::hasUnresolvedInstrumentMismatch)) {
             throw new MicroAstConflictException("AST_INSTRUMENT_INTERPRETATION_MISMATCH");
+        }
+        if (run.getAnalyzerFlagsAcknowledgedAt() == null
+                && latestReadings.stream().anyMatch(MicroAstReading::contradictsExpertRule)) {
+            throw new MicroAstConflictException("AST_INTRINSIC_RESISTANCE_UNVERIFIED");
         }
     }
 
@@ -740,16 +955,30 @@ public class MicroAstServiceImpl implements MicroAstService {
                 && (reading.getOverrideInterpretation() == null || reading.getOverrideInterpretation().isBlank());
     }
 
-    private List<MicroAstReading> latestReadings(String runId) {
+    @Override
+    public List<MicroAstReading> latestReadings(String runId) {
         Map<String, MicroAstReading> latestByAntibiotic = new HashMap<>();
-        Comparator<MicroAstReading> revisionOrder = Comparator
-                .comparing(MicroAstReading::getCreatedAt, Comparator.nullsFirst(Comparator.naturalOrder()))
+        Comparator<MicroAstReading> revisionOrder = Comparator.comparingLong(MicroAstReading::getEntrySequence)
+                .thenComparing(MicroAstReading::getCreatedAt, Comparator.nullsFirst(Comparator.naturalOrder()))
                 .thenComparing(MicroAstReading::getId, Comparator.nullsFirst(Comparator.naturalOrder()));
         for (MicroAstReading reading : readingDAO.getByRunId(runId)) {
             latestByAntibiotic.merge(reading.getAntibioticId(), reading,
                     (current, candidate) -> revisionOrder.compare(candidate, current) > 0 ? candidate : current);
         }
         return List.copyOf(latestByAntibiotic.values());
+    }
+
+    private MicroAstInterpretation interpretReading(MicroAstRun run, MicroBreakpointRule rule, MicroAstMethod method,
+            BigDecimal rawValue) {
+        String standardId = run.getBreakpointStandardId();
+        MicroBreakpointStandard standard = standardId == null || standardId.isBlank()
+                ? breakpointService.getActiveStandard(defaultBreakpointAuthority, defaultBreakpointVersion)
+                : breakpointService.getStandard(standardId);
+        boolean whonetRule = rule != null && rule.getOrganismCodeType() != null;
+        if (standard != null && ("CLSI".equals(standard.getAuthority()) || whonetRule)) {
+            return interpretationService.interpret(rule, method, rawValue, standard.getAuthority());
+        }
+        return interpretationService.interpret(rule, method, rawValue);
     }
 
     private void appendAnalyzerReading(MicroAstRun run, MicroIsolate isolate, MicroCase microCase,
@@ -766,7 +995,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         reading.setMethod(method.name());
         reading.setRawValue(analyzerReading.rawValue());
         reading.setRawText(analyzerReading.rawValue() == null ? null : analyzerReading.rawValue().toPlainString());
-        reading.setInterpretation(interpretationService.interpret(rule, method, analyzerReading.rawValue()).name());
+        reading.setInterpretation(interpretReading(run, rule, method, analyzerReading.rawValue()).name());
         reading.setBreakpointRuleId(rule == null ? null : rule.getId());
         reading.setSource("ANALYZER_AUTO");
         reading.setMatchedBy(matchedBy(rule));
@@ -775,7 +1004,11 @@ public class MicroAstServiceImpl implements MicroAstService {
         reading.setAnalyzerResultReference(trimToNull(analyzerReading.analyzerResultReference()));
         reading.setCreatedAt(MicroCaseServiceImpl.now());
         reading.setCreatedBy(performedBy);
+        reading.setEntrySequence(readingDAO.getByRunId(reading.getAstRunId()).stream()
+                .mapToLong(MicroAstReading::getEntrySequence).max().orElse(0) + 1);
         readingDAO.insert(reading);
+        applyInterpretationRule(run, isolate, reading, performedBy);
+        applyReportDefault(run, reading.getAntibioticId(), effectiveInterpretation(reading));
     }
 
     /** The reading is kept as plain text too, so its exponent must be small. */
@@ -806,6 +1039,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         repeat.setPanelAdjustmentReason(source.getPanelAdjustmentReason());
         repeat.setBreakpointStandardId(source.getBreakpointStandardId());
         repeat.setBreakpointVersion(source.getBreakpointVersion());
+        repeat.setClinicalContext(source.getClinicalContext());
         repeat.setAttemptType(attemptType.name());
         repeat.setSourceRunId(source.getId());
         repeat.setAttemptReason(reason.trim());
@@ -823,26 +1057,31 @@ public class MicroAstServiceImpl implements MicroAstService {
         if (values == null || values.isEmpty()) {
             return null;
         }
-        return values.stream().map(this::trimToNull).filter(value -> value != null).collect(Collectors.joining("|"));
+        return values.stream().map(MicroAstServiceImpl::trimToNull).filter(value -> value != null)
+                .collect(Collectors.joining("|"));
     }
 
-    private String firstNonBlank(String preferred, String fallback) {
+    private static String firstNonBlank(String preferred, String fallback) {
         String normalized = trimToNull(preferred);
         return normalized == null ? trimToNull(fallback) : normalized;
     }
 
-    private String trimToNull(String value) {
+    private static String trimToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
     }
 
-    private void snapshotOrderedAntibiotics(String runId, List<OrderedAntibiotic> antibiotics) {
+    private void snapshotOrderedAntibiotics(MicroAstRun run, List<OrderedAntibiotic> antibiotics) {
         for (OrderedAntibiotic source : antibiotics) {
+            var rule = findReportingRule(run, source.antibioticId);
+            String reportBehavior = reportBehavior(rule);
             MicroAstRunAntibiotic ordered = new MicroAstRunAntibiotic();
-            ordered.setAstRunId(runId);
+            ordered.setAstRunId(run.getId());
             ordered.setAntibioticId(source.antibioticId);
             ordered.setDisplayOrder(source.displayOrder);
-            ordered.setTier(source.tier);
-            ordered.setReportBehavior(source.reportBehavior);
+            ordered.setReportBehavior(reportBehavior);
+            ordered.setReportRuleId(rule.map(MicroReportingRule::getId).orElse(null));
+            ordered.setDiskContent(source.diskContent);
+            ordered.setReported(defaultReported(reportBehavior, null));
             runAntibioticDAO.insert(ordered);
         }
     }
@@ -850,7 +1089,7 @@ public class MicroAstServiceImpl implements MicroAstService {
     private void copyOrderedAntibiotics(MicroAstRun source, MicroAstRun target) {
         List<MicroAstRunAntibiotic> sourceRows = runAntibioticDAO.getByRunId(source.getId());
         if (sourceRows.isEmpty()) {
-            snapshotPanelAntibiotics(target.getId(), source.getPanelId());
+            snapshotPanelAntibiotics(target, source.getPanelId());
             return;
         }
         for (MicroAstRunAntibiotic sourceRow : sourceRows) {
@@ -858,8 +1097,11 @@ public class MicroAstServiceImpl implements MicroAstService {
             ordered.setAstRunId(target.getId());
             ordered.setAntibioticId(sourceRow.getAntibioticId());
             ordered.setDisplayOrder(sourceRow.getDisplayOrder());
-            ordered.setTier(sourceRow.getTier());
             ordered.setReportBehavior(sourceRow.getReportBehavior());
+            ordered.setReportRuleId(sourceRow.getReportRuleId());
+            ordered.setDiskContent(sourceRow.getDiskContent());
+            ordered.setReported(sourceRow.isReported());
+            ordered.setReportManual(sourceRow.isReportManual());
             runAntibioticDAO.insert(ordered);
         }
     }
@@ -881,7 +1123,7 @@ public class MicroAstServiceImpl implements MicroAstService {
 
     private void snapshotRepeatOrder(MicroAstRun source, MicroAstRun target, List<MicroAstRunAntibiotic> scopedOrder) {
         if (scopedOrder.isEmpty()) {
-            snapshotPanelAntibiotics(target.getId(), source.getPanelId());
+            snapshotPanelAntibiotics(target, source.getPanelId());
             return;
         }
         for (MicroAstRunAntibiotic sourceRow : scopedOrder) {
@@ -889,8 +1131,11 @@ public class MicroAstServiceImpl implements MicroAstService {
             ordered.setAstRunId(target.getId());
             ordered.setAntibioticId(sourceRow.getAntibioticId());
             ordered.setDisplayOrder(sourceRow.getDisplayOrder());
-            ordered.setTier(sourceRow.getTier());
             ordered.setReportBehavior(sourceRow.getReportBehavior());
+            ordered.setReportRuleId(sourceRow.getReportRuleId());
+            ordered.setDiskContent(sourceRow.getDiskContent());
+            ordered.setReported(sourceRow.isReported());
+            ordered.setReportManual(sourceRow.isReportManual());
             runAntibioticDAO.insert(ordered);
         }
     }
@@ -911,23 +1156,53 @@ public class MicroAstServiceImpl implements MicroAstService {
             }
             standardId = standard.getId();
         }
-        String organismGroup = isolate.getOrganismId() == null ? null
-                : organismDAO.get(isolate.getOrganismId()).map(value -> value.getOrganismGroup()).orElse(null);
+        var organism = isolate.getOrganismId() == null ? null : organismDAO.get(isolate.getOrganismId()).orElse(null);
+        boolean ntm = organism != null && "NTM".equals(organism.getSusceptibilityProtocol());
+        Set<String> organismGroups = organism == null || ntm ? Set.of() : labGroups(organism);
         String specimenTypeId = null;
+        String specimenCode = null;
         if (microCase.getSampleItemId() != null) {
             SampleItem sampleItem = sampleItemService.getData(microCase.getSampleItemId());
             specimenTypeId = sampleItem == null ? null : sampleItemService.getTypeOfSampleId(sampleItem);
+            specimenCode = sampleItem == null || sampleItem.getTypeOfSample() == null ? null
+                    : sampleItem.getTypeOfSample().getWhonetCode();
         }
         String technique = run.getTechnique();
         if (technique != null && !technique.isBlank() && !MicroAstTechnique.valueOf(technique).isLegacyUnspecified()) {
-            MicroBreakpointRule techniqueRule = breakpointService.findBreakpointRule(standardId,
-                    isolate.getOrganismId(), organismGroup, antibioticId, technique, specimenTypeId, method.name());
-            if (techniqueRule != null) {
+            MicroBreakpointRule techniqueRule = findContextRule(run, standardId, isolate.getOrganismId(),
+                    organismGroups, antibioticId, technique, specimenTypeId, method.name());
+            if (techniqueRule != null && (!ntm || isolate.getOrganismId().equals(techniqueRule.getOrganismId()))) {
                 return techniqueRule;
             }
         }
-        return breakpointService.findBreakpointRule(standardId, isolate.getOrganismId(), organismGroup, antibioticId,
+        var rule = findContextRule(run, standardId, isolate.getOrganismId(), organismGroups, antibioticId,
                 method.name(), specimenTypeId, method.name());
+        if (rule == null && !ntm) {
+            return breakpointService.findWhonetBreakpointRule(standardId, isolate.getOrganismId(), antibioticId,
+                    method.name(), diskContent(run, antibioticId, method.name()), specimenCode,
+                    run.getClinicalContext());
+        }
+        return rule != null && ntm && !isolate.getOrganismId().equals(rule.getOrganismId()) ? null : rule;
+    }
+
+    private MicroBreakpointRule findContextRule(MicroAstRun run, String standardId, String organismId,
+            Set<String> organismGroups, String antibioticId, String method, String specimenTypeId,
+            String breakpointType) {
+        String diskContent = diskContent(run, antibioticId, breakpointType);
+        if (run.getClinicalContext() == null && diskContent == null)
+            return breakpointService.findBreakpointRule(standardId, organismId, organismGroups, antibioticId, method,
+                    specimenTypeId, breakpointType);
+        return breakpointService.findContextualBreakpointRule(standardId, organismId, organismGroups, antibioticId,
+                method, specimenTypeId, breakpointType, run.getClinicalContext(), diskContent);
+    }
+
+    // A zone breakpoint applies only to the disk content recorded for this drug on
+    // the run.
+    private String diskContent(MicroAstRun run, String antibioticId, String breakpointType) {
+        return "ZONE".equals(breakpointType)
+                ? runAntibioticDAO.getByRunIdAndAntibioticId(run.getId(), antibioticId)
+                        .map(MicroAstRunAntibiotic::getDiskContent).orElse(null)
+                : null;
     }
 
     private String matchedBy(MicroBreakpointRule rule) {
@@ -943,11 +1218,152 @@ public class MicroAstServiceImpl implements MicroAstService {
         if (rule.getOrganismGroup() != null && !rule.getOrganismGroup().isBlank()) {
             return "GROUP";
         }
+        if ("WHONET_ORG_CODE".equals(rule.getOrganismCodeType())) {
+            return "ORGANISM";
+        }
+        if (rule.getOrganismCodeType() != null && !"ALL".equals(rule.getOrganismCodeType())) {
+            return "GROUP";
+        }
         return "STANDARD";
     }
 
     private String defaultUnits(MicroAstMethod method) {
-        return MicroAstMethod.ZONE.equals(method) ? "mm" : "ug/mL";
+        return MicroAstMethod.ZONE.equals(method) ? "mm" : "mg/L";
+    }
+
+    private void applyReportDefault(MicroAstRun run, String antibioticId, String interpretation) {
+        MicroAstRunAntibiotic ordered = runAntibioticDAO.getByRunIdAndAntibioticId(run.getId(), antibioticId)
+                .orElse(null);
+        if (ordered == null || ordered.isReportManual()) {
+            return;
+        }
+        ordered.setReported(defaultReported(ordered.getReportBehavior(), interpretation));
+        runAntibioticDAO.update(ordered);
+    }
+
+    private static String reportBehavior(java.util.Optional<MicroReportingRule> rule) {
+        return rule.map(MicroReportingRule::getReportBehavior).orElse("ALWAYS");
+    }
+
+    static boolean defaultReported(String reportBehavior, String interpretation) {
+        if ("DONT_REPORT".equals(reportBehavior)) {
+            return false;
+        }
+        if ("SUPPRESS_UNLESS_RESISTANT".equals(reportBehavior)) {
+            return MicroAstInterpretation.RESISTANT.name().equals(interpretation);
+        }
+        if ("CASCADE".equals(reportBehavior)) {
+            return false;
+        }
+        return true;
+    }
+
+    private static Set<String> labGroups(MicroOrganism organism) {
+        return Set.copyOf(organism.getLabGroups());
+    }
+
+    private java.util.Optional<MicroReportingRule> findReportingRule(MicroAstRun run, String antibioticId) {
+        MicroIsolate isolate = isolateDAO.get(run.getIsolateId()).orElse(null);
+        if (isolate == null || isolate.getOrganismId() == null) {
+            return java.util.Optional.empty();
+        }
+        MicroOrganism organism = organismDAO.get(isolate.getOrganismId()).orElse(null);
+        if (organism == null) {
+            return java.util.Optional.empty();
+        }
+        MicroCase microCase = caseDAO.get(isolate.getCaseId()).orElse(null);
+        String sampleTypeId = null;
+        if (microCase != null && microCase.getSampleItemId() != null) {
+            SampleItem sampleItem = sampleItemService.getData(microCase.getSampleItemId());
+            sampleTypeId = sampleItem == null ? null : sampleItemService.getTypeOfSampleId(sampleItem);
+        }
+        return reportingRuleDAO.findBest(antibioticId, isolate.getOrganismId(), labGroups(organism), sampleTypeId,
+                run.getClinicalContext());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MicroReportingRulePreviewResultForm previewReportingRules(MicroReportingRulePreviewForm request) {
+        MicroOrganism organism = java.util.Optional.ofNullable(trimToNull(request.organismId)).flatMap(organismDAO::get)
+                .orElseThrow(() -> new IllegalArgumentException("REPORTING_RULE_PREVIEW_ORGANISM_REQUIRED"));
+        String organismId = organism.getId();
+        Set<String> organismGroups = labGroups(organism);
+        String clinicalContext = MicroBreakpointClinicalContext.validate(request.clinicalContext);
+        String sampleTypeId = trimToNull(request.sampleTypeId);
+        String defaultPanelId = MicroAstPanelAssignmentService.defaultPanelId(organism);
+        MicroReportingRulePreviewResultForm result = new MicroReportingRulePreviewResultForm();
+        result.defaultPanelName = defaultPanelId == null ? null
+                : panelDAO.get(defaultPanelId).map(MicroAstPanel::getName).orElse(null);
+        List<MicroReportingRulePreviewForm.Reading> readings = request.readings == null ? List.of() : request.readings;
+        for (MicroReportingRulePreviewForm.Reading reading : readings) {
+            String antibioticId = reading == null ? null : trimToNull(reading.antibioticId);
+            if (antibioticId == null) {
+                continue;
+            }
+            MicroReportingRulePreviewResultForm.Row row = new MicroReportingRulePreviewResultForm.Row();
+            row.antibioticId = antibioticId;
+            row.antibioticName = antibioticDAO.get(antibioticId).map(MicroAntibiotic::getDisplayName)
+                    .orElse(antibioticId);
+            row.measured = reading.interpretation;
+            row.interpretation = reading.interpretation;
+            interpretationRuleDAO.findBest(antibioticId, organismId, organismGroups)
+                    .filter(rule -> rule.getInterpretation() != null
+                            && !rule.getInterpretation().equals(reading.interpretation))
+                    .ifPresent(rule -> {
+                        row.interpretation = rule.getInterpretation();
+                        row.expertRule = expertRuleReason(organism, antibioticId, row.antibioticName);
+                    });
+            var reportingRule = reportingRuleDAO.findBest(antibioticId, organismId, organismGroups, sampleTypeId,
+                    clinicalContext);
+            row.reportBehavior = reportBehavior(reportingRule);
+            if (reportingRule.isPresent()) {
+                MicroReportingRule rule = reportingRule.get();
+                row.reportRuleId = rule.getId();
+                row.note = rule.noteFor(row.interpretation);
+            }
+            row.reported = defaultReported(row.reportBehavior, row.interpretation);
+            result.rows.add(row);
+        }
+        return result;
+    }
+
+    private void applyInterpretationRule(MicroAstRun run, MicroIsolate isolate, MicroAstReading reading,
+            String performedBy) {
+        if (isolate == null || isolate.getOrganismId() == null) {
+            return;
+        }
+        MicroOrganism organism = organismDAO.get(isolate.getOrganismId()).orElse(null);
+        if (organism == null) {
+            return;
+        }
+        MicroInterpretationRule rule = interpretationRuleDAO
+                .findBest(reading.getAntibioticId(), isolate.getOrganismId(), labGroups(organism)).orElse(null);
+        if (rule == null || rule.getInterpretation() == null
+                || rule.getInterpretation().equals(reading.getInterpretation())) {
+            return;
+        }
+        String reason = expertRuleReason(organism, reading.getAntibioticId(),
+                antibioticDAO.get(reading.getAntibioticId()).map(MicroAntibiotic::getDisplayName).orElse(null));
+        reading.setOverrideInterpretation(rule.getInterpretation());
+        reading.setOverrideReason(reason);
+        reading.setOverrideRuleId(rule.getId());
+        if (reading.contradictsExpertRule()) {
+            run.setAnalyzerFlagsAcknowledgedAt(null);
+            run.setAnalyzerFlagsAcknowledgedBy(null);
+            run.setAnalyzerFlagsAcknowledgementReason(null);
+            runDAO.update(run);
+        }
+        readingDAO.update(reading);
+        recordOverrideEvent(reading.getId(), MicroAstOverrideAction.OVERRIDE, reading.getInterpretation(),
+                rule.getInterpretation(), reason, performedBy, rule.getId());
+        recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_READING_OVERRIDDEN, performedBy, reason,
+                "{\"readingId\":\"" + reading.getId() + "\",\"ruleId\":\"" + rule.getId() + "\"}");
+    }
+
+    static String expertRuleReason(MicroOrganism organism, String antibioticId, String antibioticDisplayName) {
+        String organismLabel = firstNonBlank(organism.getDisplayName(), organism.getOrganismGroup());
+        String antibioticLabel = firstNonBlank(antibioticDisplayName, antibioticId);
+        return "Expert rule: " + organismLabel + ", " + antibioticLabel + " always R";
     }
 
     private String effectiveInterpretation(MicroAstReading reading) {
@@ -957,7 +1373,7 @@ public class MicroAstServiceImpl implements MicroAstService {
     }
 
     private void recordOverrideEvent(String readingId, MicroAstOverrideAction action, String fromInterpretation,
-            String toInterpretation, String reason, String performedBy) {
+            String toInterpretation, String reason, String performedBy, String ruleId) {
         MicroCaseServiceImpl.requireText(performedBy, "performedBy");
         MicroAstOverrideEvent event = new MicroAstOverrideEvent();
         event.setReadingId(readingId);
@@ -967,6 +1383,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         event.setReason(reason.trim());
         event.setPerformedAt(MicroCaseServiceImpl.now());
         event.setPerformedBy(performedBy);
+        event.setRuleId(ruleId);
         overrideEventDAO.insert(event);
     }
 
@@ -1000,7 +1417,7 @@ public class MicroAstServiceImpl implements MicroAstService {
     }
 
     private PanelSelection resolvePanel(MicroOrganism organism, String requestedPanelId) {
-        String orderedPanelId = organism.getDefaultAstPanelId();
+        String orderedPanelId = MicroAstPanelAssignmentService.defaultPanelId(organism);
         String selectedPanelId = requestedPanelId == null || requestedPanelId.isBlank() ? orderedPanelId
                 : requestedPanelId;
         if (selectedPanelId == null || selectedPanelId.isBlank()) {
@@ -1035,8 +1452,8 @@ public class MicroAstServiceImpl implements MicroAstService {
                     throw new IllegalArgumentException("AST_ANTIBIOTIC_NOT_ACTIVE");
                 }
             }
-            ordered.add(new OrderedAntibiotic(antibioticId, displayOrder++, panelRow == null ? 1 : panelRow.getTier(),
-                    panelRow == null ? "ALWAYS" : panelRow.getReportBehavior()));
+            ordered.add(new OrderedAntibiotic(antibioticId, displayOrder++,
+                    panelRow == null ? null : panelRow.getDiskContent()));
         }
         return new OrderedSelection(ordered, !requestedIds.equals(baselineIds));
     }
@@ -1055,10 +1472,19 @@ public class MicroAstServiceImpl implements MicroAstService {
     }
 
     private MicroBreakpointStandard resolveStandard(String requestedStandardId) {
+        if (requestedStandardId == null || requestedStandardId.isBlank()) {
+            var preferred = breakpointService.getDefaultStandard();
+            if (preferred != null && preferred.configured) {
+                if (!preferred.available) {
+                    throw new IllegalArgumentException("AST_BREAKPOINT_DEFAULT_NOT_AVAILABLE");
+                }
+                requestedStandardId = preferred.standardId;
+            }
+        }
         if (requestedStandardId != null && !requestedStandardId.isBlank()) {
             MicroBreakpointStandard selected = breakpointService.getStandard(requestedStandardId);
-            if (selected == null || "N".equals(selected.getIsActive())
-                    || "ARCHIVED".equals(selected.getLifecycleStatus())) {
+            if (selected == null || !"Y".equals(selected.getIsActive())
+                    || !"ACTIVE".equals(selected.getLifecycleStatus())) {
                 throw new IllegalArgumentException("AST_BREAKPOINT_STANDARD_NOT_AVAILABLE");
             }
             return selected;
@@ -1077,11 +1503,22 @@ public class MicroAstServiceImpl implements MicroAstService {
     private record OrderedSelection(List<OrderedAntibiotic> antibiotics, boolean adjusted) {
     }
 
-    private record OrderedAntibiotic(String antibioticId, Integer displayOrder, Integer tier, String reportBehavior) {
+    private record OrderedAntibiotic(String antibioticId, Integer displayOrder, String diskContent) {
+    }
+
+    private void synchronizeReportableRuns(String isolateId) {
+        var selected = reportChoices.getSelectedReadings(isolateId).stream().map(MicroAstReading::getAstRunId)
+                .collect(Collectors.toSet());
+        for (var run : runDAO.getByIsolateId(isolateId)) {
+            run.setReportable(selected.contains(run.getId()));
+            runDAO.update(run);
+        }
     }
 
     private MicroCase requireMutableCase(String caseId) {
-        MicroCase microCase = caseDAO.get(caseId).orElseThrow(() -> new IllegalArgumentException("Case not found"));
+        MicroCase microCase = caseDAO.getForUpdate(caseId);
+        if (microCase == null)
+            throw new IllegalArgumentException("Case not found");
         MicroCaseMutationGuard.requireMutable(microCase);
         return microCase;
     }
@@ -1093,6 +1530,13 @@ public class MicroAstServiceImpl implements MicroAstService {
     private void requireUnreviewedRun(MicroAstRun run) {
         if (MicroAstRunStatus.REVIEWED.name().equals(run.getStatus())) {
             throw new MicroAstConflictException("AST_RUN_ALREADY_REVIEWED");
+        }
+        requireOpenRun(run);
+    }
+
+    private void requireOpenRun(MicroAstRun run) {
+        if (Set.of("INVALIDATED", "RERUN_REQUIRED", "CANCELLED").contains(run.getStatus())) {
+            throw new MicroAstConflictException("AST_RUN_NOT_EDITABLE");
         }
     }
 

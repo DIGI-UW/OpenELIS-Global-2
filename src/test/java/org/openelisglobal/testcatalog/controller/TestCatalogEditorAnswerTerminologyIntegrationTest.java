@@ -64,9 +64,12 @@ public class TestCatalogEditorAnswerTerminologyIntegrationTest extends BaseWebCo
     }
 
     @Test
-    public void anAnswerTakesOnlyStandardSystemsAndOneOfEachCode() throws Exception {
+    public void anAnswerTakesACodeInAnySystemOnce() throws Exception {
         String path = "/rest/test-catalog/answers/" + ANSWER_ID + "/terminology";
-        for (String body : new String[] { "{\"mappings\":[{\"source\":\"WHONET\",\"code\":\"POS\"}]}",
+        mockMvc.perform(put(path).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"mappings\":[{\"source\":\"WHONET\",\"code\":\"POS\"}]}").session(authedSession()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.mappings[0].source").value("WHONET"));
+        for (String body : new String[] { "{\"mappings\":[{\"source\":\"ABCDEFGHIJKLMNOPQRSTU\",\"code\":\"POS\"}]}",
                 "{\"mappings\":[{\"source\":\"LOINC\",\"code\":\"LA6576-8\"},{\"source\":\"LOINC\",\"code\":\"LA6576-8\"}]}",
                 "{\"mappings\":[{\"source\":\"LOINC\",\"code\":\"LA6576-8\",\"relationship\":\"EQUIVALENT\"}]}" }) {
             mockMvc.perform(put(path).contentType(MediaType.APPLICATION_JSON).content(body).session(authedSession()))

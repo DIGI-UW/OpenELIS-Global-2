@@ -23,7 +23,7 @@ import { toLocalIsoDate } from "../utils/Utils";
 import { labNow } from "../utils/labClock";
 import "./InventoryItemsBoard.css";
 
-const ReceiveDelivery = ({ onSaved = () => {} }) => {
+const ReceiveDelivery = () => {
   const intl = useIntl();
   const scanRef = useRef(null);
   const nextLineKey = useRef(0);
@@ -155,7 +155,6 @@ const ReceiveDelivery = ({ onSaved = () => {} }) => {
       setDone(lines.length);
       setLines([]);
       clearLine();
-      onSaved();
       focusScan();
     } catch (err) {
       setError(err.message);
@@ -247,7 +246,7 @@ const ReceiveDelivery = ({ onSaved = () => {} }) => {
             id="delivery-item"
             titleText={<FormattedMessage id="catalog.item.name" />}
             placeholder={intl.formatMessage({
-              id: "inventory.search.placeholder",
+              id: "catalog.search.placeholder",
             })}
             items={options}
             selectedItem={selected}
@@ -276,7 +275,7 @@ const ReceiveDelivery = ({ onSaved = () => {} }) => {
           )}
           <NumberInput
             id="delivery-quantity"
-            label={<FormattedMessage id="lot.currentQuantity" />}
+            label={<FormattedMessage id="inventory.receive.quantity" />}
             min={1}
             step={1}
             value={quantity}
@@ -314,7 +313,7 @@ const ReceiveDelivery = ({ onSaved = () => {} }) => {
                     <FormattedMessage id="lot.expirationDate" />
                   </TableHeader>
                   <TableHeader>
-                    <FormattedMessage id="lot.currentQuantity" />
+                    <FormattedMessage id="inventory.receive.quantity" />
                   </TableHeader>
                   <TableHeader />
                 </TableRow>
@@ -377,7 +376,6 @@ const ReceiveDelivery = ({ onSaved = () => {} }) => {
             setDefiningUpc(null);
             setUnknownUpc(null);
             load();
-            onSaved();
           }}
         />
       )}

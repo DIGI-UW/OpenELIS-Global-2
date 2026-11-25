@@ -4,9 +4,9 @@ import { vi } from "vitest";
 import { IntlProvider } from "react-intl";
 import messages from "../../../languages/en.json";
 import PolymorphicResultCell, {
-  blocksSaveOnPrecision,
+  warnsOnReportingFormat,
   enteredDecimalPlaces,
-  exceedsConfiguredPrecision,
+  exceedsReportingDecimalPlaces,
   worklistRowKey,
 } from "./PolymorphicResultCell";
 
@@ -42,6 +42,31 @@ describe("PolymorphicResultCell", () => {
     const input = container.querySelector("input");
     expect(input).toHaveAttribute("type", "text");
     expect(input).toHaveValue("42");
+  });
+
+  it("a numeric row finer than the test reports to warns and stays valid (OGC-1544)", () => {
+    const { container } = render(
+      <PolymorphicResultCell
+        row={{
+          ...baseRow,
+          resultType: "N",
+          reportingDecimalPlaces: 0,
+          resultValue: "0.9",
+          rawResultValue: "",
+        }}
+        editable
+        onValueChange={() => {}}
+      />,
+    );
+    expect(
+      screen.getByText(
+        "This test reports to 0 decimal place(s). The full entered value is retained for clinical decisions.",
+      ),
+    ).toBeInTheDocument();
+    expect(container.querySelector("input")).not.toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
   });
 
   it("numeric rows report scientific notation as typed", () => {
@@ -226,33 +251,33 @@ describe("configured precision", () => {
   });
 
   it("flags a value finer than the test reports to", () => {
-    expect(exceedsConfiguredPrecision("23.7", 0)).toBe(true);
-    expect(exceedsConfiguredPrecision("23", 0)).toBe(false);
-    expect(exceedsConfiguredPrecision("5.1234", 2)).toBe(true);
-    expect(exceedsConfiguredPrecision("5.12", 2)).toBe(false);
-    expect(exceedsConfiguredPrecision("5.1", 2)).toBe(false);
+    expect(exceedsReportingDecimalPlaces("23.7", 0)).toBe(true);
+    expect(exceedsReportingDecimalPlaces("23", 0)).toBe(false);
+    expect(exceedsReportingDecimalPlaces("5.1234", 2)).toBe(true);
+    expect(exceedsReportingDecimalPlaces("5.12", 2)).toBe(false);
+    expect(exceedsReportingDecimalPlaces("5.1", 2)).toBe(false);
   });
 
   it("says nothing when the test declares no precision", () => {
-    expect(exceedsConfiguredPrecision("23.7", undefined)).toBe(false);
-    expect(exceedsConfiguredPrecision("23.7", -1)).toBe(false);
-    expect(exceedsConfiguredPrecision("", 0)).toBe(false);
-    expect(exceedsConfiguredPrecision("not a number", 0)).toBe(false);
+    expect(exceedsReportingDecimalPlaces("23.7", undefined)).toBe(false);
+    expect(exceedsReportingDecimalPlaces("23.7", -1)).toBe(false);
+    expect(exceedsReportingDecimalPlaces("", 0)).toBe(false);
+    expect(exceedsReportingDecimalPlaces("not a number", 0)).toBe(false);
   });
 
-  it("judges scientific notation by the mantissa's places", () => {
+  it("preserves scientific notation without applying a mantissa precision", () => {
     expect(enteredDecimalPlaces("1.5e5")).toBe(1);
     expect(enteredDecimalPlaces("1.5×10⁵")).toBe(1);
     expect(enteredDecimalPlaces("3e2")).toBe(0);
-    expect(exceedsConfiguredPrecision("1.5e1", 1)).toBe(false);
-    expect(exceedsConfiguredPrecision("1.5e-7", 2)).toBe(false);
-    expect(exceedsConfiguredPrecision("1.55e1", 1)).toBe(true);
-    expect(exceedsConfiguredPrecision("1.234e5", 2)).toBe(true);
-    expect(exceedsConfiguredPrecision("1.5 x 10^5", 0)).toBe(false);
-    expect(exceedsConfiguredPrecision("3²", 2)).toBe(false);
+    expect(exceedsReportingDecimalPlaces("1.5e1", 1)).toBe(false);
+    expect(exceedsReportingDecimalPlaces("1.5e-7", 2)).toBe(false);
+    expect(exceedsReportingDecimalPlaces("1.55e1", 1)).toBe(false);
+    expect(exceedsReportingDecimalPlaces("1.234e5", 2)).toBe(false);
+    expect(exceedsReportingDecimalPlaces("1.5 x 10^5", 0)).toBe(false);
+    expect(exceedsReportingDecimalPlaces("3²", 2)).toBe(false);
   });
 
-  it("marks the entry field invalid rather than accepting the divergence", () => {
+  it("warns about the divergence instead of marking the field invalid (OGC-1544)", () => {
     const { container } = render(
       <PolymorphicResultCell
         row={{
@@ -260,7 +285,7 @@ describe("configured precision", () => {
           resultType: "N",
           resultValue: "23.7",
           rawResultValue: "22",
-          significantDigits: 0,
+          reportingDecimalPlaces: 0,
           testName: "E (Ct)",
         }}
         editable
@@ -268,7 +293,10 @@ describe("configured precision", () => {
       />,
     );
     const input = container.querySelector('input[type="text"]');
-    expect(input).toHaveAttribute("data-invalid");
+    expect(input).not.toHaveAttribute("data-invalid");
+    expect(
+      screen.getByText(/full entered value is retained/),
+    ).toBeInTheDocument();
   });
 
   it("leaves a value within the configured precision alone", () => {
@@ -278,7 +306,7 @@ describe("configured precision", () => {
           ...baseRow,
           resultType: "N",
           resultValue: "5.1234",
-          significantDigits: 4,
+          reportingDecimalPlaces: 4,
           testName: "RBC",
         }}
         editable
@@ -291,39 +319,39 @@ describe("configured precision", () => {
 });
 
 /**
- * A value already stored at a finer precision than the test reports to is a
- * record that exists. Refusing to save its row would strand it — the reader
- * could not add a note to say so. What is refused is entering a new one.
+ * A newly typed value finer than the test reports to is saved as typed and
+ * reported rounded (OGC-1544); the field warns about it. A value already stored
+ * at that precision is a record that exists and raises no warning.
  */
-describe("what the precision guard refuses", () => {
+describe("what the precision guard warns about", () => {
   const numeric = (resultValue: string, rawResultValue: string) => ({
     ...baseRow,
     resultType: "N",
-    significantDigits: 0,
+    reportingDecimalPlaces: 0,
     resultValue,
     rawResultValue,
   });
 
-  it("refuses a newly typed out-of-precision value", () => {
-    expect(blocksSaveOnPrecision(numeric("23.7", "22"))).toBe(true);
-    expect(blocksSaveOnPrecision(numeric("23.7", ""))).toBe(true);
+  it("warns about a newly typed out-of-precision value", () => {
+    expect(warnsOnReportingFormat(numeric("23.7", "22"))).toBe(true);
+    expect(warnsOnReportingFormat(numeric("23.7", ""))).toBe(true);
   });
 
-  it("leaves a stored out-of-precision value saveable", () => {
-    expect(blocksSaveOnPrecision(numeric("23.7", "23.7"))).toBe(false);
+  it("says nothing about a stored out-of-precision value", () => {
+    expect(warnsOnReportingFormat(numeric("23.7", "23.7"))).toBe(false);
   });
 
   it("says nothing about a value within the configured precision", () => {
-    expect(blocksSaveOnPrecision(numeric("24", "22"))).toBe(false);
+    expect(warnsOnReportingFormat(numeric("24", "22"))).toBe(false);
   });
 
   it("says nothing about a non-numeric result", () => {
     expect(
-      blocksSaveOnPrecision({
+      warnsOnReportingFormat({
         resultType: "D",
         resultValue: "1578",
         rawResultValue: "1334",
-        significantDigits: 0,
+        reportingDecimalPlaces: 0,
       }),
     ).toBe(false);
   });

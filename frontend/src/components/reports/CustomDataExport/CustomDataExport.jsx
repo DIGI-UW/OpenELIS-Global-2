@@ -39,6 +39,7 @@ const emptyDraft = () => ({
   labSectionIds: [],
   testIds: [],
   resultStatuses: ["FINALIZED"],
+  dateBasis: null,
   jobId: null,
   review: false,
   savedReport: null,
@@ -171,8 +172,8 @@ function ReportingBuilder({ owner }) {
   );
   const catalog = useQuery({
     ...serverQuery(
-      ["reporting-catalog", owner, draft.reportType, draft.layout],
-      `${reportingPath}/variables?reportType=${encodeURIComponent(draft.reportType)}&layout=${encodeURIComponent(draft.layout)}`,
+      ["reporting-catalog", owner, draft.reportType, draft.layout, intl.locale],
+      `${reportingPath}/variables?reportType=${encodeURIComponent(draft.reportType)}&layout=${encodeURIComponent(draft.layout)}&locale=${encodeURIComponent(intl.locale)}`,
     ),
     enabled: panel === "builder" && !!draft.reportType,
   });
@@ -273,9 +274,17 @@ function ReportingBuilder({ owner }) {
   const supportsFilter = (name) =>
     catalog.data?.definition.filters?.includes(name);
   const filterNames = ["labSectionIds", "testIds", "resultStatuses"];
-  const effectiveFilters = Object.fromEntries(
-    filterNames.map((name) => [name, supportsFilter(name) ? draft[name] : []]),
-  );
+  const effectiveFilters = {
+    ...Object.fromEntries(
+      filterNames.map((name) => [
+        name,
+        supportsFilter(name) ? draft[name] : [],
+      ]),
+    ),
+    ...(supportsFilter("dateBasis") && draft.dateBasis
+      ? { dateBasis: draft.dateBasis }
+      : {}),
+  };
   const unavailableFilters =
     !!catalog.data &&
     filterNames.some(
@@ -321,7 +330,9 @@ function ReportingBuilder({ owner }) {
   });
   const removeSaved = useMutation({
     mutationFn: deleteSavedReport,
-    onSuccess: (_result, { id: removedId }) => {
+    onSuccess: async (_result, { id: removedId }) => {
+      // A search started before deletion can still return the removed report.
+      await queryClient.cancelQueries({ queryKey: ["reporting-saved", owner] });
       queryClient.setQueriesData(
         { queryKey: ["reporting-saved", owner] },
         (page) =>
@@ -422,6 +433,7 @@ function ReportingBuilder({ owner }) {
       labSectionIds: definition.filters.labSectionIds,
       testIds: definition.filters.testIds,
       resultStatuses: definition.filters.resultStatuses,
+      dateBasis: definition.filters.dateBasis || null,
       jobId: null,
       review: false,
       step: 2,

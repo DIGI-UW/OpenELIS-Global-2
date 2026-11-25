@@ -15,7 +15,7 @@ const testIntl = createIntl({ locale: "en", messages });
 const buildTree = (props) => (
   <IntlProvider locale="en" messages={messages}>
     <Accordion>
-      <CaseSection number={1} titleKey="pathology.label.grossexam" {...props}>
+      <CaseSection number={1} titleKey="pathology.label.grossExam" {...props}>
         <p>{CHILD_TEXT}</p>
       </CaseSection>
     </Accordion>
@@ -29,7 +29,9 @@ describe("CaseSection", () => {
     const user = userEvent.setup();
     renderSection({ state: SECTION_STATE.OPEN, defaultOpen: false });
 
-    const header = screen.getByRole("button", { name: /gross exam/i });
+    const header = screen.getByRole("button", {
+      name: /macroscopic description/i,
+    });
     expect(header).toHaveAttribute("aria-expanded", "false");
 
     await user.click(header);
@@ -46,7 +48,9 @@ describe("CaseSection", () => {
       defaultOpen: false,
     });
 
-    const header = screen.getByRole("button", { name: /gross exam/i });
+    const header = screen.getByRole("button", {
+      name: /macroscopic description/i,
+    });
     expect(header).toHaveAttribute("aria-expanded", "false");
 
     await user.click(header);
@@ -64,7 +68,9 @@ describe("CaseSection", () => {
     const user = userEvent.setup();
     const { rerender } = renderSection({ state: SECTION_STATE.OPEN });
 
-    const header = screen.getByRole("button", { name: /gross exam/i });
+    const header = screen.getByRole("button", {
+      name: /macroscopic description/i,
+    });
     expect(header).toHaveAttribute("aria-expanded", "true");
 
     await user.click(header);
@@ -78,7 +84,9 @@ describe("CaseSection", () => {
   it("keeps a section the user left open open once its state moves from open to complete", () => {
     const { rerender } = renderSection({ state: SECTION_STATE.OPEN });
 
-    const header = screen.getByRole("button", { name: /gross exam/i });
+    const header = screen.getByRole("button", {
+      name: /macroscopic description/i,
+    });
     expect(header).toHaveAttribute("aria-expanded", "true");
 
     rerender(buildTree({ state: SECTION_STATE.COMPLETE }));
@@ -92,7 +100,9 @@ describe("CaseSection", () => {
   it("stops reporting an open section as expanded once it is disabled", () => {
     const { rerender } = renderSection({ state: SECTION_STATE.OPEN });
 
-    const header = screen.getByRole("button", { name: /gross exam/i });
+    const header = screen.getByRole("button", {
+      name: /macroscopic description/i,
+    });
     expect(header).toHaveAttribute("aria-expanded", "true");
 
     rerender(buildTree({ state: SECTION_STATE.DISABLED }));
@@ -104,7 +114,9 @@ describe("CaseSection", () => {
     const user = userEvent.setup();
     renderSection({ state: SECTION_STATE.OPEN });
 
-    const header = screen.getByRole("button", { name: /gross exam/i });
+    const header = screen.getByRole("button", {
+      name: /macroscopic description/i,
+    });
     await user.tab();
 
     expect(header).toHaveFocus();
@@ -118,7 +130,9 @@ describe("CaseSection", () => {
       lockedHintValues: { stage: "Microtomy" },
     });
 
-    const header = screen.getByRole("button", { name: /gross exam/i });
+    const header = screen.getByRole("button", {
+      name: /macroscopic description/i,
+    });
     expect(header).toBeDisabled();
 
     await user.tab();
@@ -206,7 +220,7 @@ describe("CaseSection", () => {
       { id: "caseView.label.numberedSection" },
       {
         number: 3,
-        title: testIntl.formatMessage({ id: "pathology.label.grossexam" }),
+        title: testIntl.formatMessage({ id: "pathology.label.grossExam" }),
       },
     );
 
@@ -218,7 +232,9 @@ describe("CaseSection", () => {
   it("puts the given id on the rendered section, for a progress rail to scroll to", () => {
     renderSection({ id: "section-grossing" });
 
-    const header = screen.getByRole("button", { name: /gross exam/i });
+    const header = screen.getByRole("button", {
+      name: /macroscopic description/i,
+    });
     const sectionElement = document.getElementById("section-grossing");
 
     expect(sectionElement).not.toBeNull();

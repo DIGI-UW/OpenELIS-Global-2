@@ -43,6 +43,7 @@ import {
   modeBlockers,
   prepBlockers,
 } from "./blindingRules";
+import SearchableSelect from "../../common/SearchableSelect";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -399,21 +400,18 @@ const BlindingWizard = () => {
 
         {step === 0 && (
           <Column lg={16} md={8} sm={4}>
-            <Select
+            <SearchableSelect
               id="inhouse-scheme"
               labelText={intl.formatMessage({ id: "eqa.inhouse.scheme" })}
+              options={schemes.map((scheme) => ({
+                id: String(scheme.id),
+                value: scheme.name,
+              }))}
               value={cycle.schemeId}
-              onChange={(e) => setCycle({ ...cycle, schemeId: e.target.value })}
-            >
-              <SelectItem value="" text="" />
-              {schemes.map((scheme) => (
-                <SelectItem
-                  key={scheme.id}
-                  value={scheme.id}
-                  text={scheme.name}
-                />
-              ))}
-            </Select>
+              onChange={(schemeId) =>
+                setCycle((current) => ({ ...current, schemeId }))
+              }
+            />
             <TextInput
               id="inhouse-cycle-name"
               labelText={intl.formatMessage({ id: "eqa.inhouse.cycleName" })}

@@ -27,4 +27,10 @@ public interface PathologySampleDAO extends BaseDAO<PathologySample, Integer> {
      * of its requests are open.
      */
     Long getCountWithOpenRequests();
+
+    /** The case a block belongs to, null when there is none. */
+    PathologySample getCaseOfBlock(Integer blockId);
+
+    /** The case a slide belongs to, null when there is none. */
+    PathologySample getCaseOfSlide(Integer slideId);
 }

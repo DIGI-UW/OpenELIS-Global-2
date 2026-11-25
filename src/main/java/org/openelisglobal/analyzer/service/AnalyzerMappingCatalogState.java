@@ -17,16 +17,27 @@ public final class AnalyzerMappingCatalogState {
     private final AnalyzerMappingCatalogService mappingCatalogService;
     private final Map<String, AnalyzerMappingCatalogService.TestOption> activeTests;
     private final Map<String, Map<String, AnalyzerMappingCatalogService.ResultOption>> activeResultOptions = new HashMap<>();
-    private final Map<String, Set<String>> primaryComponents = new HashMap<>();
+    private final Map<String, List<AnalyzerMappingCatalogService.ComponentOption>> activeComponents = new HashMap<>();
 
     private AnalyzerMappingCatalogState(AnalyzerMappingCatalogService mappingCatalogService) {
+        this(mappingCatalogService, mappingCatalogService.searchActiveTests(null));
+    }
+
+    private AnalyzerMappingCatalogState(AnalyzerMappingCatalogService mappingCatalogService,
+            List<AnalyzerMappingCatalogService.TestOption> tests) {
         this.mappingCatalogService = mappingCatalogService;
-        this.activeTests = Optional.ofNullable(mappingCatalogService.searchActiveTests(null)).orElse(List.of()).stream()
+        this.activeTests = Optional.ofNullable(tests).orElse(List.of()).stream()
                 .collect(Collectors.toMap(AnalyzerMappingCatalogService.TestOption::id, Function.identity()));
     }
 
     public static AnalyzerMappingCatalogState load(AnalyzerMappingCatalogService mappingCatalogService) {
         return new AnalyzerMappingCatalogState(mappingCatalogService);
+    }
+
+    /** Reuse one catalog read within a service operation, never across requests. */
+    public static AnalyzerMappingCatalogState load(AnalyzerMappingCatalogService mappingCatalogService,
+            List<AnalyzerMappingCatalogService.TestOption> activeTests) {
+        return new AnalyzerMappingCatalogState(mappingCatalogService, activeTests);
     }
 
     public Validation validate(AnalyzerMappingSnapshot binding) {
@@ -50,7 +61,7 @@ public final class AnalyzerMappingCatalogState {
                 .filter(row -> row.getMappingState() == AnalyzerMappingState.EXCLUDED).map(ResultSourceKey::of)
                 .collect(Collectors.toCollection(HashSet::new));
         return new Validation(currentBoundTests, currentExcludedTests, currentBoundResults, currentExcludedResults,
-                binding.tests().size(), binding.results().size());
+                binding.tests().size(), binding.results().size(), activeTests, activeComponents, activeResultOptions);
     }
 
     private boolean isCurrentTest(AnalyzerMappingTest row) {
@@ -58,7 +69,18 @@ public final class AnalyzerMappingCatalogState {
             return true;
         }
         return row.getMappingState() == AnalyzerMappingState.BOUND && row.getTestId() != null
-                && activeTests.containsKey(row.getTestId());
+                && activeTests.containsKey(row.getTestId()) && hasComponent(row.getTestId(), row.getComponentId())
+                && hasComponent(row.getTestId(), row.getCallComponentId());
+    }
+
+    private List<AnalyzerMappingCatalogService.ComponentOption> componentsOf(String testId) {
+        return activeComponents.computeIfAbsent(testId, id -> List
+                .copyOf(Optional.ofNullable(mappingCatalogService.getActiveComponents(id)).orElse(List.of())));
+    }
+
+    private boolean hasComponent(String testId, String componentId) {
+        var components = componentsOf(testId);
+        return componentId == null || components.stream().anyMatch(component -> componentId.equals(component.id()));
     }
 
     private boolean isCurrentResult(AnalyzerMappingResult result, AnalyzerMappingTest test) {
@@ -83,11 +105,8 @@ public final class AnalyzerMappingCatalogState {
         if (target != null) {
             return target.equals(option.componentId());
         }
-        return option.componentId() == null || primaryComponents.computeIfAbsent(test.getTestId(),
-                testId -> Optional.ofNullable(mappingCatalogService.getActiveComponents(testId)).orElse(List.of())
-                        .stream().filter(AnalyzerMappingCatalogService.ComponentOption::primary)
-                        .map(AnalyzerMappingCatalogService.ComponentOption::id).collect(Collectors.toSet()))
-                .contains(option.componentId());
+        return option.componentId() == null || componentsOf(test.getTestId()).stream()
+                .anyMatch(component -> component.primary() && component.id().equals(option.componentId()));
     }
 
     /** One answer of one record: code, raw value and the record's sub-identity. */
@@ -113,9 +132,15 @@ public final class AnalyzerMappingCatalogState {
 
     public record Validation(Set<AnalyzerMappingRowKey> currentBoundTestRows,
             Set<AnalyzerMappingRowKey> currentExcludedTestRows, Set<ResultSourceKey> currentBoundResultRows,
-            Set<ResultSourceKey> currentExcludedResultRows, int testRows, int resultRows) {
+            Set<ResultSourceKey> currentExcludedResultRows, int testRows, int resultRows,
+            Map<String, AnalyzerMappingCatalogService.TestOption> activeTests,
+            Map<String, List<AnalyzerMappingCatalogService.ComponentOption>> components,
+            Map<String, Map<String, AnalyzerMappingCatalogService.ResultOption>> answers) {
 
         public Validation {
+            activeTests = Map.copyOf(activeTests);
+            components = Map.copyOf(components);
+            answers = Map.copyOf(answers);
             currentBoundTestRows = currentBoundTestRows == null ? Set.of() : Set.copyOf(currentBoundTestRows);
             currentExcludedTestRows = currentExcludedTestRows == null ? Set.of() : Set.copyOf(currentExcludedTestRows);
             currentBoundResultRows = currentBoundResultRows == null ? Set.of() : Set.copyOf(currentBoundResultRows);
@@ -124,7 +149,7 @@ public final class AnalyzerMappingCatalogState {
         }
 
         static Validation empty() {
-            return new Validation(Set.of(), Set.of(), Set.of(), Set.of(), 0, 0);
+            return new Validation(Set.of(), Set.of(), Set.of(), Set.of(), 0, 0, Map.of(), Map.of(), Map.of());
         }
 
         boolean isCurrentTest(AnalyzerMappingRowKey record) {
@@ -133,6 +158,42 @@ public final class AnalyzerMappingCatalogState {
 
         public boolean isCurrentBoundTest(AnalyzerMappingRowKey record) {
             return currentBoundTestRows.contains(record);
+        }
+
+        /**
+         * Known delivered and local clinical codings must agree; uncoded vendor
+         * identities use the approved mapping.
+         */
+        public boolean acceptsTestMeaning(String testId, List<org.openelisglobal.terminology.Coding> delivered) {
+            var target = activeTests.get(testId);
+            if (target == null)
+                return false;
+            return delivered.isEmpty() || target.codings().isEmpty()
+                    || delivered.stream().anyMatch(code -> target.codings().stream().anyMatch(code::sameAs));
+        }
+
+        /**
+         * Validate the delivered part against its local destination, without a Bridge
+         * profile.
+         */
+        public boolean acceptsValue(String testId, String componentId, boolean numeric) {
+            var active = components.getOrDefault(testId, List.of());
+            var target = active.stream()
+                    .filter(component -> componentId == null ? component.primary() : componentId.equals(component.id()))
+                    .findFirst().orElse(null);
+            if (target == null)
+                return componentId == null;
+            if (target.resultType() != null && !target.resultType().isBlank()
+                    && numeric != "N".equals(target.resultType()))
+                return false;
+            return true;
+        }
+
+        public boolean acceptsAnswerMeaning(String testId, String answerId,
+                List<org.openelisglobal.terminology.Coding> delivered) {
+            var target = answers.getOrDefault(testId, Map.of()).get(answerId);
+            return target != null && (delivered.isEmpty() || target.codings().isEmpty()
+                    || delivered.stream().anyMatch(code -> target.codings().stream().anyMatch(code::sameAs)));
         }
 
         /** The main result of a code. */

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet id="fixture-pathology-grossing-data"
+        author="openelis">
+        <comment>A deployment that recorded a case before the description
+            columns became unbounded text and before decalcification was
+            tracked: one case whose gross description fills the old
+            255-character column exactly, built with repeat() so no one has
+            to count it, and one case standing at decalcification, which the
+            upgrade must flag.</comment>
+        <sql>
+            INSERT INTO clinlims.sample
+            (id, accession_number, entered_date, received_date, lastupdated)
+            VALUES
+            (990301, 'GRS26000000001', now(), now(), now()),
+            (990302, 'GRS26000000002', now(), now(), now());
+        </sql>
+        <sql>
+            INSERT INTO clinlims.pathology_sample
+            (id, sample_id, status, last_updated, gross_exam)
+            VALUES
+            (990301, 990301, 'GROSSING', now(), repeat('x', 255)),
+            (990302, 990302, 'DECALCIFICATION', now(), NULL);
+        </sql>
+    </changeSet>
+</databaseChangeLog>

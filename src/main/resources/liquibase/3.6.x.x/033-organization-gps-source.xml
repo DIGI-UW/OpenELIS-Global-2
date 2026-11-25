@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Facility registry: where an organization's coordinates came from
+         (properties, ip, browser), so an instance in automatic location mode
+         keeps a position its administrator's browser captured over a coarser
+         IP lookup. -->
+    <changeSet author="mozzy11" id="facility-registry-organization-gps-source">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="organization" columnName="gps_source"/>
+            </not>
+        </preConditions>
+        <comment>Source of an organization's GPS coordinates</comment>
+        <addColumn schemaName="clinlims" tableName="organization">
+            <column name="gps_source" type="varchar(16)"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

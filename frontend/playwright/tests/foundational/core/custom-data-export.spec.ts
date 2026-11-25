@@ -1416,7 +1416,7 @@ test("menu administration saves database icons and identifies instance-controlle
   });
   await expect(
     form.getByText(
-      "Update menu visibility, section headings and icons. Settings managed by this instance are read-only here.",
+      "Update menu visibility, section headings and icons. A change made here stays when the menu configuration file is applied again at the next start.",
     ),
   ).toBeVisible();
   await form
@@ -1480,13 +1480,14 @@ test("menu administration saves database icons and identifies instance-controlle
     .getByTestId("menu-settings-menu_reports")
     .getByRole("button", { name: "Reports", exact: true })
     .click();
+  // The instance file seeded this menu's icon; it can still be edited here.
   const managed = page.getByTestId("menu-fields-menu_reports");
-  await expect(
-    managed.getByRole("combobox", { name: "Icon", exact: true }),
-  ).toBeDisabled();
-  await expect(
-    managed.getByText("Managed by instance configuration"),
-  ).toHaveCount(2);
+  const seededIcon = managed.getByRole("combobox", {
+    name: "Icon",
+    exact: true,
+  });
+  await expect(seededIcon).toBeEnabled();
+  await expect(seededIcon).toHaveValue("reports");
 });
 
 for (const viewport of [
@@ -1575,7 +1576,7 @@ for (const viewport of [
     expect(returned.map((row) => row.slice(4))).toEqual([
       [
         "Synthetic Reference Lab",
-        "Viral Load",
+        "Viral Load(Whole Blood)",
         "2026-05-07",
         "450",
         "2026-05-08",
@@ -1583,7 +1584,7 @@ for (const viewport of [
       ],
       [
         "Synthetic Reference Lab",
-        "Viral Load",
+        "Viral Load(Whole Blood)",
         "2026-05-07",
         "450",
         "2026-05-09",
@@ -1595,7 +1596,7 @@ for (const viewport of [
       "",
       "",
       "Synthetic Reference Lab",
-      "Viral Load",
+      "Viral Load(Whole Blood)",
       "2026-05-07",
       "",
       "",

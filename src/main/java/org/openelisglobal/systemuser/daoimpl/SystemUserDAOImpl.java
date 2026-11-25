@@ -14,7 +14,6 @@
 package org.openelisglobal.systemuser.daoimpl;
 
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.hibernate.Session;
@@ -23,7 +22,6 @@ import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
-import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.systemuser.dao.SystemUserDAO;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.stereotype.Component;
@@ -119,43 +117,6 @@ public class SystemUserDAOImpl extends BaseDAOImpl<SystemUser, String> implement
     @Transactional(readOnly = true)
     public Integer getTotalSystemUserCount() throws LIMSRuntimeException {
         return getCount();
-    }
-
-    // bugzilla 1482
-    @Override
-    public boolean duplicateSystemUserExists(SystemUser systemUser) throws LIMSRuntimeException {
-        try {
-
-            List<SystemUser> list = new ArrayList<>();
-
-            // not case sensitive hemolysis and Hemolysis are considered
-            // duplicates
-            String sql = "from SystemUser t where trim(lower(t.lastName)) = :param and trim(lower(t.firstName)) ="
-                    + " :param2 and t.id != :id";
-            Query<SystemUser> query = entityManager.unwrap(Session.class).createQuery(sql, SystemUser.class);
-            query.setParameter("param", systemUser.getLastName().toLowerCase().trim());
-            query.setParameter("param2", systemUser.getFirstName().toLowerCase().trim());
-
-            // initialize with 0 (for new records where no id has been generated yet
-            String sysUserId = "0";
-            if (!StringUtil.isNullorNill(systemUser.getId())) {
-                sysUserId = systemUser.getId();
-            }
-            query.setParameter("id", sysUserId);
-
-            list = query.list();
-
-            if (list.size() > 0) {
-                return true;
-            } else {
-                return false;
-            }
-
-        } catch (RuntimeException e) {
-            // bugzilla 2154
-            LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error in duplicateSystemUserExists()", e);
-        }
     }
 
     @Override
