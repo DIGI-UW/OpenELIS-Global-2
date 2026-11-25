@@ -6,6 +6,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { IntlContext } from "react-intl";
 import { registerModuleRemotes } from "./LazyRemote";
 import UserSessionDetailsContext from "../UserSessionDetailsContext";
 import { getFromOpenElisServer } from "../components/utils/Utils";
@@ -30,45 +31,78 @@ export const ModuleHostContext = createContext({
  * read leaves the shell exactly as it is without modules. Plain state, no
  * query cache, so the shell renders the same with or without one.
  *
+ * The request goes out as soon as the shell mounts, next to the session
+ * check, because both carry the same cookie: a signed-in user gets the
+ * registry one round trip earlier than waiting for the session answer. A
+ * signed-out user's request is refused, the refusal is ignored, and the read
+ * runs again once the session reports a sign-in.
+ *
  * In development, `localStorage["oe.module-override.<id>"]` may point a
  * module's remote entry at the module's own Vite dev server.
  */
 export default function ModuleHostProvider({ children }) {
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const sessionAnswered = Boolean(
+    userSessionDetails && userSessionDetails.authenticated !== undefined,
+  );
   const authenticated = Boolean(
     userSessionDetails && userSessionDetails.authenticated,
   );
+  // The active locale names the message bundles the registry carries; a
+  // shell rendered without an IntlProvider (unit tests of core pages) asks
+  // for the server's default, English.
+  const intl = useContext(IntlContext);
+  const locale = (intl && intl.locale) || null;
   const [registry, setRegistry] = useState(null);
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState(null);
   const [generation, setGeneration] = useState(0);
+  // The read in flight for the current generation and locale, kept across
+  // the session answer so that a sign-in confirmed while the speculative read
+  // is still out does not start a second one. A locale switch is a new read:
+  // the registry answers with that locale's bundles.
+  const inFlight = useRef(null);
 
   useEffect(() => {
-    if (!authenticated) {
+    if (sessionAnswered && !authenticated) {
+      inFlight.current = null;
       setStatus("idle");
       setRegistry(null);
       return undefined;
     }
+    const key = `${generation}:${locale || ""}`;
+    if (!inFlight.current || inFlight.current.key !== key) {
+      setStatus("loading");
+      inFlight.current = {
+        key,
+        answer: new Promise((resolve) => readRegistry(locale, resolve)),
+      };
+    }
+    const request = inFlight.current;
     let cancelled = false;
-    setStatus("loading");
-    readRegistry((data) => {
-      if (cancelled) {
+    request.answer.then((data) => {
+      if (cancelled || inFlight.current !== request) {
         return;
       }
       if (data && Array.isArray(data.modules)) {
         setRegistry(data);
         setError(null);
         setStatus("ready");
-      } else {
+      } else if (authenticated) {
         setRegistry(null);
         setError(new Error("module registry unavailable"));
         setStatus("error");
+      } else {
+        // A speculative read refused before the session answered: the run
+        // for the confirmed sign-in reads again.
+        inFlight.current = null;
+        setStatus("idle");
       }
     });
     return () => {
       cancelled = true;
     };
-  }, [authenticated, generation]);
+  }, [sessionAnswered, authenticated, generation, locale]);
 
   const plan = useMemo(
     () => (registry ? planModules(registry, config.serverBaseUrl) : EMPTY),
@@ -118,9 +152,10 @@ export function useModuleHost() {
  * failure). Guarded so that a shell rendered with a partial client, as unit
  * tests of core pages do, simply runs without modules.
  */
-function readRegistry(callback) {
+function readRegistry(locale, callback) {
+  const query = locale ? `?locale=${encodeURIComponent(locale)}` : "";
   try {
-    getFromOpenElisServer("/rest/module-registry", callback);
+    getFromOpenElisServer(`/rest/module-registry${query}`, callback);
   } catch (reason) {
     console.error("module registry could not be requested", reason);
     callback(undefined);

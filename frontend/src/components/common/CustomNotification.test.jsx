@@ -86,6 +86,28 @@ describe("AlertDialog", () => {
     expect(api.notifications).toHaveLength(0);
   });
 
+  // OGC-1662: a warning naming the results a save left in review closed after
+  // two seconds, too soon to read.
+  it("keeps a notification that names no end until it is closed", () => {
+    render(<Page />);
+    act(() =>
+      api.addNotification({
+        title: "Notification Message",
+        message: "These selected results were not saved.",
+        kind: NotificationKinds.warning,
+        timeout: 0,
+      }),
+    );
+
+    act(() => vi.advanceTimersByTime(60000));
+    expect(
+      screen.getByText("These selected results were not saved."),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /close/i }));
+    expect(api.notifications).toHaveLength(0);
+  });
+
   it("closes the notification whose close button was pressed", () => {
     render(<Page />);
     say("Kept.");

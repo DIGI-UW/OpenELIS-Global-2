@@ -78,7 +78,7 @@ public class PatientResultsPdfTest extends BaseWebContextSensitiveTest {
             drugs.add(new org.openelisglobal.microbiology.form.MicroPatientReportForm.Susceptibility("d" + i,
                     "Agent " + i, "reading", "run", "64", "ug/mL", "RESISTANT", "CLSI", "2026", "EXACT"));
         report.isolates.add(new org.openelisglobal.microbiology.form.MicroPatientReportForm.Isolate("i", "ISO-1",
-                "Escherichia coli", drugs));
+                "Escherichia coli", drugs, drugs.size()));
         report.notes.add(new org.openelisglobal.microbiology.form.MicroPatientReportForm.Note("External clinical note",
                 "Validator", null));
         micro.setMicrobiologyRows(org.openelisglobal.microbiology.service.MicroPatientReportRows.of(report));
@@ -93,6 +93,33 @@ public class PatientResultsPdfTest extends BaseWebContextSensitiveTest {
             assertTrue(PdfText.ofPage(pdf, page).contains(ORDER));
         }
         org.junit.Assert.assertFalse(text, text.contains("Culture anchor"));
+    }
+
+    @Test
+    public void microbiologyBlockPrintsTheIndicationARunWasReadFor() throws Exception {
+        var micro = row(ORDER, "Microbiology", "Culture anchor", "", "");
+        var report = new org.openelisglobal.microbiology.form.MicroPatientReportForm();
+        report.classification = "NOT_APPLICABLE";
+        report.isolates.add(new org.openelisglobal.microbiology.form.MicroPatientReportForm.Isolate("i", "ISO-1",
+                "Streptococcus pneumoniae",
+                List.of(susceptibility("Penicillin G", "MENINGITIS"), susceptibility("Ampicillin", "ENDOCARDITIS"),
+                        susceptibility("Ceftriaxone", "NON_MENINGITIS"), susceptibility("Vancomycin", null)),
+                4));
+        micro.setMicrobiologyRows(org.openelisglobal.microbiology.service.MicroPatientReportRows.of(report));
+
+        String text = PdfText.of(render(List.of(micro), Map.of(ORDER, order()))).replaceAll("\\s+", " ");
+
+        assertTrue(text, text.contains("Penicillin G 1 mg/L Resistant EUCAST 2026 - Meningitis"));
+        assertTrue(text, text.contains("Ampicillin 1 mg/L Resistant EUCAST 2026 - Endocarditis"));
+        assertTrue(text,
+                text.contains("Ceftriaxone 1 mg/L Resistant EUCAST 2026 - Neither meningitis nor endocarditis"));
+        assertTrue(text, text.matches(".*Vancomycin 1 mg/L Resistant EUCAST 2026(?! -).*"));
+    }
+
+    private static org.openelisglobal.microbiology.form.MicroPatientReportForm.Susceptibility susceptibility(
+            String agent, String indication) {
+        return new org.openelisglobal.microbiology.form.MicroPatientReportForm.Susceptibility(agent, agent, agent,
+                "run", "1", "mg/L", "RESISTANT", "EUCAST", "2026", "EXACT", indication);
     }
 
     @Test
@@ -122,8 +149,8 @@ public class PatientResultsPdfTest extends BaseWebContextSensitiveTest {
         result.setReportingDecimalPlaces(2);
         String annotated = org.openelisglobal.reports.action.implementation.reportBeans.NumericReportDisplay
                 .format(result, true, french);
-        assertEquals("0.01\nCalculated log10: −2.19\n(Valeur utilisée pour les décisions cliniques : 0.0064)",
-                annotated);
+        assertEquals("0.01\n" + french.get("label.results.calculatedLog10").replace("{value}", "−2.19")
+                + "\n(Valeur utilisée pour les décisions cliniques : 0.0064)", annotated);
         var data = rows(ORDER);
         data.get(0).setResult(annotated);
         String text = PdfText.of(PatientResultsPdf.render(settings(), french, data, Map.of(ORDER, order())))

@@ -54,6 +54,8 @@ public class AnalysisTimelineServiceImpl implements AnalysisTimelineService {
     private org.openelisglobal.validationpolicy.dao.AnalysisReviewSignOffDAO signOffDAO;
     @Autowired
     private org.openelisglobal.role.service.RoleService roleService;
+    @Autowired
+    private org.openelisglobal.validationpolicy.service.AnalysisAutoReleaseService autoReleaseService;
 
     @Override
     @Transactional(readOnly = true)
@@ -69,6 +71,7 @@ public class AnalysisTimelineServiceImpl implements AnalysisTimelineService {
         addNceEvents(analysis, events);
         addAcknowledgementEvents(analysis, events);
         addSignOffEvents(analysis, events);
+        addAutoReleaseEvents(analysis, events);
         events.sort(Comparator.comparingLong(AnalysisTimelineEvent::getTimestamp).reversed());
         return events;
     }
@@ -103,6 +106,26 @@ public class AnalysisTimelineServiceImpl implements AnalysisTimelineService {
                                             signer != null ? signer.getNameForDisplay() : "" }),
                             by != null ? by.getDisplayName() : ""));
                 }
+            }
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+        }
+    }
+
+    /**
+     * OGC-1017: each release at entry without a validator, with the rule that
+     * released it and who saved the result.
+     */
+    private void addAutoReleaseEvents(Analysis analysis, List<AnalysisTimelineEvent> events) {
+        try {
+            for (org.openelisglobal.validationpolicy.valueholder.AnalysisAutoRelease release : autoReleaseService
+                    .releasesOf(analysis.getId())) {
+                SystemUser by = release.getReleasedBy() == null ? null
+                        : systemUserService.get(String.valueOf(release.getReleasedBy()));
+                events.add(new AnalysisTimelineEvent("AUTO_RELEASE", release.getReleasedAt().toInstant().toEpochMilli(),
+                        DateUtil.convertTimestampToStringDateAndTime(
+                                Timestamp.from(release.getReleasedAt().toInstant())),
+                        autoReleaseService.describe(release), by != null ? by.getDisplayName() : ""));
             }
         } catch (RuntimeException e) {
             LogEvent.logError(e);

@@ -20,6 +20,7 @@ import {
   Tag,
   Tile,
 } from "@carbon/react";
+import { WarningFilled } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
@@ -27,8 +28,15 @@ import {
 } from "../../../utils/Utils";
 import { FlagChip } from "../flags";
 import PageBreadCrumb from "../../../common/PageBreadCrumb";
+import { AlertDialog } from "../../../common/CustomNotification";
 import RunsChip from "./RunsChip";
+import RunQcBlock, { RunQc } from "./RunQcBlock";
+import RunExceptions, {
+  RunExceptionKind,
+  RunExceptionRecord,
+} from "./RunExceptions";
 import UnifiedResults from "../UnifiedResults";
+import useSiteDateFormat from "../../../common/useSiteDateFormat";
 import { formatRunTime, runSourceKey, runStateKey } from "./runFormat";
 import {
   EMPTY_SELECTION,
@@ -60,6 +68,10 @@ export interface RunHeader {
   total: number;
   rawAvailable: boolean;
   chipCounts?: RunChipCounts;
+  qc?: RunQc | null;
+  exceptions?: RunExceptionRecord[] | null;
+  reagentLot?: string | null;
+  batchWorkplanId?: number | null;
 }
 
 interface RunRow {
@@ -78,6 +90,10 @@ interface RunRow {
   testId?: string | null;
   componentId?: string | null;
   stagedResult?: string | null;
+  exceptionKind?: RunExceptionKind | null;
+  code?: string | null;
+  holdCause?: "QC_FAILED" | "QC_MISSING" | null;
+  missingControl?: boolean;
 }
 
 interface RunRowsPage {
@@ -148,6 +164,7 @@ const RunView: React.FC<RunViewProps> = ({
   onOpenRun,
 }) => {
   const intl = useIntl();
+  const { pattern } = useSiteDateFormat();
   const [header, setHeader] = useState<RunHeader | null>(null);
   const [headerState, setHeaderState] = useState<
     "loading" | "ready" | "missing"
@@ -258,6 +275,11 @@ const RunView: React.FC<RunViewProps> = ({
   };
 
   const pageRows = rows?.rows ?? [];
+  /**
+   * A workplan batch's rows have no analyzer value to act on in bulk; each is
+   * entered from its own Results Entry panel (FR-D5).
+   */
+  const selectable = header?.source !== "WORKPLAN";
   const pageAllSelected =
     pageRows.length > 0 && pageRows.every((row) => isSelected(selection, row));
   const togglePage = () =>
@@ -305,6 +327,13 @@ const RunView: React.FC<RunViewProps> = ({
         </Tag>
       );
     }
+    if (row.exceptionKind) {
+      return (
+        <Tag size="sm" type="purple">
+          <FormattedMessage id={`run.exception.${row.exceptionKind}`} />
+        </Tag>
+      );
+    }
     if (row.importIssueReason) {
       return (
         <Tag size="sm" type="red">
@@ -312,10 +341,34 @@ const RunView: React.FC<RunViewProps> = ({
         </Tag>
       );
     }
+    if (row.category === "HELD") {
+      return (
+        <Tag size="sm" type="red" renderIcon={WarningFilled}>
+          <FormattedMessage
+            id={
+              row.holdCause === "QC_MISSING"
+                ? "run.row.heldQcMissing"
+                : "run.row.held"
+            }
+          />
+        </Tag>
+      );
+    }
     return (
-      <Tag size="sm" type="green">
-        <FormattedMessage id="run.row.ready" />
-      </Tag>
+      <>
+        <Tag size="sm" type="green">
+          <FormattedMessage id="run.row.ready" />
+        </Tag>
+        {row.missingControl && (
+          <Tag
+            size="sm"
+            type="warm-gray"
+            data-testid={`run-row-no-control-${row.id}`}
+          >
+            <FormattedMessage id="run.row.noControl" />
+          </Tag>
+        )}
+      </>
     );
   };
 
@@ -329,28 +382,51 @@ const RunView: React.FC<RunViewProps> = ({
       ? "run.entry.control"
       : row.duplicate
         ? "run.entry.duplicate"
-        : row.importIssueReason
-          ? "run.entry.importIssue"
-          : header?.state === "HELD"
-            ? "run.entry.held"
-            : header?.state !== "OPEN"
-              ? "run.entry.closed"
-              : null;
+        : row.exceptionKind
+          ? "run.entry.exception"
+          : row.importIssueReason
+            ? "run.entry.importIssue"
+            : row.category === "HELD"
+              ? row.holdCause === "QC_MISSING"
+                ? "run.entry.testHeldMissing"
+                : "run.entry.testHeld"
+              : header?.state !== "OPEN" && header?.state !== "HELD"
+                ? "run.entry.closed"
+                : null;
     return (
       <div className="runRowEntry" data-testid={`run-row-entry-${row.id}`}>
         <p className="runRowProvenance" data-testid="run-row-provenance">
-          <FormattedMessage
-            id="run.entry.provenance"
-            values={{
-              run: header?.label ?? "",
-              analyzer: header?.analyzerName || "—",
-              test: `${row.testName || "—"}${row.part ? ` — ${row.part}` : ""}`,
-              value: `${row.value || "—"}${row.units ? ` ${row.units}` : ""}`,
-            }}
-          />{" "}
-          <FormattedMessage id="run.entry.noLot" />
+          {header?.source === "WORKPLAN" ? (
+            <FormattedMessage
+              id="run.entry.provenanceBatch"
+              values={{
+                run: header.label ?? "",
+                test: row.testName || "—",
+              }}
+            />
+          ) : (
+            <FormattedMessage
+              id="run.entry.provenance"
+              values={{
+                run: header?.label ?? "",
+                analyzer: header?.analyzerName || "—",
+                test: `${row.testName || "—"}${row.part ? ` — ${row.part}` : ""}`,
+                value: `${row.value || "—"}${row.units ? ` ${row.units}` : ""}`,
+              }}
+            />
+          )}{" "}
+          {header?.reagentLot ? (
+            <FormattedMessage
+              id="run.entry.lot"
+              values={{ lot: header.reagentLot }}
+            />
+          ) : (
+            <FormattedMessage id="run.entry.noLot" />
+          )}
         </p>
-        {notAccepted || !row.accessionNumber || !row.value ? (
+        {notAccepted ||
+        !row.accessionNumber ||
+        (!row.value && header?.source !== "WORKPLAN") ? (
           <InlineNotification
             kind="info"
             lowContrast
@@ -366,7 +442,7 @@ const RunView: React.FC<RunViewProps> = ({
             accessionNumber={row.accessionNumber}
             runEntry={{
               runId,
-              runRowId: row.id,
+              runRowId: header?.source === "WORKPLAN" ? null : row.id,
               testId: row.testId,
               componentId: row.componentId,
               value: row.stagedResult || row.value,
@@ -392,6 +468,7 @@ const RunView: React.FC<RunViewProps> = ({
 
   return (
     <>
+      <AlertDialog />
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Grid fullWidth className="unifiedResultsPage runView">
         <Column lg={16} md={8} sm={4}>
@@ -410,7 +487,11 @@ const RunView: React.FC<RunViewProps> = ({
           <Button kind="tertiary" size="sm" onClick={onBack}>
             <FormattedMessage id="run.action.backToAll" />
           </Button>
-          <RunsChip activeRunId={runId} onOpenRun={onOpenRun} />
+          <RunsChip
+            activeRunId={runId}
+            onOpenRun={onOpenRun}
+            refreshKey={reload}
+          />
         </Column>
         {showFiltersNotice && (
           <Column lg={16} md={8} sm={4}>
@@ -443,6 +524,22 @@ const RunView: React.FC<RunViewProps> = ({
             />
           </Column>
         )}
+        {header?.qc && (
+          <Column lg={16} md={8} sm={4}>
+            <RunQcBlock
+              runId={header.id}
+              qc={header.qc}
+              active={header.state === "OPEN" || header.state === "HELD"}
+              onOpenRun={onOpenRun}
+              onRecorded={(qc) => {
+                setHeader((current) =>
+                  current ? { ...current, qc } : current,
+                );
+                setReload((n) => n + 1);
+              }}
+            />
+          </Column>
+        )}
         {header && (
           <Column lg={16} md={8} sm={4}>
             <Tile className="runHeaderTile" data-testid="run-settings">
@@ -455,23 +552,40 @@ const RunView: React.FC<RunViewProps> = ({
                   intl.formatMessage({ id: runSourceKey(header.source) }),
                 )}
                 {setting("label.results.analyzer", header.analyzerName)}
-                {setting("label.results.method", header.method)}
+                {header.source !== "WORKPLAN" &&
+                  setting("label.results.method", header.method)}
+                {header.source === "WORKPLAN" &&
+                  setting("run.label.reagentLot", header.reagentLot)}
+                {header.batchWorkplanId &&
+                  setting(
+                    "run.label.batch",
+                    <Link href="/Workplan" data-testid="run-batch-link">
+                      <FormattedMessage id="run.action.openBatch" />
+                    </Link>,
+                  )}
                 {setting("label.results.labUnit", header.labUnits.join(", "))}
                 {setting("run.label.operator", header.operatorName)}
                 {setting(
                   "run.label.opened",
-                  header.openedAt && formatRunTime(intl, header.openedAt),
+                  header.openedAt &&
+                    formatRunTime(intl, header.openedAt, pattern),
                 )}
                 {setting(
                   "run.label.lastActivity",
                   header.lastActivityAt &&
-                    formatRunTime(intl, header.lastActivityAt),
+                    formatRunTime(intl, header.lastActivityAt, pattern),
                 )}
                 {setting(
                   "run.label.state",
                   <Tag
                     size="sm"
-                    type={header.state === "HELD" ? "red" : "cyan"}
+                    type={
+                      header.state === "HELD"
+                        ? "red"
+                        : header.state === "SUPERSEDED"
+                          ? "gray"
+                          : "cyan"
+                    }
                   >
                     {intl.formatMessage({ id: runStateKey(header.state) })}
                   </Tag>,
@@ -495,13 +609,15 @@ const RunView: React.FC<RunViewProps> = ({
                     />
                   </Button>
                 )}
-                {header.analyzerId && header.state !== "COMPLETE" && (
-                  <Link
-                    href={`/AnalyzerResults?id=${encodeURIComponent(header.analyzerId)}`}
-                  >
-                    <FormattedMessage id="run.action.acceptOnImport" />
-                  </Link>
-                )}
+                {header.analyzerId &&
+                  header.source !== "WORKPLAN" &&
+                  ["OPEN", "HELD"].includes(header.state) && (
+                    <Link
+                      href={`/AnalyzerResults?id=${encodeURIComponent(header.analyzerId)}`}
+                    >
+                      <FormattedMessage id="run.action.acceptOnImport" />
+                    </Link>
+                  )}
               </div>
               {rawState === "loading" && <InlineLoading />}
               {rawState === "failed" && (
@@ -515,6 +631,15 @@ const RunView: React.FC<RunViewProps> = ({
                 </pre>
               )}
             </Tile>
+          </Column>
+        )}
+        {header?.exceptions && header.exceptions.length > 0 && (
+          <Column lg={16} md={8} sm={4}>
+            <RunExceptions
+              runId={header.id}
+              exceptions={header.exceptions}
+              onResolved={accepted}
+            />
           </Column>
         )}
         {header && (
@@ -627,17 +752,19 @@ const RunView: React.FC<RunViewProps> = ({
                 <TableHead>
                   <TableRow>
                     <TableHeader className="unifiedExpandHeader" />
-                    <TableHeader>
-                      <Checkbox
-                        id={`run-select-page-${runId}`}
-                        labelText={intl.formatMessage({
-                          id: "run.bulk.selectPage",
-                        })}
-                        hideLabel
-                        checked={pageAllSelected}
-                        onChange={togglePage}
-                      />
-                    </TableHeader>
+                    {selectable && (
+                      <TableHeader>
+                        <Checkbox
+                          id={`run-select-page-${runId}`}
+                          labelText={intl.formatMessage({
+                            id: "run.bulk.selectPage",
+                          })}
+                          hideLabel
+                          checked={pageAllSelected}
+                          onChange={togglePage}
+                        />
+                      </TableHeader>
+                    )}
                     <TableHeader>
                       <FormattedMessage id="run.row.labNumber" />
                     </TableHeader>
@@ -684,24 +811,39 @@ const RunView: React.FC<RunViewProps> = ({
                             {expandedId === row.id ? "▼" : "▶"}
                           </Button>
                         </TableCell>
-                        <TableCell>
-                          <Checkbox
-                            id={`run-select-${row.id}`}
-                            labelText={intl.formatMessage(
-                              { id: "run.bulk.selectRow" },
-                              { labNumber: row.accessionNumber || row.id },
-                            )}
-                            hideLabel
-                            checked={isSelected(selection, row)}
-                            onChange={() =>
-                              setSelection((current) => toggleRow(current, row))
-                            }
-                          />
-                        </TableCell>
+                        {selectable && (
+                          <TableCell>
+                            <Checkbox
+                              id={`run-select-${row.id}`}
+                              labelText={intl.formatMessage(
+                                { id: "run.bulk.selectRow" },
+                                { labNumber: row.accessionNumber || row.id },
+                              )}
+                              hideLabel
+                              checked={isSelected(selection, row)}
+                              onChange={() =>
+                                setSelection((current) =>
+                                  toggleRow(current, row),
+                                )
+                              }
+                            />
+                          </TableCell>
+                        )}
                         <TableCell>{row.accessionNumber || "—"}</TableCell>
                         <TableCell>
                           {row.testName || "—"}
                           {row.part ? ` — ${row.part}` : ""}
+                          {row.code && row.code !== row.testName && (
+                            <div
+                              className="unifiedFieldHint"
+                              data-testid={`run-row-code-${row.id}`}
+                            >
+                              <FormattedMessage
+                                id="run.row.analyzerCode"
+                                values={{ code: row.code }}
+                              />
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>{row.value || "—"}</TableCell>
                         <TableCell>{row.units || "—"}</TableCell>

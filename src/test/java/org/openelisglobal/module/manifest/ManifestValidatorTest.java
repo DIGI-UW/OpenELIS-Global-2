@@ -64,6 +64,13 @@ public class ManifestValidatorTest {
     }
 
     @Test
+    public void schemaLinkIsAcceptedSoEditorsCanValidateTheManifest() {
+        ManifestValidation validation = validator.validate(edited("valid-module.json",
+                root -> root.put("$schema", "https://openelis-global.org/schemas/openelis-module/1")));
+        assertTrue(validation.describe(), validation.isValid());
+    }
+
+    @Test
     public void schemaRejectsMissingRequiredFieldsAndUnknownKeys() {
         ManifestValidation validation = validator.validate(edited("valid-module.json", root -> {
             root.remove("name");

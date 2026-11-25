@@ -34,13 +34,11 @@ public final class MicroPatientReportRows {
             rows.add(new MicroPatientReportRow(null, null, message("agent"), message("raw"), message("interpretation"),
                     message("breakpoint"), true));
             for (var row : isolate.susceptibilities()) {
+                String indication = row.clinicalContext() == null ? ""
+                        : " - " + message("clinicalContext." + row.clinicalContext());
                 rows.add(new MicroPatientReportRow(null, null, row.agent(), safe(row.raw()) + " " + safe(row.units()),
                         message("interpretation." + row.interpretation()),
-                        row.standard() + " " + row.version()
-                                + ("NON_MENINGITIS".equals(row.clinicalContext())
-                                        ? " — " + message("clinicalContext.nonMeningitis")
-                                        : ""),
-                        true));
+                        row.standard() + " " + row.version() + indication, true));
                 notes(rows, report.notes, "DRUG", row.readingId());
             }
         }
@@ -64,7 +62,7 @@ public final class MicroPatientReportRows {
             String id) {
         for (var note : notes)
             if (Objects.equals(type, note.targetType()) && Objects.equals(id, note.targetId()))
-                text(rows, note.text() + " — " + safe(note.author()));
+                text(rows, note.fromRule() ? note.text() : note.text() + " — " + safe(note.author()));
     }
 
     private static void heading(List<MicroPatientReportRow> rows, String key) {

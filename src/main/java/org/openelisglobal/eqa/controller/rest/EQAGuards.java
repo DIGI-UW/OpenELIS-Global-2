@@ -38,7 +38,7 @@ public final class EQAGuards {
     /**
      * Not an EQA tier: the lab-wide alerts dashboard. See EQAAlertRestController.
      */
-    public static final String LAB_WIDE_ALERTS = "hasAnyRole('RECEPTION', 'RESULTS')";
+    public static final String LAB_WIDE_ALERTS = "hasAnyRole('GLOBAL_ADMIN', 'RECEPTION', 'RESULTS')";
 
     private EQAGuards() {
     }

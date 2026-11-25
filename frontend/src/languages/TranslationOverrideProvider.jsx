@@ -15,13 +15,15 @@ import {
  * the bundled messages come from the provider that already resolved them —
  * nothing here refetches or re-derives either.
  *
- * <p>Renders a nested IntlProvider only when there is something to apply. With
- * the flag off, or with no override file mounted, it adds nothing to the tree at
- * all and its children see exactly the messages they would have seen anyway.
+ * <p>Always renders its own IntlProvider, whether or not there is something to
+ * apply: wrapping the children only once an override arrived would remount
+ * everything below it (the header, the page in progress) on every load with the
+ * flag on. With the flag off, or with no override file mounted, the children
+ * see exactly the messages they would have seen anyway.
  */
 export default function TranslationOverrideProvider({ children }) {
   const { configurationProperties } = useContext(ConfigurationContext) || {};
-  const { locale, defaultLocale, messages } = useIntl();
+  const { locale, defaultLocale, messages, onError } = useIntl();
   const [override, setOverride] = useState(NO_OVERRIDE);
 
   const enabled =
@@ -44,15 +46,13 @@ export default function TranslationOverrideProvider({ children }) {
   }, [enabled, locale]);
 
   const overridden = enabled ? applyOverride(messages, override) : messages;
-  if (overridden === messages) {
-    return children;
-  }
 
   return (
     <IntlProvider
       locale={locale}
       defaultLocale={defaultLocale}
       messages={overridden}
+      onError={onError}
     >
       {children}
     </IntlProvider>

@@ -211,6 +211,121 @@ public class AccessionValidationBulkReleaseTest extends BaseWebContextSensitiveT
                 analysisService.get(CLEAR_ID).getStatusId());
     }
 
+    private long runOfTheClearRow(String controlVerdict, String decision) {
+        long runId = jdbcTemplate.queryForObject("SELECT nextval('clinlims.result_run_seq')", Long.class);
+        jdbcTemplate.update("INSERT INTO clinlims.result_run (id, source, state, opened_at, last_activity_at)"
+                + " VALUES (?, 'ANALYZER', 'OPEN', now(), now())", runId);
+        jdbcTemplate.update("UPDATE clinlims.result SET run_id = ? WHERE analysis_id = ?::numeric", runId, CLEAR_ID);
+        if (controlVerdict != null) {
+            jdbcTemplate.update(
+                    "INSERT INTO clinlims.qc_result (id, test_id, run_date_time, sys_user_id, source,"
+                            + " result_value, expected_value, uncertainty, run_id, run_verdict, verdict_source) VALUES"
+                            + " (?, 1, now(), 1, 'ASTM', ?, 100, 5, ?, ?, 'COMPUTED')",
+                    "ogc1200-s6-" + runId, "FAIL".equals(controlVerdict) ? 120 : 102, runId, controlVerdict);
+        }
+        if (decision != null) {
+            jdbcTemplate.update(
+                    "INSERT INTO clinlims.result_run_test_disposition (id, run_id, test_id, action, reason,"
+                            + " sys_user_id, decided_at) VALUES (?, ?, 1, ?, 'Checked against a second run', 1, now())",
+                    runId, runId, decision);
+        }
+        return runId;
+    }
+
+    @Test
+    public void aResultAcceptedDespiteItsRunsFailedControlReadsQcFailedAndIsNotBulkReleased() throws Exception {
+        long runId = runOfTheClearRow("FAIL", "ACCEPT_DESPITE");
+        String row = "$.resultList[?(@.analysisId=='" + CLEAR_ID + "')]";
+
+        mockMvc.perform(get("/rest/AccessionValidation").param("accessionNumber", ACCESSION).param("doRange", "false")
+                .session(session)).andExpect(status().isOk()).andExpect(jsonPath(row + ".qcHold").value(false))
+                .andExpect(jsonPath(row + ".nceOpen").value(false)).andExpect(jsonPath(row + ".qcStatus").value("FAIL"))
+                .andExpect(jsonPath(row + ".clear").value(false))
+                .andExpect(jsonPath(row + ".runQc.runId").value((int) runId))
+                .andExpect(jsonPath(row + ".runQc.runLabel").value("RUN-" + runId))
+                .andExpect(jsonPath(row + ".runQc.verdict").value("FAIL"))
+                .andExpect(jsonPath(row + ".runQc.decision").value("ACCEPT_DESPITE"))
+                .andExpect(jsonPath(row + ".runQc.reason").value("Checked against a second run"))
+                .andExpect(jsonPath(row + ".runQc.controls[0].observed").value("120"))
+                .andExpect(jsonPath(row + ".runQc.controls[0].verdict").value("FAIL"))
+                .andExpect(jsonPath(row + ".runQc.controls[0].verdictSource").value("COMPUTED"));
+        mockMvc.perform(post("/rest/AccessionValidation/release-clear").session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(requestBody(rowJson(CLEAR_ID, "", ""))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.released.length()").value(0))
+                .andExpect(jsonPath("$.skipped[0].analysisId").value(CLEAR_ID))
+                .andExpect(jsonPath("$.skipped[0].reason").value("notClear"));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertEquals(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance),
+                analysisService.get(CLEAR_ID).getStatusId());
+    }
+
+    private void withQcFailBlocking(String value, org.junit.function.ThrowingRunnable check) throws Throwable {
+        String before = ConfigurationProperties.getInstance().getPropertyValue(Property.QC_FAIL_BLOCKS_VALIDATION);
+        ConfigurationProperties.getInstance().setPropertyValue(Property.QC_FAIL_BLOCKS_VALIDATION, value);
+        try {
+            check.run();
+        } finally {
+            ConfigurationProperties.getInstance().setPropertyValue(Property.QC_FAIL_BLOCKS_VALIDATION,
+                    before == null ? "false" : before);
+        }
+    }
+
+    @Test
+    public void aResultItsRunHoldsIsMarkedUnreleasableWhateverTheSiteSays() throws Throwable {
+        runOfTheClearRow("FAIL", null);
+        String row = "$.resultList[?(@.analysisId=='" + CLEAR_ID + "')]";
+
+        withQcFailBlocking("false", () -> mockMvc
+                .perform(get("/rest/AccessionValidation").param("accessionNumber", ACCESSION).param("doRange", "false")
+                        .session(session))
+                .andExpect(status().isOk()).andExpect(jsonPath(row + ".qcHold").value(true))
+                .andExpect(jsonPath(row + ".qcHoldBlocksRelease").value(true))
+                .andExpect(jsonPath(row + ".qcStatus").value("FAIL")));
+    }
+
+    @Test
+    public void aResultAnOpenQcNonConformityHoldsIsUnreleasableOnlyWhereTheSiteBlocksOnQc() throws Throwable {
+        QcHoldFixture.holdByAFailedControl(jdbcTemplate, CLEAR_ID);
+        String row = "$.resultList[?(@.analysisId=='" + CLEAR_ID + "')]";
+
+        withQcFailBlocking("false", () -> mockMvc
+                .perform(get("/rest/AccessionValidation").param("accessionNumber", ACCESSION).param("doRange", "false")
+                        .session(session))
+                .andExpect(status().isOk()).andExpect(jsonPath(row + ".qcHold").value(true))
+                .andExpect(jsonPath(row + ".qcHoldBlocksRelease").value(false)));
+        withQcFailBlocking("true",
+                () -> mockMvc
+                        .perform(get("/rest/AccessionValidation").param("accessionNumber", ACCESSION)
+                                .param("doRange", "false").session(session))
+                        .andExpect(status().isOk()).andExpect(jsonPath(row + ".qcHoldBlocksRelease").value(true)));
+    }
+
+    @Test
+    public void aResultFromARunWhoseControlPassedReadsQcPassedAndStaysClear() throws Exception {
+        runOfTheClearRow("PASS", null);
+        String row = "$.resultList[?(@.analysisId=='" + CLEAR_ID + "')]";
+
+        mockMvc.perform(get("/rest/AccessionValidation").param("accessionNumber", ACCESSION).param("doRange", "false")
+                .session(session)).andExpect(status().isOk()).andExpect(jsonPath(row + ".qcStatus").value("PASS"))
+                .andExpect(jsonPath(row + ".clear").value(true))
+                .andExpect(jsonPath(row + ".runQc.verdict").value("PASS"))
+                .andExpect(jsonPath(row + ".runQc.controls[0].observed").value("102"));
+    }
+
+    @Test
+    public void aResultFromARunWithNoControlKeepsItsQcSlotEmptyAndItsRun() throws Exception {
+        long runId = runOfTheClearRow(null, null);
+        String row = "$.resultList[?(@.analysisId=='" + CLEAR_ID + "')]";
+
+        mockMvc.perform(get("/rest/AccessionValidation").param("accessionNumber", ACCESSION).param("doRange", "false")
+                .session(session)).andExpect(status().isOk()).andExpect(jsonPath(row + ".qcStatus").value("UNKNOWN"))
+                .andExpect(jsonPath(row + ".clear").value(true))
+                .andExpect(jsonPath(row + ".runQc.runLabel").value("RUN-" + runId))
+                .andExpect(jsonPath(row + ".runQc.verdict").value("NOT_REQUIRED"));
+    }
+
     @Test
     public void bulkRelease_releasesOnlyTheServerSideClearRowsAndReportsTheRest() throws Exception {
         mockMvc.perform(
@@ -336,5 +451,192 @@ public class AccessionValidationBulkReleaseTest extends BaseWebContextSensitiveT
             configuration.setPropertyValue(Property.USE_MULTI_LEVEL_VALIDATION,
                     flagBefore == null ? "false" : flagBefore);
         }
+    }
+
+    @Test
+    public void signClear_signsTheNextLevelOfEveryClearRowAndLeavesThemInReview() throws Exception {
+        withTwoReviews(() -> {
+            mockMvc.perform(post("/rest/AccessionValidation/sign-clear").session(session)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody(rowJson(CLEAR_ID, "Looks fine", "I"), rowJson(ABNORMAL_ID, "", ""))))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.signed[0]").value(CLEAR_ID))
+                    .andExpect(jsonPath("$.signed.length()").value(1))
+                    .andExpect(jsonPath("$.skipped[0].analysisId").value(ABNORMAL_ID))
+                    .andExpect(jsonPath("$.skipped[0].reason").value("notClear"));
+            entityManager.flush();
+            entityManager.clear();
+            assertEquals("level 1 of 2 keeps the result in review",
+                    statusService.getStatusID(AnalysisStatus.TechnicalAcceptance),
+                    analysisService.get(CLEAR_ID).getStatusId());
+            List<Map<String, Object>> signOffs = signOffsOf(CLEAR_ID);
+            assertEquals(1, signOffs.size());
+            assertEquals(1, ((Number) signOffs.get(0).get("level")).intValue());
+            assertEquals(1, ((Number) signOffs.get(0).get("signer_id")).intValue());
+            assertEquals(0, signOffsOf(ABNORMAL_ID).size());
+            assertEquals(1,
+                    jdbcTemplate.queryForObject(
+                            "SELECT COUNT(*) FROM clinlims.note WHERE reference_id = ?" + " AND text = 'Looks fine'",
+                            Integer.class, Integer.valueOf(CLEAR_ID)).intValue());
+        });
+    }
+
+    @Test
+    public void signClear_skipsARowThePersonAlreadySignedAndARowAtItsLastLevel() throws Exception {
+        withTwoReviews(() -> {
+            signClear(null).andExpect(status().isOk()).andExpect(jsonPath("$.signed[0]").value(CLEAR_ID));
+            signClear(null).andExpect(status().isOk()).andExpect(jsonPath("$.signed.length()").value(0))
+                    .andExpect(jsonPath("$.skipped[0].reason").value("alreadySigned"));
+
+            jdbcTemplate.update("DELETE FROM clinlims.analysis_review_sign_off WHERE analysis_id = ?",
+                    Integer.valueOf(CLEAR_ID));
+            jdbcTemplate.update("DELETE FROM clinlims.analysis_review_plan WHERE analysis_id = ?",
+                    Integer.valueOf(CLEAR_ID));
+            policies().saveLabWideDefault(
+                    new org.openelisglobal.validationpolicy.form.ValidationPolicyForm("NEEDS_REVIEW", 1, null), "1");
+            entityManager.flush();
+            entityManager.clear();
+            signClear(null).andExpect(status().isOk()).andExpect(jsonPath("$.signed.length()").value(0))
+                    .andExpect(jsonPath("$.skipped[0].reason").value("finalLevel"));
+        });
+    }
+
+    @Test
+    public void signClear_skipsARowAnotherValidatorStartedSigningAtTheSameMoment() throws Exception {
+        withTwoReviews(() -> {
+            Object reviewService = org.springframework.test.util.AopTestUtils
+                    .getTargetObject(org.openelisglobal.spring.util.SpringContext
+                            .getBean(org.openelisglobal.validationpolicy.service.AnalysisReviewService.class));
+            org.openelisglobal.validationpolicy.dao.AnalysisReviewPlanDAO dao = (org.openelisglobal.validationpolicy.dao.AnalysisReviewPlanDAO) org.springframework.test.util.ReflectionTestUtils
+                    .getField(reviewService, "planDAO");
+            Object planWrittenByTheOther = java.lang.reflect.Proxy.newProxyInstance(getClass().getClassLoader(),
+                    new Class<?>[] { org.openelisglobal.validationpolicy.dao.AnalysisReviewPlanDAO.class },
+                    (proxy, method, args) -> {
+                        if ("get".equals(method.getName())) {
+                            return java.util.Optional.empty();
+                        }
+                        if ("insert".equals(method.getName())) {
+                            throw new org.hibernate.exception.ConstraintViolationException(
+                                    "could not execute statement",
+                                    new java.sql.SQLException("ERROR: duplicate key value violates unique"
+                                            + " constraint \"pk_analysis_review_plan\""),
+                                    "pk_analysis_review_plan");
+                        }
+                        try {
+                            return method.invoke(dao, args);
+                        } catch (java.lang.reflect.InvocationTargetException e) {
+                            throw e.getCause();
+                        }
+                    });
+            org.springframework.test.util.ReflectionTestUtils.setField(reviewService, "planDAO", planWrittenByTheOther);
+            try {
+                signClear(null).andExpect(status().isOk()).andExpect(jsonPath("$.signed.length()").value(0))
+                        .andExpect(jsonPath("$.skipped[0].analysisId").value(CLEAR_ID))
+                        .andExpect(jsonPath("$.skipped[0].reason").value("levelAlreadySigned"));
+            } finally {
+                org.springframework.test.util.ReflectionTestUtils.setField(reviewService, "planDAO", dao);
+            }
+        });
+    }
+
+    @Test
+    public void signClear_skipsARowAnotherValidatorChangedAtTheSameMoment() throws Exception {
+        withTwoReviews(() -> {
+            Object reviewService = org.springframework.test.util.AopTestUtils
+                    .getTargetObject(org.openelisglobal.spring.util.SpringContext
+                            .getBean(org.openelisglobal.validationpolicy.service.AnalysisReviewService.class));
+            Object realAnalysisService = org.springframework.test.util.ReflectionTestUtils.getField(reviewService,
+                    "analysisService");
+            Object updatedByTheOther = java.lang.reflect.Proxy.newProxyInstance(getClass().getClassLoader(),
+                    new Class<?>[] { AnalysisService.class }, (proxy, method, args) -> {
+                        if ("update".equals(method.getName())) {
+                            throw new org.hibernate.StaleObjectStateException(Analysis.class.getName(), CLEAR_ID);
+                        }
+                        try {
+                            return method.invoke(realAnalysisService, args);
+                        } catch (java.lang.reflect.InvocationTargetException e) {
+                            throw e.getCause();
+                        }
+                    });
+            org.springframework.test.util.ReflectionTestUtils.setField(reviewService, "analysisService",
+                    updatedByTheOther);
+            try {
+                signClear(null).andExpect(status().isOk()).andExpect(jsonPath("$.signed.length()").value(0))
+                        .andExpect(jsonPath("$.skipped[0].analysisId").value(CLEAR_ID))
+                        .andExpect(jsonPath("$.skipped[0].reason").value("stale"));
+            } finally {
+                org.springframework.test.util.ReflectionTestUtils.setField(reviewService, "analysisService",
+                        realAnalysisService);
+            }
+        });
+    }
+
+    @Test
+    public void signClear_refusesASignatureThatDoesNotMeanReviewedAndSignsNothing() throws Exception {
+        withTwoReviews(() -> {
+            Long releaseSignature = jdbcTemplate.queryForObject("INSERT INTO clinlims.electronic_signature (id,"
+                    + " signer_id, signer_name_printed, signature_meaning, signed_at, record_type, record_id,"
+                    + " session_signing_sequence, auth_method) VALUES (nextval('clinlims.electronic_signature_seq'),"
+                    + " 1, 'Signer', 'VALIDATED_AND_RELEASED', now(), 'VALIDATION_BATCH', 100, 1, 'LOCAL')"
+                    + " RETURNING id", Long.class);
+            signClear(releaseSignature).andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error").value("signatureMismatch"));
+            assertEquals(0, signOffsOf(CLEAR_ID).size());
+        });
+    }
+
+    @Test
+    public void signClear_withoutSequentialSignOff_isRefused() throws Exception {
+        signClear(null).andExpect(status().isConflict()).andExpect(jsonPath("$.error").value("sequentialSignOffOff"));
+        assertEquals(0, signOffsOf(CLEAR_ID).size());
+    }
+
+    @Test
+    public void signClear_whenBulkActionsAreOff_returns403() throws Exception {
+        withTwoReviews(() -> {
+            ConfigurationProperties.getInstance().setPropertyValue(Property.ALLOW_BULK_RELEASE_CLEAR, "false");
+            signClear(null).andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error").value("bulkReleaseDisabled"));
+        });
+    }
+
+    private interface Steps {
+        void run() throws Exception;
+    }
+
+    private void withTwoReviews(Steps steps) throws Exception {
+        ConfigurationProperties configuration = ConfigurationProperties.getInstance();
+        String flagBefore = configuration.getPropertyValue(Property.USE_MULTI_LEVEL_VALIDATION);
+        try {
+            configuration.setPropertyValue(Property.USE_MULTI_LEVEL_VALIDATION, "true");
+            policies().saveLabWideDefault(
+                    new org.openelisglobal.validationpolicy.form.ValidationPolicyForm("NEEDS_REVIEW", 2, null), "1");
+            entityManager.flush();
+            entityManager.clear();
+            steps.run();
+        } finally {
+            configuration.setPropertyValue(Property.USE_MULTI_LEVEL_VALIDATION,
+                    flagBefore == null ? "false" : flagBefore);
+        }
+    }
+
+    private org.openelisglobal.validationpolicy.service.ValidationPolicyService policies() {
+        return org.openelisglobal.spring.util.SpringContext
+                .getBean(org.openelisglobal.validationpolicy.service.ValidationPolicyService.class);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions signClear(Long signatureId) throws Exception {
+        String body = requestBody(rowJson(CLEAR_ID, "", ""));
+        if (signatureId != null) {
+            body = body.substring(0, body.length() - 1) + ",\"signatureId\":" + signatureId + "}";
+        }
+        return mockMvc.perform(post("/rest/AccessionValidation/sign-clear").session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(body));
+    }
+
+    private List<Map<String, Object>> signOffsOf(String analysisId) {
+        return jdbcTemplate.queryForList(
+                "SELECT level, signer_id FROM clinlims.analysis_review_sign_off"
+                        + " WHERE analysis_id = ? AND superseded_at IS NULL ORDER BY level",
+                Integer.valueOf(analysisId));
     }
 }

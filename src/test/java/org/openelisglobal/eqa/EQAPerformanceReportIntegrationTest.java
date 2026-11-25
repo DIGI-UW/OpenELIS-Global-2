@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.sql.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.After;
@@ -37,12 +38,14 @@ import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQARound;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.openelisglobal.eqa.valueholder.EQASubmissionStatus;
+import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.testsupport.PdfText;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -296,6 +299,82 @@ public class EQAPerformanceReportIntegrationTest extends EQASpineTestBase {
         assertTrue("round 1 carries its own HIV row", rowIn(detail, "1", "HIV Viral Load", "48000"));
         assertTrue("round 2 carries its own HIV row", rowIn(detail, "2", "HIV Viral Load", "52000"));
         assertEquals("both rounds' HIV rows are on the page", 3, occurrences(detail, "HIV Viral Load"));
+    }
+
+    /**
+     * One analyte reported on several panel samples printed identical rows
+     * (OGC-1666). Each row names its sample, right after the round, and the rows of
+     * an analyte run in sample order with a result naming no sample last.
+     */
+    @Test
+    public void eachRowNamesItsPanelSampleAndTheRowsRunInSampleOrder() throws IOException {
+        for (String[] sample : new String[][] { { "HIV-C-10", "63000" }, { "HIV-C-2", "61000" },
+                { "HIV-C-3", "62000" } }) {
+            EQAParticipantResult result = new EQAParticipantResult();
+            result.setCycle(cycle);
+            result.setRound(round);
+            result.setLabEnrollmentId(ENROLLMENT);
+            result.setAnalyteId(HIV_ANALYTE);
+            result.setSubmissionStatus(EQASubmissionStatus.SUBMITTED);
+            result.setResultValue(sample[1]);
+            result.setProviderSampleCode(sample[0]);
+            result.setSysUserId(USER);
+            eqaParticipantResultDAO.insert(result);
+        }
+
+        String detail = block(reportText(), SCORING_DETAIL, SIGN_OFF);
+
+        assertTrue("the sample column follows the round", detail.contains("Round Sample Analyte"));
+        assertTrue("each row names its sample", rowIn(detail, "1", "HIV-C-2", "HIV Viral Load", "61000"));
+        int second = detail.indexOf("61000");
+        int third = detail.indexOf("62000");
+        int tenth = detail.indexOf("63000");
+        assertTrue("HIV-C-2, HIV-C-3, then HIV-C-10: " + detail, second < third && third < tenth);
+        assertTrue("the rows naming no sample come after them", tenth < detail.indexOf("48000"));
+    }
+
+    /**
+     * The Sample header is one of the report's own columns, so it prints in the
+     * same language as the Round and Analyte headers beside it (OGC-1666 review: it
+     * borrowed the Browse page's title and printed in French alone).
+     */
+    @Test
+    public void theSampleHeaderSpeaksTheLanguageOfItsNeighbours() throws IOException {
+        Locale previous = LocaleContextHolder.getLocale();
+        LocaleContextHolder.setLocale(Locale.FRENCH);
+        try {
+            String header = String.join(" ", MessageUtil.getMessage("eqa.report.table.round"),
+                    MessageUtil.getMessage("eqa.report.table.sample"),
+                    MessageUtil.getMessage("eqa.report.table.analyte"));
+
+            assertTrue(header, reportText().contains(header));
+        } finally {
+            LocaleContextHolder.setLocale(previous);
+        }
+    }
+
+    /**
+     * An external provider returns its target with the score, and the laboratory
+     * keeps it as the provider's target; its own report printed a dash beside the
+     * qualitative result instead (found walking OGC-1666).
+     */
+    @Test
+    public void anExternalProvidersReturnedTargetIsPrintedBesideItsResult() throws IOException {
+        EQAParticipantResult result = new EQAParticipantResult();
+        result.setCycle(cycle);
+        result.setRound(round);
+        result.setLabEnrollmentId(ENROLLMENT);
+        result.setAnalyteId(HIV_ANALYTE);
+        result.setSubmissionStatus(EQASubmissionStatus.SUBMITTED);
+        result.setResultValue("Non-reactive");
+        result.setProviderSampleCode("HIV-C-2");
+        result.setProviderTarget("Reactive");
+        result.setSysUserId(USER);
+        eqaParticipantResultDAO.insert(result);
+
+        String detail = block(reportText(), SCORING_DETAIL, SIGN_OFF);
+
+        assertTrue(detail, rowIn(detail, "HIV-C-2", "HIV Viral Load", "Non-reactive", "Reactive"));
     }
 
     /**

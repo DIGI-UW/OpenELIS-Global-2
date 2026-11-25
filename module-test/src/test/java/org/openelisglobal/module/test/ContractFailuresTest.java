@@ -35,7 +35,9 @@ public class ContractFailuresTest {
         }
         String all = String.join("\n", messages);
 
-        assertEquals(all, 3, result.getFailureCount());
+        assertEquals(all, 4, result.getFailureCount());
+        assertTrue(all, all.contains("expose './Missing' is not in remoteEntry.js"));
+        assertTrue(all, all.contains("expose './Ghost' imports assets/Ghost-kit0002.js, which is not in the bundle"));
         assertTrue(all, all.contains("changeset '001-thing' must have an id starting with 'kitfixture-'"));
         assertTrue(all, all.contains("must have author 'kitfixture', not 'someone'"));
         assertTrue(all, all.contains("OpenController.open has no @PreAuthorize"));

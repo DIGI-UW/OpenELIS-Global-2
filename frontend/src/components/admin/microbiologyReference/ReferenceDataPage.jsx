@@ -140,8 +140,21 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
     [definition.fields, optionLists],
   );
 
+  const optionLabel = (key, value) => {
+    const option = definition.fields
+      .find((field) => field.key === key && field.type === "select")
+      ?.options.find((candidate) => candidate.value === value);
+    return option ? intl.formatMessage({ id: option.label }) : value;
+  };
+
   const tableRows = page.rows.map((row) => ({
     ...row,
+    ...Object.fromEntries(
+      definition.columns.map((column) => [
+        column.key,
+        optionLabel(column.key, row[column.key]),
+      ]),
+    ),
     id: row.id,
     status: row.active ? "ACTIVE" : "INACTIVE",
     ...(readOnly ? {} : { actions: row.id }),
@@ -165,6 +178,7 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
   };
 
   const save = async (value) => {
+    setNotice("");
     await saveReference(definition.resource, value);
     setNotice(intl.formatMessage({ id: "microbiology.admin.saved" }));
     closeEditor();

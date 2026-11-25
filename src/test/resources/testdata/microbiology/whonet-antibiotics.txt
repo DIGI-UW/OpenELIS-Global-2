@@ -1,0 +1,15 @@
+WHONET_ABX_CODE	WHO_CODE	DIN_CODE	JAC_CODE	EUCAST_CODE	USER_CODE	ANTIBIOTIC	GUIDELINES	CLSI	EUCAST	SFM	SRGA	BSAC	DIN	NEO	AFA	ABX_NUMBER	POTENCY	ATC_CODE	CLASS	SUBCLASS	PROF_CLASS	WHO_AWARE	CIA_CATEGORY	CLSI_ORDER	EUCAST_ORDER	HUMAN	VETERINARY	ANIMAL_GP	LOINCCOMP	LOINCGEN	LOINCDISK	LOINCMIC	LOINCETEST	LOINCSLOW	LOINCAFB	LOINCSBT	LOINCMLC	DATE_ENTERED	DATE_MODIFIED	COMMENTS
+AMC	AMC	AMC	AMPC-CVA			Amoxicillin/Clavulanic acid	CLSI,EUCAST(Most bacteria)	X	X	X		X	X			2	20/10µg	J01CR02	Beta-lactam+Inhibitors		BL+INH	Access		03		X			Amoxicilli	18862-3	21-6	20-8	6977-3		25310-4	22-4	19-0	2021-01-01		
+AMC	AMC	AMC	AMPC-CVA			Amoxicillin/Clavulanic acid	BSAC,EUCAST(Haemophilus)		X	X		X				306	2/1µg	J01CR02	Beta-lactam+Inhibitors		BL+INH	Access		03		X			Amoxicilli	18862-3	21-6	20-8	6977-3		25310-4	22-4	19-0	2021-01-01		
+AMC	AMC	AMC	AMPC-CVA			Amoxicillin/Clavulanic acid										307	25/2µg	J01CR02	Beta-lactam+Inhibitors		BL+INH	Access		03		X			Amoxicilli	18862-3	21-6	20-8	6977-3		25310-4	22-4	19-0	2021-01-01		
+AMC	AMC	AMC	AMPC-CVA			Amoxicillin/Clavulanic acid	NEO							X		331	30/15µg	J01CR02	Beta-lactam+Inhibitors		BL+INH	Access		03		X			Amoxicilli	18862-3	21-6	20-8	6977-3		25310-4	22-4	19-0	2021-01-01		
+CPD	CPD	CPO	CPDX			Cefpodoxime										407	1µg	J01DD13	Cephems	Cephalosporin III	CEPH3			04c		X			Cefpodoxim	18890-4	121-4	120-6	6993-0			122-2	119-8	2021-01-01		
+CPD	CPD	CPO	CPDX			Cefpodoxime	BSAC					X				311	5µg	J01DD13	Cephems-Oral	Cephalosporin	CEPH-ORAL			05a		X			Cefpodoxim	18890-4	121-4	120-6	6993-0			122-2	119-8	2021-01-01		
+AMK	AN	AMK	AMK			Amikacin	CLSI,EUCAST	X	X	X	X	X	X			1	30µg	J01GB06	Aminoglycosides		AG	Access		09		X			Amikacin	18860-7	13-3	12-5	6975-7	20373-7	23624-0	14-1	11-7	2021-01-01		
+AMK	AN	AMK	AMK			Amikacin	NEO							X		329	40µg	J01GB06	Aminoglycosides		AG	Access		09		X			Amikacin	18860-7	13-3	12-5	6975-7	20373-7	23624-0	14-1	11-7	2021-01-01		
+CPD	CPD	CPO	CPDX			Cefpodoxime	SRGA,NEO				X			X		188	30µg	J01DD13	Cephems-Oral	Cephalosporin	CEPH-ORAL			05a		X			Cefpodoxim	18890-4	121-4	120-6	6993-0			122-2	119-8	2021-01-01		
+CPD	CPD	CPO	CPDX			Cefpodoxime	CLSI,EUCAST	X	X	X						87	10µg	J01DD13	Cephems-Oral	Cephalosporin	CEPH-ORAL			05a		X			Cefpodoxim	18890-4	121-4	120-6	6993-0			122-2	119-8	2021-01-01		
+KAN	K	KAN	KM			Kanamycin	CLSI	X		X						37	30µg	J01GB04	Aminoglycosides		AG	Watch		09		X			Kanamycin	18935-7	292-3	291-5	7022-7		23609-1	293-1	290-7	2021-01-01		
+KAN	K		KM			Kanamycin	NEO							X		361	100µg	J01GB04	Aminoglycosides		AG	Watch		09		X			Kanamycin	18935-7	292-3	291-5	7022-7		23609-1	293-1	290-7	2021-01-01		
+SDM	X					Sulfadimethoxine										289		J01ED01	Folate pathway inhibitors		FOLATE	Access		12a														2021-01-01	2024-04-16	
+SDM	SDM					Sulfadimidine	AFA								X	290	250µg	J01EB03	Folate pathway inhibitors		FOLATE	Access		12a														2021-01-01		

@@ -42,13 +42,16 @@ import "./CaseWorkspace.scss";
 import "./MicrobiologyCaseView.css";
 import CaseQuestionnaire from "./CaseQuestionnaire";
 import OrderDetailPanel from "./OrderDetailPanel";
-import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
+import CaseStatusTags from "./CaseStatusTags";
+import CaseReleaseActions from "./CaseReleaseActions";
+import { getMicrobiologyCurrentStep } from "./MicrobiologyCaseState";
 import CaseContextEditor from "./CaseContextEditor";
 import CaseTestingWorkspace from "./CaseTestingWorkspace";
 import serviceDefault from "./CaseWorkspaceService";
 import {
   MICROBIOLOGY_CASE_PATH,
   MICROBIOLOGY_WORKLIST_PATH,
+  routedScope,
 } from "./MicrobiologyRoutes";
 
 export default function CaseViewShell({
@@ -59,12 +62,16 @@ export default function CaseViewShell({
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const { configurationProperties } = useContext(ConfigurationContext) || {};
   const canCorrectSamples = hasRole(userSessionDetails, Roles.RECEPTION);
-  const [infoOpen, setInfoOpen] = useState(true);
   const [jump, setJump] = useState(null);
   const params = useParams();
   const location = useLocation();
+  const [infoOpen, setInfoOpen] = useState(() =>
+    ["case-info", "order-detail"].includes(
+      new URLSearchParams(location.search).get("section"),
+    ),
+  );
   const history = useHistory();
-  const selectScope = (scope, parameters = {}) => {
+  const selectScope = (scope, parameters = {}, push = !!parameters.action) => {
     const next = new URLSearchParams(location.search);
     [
       "view",
@@ -79,12 +86,17 @@ export default function CaseViewShell({
     ].forEach((key) => next.delete(key));
     next.set("scope", scope);
     Object.entries(parameters).forEach(([key, value]) => next.set(key, value));
-    history.push({ pathname: location.pathname, search: next.toString() });
+    history[push ? "push" : "replace"]({
+      pathname: location.pathname,
+      search: next.toString(),
+    });
   };
-  const openSection = (scope, parameters) => {
-    selectScope(scope, parameters);
+  const openSection = (scope, parameters, push) => {
+    selectScope(scope, parameters, push);
     setJump({ scope });
   };
+  const openCaseAction = (scope, parameters) =>
+    openSection(scope, parameters, true);
   const worklistSearch = new URLSearchParams(location.search);
   [
     "view",
@@ -114,6 +126,8 @@ export default function CaseViewShell({
   const [detail, setDetail] = useState(null);
   const [incomingCount, setIncomingCount] = useState(0);
   const [incomingError, setIncomingError] = useState(false);
+  const [readiness, setReadiness] = useState(null);
+  const [partialReady, setPartialReady] = useState(false);
   useEffect(() => {
     let live = true;
     if (!detail || !service.getIncoming) return undefined;
@@ -129,6 +143,32 @@ export default function CaseViewShell({
       })
       .catch(() => {
         if (live) setIncomingError(true);
+      });
+    return () => {
+      live = false;
+    };
+  }, [detail, service]);
+  const caseId = detail?.id;
+  useEffect(() => {
+    setReadiness(null);
+    setPartialReady(false);
+  }, [caseId]);
+  useEffect(() => {
+    let live = true;
+    if (!detail || !service.getReadiness || !service.getReport)
+      return undefined;
+    Promise.all([service.getReadiness(detail.id), service.getReport(detail.id)])
+      .then(([value, report]) => {
+        if (live) {
+          setReadiness(value);
+          setPartialReady(report.validatedResults > 0);
+        }
+      })
+      .catch(() => {
+        if (live) {
+          setReadiness(null);
+          setPartialReady(false);
+        }
       });
     return () => {
       live = false;
@@ -187,6 +227,21 @@ export default function CaseViewShell({
         if (visitGeneration.current === requestedVisit) setSaving(false);
       });
   };
+  const reloadCase = () =>
+    service
+      .getCase(id)
+      .then((next) => {
+        if (currentCase.current === id) setDetail(next);
+      })
+      .catch(() => setError(true));
+  const currentScope = routedScope(location.search);
+  const worklistLink = (
+    <RouterLink
+      to={`${MICROBIOLOGY_WORKLIST_PATH}${worklistSearch.toString() ? `?${worklistSearch}` : ""}`}
+    >
+      {t("microbiology.worklist.title")}
+    </RouterLink>
+  );
   // i18n-keys: microbiology.case.status.*
   return (
     <Grid
@@ -196,11 +251,7 @@ export default function CaseViewShell({
     >
       <Column lg={16} md={8} sm={4}>
         <Stack gap={5}>
-          <RouterLink
-            to={`${MICROBIOLOGY_WORKLIST_PATH}${worklistSearch.toString() ? `?${worklistSearch}` : ""}`}
-          >
-            {t("microbiology.worklist.title")}
-          </RouterLink>
+          {!detail && worklistLink}
           {loading && <InlineLoading description={t("common.loading")} />}
           {error && (
             <InlineNotification
@@ -211,10 +262,114 @@ export default function CaseViewShell({
           )}
           {detail && (
             <>
+              <div
+                role="region"
+                aria-label={t("microbiology.case.bar")}
+                className="microbiology-case-workspace__case-bar"
+              >
+                {worklistLink}
+                <div className="microbiology-case-workspace__case-bar-identity">
+                  <span>
+                    <strong>{detail.accessionNumber || detail.id}</strong>
+                    {" · "}
+                    {detail.patientName || t("not.available")}
+                  </span>
+                  <div>
+                    <CaseStatusTags
+                      caseStatus={detail.caseStatus}
+                      statusTags={detail.statusTags}
+                    />
+                    {detail.stat && (
+                      <Tag type="red">{t("microbiology.case.stat")}</Tag>
+                    )}
+                  </div>
+                </div>
+                <nav
+                  aria-label={t("microbiology.case.jumpTo")}
+                  className="microbiology-case-workspace__case-bar-jump"
+                >
+                  {[
+                    ["INITIAL", "microbiology.testing.initial"],
+                    ["CULTURE", "microbiology.culture.title"],
+                    ["ISOLATES", "microbiology.case.isolates"],
+                    ["AST", "microbiology.m6.ast"],
+                    ["REPORT", "microbiology.m6.report"],
+                    ["HISTORY", "microbiology.case.timeline"],
+                  ].map(([scope, label]) => (
+                    <Button
+                      key={scope}
+                      size="sm"
+                      kind="ghost"
+                      aria-current={currentScope === scope ? "true" : undefined}
+                      onClick={() => openSection(scope)}
+                    >
+                      {t(label)}
+                    </Button>
+                  ))}
+                </nav>
+                <CaseReleaseActions
+                  detail={detail}
+                  service={service}
+                  readiness={readiness}
+                  partialReady={partialReady}
+                  onReleased={reloadCase}
+                />
+                {(detail.canWrite ||
+                  (detail.canAmend &&
+                    detail.finalReleaseState === "FINAL_RELEASED")) && (
+                  <OverflowMenu
+                    aria-label={t("microbiology.case.actions")}
+                    iconDescription={t("microbiology.case.actions")}
+                    menuOptionsClass="microbiology-case-actions"
+                    flipped
+                  >
+                    {detail.canWrite && (
+                      <OverflowMenuItem
+                        itemText={t("microbiology.critical.logNotification")}
+                        onClick={() =>
+                          openCaseAction("CRITICAL", {
+                            action: "log-critical",
+                            targetType: "CASE",
+                            targetId: id,
+                          })
+                        }
+                      />
+                    )}
+                    {detail.canWrite && (
+                      <OverflowMenuItem
+                        itemText={t("microbiology.nce.report")}
+                        onClick={() => openCaseAction("NONCONFORMANCE")}
+                      />
+                    )}
+                    {detail.canAmend &&
+                      detail.finalReleaseState === "FINAL_RELEASED" && (
+                        <OverflowMenuItem
+                          itemText={t("microbiology.amendment.open")}
+                          onClick={() => openCaseAction("AMENDMENT")}
+                        />
+                      )}
+                    {detail.canWrite && (
+                      <OverflowMenuItem
+                        itemText={t("microbiology.nce.markLost")}
+                        isDelete
+                        hasDivider
+                        onClick={() =>
+                          openCaseAction("NONCONFORMANCE", {
+                            action: "mark-lost",
+                          })
+                        }
+                      />
+                    )}
+                  </OverflowMenu>
+                )}
+              </div>
               <h1>
                 {t("microbiology.case.heading", {
                   accession: detail.accessionNumber || detail.id,
                 })}
+                {detail.stat && (
+                  <Tag type="red">{t("microbiology.case.stat")}</Tag>
+                )}
               </h1>
               {incomingCount > 0 && (
                 <Tile>
@@ -223,7 +378,7 @@ export default function CaseViewShell({
                       count: incomingCount,
                     })}
                   </p>
-                  <Button kind="ghost" onClick={() => selectScope("INCOMING")}>
+                  <Button kind="ghost" onClick={() => openSection("INCOMING")}>
                     {t("microbiology.incoming.open")}
                   </Button>
                 </Tile>
@@ -328,28 +483,16 @@ export default function CaseViewShell({
                     {detail.reportingTrack && (
                       <Tag type="teal">{detail.reportingTrack}</Tag>
                     )}
-                    {detail.referred && (
-                      <Tag type="purple">
-                        {t("label.results.history.event.REFERRAL")}
-                      </Tag>
-                    )}
                   </Column>
                   <Column lg={4} md={4} sm={4}>
-                    <p className="cds--label">
-                      {t("microbiology.case.workStage")}
-                    </p>
-                    <p>{formatMicrobiologyEnum(detail.stage, intl)}</p>
-                    <p>
-                      {t("microbiology.case.releaseState")}:{" "}
-                      {formatMicrobiologyEnum(detail.finalReleaseState, intl)}
-                    </p>
-                    <p>
-                      {t("microbiology.case.priority")}:{" "}
-                      {formatMicrobiologyEnum(detail.priority, intl)}
-                    </p>
-                    <Tag type="blue">
-                      {t(`microbiology.case.status.${detail.status}`)}
-                    </Tag>
+                    <p className="cds--label">{t("common.status")}</p>
+                    <div>
+                      <CaseStatusTags
+                        caseStatus={detail.caseStatus}
+                        statusTags={detail.statusTags}
+                      />
+                    </div>
+                    <p>{t(getMicrobiologyCurrentStep(detail).labelId)}</p>
                     {!detail.canWrite && (
                       <p>
                         {t(
@@ -362,51 +505,6 @@ export default function CaseViewShell({
                   </Column>
                 </Grid>
               </Tile>
-              {(detail.canWrite ||
-                (detail.canAmend &&
-                  detail.finalReleaseState === "FINAL_RELEASED")) && (
-                <OverflowMenu
-                  aria-label={t("microbiology.case.actions")}
-                  iconDescription={t("microbiology.case.actions")}
-                  menuOptionsClass="microbiology-case-actions"
-                >
-                  {detail.canWrite && (
-                    <OverflowMenuItem
-                      itemText={t("microbiology.critical.logNotification")}
-                      onClick={() =>
-                        openSection("CRITICAL", {
-                          action: "log-critical",
-                          targetType: "CASE",
-                          targetId: id,
-                        })
-                      }
-                    />
-                  )}
-                  {detail.canWrite && (
-                    <OverflowMenuItem
-                      itemText={t("microbiology.nce.report")}
-                      onClick={() => openSection("NONCONFORMANCE")}
-                    />
-                  )}
-                  {detail.canAmend &&
-                    detail.finalReleaseState === "FINAL_RELEASED" && (
-                      <OverflowMenuItem
-                        itemText={t("microbiology.amendment.open")}
-                        onClick={() => openSection("AMENDMENT")}
-                      />
-                    )}
-                  {detail.canWrite && (
-                    <OverflowMenuItem
-                      itemText={t("microbiology.nce.markLost")}
-                      isDelete
-                      hasDivider
-                      onClick={() =>
-                        openSection("NONCONFORMANCE", { action: "mark-lost" })
-                      }
-                    />
-                  )}
-                </OverflowMenu>
-              )}
               <section
                 id="case-information"
                 onFocus={(event) => {
@@ -467,7 +565,7 @@ export default function CaseViewShell({
                       )}
                     <h2>{t("common.samples")}</h2>
                     <TableContainer>
-                      <Table>
+                      <Table tabIndex={0} aria-label={t("common.samples")}>
                         <TableHead>
                           <TableRow>
                             <TableHeader>{t("common.labNumber")}</TableHeader>
@@ -612,14 +710,7 @@ export default function CaseViewShell({
                 key={id}
                 detail={detail}
                 service={service}
-                onCaseChanged={() =>
-                  service
-                    .getCase(id)
-                    .then((next) => {
-                      if (currentCase.current === id) setDetail(next);
-                    })
-                    .catch(() => setError(true))
-                }
+                onCaseChanged={reloadCase}
               />
             </>
           )}

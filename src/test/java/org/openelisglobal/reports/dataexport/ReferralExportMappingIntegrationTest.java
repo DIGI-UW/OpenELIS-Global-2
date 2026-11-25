@@ -11,13 +11,11 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.valueholder.Analysis;
-import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.login.valueholder.UserSessionData;
@@ -34,10 +32,9 @@ import org.openelisglobal.reports.dataexport.form.ReportSourceConfig;
 import org.openelisglobal.reports.dataexport.form.SavedReportDefinition;
 import org.openelisglobal.reports.dataexport.form.SavedReportFilters;
 import org.openelisglobal.reports.dataexport.service.ReportingCatalogService;
+import org.openelisglobal.reports.dataexport.service.ReportingException;
 import org.openelisglobal.result.valueholder.Result;
-import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
-import org.openelisglobal.userrole.valueholder.UserRole;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -199,14 +196,23 @@ public class ReferralExportMappingIntegrationTest extends BaseWebContextSensitiv
                 () -> read(request("resultDate", "2026-05-07", "2026-05-07", "UTC", List.of("1"), List.of())));
     }
 
+    private SystemUser reportingAdmin() {
+        return entityManager.find(SystemUser.class, ExportLocationFixture.reportingAdmin(entityManager));
+    }
+
     private String export(String type, List<String> fields, String date, long expectedRows) throws Exception {
+        return export(type, fields, date, expectedRows, null);
+    }
+
+    private String export(String type, List<String> fields, String date, long expectedRows, String locale)
+            throws Exception {
         entityManager.flush();
         entityManager.clear();
         var definition = catalog.definition(type);
         var available = catalog.variables(definition, "TABLE").stream()
                 .collect(java.util.stream.Collectors.toMap(v -> v.id(), java.util.function.Function.identity()));
         var snapshot = new ExportSnapshot(definition, "TABLE", fields.stream().map(available::get).toList(),
-                new ExportFilter(date, date, List.of("1"), List.of(), List.of()), "UTC", List.of());
+                new ExportFilter(date, date, List.of("1"), List.of(), List.of()), "UTC", List.of(), locale);
         StringWriter output = new StringWriter();
         assertEquals(expectedRows, catalog.source(definition.source()).write(output, snapshot));
         return output.toString();
@@ -225,10 +231,77 @@ public class ReferralExportMappingIntegrationTest extends BaseWebContextSensitiv
         assertEquals("sentDate", catalog.definition("REFERRALS").dateAnchor());
         assertEquals("\uFEFFReferral ID,Referral Result ID,Result ID,Accession Number,Referred Test Name,Referral Date,"
                 + "Referral Result Value,Referral Result Date,Referral Status\r\n" + sent.getId() + "," + first.getId()
-                + "," + first.getResult().getId() + ",12345,Blood Test,2026-05-07,450,2026-05-08,REQUESTED\r\n"
+                + "," + first.getResult().getId()
+                + ",12345,Test Localization 1(Test Localization 1),2026-05-07,450,2026-05-08,REQUESTED\r\n"
                 + sent.getId() + "," + repeated.getId() + "," + repeated.getResult().getId()
-                + ",12345,Blood Test,2026-05-07,450,2026-05-09,REQUESTED\r\n" + pending.getId()
-                + ",,,12345,Blood Test,2026-05-07,,,REQUESTED\r\n", export("REFERRALS", fields, "2026-05-07", 3));
+                + ",12345,Test Localization 1(Test Localization 1),2026-05-07,450,2026-05-09,REQUESTED\r\n"
+                + pending.getId() + ",,,12345,Test Localization 1(Test Localization 1),2026-05-07,,,REQUESTED\r\n",
+                export("REFERRALS", fields, "2026-05-07", 3));
+    }
+
+    /**
+     * OGC-1655: only a report type that offers a date choice takes one, and only
+     * one of the dates it offers; a saved report and a generated request keep it.
+     */
+    @Test
+    public void onlyAReportThatOffersADateChoiceTakesOneOfItsOwnDates() {
+        var user = reportingAdmin();
+        var referral = new SavedReportDefinition(1, "REFERRALS", "TABLE", List.of("referralId"),
+                new SavedReportFilters(List.of(), List.of(), List.of(), "orderEnteredDate"));
+        var unsupported = assertThrows(ReportingException.class, () -> catalog.validateSaved(user.getId(), referral));
+        assertEquals("reporting.filters.unsupported", unsupported.getMessage());
+
+        var wrongDate = new SavedReportDefinition(1, "SAMPLE_TESTING", "SPREADSHEET", List.of("accessionNumber"),
+                new SavedReportFilters(List.of(), List.of(), List.of(), "sentDate"));
+        var invalid = assertThrows(ReportingException.class, () -> catalog.validateSaved(user.getId(), wrongDate));
+        assertEquals(422, invalid.status());
+        assertEquals("reporting.dateBasis.invalid", invalid.getMessage());
+
+        var entered = new SavedReportDefinition(1, "SAMPLE_TESTING", "SPREADSHEET", List.of("accessionNumber"),
+                new SavedReportFilters(List.of(), List.of(), List.of(), "orderEnteredDate"));
+        assertEquals("orderEnteredDate", catalog.validateSaved(user.getId(), entered).filters().dateBasis());
+        var request = new ExportSubmission(1, "SAMPLE_TESTING", "SPREADSHEET", "entered-date-basis",
+                List.of("accessionNumber"),
+                new ExportFilter("2024-06-03", "2024-06-03", List.of(), List.of(), List.of(), "orderEnteredDate"));
+        assertEquals("orderEnteredDate", catalog.freeze(request, user.getId()).filterSpec().dateBasis());
+    }
+
+    /**
+     * OGC-1680: the referred and returned tests read as the screens show them, with
+     * the specimen's sample type, in the language of the user who asked for the
+     * export, not as the catalog description ("Blood Test").
+     */
+    @Test
+    public void aReferredTestIsNamedInTheLanguageOfTheUserWhoAskedForTheExport() throws Exception {
+        var sent = referral("1", "2026-05-05T10:00:00Z", "2026-05-07T11:00:00Z");
+        returned(sent, "450", "2026-05-08T12:00:00Z");
+        var fields = List.of("referredTestName", "returnedTestName");
+
+        assertEquals("\uFEFFReferred Test Name,Returned Test Name\r\nTB(TB),TB(TB)\r\n",
+                export("REFERRALS", fields, "2026-05-07", 1, "fr-FR"));
+        assertEquals(
+                "\uFEFFReferred Test Name,Returned Test Name\r\n"
+                        + "Test Localization 1(Test Localization 1),Test Localization 1(Test Localization 1)\r\n",
+                export("REFERRALS", fields, "2026-05-07", 1, "en"));
+    }
+
+    /**
+     * OGC-1652: a referral names where its specimen came from, down to the
+     * geographic areas above the facility, nearest first.
+     */
+    @Test
+    public void aReferralCarriesWhereItsSpecimenCameFrom() throws Exception {
+        ExportLocationFixture.attach(entityManager, "1");
+        referral("1", "2026-05-05T10:00:00Z", "2026-05-07T11:00:00Z");
+        String district = "area:" + ExportLocationFixture.DISTRICT_TYPE;
+        String region = "area:" + ExportLocationFixture.REGION_TYPE;
+
+        assertEquals(
+                "﻿Accession Number,Requesting Facility,Requesting Facility Code,Ward / Dept,Health District,"
+                        + "Health Region\r\n12345,Alotau Hospital,ALT-01,Maternity Ward,Milne Bay District,"
+                        + "Southern Region\r\n",
+                export("REFERRALS", List.of("referralAccessionNumber", "referringSite", "referringSiteCode", "wardDept",
+                        district, region), "2026-05-07", 1));
     }
 
     @Test
@@ -251,26 +324,7 @@ public class ReferralExportMappingIntegrationTest extends BaseWebContextSensitiv
 
     @Test
     public void referralRequestsAndSavedReportsHaveNoImplicitFinalizedResultFilter() {
-        var role = entityManager.createQuery("from Role where name = :name", Role.class)
-                .setParameter("name", Constants.ROLE_GLOBAL_ADMIN).getResultStream().findFirst().orElseGet(() -> {
-                    var created = new Role();
-                    created.setName(Constants.ROLE_GLOBAL_ADMIN);
-                    created.setActive(true);
-                    entityManager.persist(created);
-                    return created;
-                });
-        var user = new SystemUser();
-        user.setLoginName("referral-" + UUID.randomUUID().toString().substring(0, 8));
-        user.setFirstName("Reporting");
-        user.setLastName("Referrals");
-        user.setIsActive("Y");
-        user.setIsEmployee("Y");
-        entityManager.persist(user);
-        var grant = new UserRole();
-        grant.setSystemUserId(user.getId());
-        grant.setRoleId(role.getId());
-        entityManager.persist(grant);
-        entityManager.flush();
+        var user = reportingAdmin();
         var filter = new ExportFilter("2026-05-07", "2026-05-07", List.of(), List.of(), List.of());
         var request = new ExportSubmission(1, "REFERRALS", "TABLE", "referral-filter", List.of("referralId"), filter);
         var snapshot = catalog.freeze(request, user.getId());

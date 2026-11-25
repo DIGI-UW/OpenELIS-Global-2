@@ -15,7 +15,6 @@ import org.junit.Test;
 import org.openelisglobal.microbiology.controller.rest.MicroAstAnalyzerEventRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroAstRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseAmendmentRestController;
-import org.openelisglobal.microbiology.controller.rest.MicroCaseInoculationRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseNonconformanceRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseReadinessRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseRestController;
@@ -37,12 +36,11 @@ public class MicrobiologyArchitectureTest {
     @Test
     public void microbiologyControllersDoNotDeclareTransactions() {
         Class<?>[] controllers = { MicroCultureRestController.class, MicroCultureCatalogRestController.class,
-                MicroCaseRestController.class, MicroCaseInoculationRestController.class,
-                MicroCaseTimelineRestController.class, MicroIsolateRestController.class, MicroAstRestController.class,
-                MicroCaseReadinessRestController.class, MicrobiologyReferenceRestController.class,
-                MicroWorklistRestController.class, MicroCriticalCommunicationRestController.class,
-                MicroReportReleaseRestController.class, MicroWhonetReadinessRestController.class,
-                MicrobiologyUatScenarioRestController.class };
+                MicroCaseRestController.class, MicroCaseTimelineRestController.class, MicroIsolateRestController.class,
+                MicroAstRestController.class, MicroCaseReadinessRestController.class,
+                MicrobiologyReferenceRestController.class, MicroWorklistRestController.class,
+                MicroCriticalCommunicationRestController.class, MicroReportReleaseRestController.class,
+                MicroWhonetReadinessRestController.class, MicrobiologyUatScenarioRestController.class };
         for (Class<?> controller : controllers) {
             assertFalse(controller.isAnnotationPresent(Transactional.class));
             for (Method method : controller.getDeclaredMethods()) {
@@ -54,11 +52,10 @@ public class MicrobiologyArchitectureTest {
     @Test
     public void userFacingMicrobiologyWriteControllersRequireBenchRoleBundles() {
         Class<?>[] controllers = { MicroCultureRestController.class, MicroCultureCatalogRestController.class,
-                MicroCaseRestController.class, MicroCaseInoculationRestController.class,
-                MicroCaseTimelineRestController.class, MicroCaseNonconformanceRestController.class,
-                MicroIsolateRestController.class, MicroAstRestController.class,
-                MicroCriticalCommunicationRestController.class, MicroReportReleaseRestController.class,
-                MicroCaseAmendmentRestController.class };
+                MicroCaseRestController.class, MicroCaseTimelineRestController.class,
+                MicroCaseNonconformanceRestController.class, MicroIsolateRestController.class,
+                MicroAstRestController.class, MicroCriticalCommunicationRestController.class,
+                MicroReportReleaseRestController.class, MicroCaseAmendmentRestController.class };
         for (Class<?> controller : controllers) {
             var authorization = controller
                     .getAnnotation(org.springframework.security.access.prepost.PreAuthorize.class);

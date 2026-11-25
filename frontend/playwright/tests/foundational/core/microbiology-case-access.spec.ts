@@ -1,5 +1,6 @@
 import { expect, test } from "../../../helpers/test-base";
 import { seedMicrobiologyWorklistCase } from "../../../helpers/seed-microbiology-data";
+import { openMicrobiologyCaseInfo } from "../../../helpers/microbiology-ui";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 test.describe("Microbiology V2 MVP case visibility", () => {
@@ -43,6 +44,7 @@ test.describe("Microbiology V2 MVP case visibility", () => {
     await expect(
       page.getByRole("heading", { name: "Testing and results", exact: true }),
     ).toBeVisible();
+    await openMicrobiologyCaseInfo(page);
     await expect(
       page.getByRole("heading", { name: "Samples", exact: true }),
     ).toBeVisible();
