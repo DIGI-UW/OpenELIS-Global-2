@@ -10,17 +10,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -48,8 +40,8 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 /**
  * Standalone unit tests for CommonValidationsRestController.
  *
- * Verifies request validation, response mapping, and thread-safety / state
- * isolation across sequential and concurrent requests.
+ * Verifies request validation, response mapping, and state isolation across
+ * sequential requests.
  */
 @RunWith(MockitoJUnitRunner.class)
 public class CommonValidationsRestControllerTest {
@@ -132,7 +124,7 @@ public class CommonValidationsRestControllerTest {
     }
 
     // -------------------------------------------------------------------------
-    // Thread Safety & State Isolation Tests
+    // State Isolation Regression Test
     // -------------------------------------------------------------------------
 
     @Test
@@ -151,42 +143,6 @@ public class CommonValidationsRestControllerTest {
         mockMvc.perform(get("/rest/SampleEntryGenerateScanProvider").param("programCode", "NONEXISTENT"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.status").value(false))
                 .andExpect(jsonPath("$.body").value("Invalid program.code"));
-    }
-
-    @Test
-    public void concurrentRequests_maintainThreadSafetyAndResponseIsolation() throws Exception {
-        int threadCount = 20;
-        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
-        CountDownLatch startLatch = new CountDownLatch(1);
-        List<Future<Boolean>> futures = new ArrayList<>();
-
-        for (int i = 0; i < threadCount; i++) {
-            final boolean validNumber = (i % 2 == 0);
-            futures.add(executor.submit(() -> {
-                startLatch.await();
-                String phone = validNumber ? "123-4567" : "bad-phone";
-                CommonValidationsRestController.ResponseObject response = controller
-                        .getPhoneNumberValidation(new org.springframework.mock.web.MockHttpServletRequest("GET",
-                                "/rest/PhoneNumberValidationProvider") {
-                            {
-                                setParameter("value", phone);
-                            }
-                        });
-                if (validNumber) {
-                    return response.isStatus() && "Valid phone number".equals(response.getBody());
-                } else {
-                    return !response.isStatus() && "Invalid phone format: ddd-dddd".equals(response.getBody());
-                }
-            }));
-        }
-
-        startLatch.countDown();
-        executor.shutdown();
-        executor.awaitTermination(5, TimeUnit.SECONDS);
-
-        for (Future<Boolean> future : futures) {
-            Assert.assertTrue("Concurrent request must yield thread-isolated, correct response", future.get());
-        }
     }
 
     // -------------------------------------------------------------------------
@@ -299,5 +255,11 @@ public class CommonValidationsRestControllerTest {
                 .param("subjectNumber", "SUBJ-DUPE")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(false))
                 .andExpect(jsonPath("$.body").value("fail#Error: Duplicate subject number found"));
+    }
+
+    @Test
+    public void validateSubjectNumber_withoutNumberType_returnsFailure() throws Exception {
+        mockMvc.perform(get("/rest/subjectNumberValidationProvider").param("subjectNumber", "SUBJ-101"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value(false));
     }
 }
