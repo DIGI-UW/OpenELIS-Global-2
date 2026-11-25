@@ -136,7 +136,11 @@ public class AutomaticReleaseRecordTest extends BaseWebContextSensitiveTest {
 
         AnalysisItem row = autoValidatedRow("1");
         assertEquals("Lab-wide policy: No review", row.getAutoReleaseRule());
-        assertTrue(row.getAutoReleasedBy(), !row.getAutoReleasedBy().isBlank());
+        assertEquals("named first name first, as the sign-offs name a user",
+                jdbcTemplate.queryForObject(
+                        "SELECT TRIM(first_name) || ' ' || TRIM(last_name) FROM clinlims.system_user WHERE id = 1",
+                        String.class),
+                row.getAutoReleasedBy());
         assertTrue(timelineService.getTimeline(analysisService.get("1")).stream()
                 .anyMatch(event -> "AUTO_RELEASE".equals(event.getType())
                         && "Lab-wide policy: No review".equals(event.getDetail())));

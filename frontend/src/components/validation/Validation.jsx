@@ -454,7 +454,9 @@ const Validation = (props) => {
   /**
    * OGC-1029 (FR-B2) — the guarded bulk release: only the Clear lane is sent,
    * and the server re-derives the lane before releasing anything. Skipped rows
-   * (no longer clear) are reported, never released.
+   * (no longer clear) are reported, never released. Whenever the server says
+   * what it released, even nothing, the dialog closes and the queue reloads, so
+   * a lane that went stale is never offered again.
    */
   const handleReleaseAllClear = (signature) => {
     if (bulkBusy) {
@@ -479,7 +481,7 @@ const Validation = (props) => {
             message: intl.formatMessage({ id: outcomeKey }),
           });
           setNotificationVisible(true);
-          if (outcomeKey === "label.validation.bulk.error.stale") {
+          if (!response?.error && Array.isArray(response?.released)) {
             setBulkOpen(false);
             refreshQueue();
           }
@@ -501,7 +503,8 @@ const Validation = (props) => {
   /**
    * OGC-1364 v2 — signs the next review level of the clear rows at an earlier
    * level, under one e-signature meaning Reviewed. The server re-derives the
-   * lane and each row's level, and reports what it skipped.
+   * lane and each row's level, and reports what it skipped; once it has said
+   * what it signed, even nothing, the dialog closes and the queue reloads.
    */
   const handleSignAllClear = (signature) => {
     if (bulkBusy) {
@@ -525,7 +528,7 @@ const Validation = (props) => {
           message: intl.formatMessage({ id: outcome.id }, outcome.values),
         });
         setNotificationVisible(true);
-        if (signed > 0 || outcome.id === "label.validation.bulk.error.stale") {
+        if (!response?.error && Array.isArray(response?.signed)) {
           setBulkOpen(false);
           refreshQueue();
         }
@@ -694,9 +697,9 @@ const Validation = (props) => {
         }
         const review = reviewStateOf(row);
         const needsReview =
-          triage.lane !== LANE_CLEAR ||
-          !review.finalLevel ||
-          Boolean(review.blockedReason);
+          !review.blockedReason &&
+          row.selfValidationBlocked !== true &&
+          (triage.lane !== LANE_CLEAR || review.levels > 1);
         if (triage.chips.length === 0 && !needsReview && review.levels < 2) {
           return null;
         }

@@ -638,10 +638,17 @@ const AnalyserResults = (props) => {
             )}
           </>
         )}
-        {row.importIssueReason === "run_qc_failed" && (
+        {(row.importIssueReason === "run_qc_failed" ||
+          row.importIssueReason === "run_qc_missing") && (
           <>
             <div>
-              <FormattedMessage id="analyzer.results.held.runQcFailed" />
+              <FormattedMessage
+                id={
+                  row.importIssueReason === "run_qc_missing"
+                    ? "analyzer.results.held.runQcMissing"
+                    : "analyzer.results.held.runQcFailed"
+                }
+              />
             </div>
             {row.heldRunId && (
               <CarbonLink as={RouterLink} to={`/Results?run=${row.heldRunId}`}>

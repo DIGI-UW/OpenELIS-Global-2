@@ -72,6 +72,12 @@
   <include relativeToChangelogFile="true" file="043-validation-policy-audit-auto-release.xml"/>
   <!-- OGC-768: environmental order type (regulation-driven or ad-hoc) -->
   <include relativeToChangelogFile="true" file="044-env-order-branch-observation-type.xml"/>
+  <!-- OGC-1200 slice 5b: the samples a Retest set aside, and the run confirmed as their retest -->
+  <include relativeToChangelogFile="true" file="045-result-run-retest.xml"/>
+  <!-- OGC-1200 slice 7: the run value an exception decision was taken on -->
+  <include relativeToChangelogFile="true" file="046-result-run-event-row.xml"/>
+  <!-- OGC-1200 slice 8: what each run of a test must carry (control required, warn or hold when missing) -->
+  <include relativeToChangelogFile="true" file="047-test-qc-policy.xml"/>
 
   <!-- Read-only FHIR interface: explicit resource-type reader permissions -->
   <include relativeToChangelogFile="true" file="027-fhir-read-permissions.xml"/>
