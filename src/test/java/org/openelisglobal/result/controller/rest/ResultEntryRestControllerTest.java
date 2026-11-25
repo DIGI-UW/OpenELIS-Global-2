@@ -1320,8 +1320,7 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
         mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
                 .content(saveBodyWithExtras("1", "3", "1", "90.0", currentToken("1"),
                         "\"note\":\"\",\"interpretation\":\"Fasting glucose within the reference range.\""))
-                .session(session)).andExpect(status().isOk())
-                .andExpect(jsonPath("$.analysisNotes").isArray())
+                .session(session)).andExpect(status().isOk()).andExpect(jsonPath("$.analysisNotes").isArray())
                 .andExpect(jsonPath("$.analysisNotes[?(@.subject == 'Interpretation')].text")
                         .value("Fasting glucose within the reference range."));
 
