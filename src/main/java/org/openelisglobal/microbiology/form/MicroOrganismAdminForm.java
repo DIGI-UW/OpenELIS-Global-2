@@ -8,6 +8,7 @@ public class MicroOrganismAdminForm {
     public String whonetCode;
     public String oclCode;
     public String organismGroup;
+    public String labGroups;
     public String gramStain;
     public String initialSignificance;
     public String defaultAstPanelId;

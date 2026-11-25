@@ -24,6 +24,7 @@ import {
   formatHoldingMinutes,
   formatIsoDateForBackend,
   formatPickerDateForIso,
+  isClockTime,
 } from "../../dateUtils";
 import {
   getHandlingRequirements,
@@ -41,6 +42,7 @@ import {
   storageConditionLabelId,
 } from "./handlingRules";
 import SearchableSelect from "../../../common/SearchableSelect";
+import ContainerTypeField from "./ContainerTypeField";
 
 /**
  * SampleCollectionCard - Card for a single sample with collection details
@@ -414,11 +416,30 @@ const SampleCollectionCard = ({
               onUpdate(sampleIndex, {
                 sampleTypeId: newTypeId,
                 sampleTypeName: newTypeName,
+                ...(isClinical && sample.proposed && !sample.sampleItemId
+                  ? { containerEdited: true }
+                  : {}),
               });
             }}
             disabled={isReadOnly}
           />
         </Column>
+
+        {isClinical && (
+          <Column lg={4} md={4} sm={4}>
+            <ContainerTypeField
+              sample={sample}
+              sampleIndex={sampleIndex}
+              isReadOnly={isReadOnly}
+              onChange={(containerTypeId) =>
+                onUpdate(sampleIndex, {
+                  containerTypeId,
+                  ...(sample.sampleItemId ? {} : { containerEdited: true }),
+                })
+              }
+            />
+          </Column>
+        )}
 
         {/* Quantity */}
         <Column lg={4} md={4} sm={2}>
@@ -629,6 +650,8 @@ const SampleCollectionCard = ({
               defaultMessage: "Collection Time",
             })}
             value={sample.collectionTime || ""}
+            invalid={!isClockTime(sample.collectionTime)}
+            invalidText={intl.formatMessage({ id: "sample.time.invalid" })}
             onChange={(e) =>
               handleFieldChange("collectionTime", e.target.value)
             }
@@ -859,6 +882,8 @@ const SampleCollectionCard = ({
                 (sample.sampleItemId ? "" : serverReceivedTime) ||
                 ""
               }
+              invalid={!isClockTime(sample.receivedTime)}
+              invalidText={intl.formatMessage({ id: "sample.time.invalid" })}
               onChange={(e) =>
                 handleFieldChange("receivedTime", e.target.value)
               }

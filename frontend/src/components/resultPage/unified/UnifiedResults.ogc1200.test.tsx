@@ -139,6 +139,87 @@ describe("OGC-1200 runs on the unified worklist", () => {
     expect(onOpenRun).toHaveBeenCalledWith(7);
   });
 
+  it("shows held rows by default under a Held chip that hides them when turned off", () => {
+    renderPage([
+      row({ waitingRun: { ...WAITING, held: true } }),
+      row({ id: "r-2", analysisId: "62", testName: "Urea" }),
+    ]);
+
+    const tag = screen.getByTestId("held-run-7");
+    expect(tag).toHaveTextContent("Held: QC failed in RUN-7");
+    const chip = screen.getByTestId("held-chip");
+    expect(chip).toHaveTextContent("Held (1)");
+
+    fireEvent.click(chip);
+
+    expect(screen.queryByTestId("held-run-7")).not.toBeInTheDocument();
+    expect(screen.getByText("Urea")).toBeInTheDocument();
+    expect(screen.getByTestId("held-chip")).toHaveTextContent("Held (1)");
+  });
+
+  it("shows a stored result held by its run as held, with its value and no Edit", () => {
+    renderPage([
+      row({ resultValue: "88", waitingRun: { ...WAITING, held: true } }),
+    ]);
+
+    expect(screen.getByTestId("held-run-7")).toHaveTextContent(
+      "Held: QC failed in RUN-7",
+    );
+    expect(screen.getByText("88")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Edit" }),
+    ).not.toBeInTheDocument();
+    expect(resultField()).toBeNull();
+  });
+
+  it("offers Edit on a stored result its run no longer holds", () => {
+    renderPage([row({ resultValue: "88" })]);
+
+    expect(screen.queryByTestId("held-run-7")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
+  });
+
+  it("tags a pending test batched in a workplan run and keeps it open for entry", () => {
+    const onOpenRun = renderPage([
+      row({
+        waitingRun: {
+          ...WAITING,
+          runId: 9,
+          label: "RUN-9",
+          source: "WORKPLAN",
+        },
+      }),
+    ]);
+
+    const tag = screen.getByTestId("waiting-run-9");
+    expect(tag).toHaveTextContent("Batched in RUN-9");
+    expect(tag.parentElement).toHaveTextContent("Workplan batch");
+    expect(resultField()).not.toBeNull();
+
+    fireEvent.click(tag);
+    expect(onOpenRun).toHaveBeenCalledWith(9);
+  });
+
+  it("holds a batched test its run holds, with no entry", () => {
+    renderPage([
+      row({
+        waitingRun: {
+          ...WAITING,
+          runId: 9,
+          label: "RUN-9",
+          source: "WORKPLAN",
+          held: true,
+          heldCause: "QC_MISSING",
+        },
+      }),
+    ]);
+
+    expect(screen.getByTestId("held-run-9")).toHaveTextContent(
+      "Held: QC missing in RUN-9",
+    );
+    expect(resultField()).toBeNull();
+  });
+
   it("leaves a pending test with no waiting value open for entry", () => {
     renderPage([row()]);
 
@@ -190,6 +271,35 @@ describe("OGC-1200 runs on the unified worklist", () => {
     expect(notify.addNotification).toHaveBeenCalledWith(
       expect.objectContaining({
         message: "An analyzer value for this test is waiting in RUN-7.",
+      }),
+    );
+  });
+
+  it("shows a row whose save was refused for a failed control as held, with the server's reason", () => {
+    renderPage([row()]);
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+      (_url: string, _body: string, callback: any) =>
+        callback({
+          status: 409,
+          error:
+            "A control for this test failed in RUN-7, so its results there are held.",
+          waitingRun: { ...WAITING, held: true },
+        }),
+    );
+
+    fireEvent.change(resultField() as HTMLInputElement, {
+      target: { value: "5.4" },
+    });
+    fireEvent.click(screen.getByTestId("save-button"));
+
+    expect(screen.getByTestId("held-run-7")).toHaveTextContent(
+      "Held: QC failed in RUN-7",
+    );
+    expect(resultField()).toBeNull();
+    expect(notify.addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message:
+          "A control for this test failed in RUN-7, so its results there are held.",
       }),
     );
   });

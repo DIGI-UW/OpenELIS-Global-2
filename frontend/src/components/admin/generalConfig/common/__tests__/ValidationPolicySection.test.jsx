@@ -6,6 +6,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import messages from "../../../../../languages/en.json";
 
 vi.mock("../../../../utils/Utils", () => ({
+  fetchFromOpenElisServer: vi.fn(async (url) =>
+    url.startsWith("/rest/validation-policy/roles")
+      ? [
+          { id: 10, name: "Validation", labUnitRole: true, signers: 3 },
+          { id: 72, name: "Pathologist", labUnitRole: false, signers: 0 },
+        ]
+      : { labUnits: [], overrides: [] },
+  ),
+  postToOpenElisServerFullResponse: vi.fn(),
   putToOpenElisServerFullResponse: vi.fn(),
 }));
 
@@ -19,7 +28,7 @@ const policy = (overrides = {}) => ({
   levels: 1,
   levelRoles: [{ level: 1, roleId: 10, roleName: "Validation" }],
   enabled: true,
-  maxLevels: 1,
+  maxLevels: 5,
   blockSelfValidation: false,
   ...overrides,
 });
@@ -83,7 +92,11 @@ describe("Validation policy on Result Configuration (OGC-1364 v1)", () => {
     const [url, body] = vi.mocked(putToOpenElisServerFullResponse).mock
       .calls[0];
     expect(url).toBe("/rest/validation-policy/default");
-    expect(JSON.parse(body)).toEqual({ trigger: "NONE", levels: 0 });
+    expect(JSON.parse(body)).toEqual({
+      trigger: "NONE",
+      levels: 0,
+      roleIds: [],
+    });
   });
 
   it("refuses 0 reviews unless the policy is No review", async () => {
@@ -169,15 +182,13 @@ describe("Validation policy on Result Configuration (OGC-1364 v1)", () => {
     renderSection();
 
     const levels = await screen.findByLabelText("Number of reviews");
-    fireEvent.change(levels, { target: { value: "2" } });
+    fireEvent.change(levels, { target: { value: "6" } });
 
     expect(
-      await screen.findByText(
-        "Choose a number of reviews this version supports.",
-      ),
+      await screen.findByText("Choose from 0 to 5 reviews."),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save policy" })).toBeDisabled();
-    expect(screen.queryByLabelText("Level 2 role")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Level 6 role")).not.toBeInTheDocument();
   });
 
   it("names the server's refusal", async () => {
@@ -196,7 +207,91 @@ describe("Validation policy on Result Configuration (OGC-1364 v1)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save policy" }));
 
     expect(
-      await screen.findByText("That role cannot sign reviews yet."),
+      await screen.findByText(
+        "That role cannot sign a review level. Choose an active role.",
+      ),
     ).toBeInTheDocument();
+  });
+
+  it("sends the version it loaded and says who changed the policy when the save is stale (OGC-1017)", async () => {
+    vi.mocked(putToOpenElisServerFullResponse).mockImplementation(
+      (url, body, callback) =>
+        callback({
+          ok: false,
+          status: 409,
+          json: async () => ({
+            conflict: "stale",
+            modifiedBy: "Ada Admin",
+            modifiedAt: "23/11/2026 10:15",
+          }),
+        }),
+    );
+    renderSection(policy({ lastupdated: "1763892000000" }));
+
+    fireEvent.click(await screen.findByLabelText("No review"));
+    fireEvent.click(screen.getByRole("button", { name: "Save policy" }));
+
+    expect(
+      await screen.findByTestId("validation-policy-stale"),
+    ).toHaveTextContent(
+      "This policy was changed by Ada Admin at 23/11/2026 10:15, after this page loaded it. Nothing was saved.",
+    );
+    expect(screen.getByRole("button", { name: "Refresh" })).toBeInTheDocument();
+    expect(screen.queryByText("Validation policy saved.")).toBeNull();
+    const [, body] = vi.mocked(putToOpenElisServerFullResponse).mock.calls[0];
+    expect(JSON.parse(body).lastupdated).toBe("1763892000000");
+  });
+
+  it("asks for a role per level, warns when nobody can sign one, and saves the roles", async () => {
+    vi.mocked(putToOpenElisServerFullResponse).mockImplementation(
+      (url, body, callback) =>
+        callback({
+          ok: true,
+          json: async () =>
+            policy({
+              levels: 2,
+              levelRoles: [
+                { level: 1, roleId: 10, roleName: "Validation", signers: 3 },
+                { level: 2, roleId: 72, roleName: "Pathologist", signers: 0 },
+              ],
+            }),
+        }),
+    );
+    renderSection();
+
+    fireEvent.change(await screen.findByLabelText("Number of reviews"), {
+      target: { value: "2" },
+    });
+    const levelTwo = await screen.findByLabelText("Level 2 role");
+    expect(screen.getByLabelText("Level 1 role")).toHaveValue("10");
+    expect(levelTwo).toHaveValue("10");
+    expect(
+      screen.getByTestId("validation-policy-different-people"),
+    ).toHaveTextContent(
+      "Each level must be signed by a different person, even when two levels share a role.",
+    );
+    expect(
+      screen.queryByTestId("validation-policy-level-2-no-signer"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.change(levelTwo, { target: { value: "72" } });
+
+    expect(
+      screen.getByTestId("validation-policy-level-2-no-signer"),
+    ).toHaveTextContent(
+      "No active user holds Pathologist with Validation rights for any lab unit.",
+    );
+    expect(summary()).toHaveTextContent(
+      "Results the clearance rule clears: reviewed by Validation → Pathologist (2 reviews)",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save policy" }));
+
+    await screen.findByText("Validation policy saved.");
+    const [, body] = vi.mocked(putToOpenElisServerFullResponse).mock.calls[0];
+    expect(JSON.parse(body)).toEqual({
+      trigger: "ALL",
+      levels: 2,
+      roleIds: [10, 72],
+    });
   });
 });

@@ -77,7 +77,8 @@ public class SampleOrderServiceFreeTextSiteTest extends BaseWebContextSensitiveT
         SampleOrderPersistenceArtifacts artifacts = new SampleOrderService(order).getPersistenceArtifacts(null, userId);
 
         assertEquals(1, artifacts.getObservations().size());
-        assertEquals(DateUtil.getCurrentDateAsText(), artifacts.getObservations().getFirst().getValue());
+        assertEquals("the request date is stored as an ISO date (OGC-1669)", java.time.LocalDate.now().toString(),
+                artifacts.getObservations().getFirst().getValue());
         assertNull(artifacts.getObservations().getFirst().getPatientId());
     }
 }

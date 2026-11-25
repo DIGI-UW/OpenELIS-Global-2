@@ -56,6 +56,30 @@
   <include relativeToChangelogFile="true" file="034-result-analyzer-reported-value.xml"/>
   <!-- OGC-1611 P2: tests name their expected containers; sample types a default container -->
   <include relativeToChangelogFile="true" file="035-test-expected-containers.xml"/>
+  <!-- OGC-1611 P4: a clinical sample records the container type it was taken in -->
+  <include relativeToChangelogFile="true" file="036-sample-item-container-type.xml"/>
+  <!-- OGC-1364 v2: sequential sign-off, one signature per review level -->
+  <include relativeToChangelogFile="true" file="037-analysis-review-sign-off.xml"/>
+  <!-- OGC-1200 slice 4: what happened on a run -->
+  <include relativeToChangelogFile="true" file="038-result-run-event.xml"/>
+  <!-- OGC-1200 slice 5: a held test's Retest, Reject or Accept despite -->
+  <include relativeToChangelogFile="true" file="039-result-run-test-disposition.xml"/>
+  <include relativeToChangelogFile="true" file="040-component-label-translations.xml"/>
+  <include relativeToChangelogFile="true" file="041-test-result-is-critical.xml"/>
+  <!-- OGC-1669: order request and next visit dates stored as ISO dates -->
+  <include relativeToChangelogFile="true" file="042-observation-dates-to-iso.xml"/>
+  <!-- OGC-1017: validation policy changes audited, and each automatic release recorded with its rule -->
+  <include relativeToChangelogFile="true" file="043-validation-policy-audit-auto-release.xml"/>
+  <!-- OGC-768: environmental order type (regulation-driven or ad-hoc) -->
+  <include relativeToChangelogFile="true" file="044-env-order-branch-observation-type.xml"/>
+  <!-- OGC-1200 slice 5b: the samples a Retest set aside, and the run confirmed as their retest -->
+  <include relativeToChangelogFile="true" file="045-result-run-retest.xml"/>
+  <!-- OGC-1200 slice 7: the run value an exception decision was taken on -->
+  <include relativeToChangelogFile="true" file="046-result-run-event-row.xml"/>
+  <!-- OGC-1200 slice 8: what each run of a test must carry (control required, warn or hold when missing) -->
+  <include relativeToChangelogFile="true" file="047-test-qc-policy.xml"/>
+  <!-- OGC-1200 slice 9a: a released workplan batch is a run -->
+  <include relativeToChangelogFile="true" file="048-result-run-batch.xml"/>
 
   <!-- Read-only FHIR interface: explicit resource-type reader permissions -->
   <include relativeToChangelogFile="true" file="027-fhir-read-permissions.xml"/>

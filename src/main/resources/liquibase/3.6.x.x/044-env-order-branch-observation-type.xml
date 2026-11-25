@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+ <!-- OGC-768: an environmental order is regulation-driven or ad-hoc. The choice is kept as an observation;
+      SamplePatientUpdateData.createObservation drops a value whose type is unknown, so the type lands here. -->
+ <changeSet id="OGC-768-env-order-branch-observation-type" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.observation_history_type WHERE type_name = 'envOrderBranch'</sqlCheck>
+  </preConditions>
+  <comment>OGC-768: observation type for the environmental order type (REGULATION_DRIVEN or AD_HOC).</comment>
+  <sql>
+   INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+   VALUES (nextval('clinlims.observation_history_type_seq'), 'envOrderBranch', 'ENV_ORDER_BRANCH', now());
+  </sql>
+ </changeSet>
+</databaseChangeLog>

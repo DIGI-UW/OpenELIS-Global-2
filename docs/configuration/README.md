@@ -48,8 +48,10 @@ District → Sub-District → Village).
 
 ### [Microbiology Reference Configuration](microbiology-reference-packages.md)
 
-- **Locations:** `configuration/backend/microbiology-organisms/`,
-  `microbiology-antimicrobials/`, and `microbiology-breakpoints/`
+- **Locations:** `configuration/backend/microbiology-whonet-organisms/`,
+  `microbiology-whonet-antibiotics/`, `microbiology-whonet-breakpoints/`,
+  `microbiology-organisms/`, `microbiology-antimicrobials/`, and
+  `microbiology-breakpoints/`
 - **Format:** ordinary configuration CSVs, optionally installed from an
   independently published, deployment-pinned metadata package
 - **Features:** shared catalog preview/apply/reload, source identities, local
@@ -130,10 +132,12 @@ Reporting track concepts use the existing dictionary loader and
 own configuration domain so an unrelated dictionary catalog cannot hide it.
 `configuration/program-reporting-tracks/*.csv` assigns those configured tracks
 to existing Programs, after dictionary and questionnaire loading. Its columns
-are `programCode,reportingTrack`; the track must be an active entry in the
-`Reporting track` category. Unmatched Program codes are left alone. Imports
-follow the normal configuration checksum and reload behavior. Program
-administrators can also select the track in Program management.
+are `programCode,reportingTrack` and an optional `showOnMicroCase`; a track must
+be an active entry in the `Reporting track` category. A blank track leaves the
+Program's track, and `showOnMicroCase` takes `true`, `false` or blank (left as
+it is). Unmatched Program codes are left alone. Imports follow the normal
+configuration checksum and reload behavior. Program administrators can also
+select the track in Program management.
 
 These catalogs are configuration, not Liquibase seed data. The M8 migration only
 changes storage and converts existing legacy case data.
@@ -205,3 +209,9 @@ unspecified run. Older package editions remain immutable and reload unchanged; a
 new contextual dataset requires a new package version. New editions load
 inactive and require activation and default selection in laboratory
 administration.
+
+### Outbound clinical-data delivery
+
+See [outbound email and FHIR delivery](../upgrades/outbound-delivery.md) for
+sender and recipient configuration, required transport security, and the review
+of retained configuration and registrations when upgrading an existing site.

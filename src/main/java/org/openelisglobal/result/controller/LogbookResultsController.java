@@ -540,6 +540,8 @@ public class LogbookResultsController extends LogbookResultsBaseController {
 
             Analysis analysis = ResultUtil.resolveModifiedAnalysis(actionDataSet, testResultItem.getAnalysisId());
             analysis.setStatusId(getStatusForTestResult(testResultItem, alwaysValidate));
+            actionDataSet.statusDecidedAtEntry(analysis,
+                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
             analysis.setSysUserId(getSysUserId(request));
             if (!GenericValidator.isBlankOrNull(testResultItem.getTestMethod())) {
                 analysis.setMethod(methodService.get(testResultItem.getTestMethod()));

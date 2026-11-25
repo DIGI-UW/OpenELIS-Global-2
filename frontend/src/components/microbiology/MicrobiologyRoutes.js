@@ -29,6 +29,27 @@ export const MICROBIOLOGY_CASE_ACTIONS = [
 ];
 export const MICROBIOLOGY_CRITICAL_TARGET_TYPES = ["CASE", "ISOLATE"];
 
+const sectionScopes = {
+  setup: "CULTURE",
+  timeline: "HISTORY",
+  isolates: "ISOLATES",
+  ast: "AST",
+  reports: "REPORT",
+  amendment: "AMENDMENT",
+  "critical-communication": "CRITICAL",
+  nonconformance: "NONCONFORMANCE",
+};
+
+export const routedScope = (search) => {
+  const params = new URLSearchParams(search);
+  return (
+    params.get("scope") ||
+    sectionScopes[params.get("section")] ||
+    { cultures: "CULTURE", ast: "AST" }[params.get("grain")] ||
+    "INITIAL"
+  );
+};
+
 const DEFAULT_WORKLIST_STATE = {
   grain: "cultures",
   status: "",

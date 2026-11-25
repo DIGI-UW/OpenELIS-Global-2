@@ -55,7 +55,7 @@
 
   &__panel-row {
     display: grid;
-    grid-template-columns: minmax(12rem, 1fr) 7rem minmax(12rem, 1fr) auto;
+    grid-template-columns: minmax(12rem, 1fr) minmax(12rem, 1fr) auto;
     align-items: end;
     gap: $spacing-04;
     padding: $spacing-04;

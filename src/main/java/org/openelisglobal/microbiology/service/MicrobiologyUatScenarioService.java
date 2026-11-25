@@ -1154,6 +1154,7 @@ public class MicrobiologyUatScenarioService {
         }
         MicroAstPanelAdminForm currentPanel = currentPanel(referencePanel);
         MicroOrganismAdminForm organism = getOrCreateReferenceOrganism(currentPanel.id, performedBy);
+        entityManager.find(MicroOrganism.class, organism.id).getLabGroups().add("UAT_SYNTHETIC");
         MicroAntibioticAdminForm antibiotic = getOrCreateReferenceAntibiotic(performedBy);
 
         String csv = "publisher,version,organism_or_group,antibiotic_whonet_code,method,specimen_type_id,"

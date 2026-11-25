@@ -29,12 +29,12 @@ import {
   Button,
   Tag,
   Dropdown,
-  DatePicker,
   DatePickerInput,
   Pagination,
   ProgressBar,
   Stack,
 } from "@carbon/react";
+import { DatePicker } from "../common/DatePicker";
 import { Add } from "@carbon/icons-react";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
@@ -635,7 +635,7 @@ const OrderDashboardContent = () => {
         </span>
       </div>
     ),
-    lastUpdated: order.lastUpdated || "---",
+    lastUpdated: siteDate.formatIsoDateTime(order.lastUpdated) || "---",
     actions: (
       <div className="order-actions">
         {order.returnedFromQA ? (

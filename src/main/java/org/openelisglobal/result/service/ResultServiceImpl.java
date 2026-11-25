@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.json.simple.JSONObject;
@@ -31,8 +32,10 @@ import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
+import org.openelisglobal.validationpolicy.service.AnalysisReviewService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -70,6 +73,10 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
     @Autowired
     private ResultLimitService resultLimitService;
 
+    @Lazy
+    @Autowired
+    private AnalysisReviewService analysisReviewService;
+
     ResultServiceImpl() {
         super(Result.class);
         this.auditTrailLog = true;
@@ -85,7 +92,62 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
         if (result.getFhirUuid() == null) {
             result.setFhirUuid(UUID.randomUUID());
         }
-        return super.insert(result);
+        String id = super.insert(result);
+        restartReview(result);
+        return id;
+    }
+
+    @Override
+    protected Result update(Result result, String auditTrailType) {
+        restartReviewIfValueChanged(result);
+        return super.update(result, auditTrailType);
+    }
+
+    @Override
+    @Transactional
+    public Result updateAgainst(Result result, Result storedState) {
+        restartReviewIfValueChanged(result);
+        return super.updateAgainst(result, storedState);
+    }
+
+    @Override
+    @Transactional
+    public void delete(Result result) {
+        restartReview(result);
+        super.delete(result);
+    }
+
+    /**
+     * OGC-1364 v2: signatures given on a value no longer stand once the value
+     * changes, whichever screen or import saved it, so review restarts at level 1.
+     */
+    private void restartReviewIfValueChanged(Result result) {
+        if (result.getId() == null || result.getAnalysis() == null || !analysisReviewService.isEnabled()) {
+            return;
+        }
+        if (!sameValue(baseObjectDAO.getStoredValue(result.getId()), result.getValue())) {
+            restartReview(result);
+        }
+    }
+
+    private void restartReview(Result result) {
+        if (result.getAnalysis() != null && analysisReviewService.isEnabled()) {
+            fillSysUserIdIfMissing(result);
+            analysisReviewService.resultValueChanged(result.getAnalysis().getId(), result.getSysUserId());
+        }
+    }
+
+    static boolean sameValue(String stored, String saved) {
+        String before = StringUtils.trimToEmpty(stored);
+        String after = StringUtils.trimToEmpty(saved);
+        if (before.equals(after)) {
+            return true;
+        }
+        try {
+            return new BigDecimal(before).compareTo(new BigDecimal(after)) == 0;
+        } catch (NumberFormatException notNumeric) {
+            return false;
+        }
     }
 
     public static String getTableReferenceId() {

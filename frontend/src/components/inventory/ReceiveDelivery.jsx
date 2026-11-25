@@ -246,7 +246,7 @@ const ReceiveDelivery = () => {
             id="delivery-item"
             titleText={<FormattedMessage id="catalog.item.name" />}
             placeholder={intl.formatMessage({
-              id: "inventory.search.placeholder",
+              id: "catalog.search.placeholder",
             })}
             items={options}
             selectedItem={selected}
@@ -275,7 +275,7 @@ const ReceiveDelivery = () => {
           )}
           <NumberInput
             id="delivery-quantity"
-            label={<FormattedMessage id="lot.currentQuantity" />}
+            label={<FormattedMessage id="inventory.receive.quantity" />}
             min={1}
             step={1}
             value={quantity}
@@ -313,7 +313,7 @@ const ReceiveDelivery = () => {
                     <FormattedMessage id="lot.expirationDate" />
                   </TableHeader>
                   <TableHeader>
-                    <FormattedMessage id="lot.currentQuantity" />
+                    <FormattedMessage id="inventory.receive.quantity" />
                   </TableHeader>
                   <TableHeader />
                 </TableRow>
