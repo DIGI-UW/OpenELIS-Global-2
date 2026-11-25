@@ -123,6 +123,10 @@ export const getHistory = (id) =>
 
 export const getLists = () => getJson(`${BASE}/lists`);
 
+/** This laboratory's own facility record, or null when it does not exist yet. */
+export const getThisLaboratory = () =>
+  getJson(`${BASE}/this-laboratory`).catch(() => null);
+
 export const listIdentifierCollisions = () =>
   getJson(`${BASE}/identifier-collisions`);
 

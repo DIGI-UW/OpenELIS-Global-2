@@ -48,5 +48,6 @@ export const buildSubmissionSampleOrderItems = (sampleOrderItems = {}) => {
     providersList: [],
     paymentOptions: [],
     testLocationCodeList: [],
+    otherTestLocationCodeId: "",
   };
 };

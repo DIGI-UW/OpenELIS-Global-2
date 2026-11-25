@@ -5,6 +5,7 @@ import ca.uhn.fhir.parser.DataFormatException;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import jakarta.annotation.PostConstruct;
+import java.net.URI;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -71,13 +72,21 @@ public class RegisterFhirHooksTask {
         if (!fhirSubscriber.isPresent() || GenericValidator.isBlankOrNull(fhirSubscriber.get())) {
             return;
         }
-        if (!allowHTTP && fhirSubscriber.get().startsWith("http://")) {
-            fhirSubscriber = Optional.of("https://" + fhirSubscriber.get().substring("http://".length()));
+        // Registration and the scheduled exporter consume the same configured URL.
+        // Never rewrite it here: that would secure only the subscription path.
+        URI subscriber;
+        try {
+            subscriber = URI.create(fhirSubscriber.get());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("FHIR subscriber must be an absolute HTTPS URL");
         }
-
-        if (!(allowHTTP && fhirSubscriber.get().startsWith("http://"))
-                && !fhirSubscriber.get().startsWith("https://")) {
-            fhirSubscriber = Optional.of("https://" + fhirSubscriber.get());
+        boolean https = "https".equalsIgnoreCase(subscriber.getScheme());
+        boolean permittedHttp = Boolean.TRUE.equals(allowHTTP) && "http".equalsIgnoreCase(subscriber.getScheme());
+        if ((!https && !permittedHttp) || subscriber.getHost() == null || subscriber.getUserInfo() != null
+                || subscriber.getFragment() != null || subscriber.getQuery() != null) {
+            throw new IllegalArgumentException(
+                    "FHIR subscriber must be an absolute HTTPS URL without credentials, query or fragment. "
+                            + "HTTP requires org.openelisglobal.fhir.subscriber.allowHTTP=true for isolated testing.");
         }
         if (GenericValidator.isBlankOrNull(localFhirStorePath)) {
             return;

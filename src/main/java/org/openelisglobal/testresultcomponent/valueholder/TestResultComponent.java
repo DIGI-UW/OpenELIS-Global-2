@@ -2,12 +2,17 @@ package org.openelisglobal.testresultcomponent.valueholder;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.util.UUID;
+import org.apache.commons.validator.GenericValidator;
 import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.localization.valueholder.Localization;
 
 /**
  * OGC-949 M5 / OGC-937 — a labeled result field of a test (e.g. systolic vs.
@@ -42,6 +47,10 @@ public class TestResultComponent extends BaseObject<String> {
 
     @Column(name = "label", nullable = false, length = 255)
     private String label;
+
+    @OneToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "label_localization_id", referencedColumnName = "id")
+    private Localization labelLocalization;
 
     @Column(name = "display_order", nullable = false)
     private Integer displayOrder = 0;
@@ -80,6 +89,12 @@ public class TestResultComponent extends BaseObject<String> {
     // report (OGC-1127). Default true so existing components keep printing.
     @Column(name = "show_on_report", nullable = false)
     private boolean showOnReport = true;
+
+    // OGC-1608: a required component without a result keeps its test open and
+    // prints as in progress; an optional one without a result is left off the
+    // patient report. The primary is required unless the catalog says otherwise.
+    @Column(name = "is_required", nullable = false)
+    private boolean isRequired = false;
 
     @Column(name = "is_active", nullable = false, length = 2)
     private String isActive = "Y";
@@ -147,6 +162,20 @@ public class TestResultComponent extends BaseObject<String> {
         this.label = label;
     }
 
+    public Localization getLabelLocalization() {
+        return labelLocalization;
+    }
+
+    public void setLabelLocalization(Localization labelLocalization) {
+        this.labelLocalization = labelLocalization;
+    }
+
+    /** The label in the user's language, else the label as entered. */
+    public String getLocalizedLabel() {
+        String translated = labelLocalization == null ? null : labelLocalization.getLocalizedValue();
+        return GenericValidator.isBlankOrNull(translated) ? label : translated;
+    }
+
     public Integer getDisplayOrder() {
         return displayOrder;
     }
@@ -169,6 +198,14 @@ public class TestResultComponent extends BaseObject<String> {
 
     public void setShowOnReport(boolean showOnReport) {
         this.showOnReport = showOnReport;
+    }
+
+    public boolean getIsRequired() {
+        return isRequired;
+    }
+
+    public void setIsRequired(boolean isRequired) {
+        this.isRequired = isRequired;
     }
 
     public String getResultType() {

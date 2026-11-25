@@ -43,6 +43,7 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerMappingTestPK;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultPlacementService;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.openelisglobal.resultrun.service.ResultRunService;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 
@@ -78,12 +79,15 @@ public class AnalyzerNormalizedResultImportServiceTest {
     private Analyzer analyzer;
     private AnalyzerMapping revision;
 
+    @Mock
+    private ResultRunService resultRunService;
+
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
         service = new AnalyzerNormalizedResultImportServiceImpl(analyzerService, mappingService, analyzerResultsService,
                 testResultService, qcResultProcessingService, FHIR, receiptDAO, confirmationService,
-                mappingCatalogService, placementService);
+                mappingCatalogService, placementService, resultRunService);
         org.mockito.Mockito.doAnswer(call -> {
             List<AnalyzerResults> rows = call.getArgument(0);
             for (int i = 0; i < rows.size(); i++) {
@@ -91,7 +95,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
             }
             return null;
         }).when(analyzerResultsService).insertAnalyzerResults(anyList(), any());
-        when(qcResultProcessingService.processQCResult(any(), any(), any(), any(), any(), any(), any()))
+        when(qcResultProcessingService.processQCResult(any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(QCResultProcessingService.Outcome.RECORDED);
         when(placementService.accessionFor(any())).thenAnswer(call -> call.getArgument(0));
         when(receiptDAO.findByDelivery(any(), any())).thenReturn(Optional.empty());
@@ -164,7 +168,8 @@ public class AnalyzerNormalizedResultImportServiceTest {
         assertEquals(0, summary.controlResultsProcessed());
         assertTrue(capturedRow().getIsControl());
         assertTrue(capturedRow().isReadOnly());
-        verify(qcResultProcessingService, never()).processQCResult(any(), any(), any(), any(), any(), any(), any());
+        verify(qcResultProcessingService, never()).processQCResult(any(), any(), any(), any(), any(), any(), any(),
+                any(), any());
     }
 
     @Test
@@ -335,6 +340,9 @@ public class AnalyzerNormalizedResultImportServiceTest {
         assertEquals("7.5", row.getRawResultValue());
         assertEquals("PATIENT", row.getResultClassification());
         assertFalse(row.getSourcePayload().isBlank());
+        verify(analyzerResultsService, never()).delete(any(), any());
+        verify(analyzerResultsService, never()).persistAnalyzerResults(anyList(), anyList(), any());
+        verify(placementService, never()).place(any(), any(), any(), any());
     }
 
     @Test
@@ -863,8 +871,8 @@ public class AnalyzerNormalizedResultImportServiceTest {
         // The fixture supplies the timestamp; the failure is independent of its
         // timezone conversion.
         org.mockito.Mockito.doThrow(new IllegalStateException("QC storage unavailable")).when(qcResultProcessingService)
-                .processQCResult(eq("42"), eq("501"), eq("QC-LOT-WBC-2026-08"), eq("NORMAL"),
-                        eq(new java.math.BigDecimal("7.1")), eq("10*3/uL"), any(java.time.LocalDateTime.class));
+                .processQCResult(eq("42"), eq("501"), any(), eq("QC-LOT-WBC-2026-08"), eq("NORMAL"),
+                        eq(new java.math.BigDecimal("7.1")), eq("10*3/uL"), any(java.time.LocalDateTime.class), any());
         Bundle bundle = fixture("normalized-qc.fhir.json");
 
         assertThrows(IllegalStateException.class, () -> service.importBundle(bundle, "7"));
@@ -884,14 +892,15 @@ public class AnalyzerNormalizedResultImportServiceTest {
         assertEquals("RULES", row.getRecognitionMode());
         assertEquals("MATCH", row.getRecognitionOutcome());
         assertEquals("NORMAL", row.getControlLevel());
-        verify(qcResultProcessingService).processQCResult(eq("42"), eq("501"), eq("QC-LOT-WBC-2026-08"), eq("NORMAL"),
-                eq(new java.math.BigDecimal("7.1")), eq("10*3/uL"), any(java.time.LocalDateTime.class));
+        verify(qcResultProcessingService).processQCResult(eq("42"), eq("501"), any(), eq("QC-LOT-WBC-2026-08"),
+                eq("NORMAL"), eq(new java.math.BigDecimal("7.1")), eq("10*3/uL"), any(java.time.LocalDateTime.class),
+                any());
     }
 
     @Test
     public void numericControlWithoutLotIsHeldAndNotCounted() throws IOException {
         arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
-        when(qcResultProcessingService.processQCResult(any(), any(), any(), any(), any(), any(), any()))
+        when(qcResultProcessingService.processQCResult(any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(QCResultProcessingService.Outcome.NO_LOT);
         var summary = service.importBundle(fixture("normalized-qc.fhir.json"), "7");
         assertEquals(0, summary.controlResultsProcessed());
@@ -906,8 +915,8 @@ public class AnalyzerNormalizedResultImportServiceTest {
         arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
         when(placementService.accessionFor(any())).thenReturn("PATIENT-ACCESSION");
         service.importBundle(fixture("normalized-qc.fhir.json"), "7");
-        verify(qcResultProcessingService).processQCResult(eq("42"), eq("501"), eq("QC-LOT-WBC-2026-08"), eq("NORMAL"),
-                any(), any(), any());
+        verify(qcResultProcessingService).processQCResult(eq("42"), eq("501"), any(), eq("QC-LOT-WBC-2026-08"),
+                eq("NORMAL"), any(), any(), any(), any());
     }
 
     @Test
@@ -921,7 +930,8 @@ public class AnalyzerNormalizedResultImportServiceTest {
         var summary = service.importBundle(fixture("normalized-qc.fhir.json"), "7");
         assertEquals(1, summary.resultsStaged());
         assertEquals(0, summary.controlResultsProcessed());
-        verify(qcResultProcessingService, never()).processQCResult(any(), any(), any(), any(), any(), any(), any());
+        verify(qcResultProcessingService, never()).processQCResult(any(), any(), any(), any(), any(), any(), any(),
+                any(), any());
     }
 
     @Test
@@ -945,20 +955,21 @@ public class AnalyzerNormalizedResultImportServiceTest {
         assertEquals(0, summary.controlResultsProcessed());
         assertEquals(1, summary.resultsHeld());
         assertEquals(AnalyzerResults.IMPORT_ISSUE_QC_VALUE_UNSUPPORTED, capturedRow().getImportIssueReason());
-        verify(qcResultProcessingService, never()).processQCResult(any(), any(), any(), any(), any(), any(), any());
+        verify(qcResultProcessingService, never()).processQCResult(any(), any(), any(), any(), any(), any(), any(),
+                any(), any());
     }
 
     @Test
     public void heldControlRecoversAfterLotSetupWithoutChangingItsRowOrReceipt() throws IOException {
         arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
-        when(qcResultProcessingService.processQCResult(any(), any(), any(), any(), any(), any(), any()))
+        when(qcResultProcessingService.processQCResult(any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(QCResultProcessingService.Outcome.NO_LOT);
         service.importBundle(fixture("normalized-qc.fhir.json"), "7");
         AnalyzerResults held = capturedRow();
         when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
         when(analyzerResultsService.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of(held));
         assertEquals(0, service.recoverHeldMappingResults("42", "7"));
-        when(qcResultProcessingService.processQCResult(any(), any(), any(), any(), any(), any(), any()))
+        when(qcResultProcessingService.processQCResult(any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(QCResultProcessingService.Outcome.RECORDED);
         assertEquals(1, service.recoverHeldMappingResults("42", "7"));
         ArgumentCaptor<AnalyzerResults> updated = ArgumentCaptor.forClass(AnalyzerResults.class);
@@ -988,7 +999,8 @@ public class AnalyzerNormalizedResultImportServiceTest {
         Bundle next = first.copy();
         next.setIdentifier(first.getIdentifier().copy().setValue("new-control-run"));
         service.importBundle(next, "7");
-        verify(qcResultProcessingService, times(2)).processQCResult(any(), any(), any(), any(), any(), any(), any());
+        verify(qcResultProcessingService, times(2)).processQCResult(any(), any(), any(), any(), any(), any(), any(),
+                any(), any());
         verify(analyzerResultsService, times(2)).insertAnalyzerResults(anyList(), any());
     }
 

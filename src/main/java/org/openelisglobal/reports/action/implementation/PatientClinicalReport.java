@@ -82,6 +82,7 @@ public class PatientClinicalReport extends PatientReport implements IReportCreat
         List<Analysis> analysisList = analysisService
                 .getAnalysesBySampleIdAndStatusId(sampleService.getId(currentSample), analysisStatusIds);
 
+        analysisList = includeIssuedMicrobiologyAnalyses(analysisList);
         List<Analysis> filteredAnalysisList = filterAnalysesForReportUser(analysisList);
         currentConclusion = null;
         Set<SampleItem> sampleSet = new HashSet<>();
@@ -93,6 +94,12 @@ public class PatientClinicalReport extends PatientReport implements IReportCreat
 
                 if (analysis.getTest() != null) {
                     currentAnalysis = analysis;
+                    var microReport = microbiologyReports().issuedForAnalysis(analysis.getId());
+                    if (microReport != null) {
+                        if (reportedMicroCases.add(microReport.caseId))
+                            currentSampleReportItems.add(buildMicrobiologyPatientData(microReport, hasParentResult));
+                        continue;
+                    }
                     ClinicalPatientData resultsData = buildClinicalPatientData(hasParentResult);
 
                     if (currentAnalysis.isReferredOut()) {

@@ -1,5 +1,8 @@
 package org.openelisglobal.microbiology.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.Timestamp;
 import java.util.List;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
@@ -22,7 +25,18 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class MicroCaseAmendmentServiceImpl implements MicroCaseAmendmentService {
+    private static final ObjectMapper JSON = new ObjectMapper();
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroPatientReportService patientReports;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroAstReportChoiceService choices;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.microbiology.dao.MicroReportVersionDAO versions;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO analyses;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroAstPanelAssignmentService panelAssignments;
     private final MicroCaseDAO caseDAO;
     private final MicroCaseAmendmentDAO amendmentDAO;
     private final MicroCaseActivityDAO activityDAO;
@@ -105,16 +119,55 @@ public class MicroCaseAmendmentServiceImpl implements MicroCaseAmendmentService 
             astRunDAO.update(run);
             restoreSourceSelection(run);
         }
+        restoreRetiredRuns(amendment);
         Timestamp cancelledAt = MicroCaseServiceImpl.now();
         for (MicroIsolate isolate : isolateDAO.getByAmendmentId(amendment.getId())) {
             isolate.setCancelledAt(cancelledAt);
             isolateDAO.update(isolate);
+        }
+        for (MicroIsolate isolate : isolateDAO.getByCaseId(caseId))
+            panelAssignments.undoSince(isolate.getId(), amendment.getOpenedAt());
+        var baseline = versions.getLatestByCaseId(caseId);
+        if (baseline != null && baseline.getStructuredContent() != null) {
+            var report = patientReports.decode(baseline.getStructuredContent());
+            choices.restore(caseId, report, performedBy);
+            var selected = java.util.stream.Stream.concat(report.initial.stream(), report.additional.stream())
+                    .map(org.openelisglobal.microbiology.form.MicroPatientReportForm.Test::analysisId)
+                    .collect(java.util.stream.Collectors.toSet());
+            for (var analysis : analyses.getByCaseId(caseId)) {
+                analysis.setSelectedForReport(selected.contains(analysis.getAnalysisId()));
+                analyses.update(analysis);
+            }
         }
         close(amendment, MicroCaseAmendmentStatus.CANCELLED, reason.trim(), performedBy);
         relock(microCase, performedBy);
         recordActivity(caseId, MicroCaseActivityType.AMENDMENT_CANCELLED, performedBy,
                 "Amendment " + amendment.getSequenceNumber() + " cancelled", amendment.getId());
         return amendment;
+    }
+
+    private void restoreRetiredRuns(MicroCaseAmendment amendment) {
+        for (MicroCaseActivity activity : activityDAO.getByCaseId(amendment.getCaseId())) {
+            if (!MicroCaseActivityType.AST_RUN_INVALIDATED.name().equals(activity.getActivityType())
+                    || activity.getOccurredAt().before(amendment.getOpenedAt()))
+                continue;
+            for (JsonNode runId : structuredData(activity).path("astRunIds"))
+                astRunDAO.get(runId.asText())
+                        .filter(run -> MicroAstRunStatus.RERUN_REQUIRED.name().equals(run.getStatus())
+                                && run.getAmendmentId() == null && run.getReviewedAt() != null)
+                        .ifPresent(run -> {
+                            run.setStatus(MicroAstRunStatus.REVIEWED.name());
+                            astRunDAO.update(run);
+                        });
+        }
+    }
+
+    private static JsonNode structuredData(MicroCaseActivity activity) {
+        try {
+            return JSON.readTree(activity.getStructuredData() == null ? "{}" : activity.getStructuredData());
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Unreadable activity " + activity.getId(), e);
+        }
     }
 
     private void restoreSourceSelection(MicroAstRun run) {

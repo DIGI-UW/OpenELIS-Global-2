@@ -19,7 +19,9 @@ import { Locator, expect } from "@playwright/test";
 
 async function openListbox(combobox: Locator, filter?: string) {
   if (filter !== undefined) await combobox.fill(filter);
-  else if ((await combobox.getAttribute("aria-expanded")) !== "true")
+  // Typing the label the box already shows changes nothing, so the list stays
+  // closed; open it by clicking.
+  if ((await combobox.getAttribute("aria-expanded")) !== "true")
     await combobox.click();
   await expect(combobox).toHaveAttribute("aria-expanded", "true");
   const listboxId = await combobox.getAttribute("aria-controls");

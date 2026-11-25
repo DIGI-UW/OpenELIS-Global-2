@@ -6,6 +6,7 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -32,6 +33,8 @@ import org.openelisglobal.analyzerresults.service.AnalyzerResultPlacementService
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.resultrun.service.ResultRunService;
+import org.openelisglobal.resultrun.valueholder.ResultRun;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.springframework.stereotype.Service;
@@ -52,13 +55,14 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
     private final FhirContext fhirContext;
     private final AnalyzerDeliveryReceiptDAO receiptDAO;
     private final AnalyzerResultPlacementService placementService;
+    private final ResultRunService resultRunService;
 
     public AnalyzerNormalizedResultImportServiceImpl(AnalyzerService analyzerService,
             AnalyzerMappingService mappingService, AnalyzerResultsService analyzerResultsService,
             TestResultService testResultService, QCResultProcessingService qcResultProcessingService,
             FhirContext fhirContext, AnalyzerDeliveryReceiptDAO receiptDAO,
             AnalyzerMappingConfirmationService confirmationService, AnalyzerMappingCatalogService mappingCatalogService,
-            AnalyzerResultPlacementService placementService) {
+            AnalyzerResultPlacementService placementService, ResultRunService resultRunService) {
         this.analyzerService = analyzerService;
         this.mappingService = mappingService;
         this.analyzerResultsService = analyzerResultsService;
@@ -69,6 +73,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         this.confirmationService = confirmationService;
         this.mappingCatalogService = mappingCatalogService;
         this.placementService = placementService;
+        this.resultRunService = resultRunService;
     }
 
     @Override
@@ -96,11 +101,14 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         }
 
         List<AnalyzerResults> staged = mapResults(contract, analyzer);
+        Optional<ResultRun> run = resultRunService.openAnalyzerRun(analyzer, contract.bridgeConnectionId(),
+                contract.messageId(), staged);
         if (!staged.isEmpty()) {
             analyzerResultsService.insertAnalyzerResults(staged, effectiveActor);
         }
 
         int controlsProcessed = processControls(staged, analyzer, effectiveActor);
+        run.ifPresent(opened -> resultRunService.refreshQcState(opened.getId(), effectiveActor));
         int held = (int) staged.stream().filter(AnalyzerResults::isReadOnly).count();
         AnalyzerDeliveryReceipt receipt = new AnalyzerDeliveryReceipt();
         receipt.setConnectionId(contract.bridgeConnectionId());
@@ -114,7 +122,8 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         receipt.setAcceptedBy(effectiveActor);
         receipt.setAcceptedAt(new Timestamp(System.currentTimeMillis()));
         receipt.setBundleJson(fhirContext.newJsonParser().encodeResourceToString(bundle));
-        receiptDAO.insert(receipt);
+        String receiptId = receiptDAO.insert(receipt);
+        run.ifPresent(opened -> resultRunService.attachReceipt(opened.getId(), receiptId));
         return new AnalyzerNormalizedResultImportSummary(receipt.getId(), analyzer.getId(), staged.size(), held,
                 controlsProcessed);
     }
@@ -131,6 +140,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         Analyzer analyzer = analyzerService.findByBridgeConnectionIdForUpdate(candidate.getBridgeConnectionId())
                 .orElseThrow(() -> new IllegalArgumentException("Analyzer connection not found"));
         int recoveredCount = 0;
+        Set<Long> touchedRuns = new LinkedHashSet<>();
         // Retry the stored normalized observation using the current local mapping.
         for (AnalyzerResults held : analyzerResultsService.findHeldMappingResultsByAnalyzer(analyzerId)) {
             if (AnalyzerResults.IMPORT_ISSUE_SETUP_CAPTURE.equals(held.getImportIssueReason())) {
@@ -140,6 +150,9 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                     || !analyzer.getBridgeConnectionId().equals(held.getSourceConnectionId())
                     || held.getSourcePayload() == null) {
                 continue;
+            }
+            if (held.getRunId() != null) {
+                touchedRuns.add(held.getRunId());
             }
             // The stored observation already contains the Bridge's interpretation. Recovery
             // applies only local mapping and placement; historical parser snapshots remain
@@ -182,12 +195,14 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             if (wholeRecord && mapped.size() > 1) {
                 List<AnalyzerResults> others = mapped.stream().filter(row -> row != recovered).toList();
                 others.forEach(row -> {
+                    row.setRunId(held.getRunId());
                     row.setInstrumentPatientId(held.getInstrumentPatientId());
                     row.setInstrumentPatientName(held.getInstrumentPatientName());
                     row.setInstrumentSampleFlags(held.getInstrumentSampleFlags());
                     row.setArrivalReading(held.getArrivalReading());
                 });
                 analyzerResultsService.insertAnalyzerResults(others, effectiveActor);
+                resultRunService.addRows(held.getRunId(), others.size());
                 processControls(others, analyzer, effectiveActor);
                 recoveredCount += (int) others.stream().filter(row -> !row.isReadOnly()).count();
             }
@@ -205,11 +220,13 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             recovered.setArrivalReading(held.getArrivalReading());
             recovered.setLastupdated(held.getLastupdated());
             recovered.setSysUserId(effectiveActor);
+            recovered.setRunId(held.getRunId());
             analyzerResultsService.update(recovered);
             if (!recovered.isReadOnly()) {
                 recoveredCount++;
             }
         }
+        touchedRuns.forEach(runId -> resultRunService.refreshQcState(runId, effectiveActor));
         return recoveredCount;
     }
 
@@ -461,7 +478,8 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         LocalDateTime timestamp = row.getCompleteDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
         if ("D".equals(row.getResultType())) {
             return qcResultProcessingService.processQualitativeQCResult(analyzer.getId(), row.getTestId(),
-                    row.getComponentId(), specimenIdOf(row), row.getControlLevel(), row.getResult(), timestamp);
+                    row.getComponentId(), specimenIdOf(row), row.getControlLevel(), row.getResult(), timestamp,
+                    row.getRunId());
         }
         BigDecimal value;
         try {
@@ -471,8 +489,8 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                     "Control result is neither numeric nor a mapped answer and remains staged for review");
             return QCResultProcessingService.Outcome.UNSUPPORTED_VALUE;
         }
-        return qcResultProcessingService.processQCResult(analyzer.getId(), row.getTestId(), specimenIdOf(row),
-                row.getControlLevel(), value, row.getUnits(), timestamp);
+        return qcResultProcessingService.processQCResult(analyzer.getId(), row.getTestId(), row.getComponentId(),
+                specimenIdOf(row), row.getControlLevel(), value, row.getUnits(), timestamp, row.getRunId());
     }
 
     private void hold(AnalyzerResults row, String reason) {

@@ -3,7 +3,6 @@ package org.openelisglobal.referral.service;
 import jakarta.annotation.PostConstruct;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -260,54 +259,19 @@ public class ReferralSetServiceImpl implements ReferralSetService {
                 updateExistingReferralFromItem(referralItem, updateData.getCurrentUserId());
                 continue;
             }
-            Result result = new Result();
-
-            Referral referral = new Referral();
-            referral.setFhirUuid(UUID.randomUUID());
-            referral.setStatus(ReferralStatus.DRAFT);
-            referral.setSysUserId(updateData.getCurrentUserId());
-            referral.setReferralTypeId(REFERRAL_CONFORMATION_ID);
-
-            referral.setRequestDate(new Timestamp(new Date().getTime()));
-            referral.setSentDate(DateUtil.convertStringDateToTruncatedTimestamp(referralItem.getReferredSendDate()));
-            referral.setRequesterName(
-                    ResultUtil.requesterNameFor(referralItem.getReferrer(), null, updateData.getCurrentUserId()));
-            referral.setOrganization(organizationService.get(referralItem.getReferredInstituteId()));
-            referral.setSubcontract(buildSubcontractFromItem(referralItem, updateData.getCurrentUserId()));
+            Analysis selected = null;
             for (SampleTestCollection sampleItemTest : updateData.getSampleItemsTests()) {
                 for (Analysis analysis : sampleItemTest.analysises) {
-                    if (referralItem.getReferredTestId().equals(analysis.getTest().getId())) {
-                        referral.setAnalysis(analysis);
-
-                        String testResultType = testService.getResultType(analysis.getTest());
-                        result.setResultType(testResultType);
-                        result.setAnalysis(analysis);
-                    }
+                    if (referralItem.getReferredTestId().equals(analysis.getTest().getId()))
+                        selected = analysis;
                 }
             }
-            referral.setReferralReasonId(referralItem.getReferralReasonId());
-
-            // The Result Entry route flags the analysis when it raises a referral.
-            // Order Entry did not, so the same referral left the analysis looking
-            // like ordinary in-house work to every report and to the Result Entry
-            // screen. Flag the one analysis the referral is attached to: the same
-            // test can sit on two sample items, and only this one was referred.
-            markAnalysisReferredOut(referral.getAnalysis(), updateData.getCurrentUserId());
-
-            referralService.insert(referral);
-            insertInitialDraftHistory(referral.getId(), updateData.getCurrentUserId());
-            resultService.insert(result);
-            fireReferralOutAfterCommit(referral, updateData.getCurrentUserId());
-            ReferralResult referralResult = new ReferralResult();
-            referralResult.setReferralId(referral.getId());
-            referralResult.setSysUserId(updateData.getCurrentUserId());
-            referralResult.setTestId(referralItem.getReferredTestId());
-            referralResult.setResult(result);
-            referralResultService.insert(referralResult);
-
+            Referral referral = createDraftForAnalysis(selected, referralItem, updateData.getCurrentUserId());
+            List<ReferralResult> referralResults = referralResultService
+                    .getReferralResultsForReferral(referral.getId());
             ReferralSet referralSet = new ReferralSet();
             referralSet.setReferral(referral);
-            referralSet.setExistingReferralResults(Arrays.asList(referralResult));
+            referralSet.setExistingReferralResults(referralResults);
             referralSets.add(referralSet);
         }
         return referralSets;
@@ -315,6 +279,47 @@ public class ReferralSetServiceImpl implements ReferralSetService {
 
     // Refer Out edit form re-submits the existing referralId; update in place to
     // avoid duplicate rows.
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public Referral createDraftForAnalysis(Analysis analysis, ReferralItem referralItem, String actor) {
+        if (analysis == null || analysis.getId() == null)
+            throw new IllegalArgumentException("A persisted referral analysis is required");
+        Result result = new Result();
+
+        Referral referral = new Referral();
+        referral.setFhirUuid(UUID.randomUUID());
+        referral.setStatus(ReferralStatus.DRAFT);
+        referral.setSysUserId(actor);
+        referral.setReferralTypeId(REFERRAL_CONFORMATION_ID);
+
+        referral.setRequestDate(new Timestamp(new Date().getTime()));
+        referral.setSentDate(DateUtil.convertStringDateToTruncatedTimestamp(referralItem.getReferredSendDate()));
+        referral.setRequesterName(ResultUtil.requesterNameFor(referralItem.getReferrer(), null, actor));
+        referral.setOrganization(organizationService.get(referralItem.getReferredInstituteId()));
+        referral.setSubcontract(buildSubcontractFromItem(referralItem, actor));
+        referral.setAnalysis(analysis);
+        result.setResultType(testService.getResultType(analysis.getTest()));
+        result.setAnalysis(analysis);
+        referral.setReferralReasonId(referralItem.getReferralReasonId());
+
+        // Mark only the selected analysis: identical tests on other sample
+        // items can remain in-house.
+        markAnalysisReferredOut(referral.getAnalysis(), actor);
+
+        referralService.insert(referral);
+        insertInitialDraftHistory(referral.getId(), actor);
+        resultService.insert(result);
+        fireReferralOutAfterCommit(referral, actor);
+        ReferralResult referralResult = new ReferralResult();
+        referralResult.setReferralId(referral.getId());
+        referralResult.setSysUserId(actor);
+        referralResult.setTestId(referralItem.getReferredTestId());
+        referralResult.setResult(result);
+        referralResultService.insert(referralResult);
+
+        return referral;
+    }
+
     private void updateExistingReferralFromItem(ReferralItem referralItem, String currentUserId) {
         Referral existing = referralService.getReferralById(referralItem.getReferralId());
         if (existing == null) {
@@ -400,7 +405,7 @@ public class ReferralSetServiceImpl implements ReferralSetService {
 
         String accession = sample == null || sample.getAccessionNumber() == null ? "" : sample.getAccessionNumber();
         String testName = referral.getAnalysis() == null || referral.getAnalysis().getTest() == null ? ""
-                : referral.getAnalysis().getTest().getLocalizedTestName().getLocalizedValue();
+                : referral.getAnalysis().getTest().getName();
 
         Map<String, String> variables = new LinkedHashMap<>();
         variables.put("referralId", referral.getId() == null ? "" : referral.getId());

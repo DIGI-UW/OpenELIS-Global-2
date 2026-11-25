@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class TestCalculationServiceImpl extends AuditableBaseObjectServiceImpl<Calculation, Integer>
         implements TestCalculationService {
 
+    public static final String INVALID_LOGIC = "error.invalid.calculation.logic";
     public static final String DUPLICATE_NAME = "calculation.error.duplicateName";
     public static final String DUPLICATE_NAME_INACTIVE = "calculation.error.duplicateNameInactive";
     public static final String SELF_REFERENCE = "calculation.error.selfReference";
@@ -52,6 +53,11 @@ public class TestCalculationServiceImpl extends AuditableBaseObjectServiceImpl<C
     @Override
     @Transactional(readOnly = true)
     public void validateRule(Calculation calculation, boolean willBeActive) {
+        try {
+            CalculationExpression.compile(calculation.getOperations(), this::readsCodedResult);
+        } catch (IllegalArgumentException e) {
+            throw new CalculationRuleViolation(INVALID_LOGIC, Map.of());
+        }
         List<Calculation> others = getAll().stream().filter(other -> !sameRule(other, calculation))
                 .collect(Collectors.toList());
         String name = StringUtils.trimToEmpty(calculation.getName());
@@ -80,7 +86,7 @@ public class TestCalculationServiceImpl extends AuditableBaseObjectServiceImpl<C
                 .filter(other -> Boolean.TRUE.equals(other.getActive()) && other.getTestId() != null)
                 .collect(Collectors.toList());
         for (Calculation other : active) {
-            if (destinationOf(other, primaries).sameAs(destination)) {
+            if (destinationOf(other, primaries).sameAs(destination) && !writesAnotherAnswer(calculation, other)) {
                 throw new CalculationRuleViolation(DUPLICATE_DESTINATION, Map.of("rule", name, "test",
                         testName(destination.testId()), "other", StringUtils.defaultString(other.getName())));
             }
@@ -162,9 +168,20 @@ public class TestCalculationServiceImpl extends AuditableBaseObjectServiceImpl<C
                 id -> StringUtils.defaultString(ruleResultScope.primaryComponentId(id)));
     }
 
+    private boolean readsCodedResult(Operation operation) {
+        Test test = testService.getTestById(operation.getValue());
+        return test != null && "D".equals(ruleResultScope.resultTypeForComponent(test.getId(),
+                operation.getComponentId(), testService.getResultType(test)));
+    }
+
     private String testName(String testId) {
         Test test = testService.get(testId);
         return test == null ? testId : TestServiceImpl.getLocalizedTestNameWithType(test);
+    }
+
+    private static boolean writesAnotherAnswer(Calculation a, Calculation b) {
+        return StringUtils.isNotBlank(a.getResult()) && StringUtils.isNotBlank(b.getResult())
+                && !a.getResult().trim().equals(b.getResult().trim());
     }
 
     private static boolean sameRule(Calculation a, Calculation b) {

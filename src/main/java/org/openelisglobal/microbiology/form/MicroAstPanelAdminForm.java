@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MicroAstPanelAdminForm {
+    public String susceptibilityProtocol = "GENERAL";
     public String id;
     public String logicalKey;
     public Integer versionNumber;
@@ -11,6 +12,7 @@ public class MicroAstPanelAdminForm {
     public String name;
     public String organismGroup;
     public String specimenTypeId;
+    public List<String> defaultFor;
     public boolean active = true;
     public boolean current = true;
     public String publishedBy;

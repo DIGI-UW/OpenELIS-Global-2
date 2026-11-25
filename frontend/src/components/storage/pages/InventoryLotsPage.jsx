@@ -100,7 +100,12 @@ export default function InventoryLotsPage() {
           barcode: lot.barcode || "",
           itemName: lot.itemName || "",
           quantity: lot.quantity ?? "",
-          status: lot.status || "",
+          status: lot.status
+            ? intl.formatMessage({
+                id: `lot.status.${lot.status}`,
+                defaultMessage: lot.status,
+              })
+            : "",
           location: locationPath ? (
             <Tag type="blue">
               {lot.positionCoordinate

@@ -72,7 +72,19 @@ describe("General Configurations", function () {
   testToggleConfiguration("NonConformity", "NonConformity Configuration");
   testToggleConfiguration("WorkPlan", "WorkPlan Configuration");
   testToggleConfiguration("SiteInformation", "Site Information");
-  testToggleConfiguration("ResultEntity", "Result Entry Configuration");
+
+  describe("Result & Validation Configuration", () => {
+    it("shows the result settings grouped by purpose, without the table", () => {
+      generalConfigurationsPage = adminPage.goToResultEntityConfig();
+      generalConfigurationsPage.validatePageTitle(
+        "Result & Validation Configuration",
+      );
+      cy.get("[data-testid='settings-group-validation']").should("be.visible");
+      cy.get("[data-testid='settings-group-resultEntry']").should("be.visible");
+      cy.get("[data-cy='modify-Button']").should("not.exist");
+    });
+  });
+
   testToggleConfiguration("PatientEntity", "Patient Entry Configuration");
   testToggleConfiguration("OrderEntity", "Order Entry Configuration");
   testTypeConfiguration("PrintedReport", "Printed Report Configuration");

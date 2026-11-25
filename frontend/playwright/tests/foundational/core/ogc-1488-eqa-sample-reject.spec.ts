@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "../../../helpers/test-base";
 import { LONG_TIMEOUT, NAV_TIMEOUT } from "../../../helpers/timeouts";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 
 /**
  * OGC-1488: an EQA sample that fails intake is rejected, not resampled, and
@@ -25,9 +26,10 @@ test("an EQA sample is rejected with a chosen reason", async ({ page }) => {
   test.setTimeout(240_000);
   await page.goto("/", { waitUntil: "domcontentloaded" });
   const headers = { "X-CSRF-Token": await csrfToken(page) };
+  const schemeName = `PW1488 scheme ${Date.now()}`;
   const enrolled = await page.request.post(`${API}/rest/eqa/my-programs`, {
     headers,
-    data: { programName: `PW1488 scheme ${Date.now()}`, provider: "PW" },
+    data: { programName: schemeName, provider: "PW" },
   });
   expect(enrolled.status()).toBe(201);
   const enrollmentId = String((await enrolled.json()).id);
@@ -47,14 +49,19 @@ test("an EQA sample is rejected with a chosen reason", async ({ page }) => {
       timeout: NAV_TIMEOUT,
     });
     const labNumber = await page.locator("#labNumber").inputValue();
-    await expect(
-      page.locator(`#eqaProgramId option[value="${enrollmentId}"]`),
-    ).toHaveCount(1, { timeout: LONG_TIMEOUT });
-    await page.locator("#eqaProgramId").selectOption(enrollmentId);
-    const sampleType = page
-      .getByTestId("order-sample-test-section")
-      .getByLabel("Sample Type");
-    await sampleType.selectOption({ label: "Serum" });
+    await expect(page.locator("#eqaProgramId")).toBeEnabled({
+      timeout: LONG_TIMEOUT,
+    });
+    await chooseCarbonOption(
+      page.locator("#eqaProgramId"),
+      `${schemeName} (PW)`,
+    );
+    await chooseCarbonOption(
+      page
+        .getByTestId("order-sample-test-section")
+        .getByRole("combobox", { name: /^Sample Type/ }),
+      "Serum",
+    );
     const firstTest = page
       .getByTestId("order-sample-test-section")
       .locator('input[type="checkbox"][id^="test-0-"]')

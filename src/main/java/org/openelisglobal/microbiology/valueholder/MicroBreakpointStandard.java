@@ -36,6 +36,17 @@ public class MicroBreakpointStandard extends BaseObject<String> {
     @Column(name = "last_updated_by", length = 20)
     private String lastUpdatedBy;
 
+    @Column(name = "configuration_hash", length = 64)
+    private String configurationHash;
+
+    public String getConfigurationHash() {
+        return configurationHash;
+    }
+
+    public void setConfigurationHash(String value) {
+        configurationHash = value;
+    }
+
     @Override
     public String getId() {
         return id;

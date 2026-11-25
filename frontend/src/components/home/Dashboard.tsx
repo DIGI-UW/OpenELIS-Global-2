@@ -86,6 +86,7 @@ import {
 } from "../utils/Utils";
 import { FormattedMessage, useIntl } from "react-intl";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import ExtensionSlot from "../../modules/ExtensionSlot";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 
@@ -609,6 +610,10 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
               </ClickableTile>
             );
           })}
+          <ExtensionSlot
+            name="home.dashboard.cards"
+            context={{ user: userSessionDetails }}
+          />
         </div>
       ) : (
         <div className="dashboard-view">

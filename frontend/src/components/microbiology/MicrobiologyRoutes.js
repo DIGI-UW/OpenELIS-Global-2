@@ -29,6 +29,27 @@ export const MICROBIOLOGY_CASE_ACTIONS = [
 ];
 export const MICROBIOLOGY_CRITICAL_TARGET_TYPES = ["CASE", "ISOLATE"];
 
+const sectionScopes = {
+  setup: "CULTURE",
+  timeline: "HISTORY",
+  isolates: "ISOLATES",
+  ast: "AST",
+  reports: "REPORT",
+  amendment: "AMENDMENT",
+  "critical-communication": "CRITICAL",
+  nonconformance: "NONCONFORMANCE",
+};
+
+export const routedScope = (search) => {
+  const params = new URLSearchParams(search);
+  return (
+    params.get("scope") ||
+    sectionScopes[params.get("section")] ||
+    { cultures: "CULTURE", ast: "AST" }[params.get("grain")] ||
+    "INITIAL"
+  );
+};
+
 const DEFAULT_WORKLIST_STATE = {
   grain: "cultures",
   status: "",
@@ -83,6 +104,9 @@ const normalizeWorklistState = (state = {}, now = labNow()) => {
   return {
     grain,
     status,
+    labUnitIds: values(
+      state.labUnitIds?.length ? state.labUnitIds : state.labUnitId,
+    ),
     from:
       grain === "ast"
         ? validIsoDate(state.from)
@@ -117,9 +141,10 @@ const normalizeWorklistState = (state = {}, now = labNow()) => {
 
 const toSearch = (state, caseState = {}) => {
   const params = new URLSearchParams();
-  if (state.grain !== DEFAULT_WORKLIST_STATE.grain) {
+  if (state.grain) {
     params.set("grain", state.grain);
   }
+  (state.labUnitIds || []).forEach((id) => params.append("labUnitIds", id));
   if (state.status) {
     params.set("status", state.status);
   }
@@ -188,6 +213,10 @@ export const parseMicrobiologyWorklistSearch = (
   return normalizeWorklistState(
     {
       grain: params.get("grain"),
+      labUnitIds: [
+        ...params.getAll("labUnitIds"),
+        params.get("labUnitId"),
+      ].filter(Boolean),
       status: params.get("status"),
       from: params.get("from"),
       to: params.get("to"),

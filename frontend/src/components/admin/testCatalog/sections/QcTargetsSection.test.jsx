@@ -142,6 +142,63 @@ describe("QcTargetsSection", () => {
     });
   });
 
+  it("loads the test's QC policy and saves it with the targets (OGC-1200 FR-H1)", async () => {
+    load({
+      ...WITH_NORMAL,
+      policy: { controlRequired: false, controlWhenMissing: "WARN" },
+    });
+    renderSection();
+    const required = await screen.findByTestId("qc-policy-control-required");
+    const whenMissing = screen.getByTestId("qc-policy-control-when-missing");
+    const explained = screen.getByTestId("qc-policy-control-explained");
+    expect(required).toHaveValue("no");
+    expect(whenMissing).toBeDisabled();
+    expect(explained).toHaveTextContent(
+      messages["admin.testCatalog.qc.policy.notRequiredHelp"],
+    );
+    expect(screen.getByTestId("qc-policy-control")).toHaveTextContent(
+      "Always holds the test",
+    );
+
+    fireEvent.change(required, { target: { value: "yes" } });
+    expect(
+      await screen.findByTestId("qc-policy-control-when-missing"),
+    ).toBeEnabled();
+    expect(screen.getByTestId("qc-policy-control-explained")).toHaveTextContent(
+      messages["admin.testCatalog.qc.policy.warnHelp"],
+    );
+    fireEvent.change(screen.getByTestId("qc-policy-control-when-missing"), {
+      target: { value: "HOLD" },
+    });
+    expect(screen.getByTestId("qc-policy-control-explained")).toHaveTextContent(
+      messages["admin.testCatalog.qc.policy.holdHelp"],
+    );
+    fireEvent.click(screen.getByTestId("qc-targets-save"));
+
+    await waitFor(() =>
+      expect(putToOpenElisServerFullResponse).toHaveBeenCalledTimes(1),
+    );
+    expect(savedPayload().policy).toEqual({
+      controlRequired: true,
+      controlWhenMissing: "HOLD",
+    });
+    expect(savedPayload().targets).toHaveLength(1);
+  });
+
+  it("shows a stored Hold policy as it is", async () => {
+    load({
+      ...EMPTY,
+      policy: { controlRequired: true, controlWhenMissing: "HOLD" },
+    });
+    renderSection();
+    expect(await screen.findByTestId("qc-policy-control-required")).toHaveValue(
+      "yes",
+    );
+    expect(screen.getByTestId("qc-policy-control-when-missing")).toHaveValue(
+      "HOLD",
+    );
+  });
+
   it("refuses to save a quantitative target without both numbers", async () => {
     renderSection();
     fireEvent.click(await screen.findByTestId("qc-target-add-LOW"));

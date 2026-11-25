@@ -15,6 +15,7 @@ import MicrobiologyService from "./MicrobiologyService";
 
 const TARGET_TYPES = ["CASE", "ISOLATE", "SAMPLE_ITEM", "RESULT"];
 const METHOD_OPTIONS = ["PHONE", "SMS", "IN_PERSON", "EMAIL"];
+const OUTCOME_OPTIONS = ["CONFIRMED", "REACHED_NO_READBACK", "UNABLE_TO_REACH"];
 
 const statusTagType = (status) => {
   if (status === "CLOSED") {
@@ -25,6 +26,7 @@ const statusTagType = (status) => {
 
 const CriticalCommunicationPanel = ({
   caseId,
+  isReadOnly = false,
   sampleItemId,
   isolates = [],
   projectedResultIds = [],
@@ -35,12 +37,16 @@ const CriticalCommunicationPanel = ({
   onEntryComplete,
 }) => {
   const intl = useIntl();
+  // i18n-keys: microbiology.critical.outcomes.*
+  const outcomeLabel = (value) =>
+    intl.formatMessage({ id: `microbiology.critical.outcomes.${value}` });
   const [communications, setCommunications] = useState([]);
   const [targetType, setTargetType] = useState("CASE");
   const [targetId, setTargetId] = useState(caseId);
   const [recipient, setRecipient] = useState("");
   const [recipientContact, setRecipientContact] = useState("");
   const [communicationMethod, setCommunicationMethod] = useState("PHONE");
+  const [outcome, setOutcome] = useState("");
   const [message, setMessage] = useState("");
   const [followUpNeeded, setFollowUpNeeded] = useState(true);
   const [closingId, setClosingId] = useState("");
@@ -90,8 +96,15 @@ const CriticalCommunicationPanel = ({
   };
 
   const logCommunication = () => {
-    if (!recipient.trim() || !message.trim() || !effectiveTargetId) {
-      setError(intl.formatMessage({ id: "microbiology.critical.required" }));
+    if (
+      !recipient.trim() ||
+      !message.trim() ||
+      !effectiveTargetId ||
+      !outcome
+    ) {
+      setError(
+        intl.formatMessage({ id: "microbiology.critical.outcomeRequired" }),
+      );
       return;
     }
     setSaving(true);
@@ -103,12 +116,14 @@ const CriticalCommunicationPanel = ({
         recipient,
         recipientContact,
         communicationMethod,
+        outcome,
         message,
         followUpNeeded,
       })
       .then(() => {
         setRecipient("");
         setRecipientContact("");
+        setOutcome("");
         setMessage("");
         setFollowUpNeeded(true);
         refresh();
@@ -125,18 +140,12 @@ const CriticalCommunicationPanel = ({
       .finally(() => setSaving(false));
   };
 
-  const acknowledge = (communicationId) => {
-    setSaving(true);
-    service
-      .acknowledgeCriticalCommunication(communicationId)
-      .then(refresh)
-      .finally(() => setSaving(false));
-  };
-
   const close = (communicationId) => {
     if (!resolutionNote.trim()) {
       setError(
-        intl.formatMessage({ id: "microbiology.critical.resolutionRequired" }),
+        intl.formatMessage({
+          id: "microbiology.critical.followUpNoteRequired",
+        }),
       );
       return;
     }
@@ -156,6 +165,7 @@ const CriticalCommunicationPanel = ({
     <section
       className="microbiology-card"
       data-testid="microbiology-critical-card"
+      aria-labelledby="microbiology-critical-heading"
     >
       <div className="microbiology-card__header">
         <div>
@@ -163,13 +173,14 @@ const CriticalCommunicationPanel = ({
             {intl.formatMessage({ id: "microbiology.critical.title" })}
           </h3>
           <p className="microbiology-card__hint">
-            {intl.formatMessage({ id: "microbiology.critical.hint" })}
+            {intl.formatMessage({ id: "microbiology.critical.callHint" })}
           </p>
         </div>
         <Tag
           type={
             communications.some(
-              (item) => item.acknowledgementStatus !== "CLOSED",
+              (item) =>
+                item.followUpNeeded && item.acknowledgementStatus !== "CLOSED",
             )
               ? "red"
               : "gray"
@@ -188,117 +199,141 @@ const CriticalCommunicationPanel = ({
           />
         )}
 
-        <div className="microbiology-form-grid">
-          <Select
-            id="microbiology-critical-target-type"
-            labelText={intl.formatMessage({
-              id: "microbiology.critical.target",
-            })}
-            value={effectiveTargetType}
-            disabled={targetLocked}
-            onChange={(event) => {
-              setTargetType(event.target.value);
-              setTargetId("");
-            }}
-          >
-            {TARGET_TYPES.map((type) => (
-              <SelectItem
-                key={type}
-                value={type}
-                text={formatMicrobiologyEnum(type, intl)}
-              />
-            ))}
-          </Select>
-          {targetOptions.length > 0 ? (
+        {!isReadOnly && (
+          <div className="microbiology-form-grid">
             <Select
-              id="microbiology-critical-target-id"
+              id="microbiology-critical-target-type"
               labelText={intl.formatMessage({
-                id: "microbiology.critical.targetId",
+                id: "microbiology.critical.target",
               })}
-              value={effectiveTargetId}
+              value={effectiveTargetType}
               disabled={targetLocked}
-              onChange={(event) => setTargetId(event.target.value)}
+              onChange={(event) => {
+                setTargetType(event.target.value);
+                setTargetId("");
+              }}
             >
-              {targetOptions.map((option) => (
+              {TARGET_TYPES.map((type) => (
                 <SelectItem
-                  key={option.id}
-                  value={option.id}
-                  text={option.label}
+                  key={type}
+                  value={type}
+                  text={formatMicrobiologyEnum(type, intl)}
                 />
               ))}
             </Select>
-          ) : (
-            <TextInput
-              id="microbiology-critical-target-id"
-              labelText={intl.formatMessage({
-                id: "microbiology.critical.targetId",
-              })}
-              value={effectiveTargetId}
-              disabled={
-                targetLocked ||
-                effectiveTargetType === "CASE" ||
-                effectiveTargetType === "SAMPLE_ITEM"
-              }
-              onChange={(event) => setTargetId(event.target.value)}
-            />
-          )}
-          <TextInput
-            id="microbiology-critical-recipient"
-            labelText={intl.formatMessage({
-              id: "microbiology.critical.recipient",
-            })}
-            value={recipient}
-            onChange={(event) => setRecipient(event.target.value)}
-          />
-          <TextInput
-            id="microbiology-critical-recipient-contact"
-            labelText={intl.formatMessage({
-              id: "microbiology.critical.recipientContact",
-            })}
-            value={recipientContact}
-            onChange={(event) => setRecipientContact(event.target.value)}
-          />
-          <Select
-            id="microbiology-critical-method"
-            labelText={intl.formatMessage({
-              id: "microbiology.critical.method",
-            })}
-            value={communicationMethod}
-            onChange={(event) => setCommunicationMethod(event.target.value)}
-          >
-            {METHOD_OPTIONS.map((method) => (
-              <SelectItem
-                key={method}
-                value={method}
-                text={formatMicrobiologyEnum(method, intl)}
+            {targetOptions.length > 0 ? (
+              <Select
+                id="microbiology-critical-target-id"
+                labelText={intl.formatMessage({
+                  id: "microbiology.critical.targetId",
+                })}
+                value={effectiveTargetId}
+                disabled={targetLocked}
+                onChange={(event) => setTargetId(event.target.value)}
+              >
+                {targetOptions.map((option) => (
+                  <SelectItem
+                    key={option.id}
+                    value={option.id}
+                    text={option.label}
+                  />
+                ))}
+              </Select>
+            ) : (
+              <TextInput
+                id="microbiology-critical-target-id"
+                labelText={intl.formatMessage({
+                  id: "microbiology.critical.targetId",
+                })}
+                value={effectiveTargetId}
+                disabled={
+                  targetLocked ||
+                  effectiveTargetType === "CASE" ||
+                  effectiveTargetType === "SAMPLE_ITEM"
+                }
+                onChange={(event) => setTargetId(event.target.value)}
               />
-            ))}
-          </Select>
-          <div className="microbiology-form-grid__wide">
-            <TextArea
-              id="microbiology-critical-message"
+            )}
+            <TextInput
+              id="microbiology-critical-recipient"
               labelText={intl.formatMessage({
-                id: "microbiology.critical.message",
+                id: "microbiology.critical.recipient",
               })}
-              value={message}
-              onChange={(event) => setMessage(event.target.value)}
+              value={recipient}
+              onChange={(event) => setRecipient(event.target.value)}
             />
+            <TextInput
+              id="microbiology-critical-recipient-contact"
+              labelText={intl.formatMessage({
+                id: "microbiology.critical.recipientContact",
+              })}
+              value={recipientContact}
+              onChange={(event) => setRecipientContact(event.target.value)}
+            />
+            <Select
+              id="microbiology-critical-method"
+              labelText={intl.formatMessage({
+                id: "microbiology.critical.method",
+              })}
+              value={communicationMethod}
+              onChange={(event) => setCommunicationMethod(event.target.value)}
+            >
+              {METHOD_OPTIONS.map((method) => (
+                <SelectItem
+                  key={method}
+                  value={method}
+                  text={formatMicrobiologyEnum(method, intl)}
+                />
+              ))}
+            </Select>
+            <Select
+              id="microbiology-critical-outcome"
+              labelText={intl.formatMessage({
+                id: "microbiology.critical.outcome",
+              })}
+              value={outcome}
+              onChange={(event) => {
+                setOutcome(event.target.value);
+                setFollowUpNeeded(event.target.value !== "CONFIRMED");
+              }}
+            >
+              <SelectItem value="" text="" />
+              {OUTCOME_OPTIONS.map((value) => (
+                <SelectItem
+                  key={value}
+                  value={value}
+                  text={outcomeLabel(value)}
+                />
+              ))}
+            </Select>
+            <div className="microbiology-form-grid__wide">
+              <TextArea
+                id="microbiology-critical-message"
+                labelText={intl.formatMessage({
+                  id: "microbiology.critical.message",
+                })}
+                value={message}
+                onChange={(event) => setMessage(event.target.value)}
+              />
+            </div>
+            <Checkbox
+              id="microbiology-critical-followup"
+              labelText={intl.formatMessage({
+                id: "microbiology.critical.followUp",
+              })}
+              checked={followUpNeeded}
+              onChange={(_, state) => setFollowUpNeeded(state.checked)}
+            />
+            <div>
+              <Button
+                onClick={logCommunication}
+                disabled={saving || isReadOnly}
+              >
+                {intl.formatMessage({ id: "microbiology.critical.log" })}
+              </Button>
+            </div>
           </div>
-          <Checkbox
-            id="microbiology-critical-followup"
-            labelText={intl.formatMessage({
-              id: "microbiology.critical.followUp",
-            })}
-            checked={followUpNeeded}
-            onChange={(_, state) => setFollowUpNeeded(state.checked)}
-          />
-          <div>
-            <Button onClick={logCommunication} disabled={saving}>
-              {intl.formatMessage({ id: "microbiology.critical.log" })}
-            </Button>
-          </div>
-        </div>
-
+        )}
         <div className="microbiology-critical-list">
           {communications.length === 0 ? (
             <p>{intl.formatMessage({ id: "microbiology.critical.none" })}</p>
@@ -316,45 +351,39 @@ const CriticalCommunicationPanel = ({
                       communication.communicationMethod,
                       intl,
                     )}
+                    {communication.outcome &&
+                      ` · ${outcomeLabel(communication.outcome)}`}
                   </p>
-                  <Tag
-                    type={statusTagType(communication.acknowledgementStatus)}
-                    data-testid="microbiology-critical-status"
-                  >
-                    {formatMicrobiologyEnum(
-                      communication.acknowledgementStatus,
-                      intl,
-                    )}
-                  </Tag>
+                  {communication.followUpNeeded && (
+                    <Tag
+                      type={statusTagType(communication.acknowledgementStatus)}
+                      data-testid="microbiology-critical-status"
+                    >
+                      {formatMicrobiologyEnum(
+                        communication.acknowledgementStatus,
+                        intl,
+                      )}
+                    </Tag>
+                  )}
                   {communication.resolutionNote && (
                     <p>{communication.resolutionNote}</p>
                   )}
                 </div>
                 <div className="microbiology-critical-row__actions">
-                  {communication.acknowledgementStatus === "OPEN" && (
-                    <Button
-                      kind="secondary"
-                      size="sm"
-                      onClick={() => acknowledge(communication.id)}
-                      disabled={saving}
-                    >
-                      {intl.formatMessage({
-                        id: "microbiology.critical.acknowledge",
-                      })}
-                    </Button>
-                  )}
-                  {communication.acknowledgementStatus === "ACKNOWLEDGED" && (
-                    <Button
-                      kind="secondary"
-                      size="sm"
-                      onClick={() => setClosingId(communication.id)}
-                      disabled={saving}
-                    >
-                      {intl.formatMessage({
-                        id: "microbiology.critical.close",
-                      })}
-                    </Button>
-                  )}
+                  {communication.followUpNeeded &&
+                    communication.acknowledgementStatus !== "CLOSED" &&
+                    closingId !== communication.id && (
+                      <Button
+                        kind="secondary"
+                        size="sm"
+                        onClick={() => setClosingId(communication.id)}
+                        disabled={saving || isReadOnly}
+                      >
+                        {intl.formatMessage({
+                          id: "microbiology.critical.resolveFollowUp",
+                        })}
+                      </Button>
+                    )}
                 </div>
                 {closingId === communication.id && (
                   <div className="microbiology-form-grid__wide">
@@ -370,10 +399,10 @@ const CriticalCommunicationPanel = ({
                     />
                     <Button
                       onClick={() => close(communication.id)}
-                      disabled={saving || !resolutionNote.trim()}
+                      disabled={saving || isReadOnly || !resolutionNote.trim()}
                     >
                       {intl.formatMessage({
-                        id: "microbiology.critical.close",
+                        id: "microbiology.critical.resolveFollowUp",
                       })}
                     </Button>
                   </div>

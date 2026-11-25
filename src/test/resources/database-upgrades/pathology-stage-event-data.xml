@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet id="fixture-pathology-stage-event-data"
+        author="openelis">
+        <comment>A deployment that recorded a case before stage events were
+            kept: one case standing at processing. Nobody recorded who moved it
+            there, so no event may be invented for it; 007 has no backfill, and
+            this case guards against one being added later.</comment>
+        <sql>
+            INSERT INTO clinlims.sample
+            (id, accession_number, entered_date, received_date, lastupdated)
+            VALUES
+            (990401, 'STE26000000001', now(), now(), now());
+        </sql>
+        <sql>
+            INSERT INTO clinlims.pathology_sample
+            (id, sample_id, status, last_updated)
+            VALUES
+            (990401, 990401, 'PROCESSING', now() - interval '30 days');
+        </sql>
+    </changeSet>
+</databaseChangeLog>

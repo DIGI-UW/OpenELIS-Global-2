@@ -1,6 +1,7 @@
 package org.openelisglobal.testresultcomponent.service;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -8,7 +9,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.test.service.TestService;
@@ -69,6 +73,9 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
     @Autowired
     private TestQcTargetService qcTargetService;
 
+    @Autowired
+    private LocalizationService localizationService;
+
     TestResultComponentServiceImpl() {
         super(TestResultComponent.class);
     }
@@ -94,6 +101,14 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
     @Transactional(readOnly = true)
     public TestResultComponent getByTestIdAndCode(String testId, String code) {
         return baseObjectDAO.getByTestIdAndCode(testId, code);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TestResultComponent> getRequiredComponentsWithoutResult(String testId,
+            Collection<String> componentIdsWithResult) {
+        return baseObjectDAO.getActiveComponentsByTestId(testId).stream()
+                .filter(c -> c.getIsRequired() && !componentIdsWithResult.contains(c.getId())).toList();
     }
 
     @Override
@@ -163,6 +178,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 match.setAllowMultipleReadings(d.getAllowMultipleReadings());
                 match.setIsPrimary(d.getIsPrimary());
                 match.setShowOnReport(d.getShowOnReport());
+                match.setIsRequired(d.getIsRequired());
                 match.setDisplayLog10(d.getDisplayLog10());
                 match.setLog10SourceComponentCode(d.getLog10SourceComponentCode());
                 match.setLod(d.getLod());
@@ -186,6 +202,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                     slot.setAllowMultipleReadings(d.getAllowMultipleReadings());
                     slot.setIsPrimary(d.getIsPrimary());
                     slot.setShowOnReport(d.getShowOnReport());
+                    slot.setIsRequired(d.getIsRequired());
                     slot.setDisplayLog10(d.getDisplayLog10());
                     slot.setLog10SourceComponentCode(d.getLog10SourceComponentCode());
                     slot.setLod(d.getLod());
@@ -364,6 +381,13 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
         test.setDefaultTestResult(defaultOption);
         test.setSysUserId(sysUserId);
         testService.update(test);
+    }
+
+    @Override
+    @Transactional
+    public void syncDictionaryNormals(String testId, String sysUserId) {
+        syncDictionaryNormals(testId, baseObjectDAO.getActiveComponentsByTestId(testId).stream()
+                .map(TestResultComponent::getId).collect(Collectors.toSet()), sysUserId);
     }
 
     /**
@@ -605,6 +629,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             primary.setReportingDecimalPlaces(reportingDecimalPlaces);
             primary.setIsActive("Y");
             primary.setIsPrimary(true);
+            primary.setIsRequired(true);
             primary.setSysUserId(sysUserId);
             insert(primary);
         } else {
@@ -748,9 +773,23 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
 
     @Override
     @Transactional
+    public String insert(TestResultComponent component) {
+        if (component.getLabelLocalization() == null) {
+            Localization localization = new Localization();
+            localization.setDescription("result component label");
+            localization.setSysUserId(component.getSysUserId());
+            localization.setId(localizationService.insert(localization));
+            component.setLabelLocalization(localization);
+        }
+        return super.insert(component);
+    }
+
+    @Override
+    @Transactional
     public void copyComponentsFromTest(String sourceTestId, String targetTestId, String sysUserId) {
         Test target = testService.getTestById(targetTestId);
-        for (TestResultComponent src : baseObjectDAO.getActiveComponentsByTestId(sourceTestId)) {
+        List<TestResultComponent> sources = baseObjectDAO.getActiveComponentsByTestId(sourceTestId);
+        for (TestResultComponent src : sources) {
             TestResultComponent existing = getByTestIdAndCode(targetTestId, src.getCode());
             // A configured component (it has a result type) is never clobbered.
             // A blank row (the FR-56 pre-seeded PRIMARY) is reconciled from the
@@ -774,6 +813,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             copy.setLoq(src.getLoq());
             copy.setIsPrimary(src.getIsPrimary());
             copy.setShowOnReport(src.getShowOnReport());
+            copy.setIsRequired(src.getIsRequired());
             copy.setDisplayLog10(src.getDisplayLog10());
             copy.setLog10SourceComponentCode(src.getLog10SourceComponentCode());
             copy.setIsActive("Y");
@@ -802,6 +842,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 co.setValue(so.getValue());
                 co.setSortOrder(so.getSortOrder());
                 co.setIsNormal(so.getIsNormal());
+                co.setIsCritical(so.getIsCritical());
                 co.setTestResultType(so.getTestResultType());
                 optionCopies.add(co);
             }
@@ -826,6 +867,30 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 testResultService.insert(placeholder);
             }
         }
+        retireBlankRowsTheCopyReplaced(targetTestId, sources, sysUserId);
         ensureSinglePrimary(targetTestId, sysUserId);
+    }
+
+    /**
+     * OGC-1608: a test created as a copy starts with a blank pre-seeded PRIMARY.
+     * When the source's primary has another code, that blank row is not filled by
+     * the copy; left in place it would stay the primary (and required), so the
+     * copied primary would be demoted and every order would wait on a component
+     * nobody configured. A blank row whose code the source does not have is retired
+     * once the source brings its own primary.
+     */
+    private void retireBlankRowsTheCopyReplaced(String targetTestId, List<TestResultComponent> sources,
+            String sysUserId) {
+        if (sources.stream().noneMatch(TestResultComponent::getIsPrimary)) {
+            return;
+        }
+        Set<String> sourceCodes = new HashSet<>();
+        sources.forEach(src -> sourceCodes.add(src.getCode()));
+        for (TestResultComponent row : baseObjectDAO.getActiveComponentsByTestId(targetTestId)) {
+            boolean blank = row.getResultType() == null || row.getResultType().isBlank();
+            if (blank && !sourceCodes.contains(row.getCode())) {
+                retireComponent(targetTestId, row.getId(), sysUserId);
+            }
+        }
     }
 }

@@ -15,6 +15,7 @@ const API = "/api/OpenELIS-Global";
 const CATALOG = `${API}/rest/test-catalog`;
 const SERUM_SAMPLE_TYPE_ID = "2";
 const SEX_SETTING = "Patient sex required";
+const ESIG_SETTING = "electronicSignatureEnabled";
 const REASON = "Reference range not applied: patient sex not recorded";
 
 async function createSexSpecificTest(page: Page): Promise<string> {
@@ -116,14 +117,22 @@ async function existingSiteAndProvider(
 
 test.describe("OGC-1362 optional patient sex", () => {
   let sexWasRequired = true;
+  let esigWasOn = false;
 
   test.beforeEach(async ({ page }) => {
     sexWasRequired = await isSettingOn(page, SEX_SETTING);
+    esigWasOn = await isSettingOn(page, ESIG_SETTING);
+    if (esigWasOn) {
+      await setSetting(page, ESIG_SETTING, false);
+    }
   });
 
   test.afterEach(async ({ page }) => {
     if ((await isSettingOn(page, SEX_SETTING)) !== sexWasRequired) {
       await setSetting(page, SEX_SETTING, sexWasRequired);
+    }
+    if (esigWasOn) {
+      await setSetting(page, ESIG_SETTING, true);
     }
   });
 

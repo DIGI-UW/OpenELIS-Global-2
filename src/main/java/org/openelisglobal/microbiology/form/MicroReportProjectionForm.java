@@ -5,6 +5,7 @@ import java.util.List;
 
 public class MicroReportProjectionForm {
 
+    public MicroPatientReportForm report;
     public String content;
     public boolean reportableContent;
     public boolean mappingConfigured;

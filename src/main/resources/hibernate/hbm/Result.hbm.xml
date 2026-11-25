@@ -88,5 +88,12 @@
         <property name="validatedDate" type="java.sql.Timestamp">
             <column name="validated_date" />
         </property>
+        <property name="runId" type="java.lang.Long">
+            <column name="run_id" />
+        </property>
+        <property name="analyzerReportedValue"
+            type="java.lang.String">
+            <column name="analyzer_reported_value" length="255" />
+        </property>
     </class>
 </hibernate-mapping>
