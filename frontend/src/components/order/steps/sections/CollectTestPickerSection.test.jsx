@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -33,6 +33,35 @@ describe("CollectTestPickerSection", () => {
         panels: [{ id: "4", name: "Renal Panel" }],
       }),
     );
+  });
+
+  it("uses the case catalog and excludes an existing assay only on its specimen", () => {
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <CollectTestPickerSection
+          samples={[
+            { sampleItemId: "A", sampleTypeId: "5", sampleTypeName: "First" },
+            { sampleItemId: "B", sampleTypeId: "5", sampleTypeName: "Second" },
+          ]}
+          setSamples={vi.fn()}
+          cataloguePath="/rest/microbiology/cases/C/analyses/catalog"
+          excludedTestIdsBySample={{ A: ["9"] }}
+        />
+      </IntlProvider>,
+    );
+    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+      "/rest/microbiology/cases/C/analyses/catalog?sampleType=5",
+      expect.any(Function),
+    );
+    expect(screen.getAllByText("Malaria RDT")).toHaveLength(1);
+    expect(
+      within(screen.getByText(/Second/).closest("li")).getByText("Malaria RDT"),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByText(/First/).closest("li")).queryByText(
+        "Malaria RDT",
+      ),
+    ).not.toBeInTheDocument();
   });
 
   // OGC-1201 A: Collect showed the ordered tests but offered no way to add

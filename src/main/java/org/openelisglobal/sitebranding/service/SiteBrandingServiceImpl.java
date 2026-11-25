@@ -11,8 +11,6 @@ import java.util.List;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
@@ -25,7 +23,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import org.w3c.dom.Document;
 
 /**
  * Service implementation for SiteBranding entity
@@ -39,7 +36,7 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
 
     private static final Logger logger = LoggerFactory.getLogger(SiteBrandingServiceImpl.class);
     private static final long MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
-    private static final String[] ALLOWED_FORMATS = { "png", "svg", "jpg", "jpeg" };
+    private static final String[] ALLOWED_FORMATS = { "png", "jpg", "jpeg" };
 
     @Value("${org.openelisglobal.branding.dir:/var/lib/openelis-global/branding/}")
     private String brandingDir;
@@ -268,11 +265,7 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
 
         // Validate actual image content to prevent malicious files with fake extensions
         try {
-            if (extension.equals("svg")) {
-                return isValidSvgContent(file.getInputStream());
-            } else {
-                return isValidRasterImage(file.getInputStream());
-            }
+            return isValidRasterImage(file.getInputStream());
         } catch (IOException e) {
             LogEvent.logError(this.getClass().getSimpleName(), "validateLogoFile",
                     "Error validating image content: " + e.getMessage());
@@ -297,38 +290,12 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
         }
     }
 
-    /**
-     * Validates that the input stream contains a valid SVG file by parsing it as
-     * XML and checking for an svg root element. Also prevents XXE attacks by
-     * disabling external entities.
-     */
-    private boolean isValidSvgContent(InputStream inputStream) {
-        try {
-            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            // Disable external entities to prevent XXE attacks
-            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-            factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
-            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-            factory.setXIncludeAware(false);
-            factory.setExpandEntityReferences(false);
-
-            DocumentBuilder builder = factory.newDocumentBuilder();
-            Document doc = builder.parse(inputStream);
-            return "svg".equalsIgnoreCase(doc.getDocumentElement().getTagName());
-        } catch (Exception e) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "isValidSvgContent",
-                    "SVG validation failed: " + e.getMessage());
-            return false;
-        }
-    }
-
     @Override
     @Transactional
     public String uploadLogo(MultipartFile file, LogoType type) throws IOException {
         // Validate file
         if (!validateLogoFile(file)) {
-            throw new LIMSRuntimeException(
-                    "Invalid logo file: format must be PNG, SVG, or JPG/JPEG, size must be <= 2MB");
+            throw new LIMSRuntimeException("Invalid logo file: format must be PNG or JPG/JPEG, size must be <= 2MB");
         }
 
         // Ensure branding directory exists

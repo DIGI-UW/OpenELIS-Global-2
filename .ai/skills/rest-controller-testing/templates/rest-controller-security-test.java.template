@@ -1,0 +1,96 @@
+package org.openelisglobal.${module}.controller.rest;
+
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.openelisglobal.${module}.service.${ServiceName};
+import org.openelisglobal.security.SecuritySliceMockMvcTest;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.MediaType;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.web.WebAppConfiguration;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+
+/**
+ * Security slice tests for ${ControllerName} — verifies Spring Security filter chain
+ * and @PreAuthorize role enforcement (anonymous, denied role, permitted role).
+ */
+@WebAppConfiguration
+@ContextConfiguration(classes = { ${ControllerName}SecurityTest.TestConfig.class })
+@TestPropertySource("classpath:common.properties")
+public class ${ControllerName}SecurityTest extends SecuritySliceMockMvcTest {
+
+    @Autowired
+    private ${ServiceName} ${serviceName};
+
+    @Before
+    public void resetMocks() {
+        reset(${serviceName});
+    }
+
+    @Test
+    public void endpoint_withoutAuthentication_returns401() throws Exception {
+        mockMvc.perform(get("${endpoint}")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    public void endpoint_deniedRole_returns403() throws Exception {
+        mockMvc.perform(get("${endpoint}")
+                .with(user("worker").roles("RESULTS"))
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void endpoint_permittedRole_passesAuthGate() throws Exception {
+        mockMvc.perform(get("${endpoint}")
+                .with(user("admin").roles("ADMIN"))
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
+
+    @Configuration
+    @EnableWebMvc
+    @EnableWebSecurity
+    @EnableMethodSecurity(prePostEnabled = true)
+    static class TestConfig {
+
+        @Bean
+        SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+            http.authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+                    .httpBasic(Customizer.withDefaults())
+                    .csrf(csrf -> csrf.disable());
+            return http.build();
+        }
+
+        @Bean
+        ${ServiceName} ${serviceName}() {
+            return mock(${ServiceName}.class);
+        }
+
+        @Bean
+        ${ControllerName} ${controllerBeanName}(${ServiceName} ${serviceName}) {
+            ${ControllerName} controller = new ${ControllerName}();
+            ReflectionTestUtils.setField(controller, "${serviceName}", ${serviceName});
+            return controller;
+        }
+    }
+}

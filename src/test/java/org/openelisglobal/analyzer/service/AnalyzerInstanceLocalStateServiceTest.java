@@ -207,6 +207,25 @@ public class AnalyzerInstanceLocalStateServiceTest {
     }
 
     @Test
+    public void anAnalyzerWithNoTypeYetCanBeRenamed() {
+        Analyzer migrated = analyzer("42");
+        migrated.setActive(false);
+        migrated.setStatus(Analyzer.AnalyzerStatus.INACTIVE);
+        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(migrated));
+        AnalyzerInstanceRequest rename = new AnalyzerInstanceRequest();
+        rename.setName("CPHL GeneXpert (retired)");
+        rename.setTestUnitIds(List.of("7"));
+
+        AnalyzerInstanceState result = service.update("42", rename, "17");
+
+        assertEquals("CPHL GeneXpert (retired)", result.name());
+        verify(mappingService, never()).assignProfile(any(), any(), any(Integer.class), any());
+        ArgumentCaptor<Analyzer> updated = ArgumentCaptor.forClass(Analyzer.class);
+        verify(analyzerService).update(updated.capture());
+        assertEquals("CPHL GeneXpert (retired)", updated.getValue().getName());
+    }
+
+    @Test
     public void completesAnUpgradedDraftUsingTheExplicitlySelectedProfile() {
         Analyzer draft = analyzer("42");
         draft.setActive(true);

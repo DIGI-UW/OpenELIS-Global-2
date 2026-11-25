@@ -1,5 +1,8 @@
 package org.openelisglobal.program.dao;
 
+import java.util.Optional;
+import org.hibernate.Session;
+import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.springframework.stereotype.Component;
@@ -14,5 +17,15 @@ public class PathologyBlockDAOImpl extends BaseDAOImpl<PathologyBlock, Integer> 
 
     PathologyBlockDAOImpl() {
         super(PathologyBlock.class);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<PathologyBlock> getByBarcode(String barcode) {
+        Query<PathologyBlock> query = entityManager.unwrap(Session.class)
+                .createQuery("from PathologyBlock b where b.barcode = :barcode order by b.id", PathologyBlock.class);
+        query.setParameter("barcode", barcode);
+        query.setMaxResults(1);
+        return query.uniqueResultOptional();
     }
 }

@@ -47,9 +47,9 @@ public class AnalyzerDeliveryIssuesRestControllerSecurityTest extends SecuritySl
     @Before
     public void resetService() {
         reset(deliveryIssueService);
-        when(deliveryIssueService.getOpenIssues()).thenReturn(List
-                .of(new AnalyzerDeliveryIssue("ob-1", "DMQ", "12", "GeneXpert bench 1", "conn-7", "10.1.2.3", "ASTM",
-                        "DEV0126100001", 5, "2026-09-24T01:00:00Z", "OE_REJECTED", 422, "Unknown test code", true)));
+        when(deliveryIssueService.getOpenIssues()).thenReturn(List.of(new AnalyzerDeliveryIssue("ob-1", "DMQ", "12",
+                "GeneXpert bench 1", "conn-7", "10.1.2.3", "GENEXPERT^GeneXpert^6.2", "ASTM", "DEV0126100001", 5,
+                "2026-09-24T01:00:00Z", "OE_REJECTED", 422, "Unknown test code", true, 12001, "TCP")));
     }
 
     @Test
@@ -81,6 +81,47 @@ public class AnalyzerDeliveryIssuesRestControllerSecurityTest extends SecuritySl
                 .andExpect(jsonPath("$.messageKey").value("analyzer.deliveryIssues.error.bridgeUnreachable"));
     }
 
+    /**
+     * OGC-1594: no Bridge address is a known state; the list answers 200 with
+     * nothing in it and says the Bridge is not configured, where it answered 502.
+     */
+    @Test
+    public void listWithoutABridgeAddress_returns200WithTheFlag() throws Exception {
+        when(deliveryIssueService.getOpenIssues())
+                .thenThrow(new BridgeAnalyzerConnectionException("analyzer.deliveryIssues.error.bridgeNotConfigured"));
+
+        mockMvc.perform(get(BASE).with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.count").value(0)).andExpect(jsonPath("$.data.rows").isEmpty())
+                .andExpect(jsonPath("$.data.bridgeConfigured").value(false));
+    }
+
+    /**
+     * A Bridge that is not paired is a known state too: the list answers 200 and
+     * says so, where it answered 502 as if the Bridge were down. It holds results
+     * that OpenELIS cannot list until it pairs.
+     */
+    @Test
+    public void listWithAnUnpairedBridge_returns200SayingItIsNotPaired() throws Exception {
+        when(deliveryIssueService.getOpenIssues())
+                .thenThrow(new BridgeAnalyzerConnectionException("analyzer.deliveryIssues.error.bridgeNotPaired"));
+
+        mockMvc.perform(get(BASE).with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.count").value(0)).andExpect(jsonPath("$.data.rows").isEmpty())
+                .andExpect(jsonPath("$.data.bridgeConfigured").value(true))
+                .andExpect(jsonPath("$.data.bridgePaired").value(false));
+    }
+
+    @Test
+    public void retryWithAnUnpairedBridge_stillAnswers502() throws Exception {
+        org.mockito.Mockito
+                .doThrow(new BridgeAnalyzerConnectionException("analyzer.deliveryIssues.error.bridgeNotPaired"))
+                .when(deliveryIssueService).retry(any(), any());
+
+        mockMvc.perform(post(BASE + "/ob-1/retry").with(user("admin").roles("ADMIN"))
+                .requestAttr(IActionConstants.USER_SESSION_DATA, sessionFor(1))).andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.messageKey").value("analyzer.deliveryIssues.error.bridgeNotPaired"));
+    }
+
     @Test
     public void retryWithResultsRole_returns403BeforeReachingTheBridge() throws Exception {
         mockMvc.perform(post(BASE + "/ob-1/retry").with(user("results").roles("RESULTS")))
@@ -98,7 +139,8 @@ public class AnalyzerDeliveryIssuesRestControllerSecurityTest extends SecuritySl
     @Test
     public void retryWithAnalyserImportRole_retriesThatEntry() throws Exception {
         mockMvc.perform(post(BASE + "/ob-1/retry").with(user("operator").roles("ANALYSER_IMPORT"))
-                .requestAttr(IActionConstants.USER_SESSION_DATA, sessionFor(17))).andExpect(status().isOk());
+                .requestAttr(IActionConstants.USER_SESSION_DATA, sessionFor(17))).andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.status").value("accepted")).andExpect(jsonPath("$.state").value("QUEUED"));
         verify(deliveryIssueService).retry("ob-1", "17");
     }
 

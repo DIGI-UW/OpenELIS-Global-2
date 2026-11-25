@@ -58,6 +58,15 @@ public class Program extends BaseObject<String> {
     private String isActive = "Y";
 
     private boolean showOnMicroCase;
+    private String reportingTrackId;
+
+    public String getReportingTrackId() {
+        return reportingTrackId;
+    }
+
+    public void setReportingTrackId(String id) {
+        reportingTrackId = id;
+    }
 
     // Many-to-many replacement for the single testSection FK; the legacy
     // testSection field stays for readers that have not migrated yet.

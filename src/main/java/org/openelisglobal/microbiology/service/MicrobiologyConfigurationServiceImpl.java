@@ -3,6 +3,7 @@ package org.openelisglobal.microbiology.service;
 import java.sql.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
@@ -169,6 +170,7 @@ public class MicrobiologyConfigurationServiceImpl implements MicrobiologyConfigu
                 .getAllMatching(Map.of("authority", authority, "version", version));
         if (!existing.isEmpty()) {
             MicroBreakpointStandard standard = existing.get(0);
+            requireUnmanagedStandard(standard.getId());
             if (!"Y".equals(standard.getIsActive())) {
                 standard.setIsActive("Y");
                 standardDAO.update(standard);
@@ -190,6 +192,7 @@ public class MicrobiologyConfigurationServiceImpl implements MicrobiologyConfigu
         requireText(rule == null ? null : rule.getStandardId(), "rule.standardId");
         requireText(rule == null ? null : rule.getAntibioticId(), "rule.antibioticId");
         requireText(rule == null ? null : rule.getBreakpointType(), "rule.breakpointType");
+        requireUnmanagedStandard(rule.getStandardId());
         ruleDAO.insert(rule);
         return rule;
     }
@@ -200,9 +203,10 @@ public class MicrobiologyConfigurationServiceImpl implements MicrobiologyConfigu
         requireText(rule == null ? null : rule.getStandardId(), "rule.standardId");
         requireText(rule == null ? null : rule.getAntibioticId(), "rule.antibioticId");
         requireText(rule == null ? null : rule.getBreakpointType(), "rule.breakpointType");
+        requireUnmanagedStandard(rule.getStandardId());
         MicroBreakpointRule existing = ruleDAO.findBestRule(rule.getStandardId(), rule.getOrganismId(),
-                rule.getOrganismGroup(), rule.getAntibioticId(), rule.getMethod(), rule.getSpecimenTypeId(),
-                rule.getBreakpointType());
+                rule.getOrganismGroup() == null ? Set.of() : Set.of(rule.getOrganismGroup()), rule.getAntibioticId(),
+                rule.getMethod(), rule.getSpecimenTypeId(), rule.getBreakpointType());
         if (existing != null) {
             if (!"Y".equals(existing.getIsActive())) {
                 existing.setIsActive("Y");
@@ -211,6 +215,15 @@ public class MicrobiologyConfigurationServiceImpl implements MicrobiologyConfigu
             return existing;
         }
         return createBreakpointRule(rule);
+    }
+
+    private void requireUnmanagedStandard(String id) {
+        MicroBreakpointStandard standard = standardDAO.get(id)
+                .orElseThrow(() -> new IllegalArgumentException("Breakpoint standard not found"));
+        if (standard.getConfigurationHash() != null) {
+            throw new MicroReferenceConflictException(
+                    "Configuration-managed editions require explicit activation and cannot be edited");
+        }
     }
 
     private void requireText(String value, String fieldName) {

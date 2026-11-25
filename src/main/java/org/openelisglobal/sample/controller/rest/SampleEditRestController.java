@@ -3,7 +3,6 @@ package org.openelisglobal.sample.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -40,6 +39,7 @@ import org.openelisglobal.sample.service.SampleEditService;
 import org.openelisglobal.sample.service.SampleLabUnitScopeService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.validator.SampleEditFormValidator;
+import org.openelisglobal.sample.validator.SampleOrderPartiesValidator;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
@@ -53,13 +53,14 @@ import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
-import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -83,7 +84,6 @@ public class SampleEditRestController extends BaseSampleEntryController {
     private static final SampleEditItemComparator testComparator = new SampleEditItemComparator();
     private static final Set<String> excludedAnalysisStatusList;
     private static final Set<String> ENTERED_STATUS_SAMPLE_LIST = new HashSet<>();
-    private static final Collection<String> ABLE_TO_CANCEL_ROLE_NAMES = new ArrayList<>();
 
     static {
         excludedAnalysisStatusList = new HashSet<>();
@@ -91,9 +91,6 @@ public class SampleEditRestController extends BaseSampleEntryController {
                 .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled));
 
         ENTERED_STATUS_SAMPLE_LIST.add(SpringContext.getBean(IStatusService.class).getStatusID(SampleStatus.Entered));
-        ABLE_TO_CANCEL_ROLE_NAMES.add("Validator");
-        ABLE_TO_CANCEL_ROLE_NAMES.add("Validation");
-        ABLE_TO_CANCEL_ROLE_NAMES.add("Biologist");
     }
 
     @Autowired
@@ -113,7 +110,7 @@ public class SampleEditRestController extends BaseSampleEntryController {
     @Autowired
     private SampleHumanService sampleHumanService;
     @Autowired
-    private UserRoleService userRoleService;
+    private org.openelisglobal.sample.service.TestCancelPermission testCancelPermission;
     @Autowired
     private SampleEditService sampleEditService;
     @Autowired
@@ -134,8 +131,7 @@ public class SampleEditRestController extends BaseSampleEntryController {
 
         request.getSession().setAttribute(SAVE_DISABLED, TRUE);
 
-        boolean allowedToCancelResults = userModuleService.isUserAdmin(request)
-                || userRoleService.userInRole(getSysUserId(request), ABLE_TO_CANCEL_ROLE_NAMES);
+        boolean allowedToCancelResults = testCancelPermission.mayCancelStartedTests(request, getSysUserId(request));
         boolean isEditable = "readwrite".equals(request.getSession().getAttribute(SAMPLE_EDIT_WRITABLE))
                 || "readwrite".equals(request.getParameter("type"));
         form.setIsEditable(isEditable);
@@ -236,6 +232,13 @@ public class SampleEditRestController extends BaseSampleEntryController {
         formValidator.validate(form, result);
         if (result.hasErrors()) {
             saveErrors(result);
+            List<FieldError> partyErrors = SampleOrderPartiesValidator.partyErrors(result);
+            if (!partyErrors.isEmpty()) {
+                BeanPropertyBindingResult refused = new BeanPropertyBindingResult(form, "form");
+                partyErrors.forEach(refused::addError);
+                return ResponseEntity.badRequest().body(
+                        SamplePatientEntryRestController.buildErrorBody(refused, "Validation failed", null, false));
+            }
         }
         boolean sampleChanged = sampleUtil.accessionNumberChanged(form);
         Sample updatedSample = null;

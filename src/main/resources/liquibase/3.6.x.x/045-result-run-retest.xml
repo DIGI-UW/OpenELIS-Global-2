@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+ <changeSet id="OGC-1200-result-run-retest" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <not>
+    <tableExists schemaName="clinlims" tableName="result_run_retest"/>
+   </not>
+  </preConditions>
+  <comment>OGC-1200 FR-C5 and FR-A3: the samples a Retest decision set aside for a test, and the later run confirmed as their retest. A run is superseded once its retested samples are linked.</comment>
+  <createSequence schemaName="clinlims" sequenceName="result_run_retest_seq" startValue="1" incrementBy="1"/>
+  <createTable schemaName="clinlims" tableName="result_run_retest">
+   <column name="id" type="BIGINT">
+    <constraints primaryKey="true" nullable="false" primaryKeyName="pk_result_run_retest"/>
+   </column>
+   <column name="disposition_id" type="BIGINT">
+    <constraints nullable="false" foreignKeyName="fk_run_retest_disposition"
+     references="clinlims.result_run_test_disposition(id)"/>
+   </column>
+   <column name="analysis_id" type="numeric(10)">
+    <constraints nullable="false" foreignKeyName="fk_run_retest_analysis" references="clinlims.analysis(id)"/>
+   </column>
+   <column name="retested_in_run_id" type="BIGINT">
+    <constraints foreignKeyName="fk_run_retest_retested_in" references="clinlims.result_run(id)"/>
+   </column>
+   <column name="linked_by" type="numeric(10)"/>
+   <column name="linked_at" type="TIMESTAMP"/>
+   <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+  </createTable>
+  <addUniqueConstraint schemaName="clinlims" tableName="result_run_retest" columnNames="disposition_id, analysis_id"
+   constraintName="uq_run_retest_analysis"/>
+  <createIndex schemaName="clinlims" tableName="result_run_retest" indexName="idx_run_retest_analysis">
+   <column name="analysis_id"/>
+  </createIndex>
+  <createIndex schemaName="clinlims" tableName="result_run_retest" indexName="idx_run_retest_retested_in">
+   <column name="retested_in_run_id"/>
+  </createIndex>
+ </changeSet>
+
+ <changeSet id="OGC-1200-result-run-retest-backfill" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.result_run_retest</sqlCheck>
+  </preConditions>
+  <comment>Retests decided before this table existed: the samples whose stored result still names the run. A retest whose values were only staged cannot be recovered.</comment>
+  <sql>
+   INSERT INTO clinlims.result_run_retest (id, disposition_id, analysis_id)
+   SELECT nextval('clinlims.result_run_retest_seq'), retested.disposition_id, retested.analysis_id
+   FROM (SELECT DISTINCT d.id AS disposition_id, a.id AS analysis_id
+         FROM clinlims.result_run_test_disposition d
+         JOIN clinlims.result r ON r.run_id = d.run_id
+         JOIN clinlims.analysis a ON a.id = r.analysis_id AND a.test_id = d.test_id
+         WHERE d.action = 'RETEST') retested
+  </sql>
+ </changeSet>
+</databaseChangeLog>

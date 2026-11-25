@@ -14,26 +14,36 @@ public interface QCResultProcessingService {
      *                        connection
      * @param testId          local Test selected by the current site binding
      * @param accessionNumber Specimen accession number (specimen identifier)
-     * @param lotNumber       Canonical {@code qc_control_lot.lot_number} when the
-     *                        Bridge extracted from the analyzer message; may be
-     *                        null
      * @param controlLevel    clinical control level extracted by Bridge; may be
      *                        null
      * @param resultValue     Numeric result value
      * @param unit            Unit of measure
      * @param timestamp       Run date/time from Observation.effectiveDateTime
      */
-    void processQCResult(String analyzerId, String testId, String accessionNumber, String lotNumber,
-            String controlLevel, BigDecimal resultValue, String unit, LocalDateTime timestamp);
+    default Outcome processQCResult(String analyzerId, String testId, String accessionNumber, String controlLevel,
+            BigDecimal resultValue, String unit, LocalDateTime timestamp) {
+        return processQCResult(analyzerId, testId, null, accessionNumber, controlLevel, resultValue, unit, timestamp,
+                null);
+    }
 
-    /** What became of a control that reported an answer. */
+    /**
+     * As above, for a control reported in a run's message: the recorded control
+     * names the run and gets its verdict for the run (OGC-1200 FR-C2), judged
+     * against the QC target of the component (null for the primary result).
+     */
+    Outcome processQCResult(String analyzerId, String testId, String componentId, String accessionNumber,
+            String controlLevel, BigDecimal resultValue, String unit, LocalDateTime timestamp, Long runId);
+
+    /** What became of a control measurement. */
     enum Outcome {
-        /** Judged against its QC target and recorded PASS or FAIL. */
+        /** Persisted as a numeric measurement or a qualitative PASS/FAIL. */
         RECORDED,
         /** No usable control lot matched; nothing is recorded. */
         NO_LOT,
         /** The test and level have no expected answer to judge against. */
-        NO_TARGET
+        NO_TARGET,
+        /** No exact number or mapped answer is available for QC evaluation. */
+        UNSUPPORTED_VALUE
     }
 
     /**
@@ -47,6 +57,13 @@ public interface QCResultProcessingService {
      * @param answerDictionaryId the dictionary entry the analyzer's mapping turned
      *                           the reported value into
      */
+    default Outcome processQualitativeQCResult(String analyzerId, String testId, String componentId,
+            String accessionNumber, String controlLevel, String answerDictionaryId, LocalDateTime timestamp) {
+        return processQualitativeQCResult(analyzerId, testId, componentId, accessionNumber, controlLevel,
+                answerDictionaryId, timestamp, null);
+    }
+
+    /** As above, for a control reported in a run's message (OGC-1200 FR-C2). */
     Outcome processQualitativeQCResult(String analyzerId, String testId, String componentId, String accessionNumber,
-            String lotNumber, String controlLevel, String answerDictionaryId, LocalDateTime timestamp);
+            String controlLevel, String answerDictionaryId, LocalDateTime timestamp, Long runId);
 }

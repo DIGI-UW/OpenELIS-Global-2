@@ -25,10 +25,11 @@ OpenELIS pairs in one of two ways:
 
 - **With a configured code.** When `ANALYZER_BRIDGE_PAIRING_CODE` (property
   `analyzer.bridge.pairing-code`) is set to the Bridge's code, OpenELIS pairs on
-  startup, and on its first call to the Bridge if it is still unpaired. Giving
-  both containers the same value pairs them with no manual step. A configured
-  code the Bridge refuses, because it is wrong or already used, is not tried
-  again, so the Bridge keeps its attempts for the code entered on the page.
+  startup, and on its first call to the Bridge if it is still unpaired or its
+  pin is stale (see "Pairing again"). Giving both containers the same value
+  pairs them with no manual step. A configured code the Bridge refuses, because
+  it is wrong or already used, is not tried again, so the Bridge keeps its
+  attempts for the code entered on the page.
 - **On the Analyzers page.** A Global Admin enters the code there. The page
   shows whether OpenELIS is paired, the Bridge address, the start of the
   Bridge's certificate fingerprint and when it paired, and why a code was
@@ -66,6 +67,18 @@ reinstalling either side, configure a new code on the Bridge, restart it, and
 enter that code on the Analyzers page or set it as OpenELIS's configured code.
 OpenELIS reads the pairing from its database wherever it checks it, so the new
 pairing applies to result delivery at once, without a restart.
+
+OpenELIS checks its pin against the Bridge at the configured address, through
+the Bridge's `GET /pairing`, each time the Analyzers page loads and on the
+configured-code schedule. The pin is stale when the Bridge presents a
+certificate other than the pinned one, as after a database copied from another
+stack or a Bridge reinstalled with a new identity, or when the Bridge presents
+the pinned certificate but reports itself unpaired, as after its state volume
+was replaced. The Analyzers page then says which of the two it is and asks for
+the code. With a configured code, OpenELIS pairs again on its own, replacing the
+stored pin and logging the replacement; a code the Bridge refuses is not tried
+again. The first-pairing caveat above applies to this pairing too. An
+unreachable Bridge leaves the pin as it is.
 
 ## Tomcat
 

@@ -39,10 +39,13 @@ import org.springframework.context.i18n.LocaleContextHolder;
 public final class UiMessages {
 
     static final String CATALOGUE = "ui-languages/";
+    static final String REFERENCE_DATA = "shipped-reference-data/translations-";
     public static final Path OVERRIDE_DIRECTORY = Path.of("/var/lib/openelis-global/translation");
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final Map<String, Map<String, String>> SHIPPED = new ConcurrentHashMap<>();
+    private static final long CACHE_MILLIS = 30_000;
+    private static final Map<Locale, CachedCatalogue> CACHE = new ConcurrentHashMap<>();
 
     private final Locale locale;
     private final Map<String, String> messages;
@@ -55,6 +58,65 @@ public final class UiMessages {
     /** The catalogue for the current user's language. */
     public static UiMessages current() {
         return forLocale(LocaleContextHolder.getLocale());
+    }
+
+    /**
+     * The catalogue for a locale, reused for a few seconds: a pick list asks for
+     * one label per value, and building the catalogue reads the override files.
+     */
+    public static UiMessages cached(Locale locale) {
+        Locale resolved = locale == null ? Locale.ENGLISH : locale;
+        long now = System.currentTimeMillis();
+        CachedCatalogue cachedCatalogue = CACHE.get(resolved);
+        if (cachedCatalogue == null || now - cachedCatalogue.builtAt > CACHE_MILLIS) {
+            cachedCatalogue = new CachedCatalogue(forLocale(resolved), now);
+            CACHE.put(resolved, cachedCatalogue);
+        }
+        return cachedCatalogue.messages;
+    }
+
+    /** Whether the shipped English catalogue holds the key. */
+    public static boolean defines(String key) {
+        return key != null && !key.isBlank() && shipped("en").containsKey(key.trim());
+    }
+
+    /** The shipped English catalogue's keys under a prefix, with their English. */
+    public static Map<String, String> shippedEnglish(String prefix) {
+        Map<String, String> matching = new HashMap<>();
+        shipped("en").forEach((key, value) -> {
+            if (key.startsWith(prefix)) {
+                matching.put(key, value);
+            }
+        });
+        return matching;
+    }
+
+    /**
+     * The translation OpenELIS's shipped configuration files carry for a reference
+     * value's key in the locale's language, or null (OGC-1507). It stands in while
+     * Transifex has none, also on an instance whose database never stored it.
+     */
+    public static String referenceDataTranslation(String key, Locale locale) {
+        if (key == null || locale == null || locale.getLanguage().isEmpty()) {
+            return null;
+        }
+        String translation = shippedResource(REFERENCE_DATA + locale.getLanguage() + ".json").get(key.trim());
+        return translation == null || translation.isBlank() ? null : translation;
+    }
+
+    /** Whether this catalogue holds the key in any layer. */
+    public boolean has(String key) {
+        return key != null && messages.containsKey(key);
+    }
+
+    private static final class CachedCatalogue {
+        private final UiMessages messages;
+        private final long builtAt;
+
+        private CachedCatalogue(UiMessages messages, long builtAt) {
+            this.messages = messages;
+            this.builtAt = builtAt;
+        }
     }
 
     public static UiMessages forLocale(Locale locale) {
@@ -125,13 +187,17 @@ public final class UiMessages {
     }
 
     private static Map<String, String> shipped(String file) {
-        return SHIPPED.computeIfAbsent(file, UiMessages::readShipped);
+        return shippedResource(CATALOGUE + file + ".json");
     }
 
-    private static Map<String, String> readShipped(String file) {
-        try (InputStream in = UiMessages.class.getClassLoader().getResourceAsStream(CATALOGUE + file + ".json")) {
+    private static Map<String, String> shippedResource(String resource) {
+        return SHIPPED.computeIfAbsent(resource, UiMessages::readShipped);
+    }
+
+    private static Map<String, String> readShipped(String resource) {
+        try (InputStream in = UiMessages.class.getClassLoader().getResourceAsStream(resource)) {
             if (in == null) {
-                if ("en".equals(file)) {
+                if ((CATALOGUE + "en.json").equals(resource)) {
                     LogEvent.logError(UiMessages.class.getSimpleName(), "readShipped", "The interface catalogue "
                             + CATALOGUE + "en.json is not on the classpath: reports print message keys");
                 }
@@ -141,7 +207,7 @@ public final class UiMessages {
             }));
         } catch (IOException e) {
             LogEvent.logError(UiMessages.class.getSimpleName(), "readShipped",
-                    "The interface catalogue " + file + ".json could not be read: " + e.getMessage());
+                    "The shipped translations " + resource + " could not be read: " + e.getMessage());
             return Collections.emptyMap();
         }
     }

@@ -38,6 +38,11 @@ import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroReportVersionDAO;
+import org.openelisglobal.microbiology.valueholder.MicroCase;
+import org.openelisglobal.microbiology.valueholder.MicroReportVersion;
+import org.openelisglobal.microbiology.valueholder.MicroReportVersionType;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.note.valueholder.Note;
@@ -110,6 +115,10 @@ public class ReportQueueServiceImpl implements ReportQueueService {
     @Autowired
     private SampleDAO sampleDAO;
     @Autowired
+    private MicroCaseDAO microCaseDAO;
+    @Autowired
+    private MicroReportVersionDAO microReportVersionDAO;
+    @Autowired
     private HistoryService historyService;
     @Autowired
     private SampleHumanService sampleHumanService;
@@ -150,6 +159,7 @@ public class ReportQueueServiceImpl implements ReportQueueService {
         String testName;
         String rawValue;
         String display;
+        String clinicalValue;
         String flag;
         String unitId;
         String unitName;
@@ -165,6 +175,7 @@ public class ReportQueueServiceImpl implements ReportQueueService {
      */
     static final class Snapshot {
         final List<SnapshotItem> items = new ArrayList<>();
+        final List<MicroReportVersion> microVersions = new ArrayList<>();
         boolean anyCorrected;
         Timestamp latestRelease;
 
@@ -179,19 +190,27 @@ public class ReportQueueServiceImpl implements ReportQueueService {
         }
     }
 
-    /** What differs between the last printed version and the current content. */
+    /**
+     * What differs between the last printed version and the current content. A
+     * printed result back awaiting validation holds the order: nothing differs
+     * until the correction is validated, so no version drops it (OGC-1529).
+     */
     static final class Comparison {
         final List<SnapshotItem> added = new ArrayList<>();
         final List<ReportVersionItem> removed = new ArrayList<>();
         final Map<ReportVersionItem, SnapshotItem> changed = new LinkedHashMap<>();
+        final List<ReportVersionItem> awaitingValidation = new ArrayList<>();
         boolean legacyNewer;
+        boolean microNewer;
+        boolean microAmended;
 
         boolean changedOrRemoved() {
-            return !changed.isEmpty() || !removed.isEmpty();
+            return awaitingValidation.isEmpty() && (!changed.isEmpty() || !removed.isEmpty() || microAmended);
         }
 
         boolean contentDiffers() {
-            return legacyNewer || !added.isEmpty() || changedOrRemoved();
+            return legacyNewer
+                    || (awaitingValidation.isEmpty() && (!added.isEmpty() || microNewer || changedOrRemoved()));
         }
     }
 
@@ -250,6 +269,14 @@ public class ReportQueueServiceImpl implements ReportQueueService {
                 row.setNothingReleased(true);
                 row.setState("PARTIAL");
                 Optional<ReportVersion> printed = versionDAO.findLatest(sampleId, ReportVersion.TYPE_PATIENT);
+                Snapshot current = printed.isPresent() ? snapshot(sample) : null;
+                if (current != null && !compare(printed.get(), current).awaitingValidation.isEmpty()) {
+                    row.setNothingReleased(false);
+                    row.setAwaitingValidation(true);
+                    row.setState(printed.get().isAmended() ? "AMENDED" : "PARTIAL");
+                    row.setReleasedCount(current.released().size());
+                    row.setTotalCount(current.items.size());
+                }
                 row.setPrintStatus(printed.isPresent() ? "PRINTED" : "UNPRINTED");
                 row.setVersion(printed.map(ReportVersion::getVersion).orElse(null));
                 row.setLegacy(printed.map(ReportVersion::isLegacy).orElse(false));
@@ -411,6 +438,7 @@ public class ReportQueueServiceImpl implements ReportQueueService {
         row.setVersion(record.getVersionNumber());
         row.setLegacy(record.isLegacy());
         row.setCritical(critical);
+        row.setAwaitingValidation(record.isAwaitingValidation());
         return row;
     }
 
@@ -491,6 +519,14 @@ public class ReportQueueServiceImpl implements ReportQueueService {
 
     @Override
     @Transactional(readOnly = true)
+    public long unprintedCount(String sysUserId) {
+        ReportQueueCriteria criteria = baseCriteria(sysUserId);
+        criteria.setPrintStatus("UNPRINTED");
+        return queryDAO.count(criteria);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<ReportQueueRowDetailDTO> detail(Long sampleId, String sysUserId) {
         Sample sample = findSample(String.valueOf(sampleId));
         if (sample == null || !queryDAO.isInScope(sampleId, baseCriteria(sysUserId))) {
@@ -517,6 +553,8 @@ public class ReportQueueServiceImpl implements ReportQueueService {
             test.setTestName(item.testName);
             test.setReleased(item.released);
             test.setResult(item.released ? withUnit(item.display, item.unitName) : null);
+            test.setClinicalValue(
+                    item.released && item.clinicalValue != null ? withUnit(item.clinicalValue, item.unitName) : null);
             test.setFlag(item.released ? item.flag : null);
             test.setStatus(statusName(item.statusId));
             test.setReleasedAt(iso(item.releasedAt));
@@ -649,11 +687,11 @@ public class ReportQueueServiceImpl implements ReportQueueService {
         queryDAO.lockForPrint(sampleId);
         Snapshot current = snapshot(sample);
         List<SnapshotItem> released = current.released();
-        if (released.isEmpty()) {
-            throw new NothingReleasedException(sample.getAccessionNumber());
-        }
         Optional<ReportVersion> last = versionDAO.findLatest(sampleId, ReportVersion.TYPE_PATIENT);
         Comparison comparison = compare(last.orElse(null), current);
+        if (released.isEmpty() && comparison.awaitingValidation.isEmpty()) {
+            throw new NothingReleasedException(sample.getAccessionNumber());
+        }
         OffsetDateTime now = OffsetDateTime.now();
 
         if (last.isPresent() && !comparison.contentDiffers()) {
@@ -767,6 +805,13 @@ public class ReportQueueServiceImpl implements ReportQueueService {
 
     Snapshot snapshot(Sample sample) {
         Snapshot snapshot = new Snapshot();
+        for (MicroCase microCase : microCaseDAO.getByOrder(sample.getId())) {
+            for (MicroReportVersion version : microReportVersionDAO.getByCaseId(microCase.getId())) {
+                if (version.getStructuredContent() != null) {
+                    snapshot.microVersions.add(version);
+                }
+            }
+        }
         String finalized = statusService.getStatusID(AnalysisStatus.Finalized);
         List<String> excluded = excludedStatusIds();
         Patient patient = sampleHumanService.getPatientForSample(sample);
@@ -780,7 +825,7 @@ public class ReportQueueServiceImpl implements ReportQueueService {
             if (statusId == null || excluded.contains(statusId)) {
                 continue;
             }
-            if (analysis.isCorrectedSincePatientReport()) {
+            if (analysis.isCorrectedSincePatientReport() && finalized.equals(statusId)) {
                 snapshot.anyCorrected = true;
             }
             SnapshotItem item = new SnapshotItem();
@@ -810,6 +855,9 @@ public class ReportQueueServiceImpl implements ReportQueueService {
                 }
                 item.rawValue = String.join("|", raw);
                 item.display = String.join(", ", display);
+                if (results.stream().allMatch(r -> "N".equals(r.getResultType()))) {
+                    item.clinicalValue = String.join(", ", raw);
+                }
                 item.flag = results.isEmpty() ? "" : flag(analysis, results.get(0), patient);
             }
             snapshot.items.add(item);
@@ -838,7 +886,7 @@ public class ReportQueueServiceImpl implements ReportQueueService {
             }
             return String.join(", ", names);
         }
-        return ResultType.NUMERIC.matches(result.getResultType()) ? result.getValue(true) : value;
+        return ResultType.NUMERIC.matches(result.getResultType()) ? result.getDisplayValue() : value;
     }
 
     /**
@@ -852,7 +900,7 @@ public class ReportQueueServiceImpl implements ReportQueueService {
                 String flag = "";
                 if (result.getMinNormal() != null && result.getMaxNormal() != null
                         && (result.getMinNormal() != 0.0 || result.getMaxNormal() != 0.0)) {
-                    double value = Double.parseDouble(result.getValue(true));
+                    double value = Double.parseDouble(StringUtil.getActualNumericValue(result.getValue()));
                     if (value < result.getMinNormal()) {
                         flag = ResultAlertFlags.BELOW;
                     } else if (value > result.getMaxNormal()) {
@@ -860,7 +908,8 @@ public class ReportQueueServiceImpl implements ReportQueueService {
                     }
                 }
                 ResultLimit limit = resultLimitService.getResultLimitForResult(analysis, result, patient);
-                String critical = ResultAlertFlags.criticalLetter(limit, result.getValue(true));
+                String critical = ResultAlertFlags.criticalLetter(limit,
+                        StringUtil.getActualNumericValue(result.getValue()));
                 return GenericValidator.isBlankOrNull(critical) ? flag : critical;
             }
             if (ResultType.isDictionaryVariant(result.getResultType())
@@ -879,6 +928,13 @@ public class ReportQueueServiceImpl implements ReportQueueService {
         if (last == null) {
             return comparison;
         }
+        for (MicroReportVersion version : current.microVersions) {
+            if (last.getIssuedAt() != null
+                    && version.getReleasedAt().toInstant().isAfter(last.getIssuedAt().toInstant())) {
+                comparison.microNewer = true;
+                comparison.microAmended |= MicroReportVersionType.AMENDED.name().equals(version.getReleaseType());
+            }
+        }
         if (last.isLegacy()) {
             comparison.legacyNewer = current.latestRelease != null && last.getIssuedAt() != null
                     && current.latestRelease.toInstant().isAfter(last.getIssuedAt().toInstant());
@@ -888,11 +944,19 @@ public class ReportQueueServiceImpl implements ReportQueueService {
         for (SnapshotItem item : current.released()) {
             releasedNow.put(item.analysisId, item);
         }
+        Set<Long> notReleased = new HashSet<>();
+        for (SnapshotItem item : current.items) {
+            if (!item.released) {
+                notReleased.add(item.analysisId);
+            }
+        }
         Set<Long> printed = new HashSet<>();
         for (ReportVersionItem item : last.getItems()) {
             printed.add(item.getAnalysisId());
             SnapshotItem now = releasedNow.get(item.getAnalysisId());
-            if (now == null) {
+            if (now == null && notReleased.contains(item.getAnalysisId())) {
+                comparison.awaitingValidation.add(item);
+            } else if (now == null) {
                 comparison.removed.add(item);
             } else if (!nullToEmpty(now.rawValue).equals(nullToEmpty(item.getPrintedValue()))
                     || !nullToEmpty(now.unitId).equals(nullToEmpty(item.getPrintedUnit()))) {
@@ -919,8 +983,14 @@ public class ReportQueueServiceImpl implements ReportQueueService {
             SnapshotItem now = change.getValue();
             String unitBefore = nullToEmpty(was.getPrintedUnit()).equals(nullToEmpty(now.unitId)) ? null
                     : unitName(was.getPrintedUnit());
-            String line = MessageUtil.getMessage("reportQueue.change.changed", new Object[] { now.testName,
-                    withUnit(was.getPrintedDisplay(), unitBefore), withUnit(now.display, now.unitName) });
+            String before = was.getPrintedDisplay();
+            String after = now.display;
+            if (nullToEmpty(before).equals(nullToEmpty(after))) {
+                before = was.getPrintedValue();
+                after = now.rawValue;
+            }
+            String line = MessageUtil.getMessage("reportQueue.change.changed",
+                    new Object[] { now.testName, withUnit(before, unitBefore), withUnit(after, now.unitName) });
             String note = correctionNote(now.analysis, last.getIssuedAt());
             parts.add(note == null ? line : line + " (" + note + ")");
         }

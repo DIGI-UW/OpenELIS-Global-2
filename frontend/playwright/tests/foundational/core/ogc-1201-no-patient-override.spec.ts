@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "../../../helpers/test-base";
 import { NAV_TIMEOUT, LONG_TIMEOUT } from "../../../helpers/timeouts";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 
 const csrfToken = async (page: Page): Promise<string> => {
   const state = await page.context().storageState();
@@ -53,18 +54,18 @@ test("AL/W: an EQA order saves with no patient and records why", async ({
   // Arriving through the EQA link declares both decisions up front.
   await expect(page.locator("#isEQASample")).toBeChecked();
   await expect(page.locator("#noPatientOverride")).toBeChecked();
-  await expect(
-    page.locator(`#eqaProgramId option[value="${enrollmentId}"]`),
-  ).toHaveCount(1, { timeout: LONG_TIMEOUT });
-  await page.locator("#eqaProgramId").selectOption(enrollmentId);
+  await expect(page.locator("#eqaProgramId")).toBeEnabled({
+    timeout: LONG_TIMEOUT,
+  });
+  await chooseCarbonOption(page.locator("#eqaProgramId"), `${scheme} (PW)`);
 
   // A sample type is the only other thing the save gate wants; no patient is
   // chosen anywhere in this flow.
   const sampleType = page
     .getByTestId("order-sample-test-section")
-    .getByLabel("Sample Type");
+    .getByRole("combobox", { name: /^Sample Type/ });
   await expect(sampleType).toBeVisible({ timeout: LONG_TIMEOUT });
-  await sampleType.selectOption({ label: "Serum" });
+  await chooseCarbonOption(sampleType, "Serum");
 
   const saveAndExit = page.getByRole("button", { name: "Save and exit" });
   await expect(saveAndExit).toBeEnabled({ timeout: LONG_TIMEOUT });

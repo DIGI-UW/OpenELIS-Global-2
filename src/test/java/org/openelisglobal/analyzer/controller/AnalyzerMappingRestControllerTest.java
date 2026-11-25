@@ -59,7 +59,7 @@ public class AnalyzerMappingRestControllerTest {
     @Test
     public void confirmMappingUsesTheAuthenticatedUserAsTheAuditActor() {
         AnalyzerMappingConfirmationRequest request = new AnalyzerMappingConfirmationRequest("sha256:" + "b".repeat(64),
-                "sha256:" + "c".repeat(64), List.of(), List.of());
+                List.of(), List.of());
         AnalyzerMappingConfirmationView expected = AnalyzerMappingConfirmationView.unconfirmed();
         when(mappingService.confirmMapping("42", request, "17")).thenReturn(expected);
 

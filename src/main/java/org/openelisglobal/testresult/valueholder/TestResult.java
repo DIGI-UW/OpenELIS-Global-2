@@ -30,13 +30,14 @@ public class TestResult extends BaseObject<String> {
     private String flags;
     private String testResultType;
     private String value;
-    private String significantDigits;
+    private String reportingDecimalPlaces;
     private String quantLimit;
     private String contLevel;
     private String scriptletName;
     private ValueHolderInterface scriptlet;
     private Boolean isQuantifiable = false;
     private Boolean isNormal = false;
+    private Boolean isCritical = false;
     private Boolean isActive = true;
     // Surveillance result classification (POSITIVE / NEGATIVE / INDETERMINATE),
     // catalog-configured per (test, value). Null when not configured.
@@ -130,12 +131,12 @@ public class TestResult extends BaseObject<String> {
         this.resultGroup = resultGroup;
     }
 
-    public String getSignificantDigits() {
-        return significantDigits;
+    public String getReportingDecimalPlaces() {
+        return reportingDecimalPlaces;
     }
 
-    public void setSignificantDigits(String significantDigits) {
-        this.significantDigits = significantDigits;
+    public void setReportingDecimalPlaces(String reportingDecimalPlaces) {
+        this.reportingDecimalPlaces = reportingDecimalPlaces;
     }
 
     public String getTestResultType() {
@@ -213,6 +214,14 @@ public class TestResult extends BaseObject<String> {
 
     public void setIsNormal(Boolean normal) {
         isNormal = normal;
+    }
+
+    public Boolean getIsCritical() {
+        return isCritical;
+    }
+
+    public void setIsCritical(Boolean isCritical) {
+        this.isCritical = isCritical;
     }
 
     public String getSignificance() {

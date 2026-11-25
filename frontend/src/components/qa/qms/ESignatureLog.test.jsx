@@ -1,5 +1,7 @@
 import React from "react";
-import { screen, fireEvent } from "@testing-library/react";
+import { screen, fireEvent, within } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
+import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import ESignatureLog from "./ESignatureLog";
 import { renderQa } from "../testUtils";
@@ -34,7 +36,10 @@ const ITEMS = [
 const mockEndpoints = ({ items = ITEMS, totalCount = items.length } = {}) => {
   getFromOpenElisServer.mockImplementation((url, callback) => {
     if (url.startsWith("/rest/users")) {
-      callback([{ id: "10", value: "Jane Supervisor" }]);
+      callback([
+        { id: "10", value: "Jane Supervisor" },
+        { id: "11", value: "Hélène Biologiste" },
+      ]);
     } else if (url.startsWith("/rest/esig/log")) {
       callback({ items, totalCount, page: 0, pageSize: 25 });
     } else {
@@ -167,5 +172,85 @@ describe("ESignatureLog", () => {
 
     fireEvent.click(screen.getByTestId("esig-log-clear-filters"));
     expect(lastLogUrl()).not.toContain("meaning=");
+  });
+
+  test("typing in the search asks the server for the matching signatures from the first page (OGC-1515)", async () => {
+    mockEndpoints();
+    renderPage();
+
+    await userEvent.type(
+      screen.getByRole("searchbox", { name: "Search the log" }),
+      "haemo",
+    );
+
+    await waitFor(() => expect(lastLogUrl()).toContain("text=haemo"));
+    expect(lastLogUrl()).toContain("page=0");
+    expect(lastLogUrl()).not.toContain("meaning=");
+  });
+
+  test("a search that finds nothing names the search, not the date window", async () => {
+    mockEndpoints({ items: [] });
+    renderPage();
+
+    await userEvent.type(
+      screen.getByRole("searchbox", { name: "Search the log" }),
+      "zzz",
+    );
+
+    expect(
+      await screen.findByText('Nothing matches "zzz".'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("No signatures in this window"),
+    ).not.toBeInTheDocument();
+  });
+
+  test("a search alone is a filter: export opens without the everything warning and carries it", async () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    mockEndpoints();
+    renderPage();
+
+    await userEvent.type(
+      screen.getByRole("searchbox", { name: "Search the log" }),
+      "control",
+    );
+    await waitFor(() => expect(lastLogUrl()).toContain("text=control"));
+    fireEvent.click(screen.getByTestId("esig-log-export-csv"));
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(openSpy.mock.calls[0][0]).toContain("text=control");
+    openSpy.mockRestore();
+  });
+
+  test("clear empties the search and drops it from the query", async () => {
+    mockEndpoints();
+    renderPage();
+    const search = screen.getByRole("searchbox", { name: "Search the log" });
+    await userEvent.type(search, "jane");
+    await waitFor(() => expect(lastLogUrl()).toContain("text=jane"));
+
+    fireEvent.click(screen.getByTestId("esig-log-clear-filters"));
+
+    expect(search).toHaveValue("");
+    await waitFor(() => expect(lastLogUrl()).not.toContain("text="));
+  });
+
+  test("the user filter is searched by typing, ignoring accents, and applied by id", async () => {
+    mockEndpoints();
+    renderPage();
+    const user = screen.getByRole("combobox", { name: "User" });
+
+    await userEvent.type(user, "helene");
+    expect(
+      within(document.getElementById(user.getAttribute("aria-controls")))
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["Hélène Biologiste"]);
+    await userEvent.click(
+      screen.getByRole("option", { name: "Hélène Biologiste" }),
+    );
+    fireEvent.click(screen.getByTestId("esig-log-apply-filters"));
+
+    expect(lastLogUrl()).toContain("signerId=11");
   });
 });

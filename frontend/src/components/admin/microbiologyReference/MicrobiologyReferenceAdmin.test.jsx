@@ -5,8 +5,11 @@ vi.mock("./api", () => ({
   saveReference: vi.fn(),
   setReferenceActive: vi.fn(),
   getAstPanel: vi.fn(),
+  getPanelOrganismCoverage: vi.fn(),
   publishAstPanel: vi.fn(),
   getBreakpointStandards: vi.fn(),
+  getDefaultBreakpointStandard: vi.fn(),
+  setDefaultBreakpointStandard: vi.fn(),
   getBreakpointStandard: vi.fn(),
   getBreakpointRules: vi.fn(),
   getBreakpointRule: vi.fn(),
@@ -15,6 +18,12 @@ vi.mock("./api", () => ({
   archiveBreakpointStandard: vi.fn(),
   previewBreakpointImport: vi.fn(),
   applyBreakpointImport: vi.fn(),
+}));
+
+vi.mock("../../microbiology/OrganismSearch", () => ({
+  searchOrganisms: vi.fn().mockResolvedValue([]),
+  getOrganism: vi.fn().mockResolvedValue(null),
+  organismText: (organism) => organism?.label || "",
 }));
 
 import React from "react";
@@ -31,10 +40,13 @@ import {
   getBreakpointRule,
   getBreakpointStandard,
   getBreakpointStandards,
+  getDefaultBreakpointStandard,
+  setDefaultBreakpointStandard,
   getReferenceItem,
   getReferenceOptions,
   getReferencePage,
   getAstPanel,
+  getPanelOrganismCoverage,
   publishAstPanel,
   previewBreakpointImport,
   saveBreakpointRule,
@@ -61,8 +73,13 @@ const query = { ...DEFAULT_REFERENCE_QUERY };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  getDefaultBreakpointStandard.mockResolvedValue({
+    configured: false,
+    available: false,
+  });
   getReferenceItem.mockResolvedValue({});
   getReferenceOptions.mockResolvedValue([]);
+  getPanelOrganismCoverage.mockResolvedValue([]);
 });
 
 describe("microbiology reference administration", () => {
@@ -133,6 +150,7 @@ describe("microbiology reference administration", () => {
           displayName: "Escherichia coli",
           whonetCode: "eco",
           organismGroup: "Enterobacterales",
+          labGroups: "Enterobacterales non-ESCPPM; UTI agents",
           initialSignificance: "USUALLY",
           active: true,
         },
@@ -149,6 +167,12 @@ describe("microbiology reference administration", () => {
     );
 
     expect(await screen.findByText("Escherichia coli")).toBeInTheDocument();
+    expect(screen.getByText("Laboratory groups")).toBeInTheDocument();
+    expect(screen.getByText("Usually significant")).toBeInTheDocument();
+    expect(screen.queryByText("USUALLY")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Enterobacterales non-ESCPPM; UTI agents"),
+    ).toBeInTheDocument();
     fireEvent.change(
       screen.getByPlaceholderText(messages["microbiology.admin.search"]),
       { target: { value: "coli" } },
@@ -160,6 +184,80 @@ describe("microbiology reference administration", () => {
       }),
     );
     expect(setQuery).toHaveBeenLastCalledWith({ edit: "new" });
+  });
+
+  it("marks the organism fields the server requires", async () => {
+    getReferencePage.mockResolvedValue({ rows: [], total: 0 });
+
+    renderPage(
+      <ReferenceDataPage
+        definition={REFERENCE_DEFINITIONS.organisms}
+        query={{ ...query, edit: "new" }}
+        setQuery={vi.fn()}
+      />,
+    );
+
+    const marker = async (name) =>
+      (await screen.findAllByText(name))
+        .find((node) => node.closest("label"))
+        .closest("label")
+        .querySelector(".requiredlabel");
+
+    expect(await marker("WHONET code")).not.toBeNull();
+    expect(await marker("Organism group")).toBeNull();
+    expect(await marker("Initial significance")).toBeNull();
+  });
+
+  it("marks the antibiotic fields the server requires", async () => {
+    getReferencePage.mockResolvedValue({ rows: [], total: 0 });
+
+    renderPage(
+      <ReferenceDataPage
+        definition={REFERENCE_DEFINITIONS.antibiotics}
+        query={{ ...query, edit: "new" }}
+        setQuery={vi.fn()}
+      />,
+    );
+
+    const marker = async (name) =>
+      (await screen.findAllByText(name))
+        .find((node) => node.closest("label"))
+        .closest("label")
+        .querySelector(".requiredlabel");
+
+    expect(await marker("Name")).not.toBeNull();
+    expect(await marker("WHONET code")).not.toBeNull();
+    expect(await marker("Class")).toBeNull();
+    expect(await marker("Route")).toBeNull();
+  });
+
+  it("drops the saved notice when a later save is refused", async () => {
+    const user = userEvent.setup();
+    getReferencePage.mockResolvedValue({ rows: [], total: 0 });
+    saveReference
+      .mockResolvedValueOnce({})
+      .mockRejectedValueOnce(new Error("Name is required"));
+
+    renderPage(
+      <ReferenceDataPage
+        definition={REFERENCE_DEFINITIONS.organisms}
+        query={{ ...query, edit: "new" }}
+        setQuery={vi.fn()}
+      />,
+    );
+    const save = within(await screen.findByRole("dialog")).getByRole("button", {
+      name: messages["button.save"],
+    });
+
+    await user.click(save);
+    expect(
+      await screen.findByText(messages["microbiology.admin.saved"]),
+    ).toBeInTheDocument();
+    await user.click(save);
+    expect(await screen.findByText("Name is required")).toBeInTheDocument();
+    expect(
+      screen.queryByText(messages["microbiology.admin.saved"]),
+    ).not.toBeInTheDocument();
   });
 
   it("returns focus to the exact reference command when the editor closes", async () => {
@@ -389,8 +487,6 @@ describe("microbiology reference administration", () => {
           antibioticId: antibiotic.id,
           antibioticName: antibiotic.displayName,
           whonetCode: antibiotic.whonetCode,
-          tier: 1,
-          reportBehavior: "ALWAYS",
         },
       ],
     });
@@ -447,6 +543,199 @@ describe("microbiology reference administration", () => {
     ).toBeInTheDocument();
   });
 
+  it("filters the panel antibiotic picker by what is typed", async () => {
+    const panel = {
+      id: "panel-v1",
+      logicalKey: "panel-logical-key",
+      name: "Gram negative panel",
+      versionNumber: 1,
+      current: true,
+      active: true,
+      antibiotics: [],
+    };
+    getReferencePage.mockResolvedValue({ rows: [panel], total: 1 });
+    getReferenceOptions.mockResolvedValue([
+      { id: "gen", label: "Gentamicin", code: "GEN" },
+      { id: "amk", label: "Amikacin", code: "AMK" },
+    ]);
+    getAstPanel.mockResolvedValue(panel);
+
+    renderPage(
+      <AstPanelPage query={{ ...query, edit: panel.id }} setQuery={vi.fn()} />,
+    );
+
+    fireEvent.change(
+      await screen.findByRole("combobox", { name: "Antibiotic" }),
+      { target: { value: "genta" } },
+    );
+
+    expect(
+      await screen.findByRole("option", { name: "Gentamicin (GEN)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: "Amikacin (AMK)" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("edits panel antibiotics without a tier or report behavior", async () => {
+    const user = userEvent.setup();
+    const panel = {
+      id: "panel-v1",
+      logicalKey: "panel-logical-key",
+      name: "Gram negative panel",
+      versionNumber: 1,
+      current: true,
+      active: true,
+      antibiotics: [
+        {
+          id: "panel-row-1",
+          antibioticId: "cip",
+          antibioticName: "Ciprofloxacin",
+          whonetCode: "CIP",
+        },
+      ],
+    };
+    getReferencePage.mockResolvedValue({ rows: [panel], total: 1 });
+    getReferenceOptions.mockResolvedValue([
+      { id: "gen", label: "Gentamicin", code: "GEN" },
+    ]);
+    getAstPanel.mockResolvedValue(panel);
+    publishAstPanel.mockResolvedValue({
+      ...panel,
+      id: "panel-v2",
+      versionNumber: 2,
+    });
+
+    renderPage(
+      <AstPanelPage query={{ ...query, edit: panel.id }} setQuery={vi.fn()} />,
+    );
+
+    expect(await screen.findByText("Ciprofloxacin")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Tier")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Report behavior")).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Antibiotic" }), {
+      target: { value: "Gentamicin" },
+    });
+    fireEvent.click(
+      await screen.findByRole("option", { name: "Gentamicin (GEN)" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    expect(await screen.findByText("Gentamicin")).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", {
+        name: messages["microbiology.admin.astPanels.publishVersion"],
+      }),
+    );
+    await user.click(
+      await screen.findByRole("button", {
+        name: messages["microbiology.admin.astPanels.publishVersion"],
+      }),
+    );
+
+    await waitFor(() => expect(publishAstPanel).toHaveBeenCalledTimes(1));
+    const rows = publishAstPanel.mock.calls[0][0].antibiotics;
+    expect(rows.map((row) => row.antibioticId)).toEqual(["cip", "gen"]);
+    rows.forEach((row) => {
+      expect(row).not.toHaveProperty("tier");
+      expect(row).not.toHaveProperty("reportBehavior");
+    });
+  });
+
+  it("ranks default-for organisms by breakpoint coverage and publishes the chosen ones", async () => {
+    const user = userEvent.setup();
+    const panel = {
+      id: "panel-v1",
+      name: "Urine GN",
+      versionNumber: 1,
+      susceptibilityProtocol: "GENERAL",
+      current: true,
+      active: true,
+      defaultFor: ["Acinetobacter"],
+      antibiotics: [
+        {
+          antibioticId: "cip",
+          antibioticName: "Ciprofloxacin",
+          whonetCode: "CIP",
+        },
+      ],
+    };
+    getReferencePage.mockResolvedValue({ rows: [panel], total: 1 });
+    getAstPanel.mockResolvedValue(panel);
+    getPanelOrganismCoverage.mockResolvedValue([
+      { value: "Escherichia coli", group: false, covered: 1, total: 1 },
+      { value: "Enterobacterales", group: true, covered: 1, total: 1 },
+      {
+        value: "Streptococcus pneumoniae",
+        group: false,
+        covered: 0,
+        total: 1,
+      },
+    ]);
+    publishAstPanel.mockResolvedValue({ ...panel, id: "panel-v2" });
+
+    renderPage(
+      <AstPanelPage query={{ ...query, edit: panel.id }} setQuery={vi.fn()} />,
+    );
+
+    expect(await screen.findByText("Ciprofloxacin")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(getPanelOrganismCoverage).toHaveBeenCalledWith(
+        ["cip"],
+        "GENERAL",
+        expect.anything(),
+      ),
+    );
+    expect(screen.getByText("Acinetobacter")).toBeInTheDocument();
+    await user.click(screen.getByPlaceholderText("Search organisms or groups"));
+    const menu = () =>
+      within(document.getElementById("microbiology-panel-default-for__menu"));
+    await waitFor(() => expect(menu().getAllByRole("option")).toHaveLength(3));
+    expect(
+      menu()
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual([
+      "Escherichia coli · 1 of 1 with breakpoints",
+      "Enterobacterales (group) · 1 of 1 with breakpoints",
+      "Acinetobacter",
+    ]);
+
+    await user.click(
+      screen.getByText(
+        "Show organisms with no breakpoints for these antibiotics",
+      ),
+    );
+    await user.click(screen.getByPlaceholderText("Search organisms or groups"));
+    expect(
+      await screen.findByRole("option", {
+        name: "Streptococcus pneumoniae · 0 of 1 with breakpoints",
+      }),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("option", {
+        name: "Escherichia coli · 1 of 1 with breakpoints",
+      }),
+    );
+    expect(screen.getByText("Escherichia coli")).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", {
+        name: messages["microbiology.admin.astPanels.publishVersion"],
+      }),
+    );
+    await user.click(
+      await screen.findByRole("button", {
+        name: messages["microbiology.admin.astPanels.publishVersion"],
+      }),
+    );
+
+    await waitFor(() => expect(publishAstPanel).toHaveBeenCalledTimes(1));
+    expect(publishAstPanel.mock.calls[0][0].defaultFor).toEqual([
+      "Acinetobacter",
+      "Escherichia coli",
+    ]);
+  });
+
   it("requires impact confirmation before deactivating a referenced organism", async () => {
     const user = userEvent.setup();
     const setQuery = vi.fn();
@@ -489,6 +778,43 @@ describe("microbiology reference administration", () => {
       }),
     );
     expect(setReferenceActive).toHaveBeenCalledWith("organisms", "eco", false);
+  });
+
+  it("saves an active edition as the site default without changing its rules", async () => {
+    const user = userEvent.setup();
+    getBreakpointStandard.mockResolvedValue({
+      id: "std-eu",
+      authority: "EUCAST",
+      version: "2026-2026.1",
+      lifecycleStatus: "ACTIVE",
+      configurationManaged: true,
+    });
+    getBreakpointRules.mockResolvedValue({ rows: [], total: 0 });
+    setDefaultBreakpointStandard.mockResolvedValue({
+      configured: true,
+      available: true,
+      standardId: "std-eu",
+      authority: "EUCAST",
+      version: "2026-2026.1",
+    });
+    renderPage(
+      <BreakpointPage
+        standardId="std-eu"
+        basePath="/MasterListsPage"
+        query={query}
+        setQuery={vi.fn()}
+      />,
+    );
+    const button = await screen.findByRole("button", {
+      name: "Use as default",
+    });
+    await user.click(button);
+    expect(setDefaultBreakpointStandard).toHaveBeenCalledWith("std-eu");
+    expect(
+      await screen.findByText(/EUCAST 2026-2026.1 is preselected/),
+    ).toBeInTheDocument();
+    expect(button).toBeDisabled();
+    expect(saveBreakpointRule).not.toHaveBeenCalled();
   });
 
   it("renders breakpoint lifecycle detail and opens activation state", async () => {
@@ -534,6 +860,74 @@ describe("microbiology reference administration", () => {
       }),
     );
     expect(setQuery).toHaveBeenCalledWith({ edit: "activate" });
+  });
+
+  it("marks an inactive rule and names an any-organism rule", async () => {
+    getBreakpointStandard.mockResolvedValue({
+      id: "std-1",
+      authority: "CLSI",
+      version: "SYNTH-2026",
+      lifecycleStatus: "LOADED",
+      ruleCount: 2,
+    });
+    getBreakpointRules.mockResolvedValue({
+      rows: [
+        {
+          id: "rule-1",
+          organismName: "Escherichia coli",
+          antibioticName: "Ciprofloxacin",
+          antibioticCode: "CIP",
+          method: "MIC",
+          susceptibleValue: 1,
+          resistantValue: 4,
+          seeded: true,
+          active: true,
+        },
+        {
+          id: "rule-3",
+          organismName: "Klebsiella pneumoniae",
+          antibioticName: "Ciprofloxacin",
+          antibioticCode: "CIP",
+          method: "ZONE",
+          diskContent: "5ug",
+          susceptibleValue: 25,
+          resistantValue: 21,
+          seeded: true,
+          active: true,
+        },
+        {
+          id: "rule-2",
+          antibioticName: "Gentamicin",
+          antibioticCode: "GEN",
+          method: "MIC",
+          susceptibleValue: 2,
+          resistantValue: 8,
+          seeded: true,
+          active: false,
+        },
+      ],
+      total: 2,
+    });
+
+    renderPage(
+      <BreakpointPage
+        standardId="std-1"
+        basePath="/MasterListsPage"
+        query={query}
+        setQuery={vi.fn()}
+      />,
+    );
+
+    const anyOrganism = (await screen.findByText("Any organism")).closest("tr");
+    expect(within(anyOrganism).getByText("Inactive")).toBeInTheDocument();
+    const coli = screen.getByText("Escherichia coli").closest("tr");
+    expect(within(coli).queryByText("Inactive")).not.toBeInTheDocument();
+    expect(screen.getByText("Disk content")).toBeInTheDocument();
+    expect(
+      within(screen.getByText("Klebsiella pneumoniae").closest("tr")).getByText(
+        "5ug",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("clears an applied import preview when Cancel closes the modal", async () => {
@@ -604,6 +998,111 @@ describe("microbiology reference administration", () => {
     expect(container.querySelector('input[type="file"]')).not.toBeNull();
   });
 
+  it.each(["rule:rule-1", "rule:new"])(
+    "keeps package rules read-only even with edit link %s",
+    async (edit) => {
+      getBreakpointStandard.mockResolvedValue({
+        id: "std-1",
+        authority: "EUCAST",
+        version: "2026-2026.1",
+        lifecycleStatus: "LOADED",
+        configurationManaged: true,
+      });
+      getBreakpointRules.mockResolvedValue({
+        rows: [
+          {
+            id: "rule-1",
+            method: "MIC",
+            organismName: "Synthetic organism",
+            antibioticName: "Synthetic agent",
+            susceptibleValue: 0.0001,
+            resistantValue: 0.0001,
+            resistantInclusive: false,
+            seeded: true,
+          },
+        ],
+        total: 1,
+      });
+      renderPage(
+        <BreakpointPage
+          standardId="std-1"
+          basePath="/MasterListsPage"
+          query={{ ...query, edit }}
+          setQuery={vi.fn()}
+        />,
+      );
+      await screen.findByText(
+        messages["microbiology.admin.breakpoints.configurationManaged.title"],
+      );
+      expect(await screen.findByText("> 0.0001")).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText(messages["microbiology.admin.field.notes"]),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", {
+          name: messages["microbiology.admin.breakpoints.correction.add"],
+        }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", {
+          name: messages["microbiology.admin.actions"],
+        }),
+      ).not.toBeInTheDocument();
+      expect(saveBreakpointRule).not.toHaveBeenCalled();
+    },
+  );
+
+  it("names a WHONET rule by its organism level and site of infection", async () => {
+    getBreakpointStandard.mockResolvedValue({
+      id: "std-1",
+      authority: "CLSI",
+      version: "2026-2026.4",
+      lifecycleStatus: "LOADED",
+      configurationManaged: true,
+    });
+    getBreakpointRules.mockResolvedValue({
+      rows: [
+        {
+          id: "rule-1",
+          method: "ZONE",
+          organismCodeType: "FAMILY_CODE",
+          organismCode: "EBC",
+          siteOfInfection: "Meningitis",
+          diskContent: "30 mcg",
+          antibioticName: "Amikacin",
+          antibioticCode: "AMK",
+        },
+        {
+          id: "rule-2",
+          method: "MIC",
+          organismName: "Klebsiella pneumoniae",
+          organismCodeType: "WHONET_ORG_CODE",
+          organismCode: "kpn",
+          antibioticName: "Amikacin",
+          antibioticCode: "AMK",
+        },
+      ],
+      total: 2,
+    });
+    renderPage(
+      <BreakpointPage
+        standardId="std-1"
+        basePath="/MasterListsPage"
+        query={query}
+        setQuery={vi.fn()}
+      />,
+    );
+    expect(
+      await screen.findByText("Family EBC, Meningitis"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Klebsiella pneumoniae")).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByText("Family EBC, Meningitis").closest("tr"),
+      ).getByText("30 mcg"),
+    ).toBeInTheDocument();
+  });
+
   it("loads a directly linked breakpoint correction and saves it as local", async () => {
     const user = userEvent.setup();
     const setQuery = vi.fn();
@@ -627,7 +1126,7 @@ describe("microbiology reference administration", () => {
       locallyCustomized: true,
     });
     getReferenceOptions.mockImplementation((resource) => {
-      if (resource === "organism-groups")
+      if (resource === "lab-organism-groups")
         return Promise.resolve([
           { id: "Enterobacterales", label: "Enterobacterales" },
         ]);
@@ -649,6 +1148,9 @@ describe("microbiology reference administration", () => {
     const notes = await screen.findByLabelText(
       messages["microbiology.admin.field.notes"],
     );
+    expect(
+      await screen.findByRole("option", { name: "Enterobacterales" }),
+    ).toBeInTheDocument();
     await user.type(notes, "Local verification");
     await user.click(
       screen.getByRole("button", { name: messages["button.save"] }),

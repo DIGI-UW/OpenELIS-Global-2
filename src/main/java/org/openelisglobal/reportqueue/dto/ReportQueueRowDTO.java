@@ -19,6 +19,7 @@ public class ReportQueueRowDTO {
     /** UNPRINTED or PRINTED. */
     private String printStatus;
     private boolean critical;
+    private boolean awaitingValidation;
     private Integer version;
     private boolean legacy;
     /** True for a lab-number lookup that found an order with no released result. */
@@ -126,6 +127,18 @@ public class ReportQueueRowDTO {
 
     public void setPrintStatus(String printStatus) {
         this.printStatus = printStatus;
+    }
+
+    /**
+     * A result on the printed version is back awaiting validation (OGC-1529): the
+     * order stays printed and a print reprints that version until it is validated.
+     */
+    public boolean isAwaitingValidation() {
+        return awaitingValidation;
+    }
+
+    public void setAwaitingValidation(boolean awaitingValidation) {
+        this.awaitingValidation = awaitingValidation;
     }
 
     public boolean isCritical() {

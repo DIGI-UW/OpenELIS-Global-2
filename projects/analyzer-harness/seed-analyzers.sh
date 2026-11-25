@@ -51,8 +51,6 @@ if [ "${DEV_STACK_TLS:-self-signed}" = "self-signed" ]; then
 fi
 
 GENEXPERT_PROFILE_ID="cepheid-genexpert-astm"
-# The analyzer the testing deployment's smoke test sends a GeneXpert result to.
-SMOKE_ANALYZER_NAME="Cepheid GeneXpert (ASTM Mode)"
 FLUOROCYCLER_PROFILE_ID="hain-fluorocycler-xt-madagascar"
 QUANTSTUDIO_PROFILE_ID="thermo-quantstudio"
 
@@ -172,13 +170,9 @@ PY
   analyzer_id="$(find_analyzer_id "$name")"
   if [ "$ENSURE_CONNECTIONS" = true ] && [ -n "$analyzer_id" ]; then
     # A row from before profile-pinned analyzers (no profile, no Bridge connection) cannot receive
-    # anything, so it is set up like a new instance. A pinned one is the operator's and is kept.
+    # anything, so it is set up like a new instance. A pinned one is the operator's and is kept as
+    # it is, inactive included: nothing here guesses whether it was disabled on purpose.
     if [ -n "$(analyzer_field "$name" profileId)" ]; then
-      if [ "$name" = "$SMOKE_ANALYZER_NAME" ] && [ "$(analyzer_field "$name" status)" != "ACTIVE" ]; then
-        echo "  $name is not active; the deployment smoke test sends to it"
-        set_up_like_an_operator "$analyzer_id" "$name"
-        return 0
-      fi
       echo "  Preserved existing connection: $name"
       return 0
     fi
@@ -260,7 +254,6 @@ if unresolved:
 else:
     print(json.dumps({
         "baseMappingFingerprint": mapping["mappingFingerprint"],
-        "recognitionFingerprint": mapping["controlRecognition"]["recognitionFingerprint"],
         "confirmedRows": confirmed,
         "excludedRows": excluded,
     }))
@@ -405,7 +398,7 @@ reconcile_profile_analyzer "QuantStudio 7" "$QUANTSTUDIO_PROFILE_ID" "$QUANTSTUD
 reconcile_profile_analyzer "FluoroCycler XT" "$FLUOROCYCLER_PROFILE_ID" "$FLUOROCYCLER_REVISION" '{"directory":"/data/analyzer-imports/fluorocycler-xt/incoming"}'
 
 if [ "$ENSURE_CONNECTIONS" = true ]; then
-  echo "Done. Missing harness connections created; existing configuration and review data preserved."
+  echo "Done. Missing and unpinned harness connections set up; pinned connections and review data preserved."
   exit 0
 fi
 

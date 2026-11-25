@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Grid, Column, Select, SelectItem, Search } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer, putToOpenElisServer } from "../utils/Utils";
@@ -7,6 +7,7 @@ import AlertsTable from "./AlertsTable";
 import AlertAcknowledgeModal from "./AlertAcknowledgeModal";
 import EQADeadlineSummary from "./EQADeadlineSummary";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import SearchableSelect from "../common/SearchableSelect";
 
 const AUTO_REFRESH_INTERVAL = 60000;
 
@@ -104,6 +105,18 @@ const AlertsDashboard = () => {
     );
   };
 
+  const alertTypeOptions = useMemo(
+    () =>
+      alertTypes.map((type) => ({
+        id: type,
+        value: intl.formatMessage({
+          id: `alerts.type.${type.toLowerCase()}`,
+          defaultMessage: type,
+        }),
+      })),
+    [alertTypes, intl],
+  );
+
   const handlePageChange = (newPage, newPageSize) => {
     setPage(newPage);
     setPageSize(newPageSize);
@@ -118,26 +131,19 @@ const AlertsDashboard = () => {
 
       <Grid condensed style={{ marginTop: "1rem", marginBottom: "1rem" }}>
         <Column lg={4} md={4} sm={4}>
-          <Select
+          <SearchableSelect
             id="alert-type-filter"
             labelText={intl.formatMessage({ id: "alerts.filter.type" })}
+            placeholder={intl.formatMessage({
+              id: "alerts.filter.type.search",
+            })}
+            options={alertTypeOptions}
             value={typeFilter}
-            onChange={(e) => {
-              setTypeFilter(e.target.value);
+            onChange={(type) => {
+              setTypeFilter(type);
               setPage(0);
             }}
-          >
-            <SelectItem value="" text="" />
-            {alertTypes.map((type) => (
-              <SelectItem
-                key={type}
-                value={type}
-                text={intl.formatMessage({
-                  id: `alerts.type.${type.toLowerCase()}`,
-                })}
-              />
-            ))}
-          </Select>
+          />
         </Column>
         <Column lg={4} md={4} sm={4}>
           <Select

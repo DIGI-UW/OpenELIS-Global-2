@@ -47,6 +47,13 @@ public interface ComplianceStandardService extends BaseObjectService<ComplianceS
     List<Map<String, Object>> getLinkedTests(String standardId);
 
     /**
+     * OGC-768: the tests the standards' active thresholds ask for, each once,
+     * ordered by name, with the standards that cover it in the order given. Unknown
+     * ids are ignored.
+     */
+    List<org.openelisglobal.compliance.form.SuggestedTest> suggestedTests(List<String> standardIds);
+
+    /**
      * FR-7-004: deep copy of a standard. Duplicates the standard and all of its
      * parameter groups + thresholds + threshold value mappings as a new
      * {@code DRAFT}-status record with {@code version} suffixed " - Copy" so the

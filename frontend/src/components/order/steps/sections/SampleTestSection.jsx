@@ -1,5 +1,6 @@
 import CultureBottleFields from "./CultureBottleFields";
-import React, { useState, useEffect, useRef } from "react";
+import { RequiredMarker } from "../../../common/RequiredMarker";
+import React, { useState, useEffect, useRef, useContext } from "react";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
   Grid,
@@ -14,6 +15,7 @@ import {
   DismissibleTag,
   Search,
   Link,
+  TimePicker,
 } from "@carbon/react";
 import {
   Add,
@@ -25,10 +27,35 @@ import {
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import {
   formatHoldingMinutes,
+  formatIsoDateForBackend,
+  formatPickerDateForIso,
   holdingDeadline,
+  isClockTime,
   shortestHoldingMinutes,
 } from "../../dateUtils";
-import { RequiredMarker, requiredProps } from "../../../common/RequiredMarker";
+import SearchableSelect from "../../../common/SearchableSelect";
+import CustomDatePicker from "../../../common/CustomDatePicker";
+import { ConfigurationContext } from "../../../layout/Layout";
+
+/**
+ * An empty sample row as the manifest adds it, optionally of a sample type
+ * already (OGC-768 quick add).
+ */
+export const newSampleRow = (index, sampleTypeId = "") => ({
+  index,
+  sampleRejected: false,
+  rejectionReason: "",
+  sampleTypeId,
+  sampleXML: null,
+  panels: [],
+  tests: [],
+  referralItems: [],
+  container: "",
+  gpsLatitude: "",
+  gpsLongitude: "",
+  locationDetails: "",
+  qcMetadata: null,
+});
 
 const SampleTestSection = ({
   samples,
@@ -36,9 +63,14 @@ const SampleTestSection = ({
   isReadOnly,
   workflowType,
   orderData,
+  renderSampleNote,
+  planTestIds,
+  regulationDriven,
 }) => {
   const intl = useIntl();
   const componentMounted = useRef(true);
+  const { configurationProperties } = useContext(ConfigurationContext) || {};
+  const dateLocale = configurationProperties?.DEFAULT_DATE_LOCALE || "en-US";
 
   const [samplingSites, setSamplingSites] = useState([]);
   useEffect(() => {
@@ -301,24 +333,72 @@ const SampleTestSection = ({
   };
 
   const handleAddSample = () => {
-    const newSample = {
-      index: samples.length,
-      sampleRejected: false,
-      rejectionReason: "",
-      sampleTypeId: "",
-      sampleXML: null,
-      panels: [],
-      tests: [],
-      referralItems: [],
-      // Environmental manifest fields
-      container: "",
-      gpsLatitude: "",
-      gpsLongitude: "",
-      locationDetails: "",
-      qcMetadata: null,
-    };
-    setSamples([...samples, newSample]);
+    setSamples([...samples, newSampleRow(samples.length)]);
   };
+
+  /**
+   * OGC-768: the regulation-driven test plan starts each row with the plan tests
+   * its sample type runs. A row that already has tests when the plan first sees
+   * it (a reopened order, or tests picked before any standard) keeps its
+   * selection; only tests a standard adds later are ticked. A test the plan
+   * ticked is ticked once: taken off, it stays off. One dropped from the plan
+   * comes off only the rows the plan ticked it on. An order that turns ad-hoc
+   * keeps its tests as the user's own, so a later plan never takes them off.
+   */
+  const planAppliedRef = useRef({});
+  const planKey = planTestIds ? planTestIds.map(String).join(",") : null;
+  useEffect(() => {
+    if (!regulationDriven) {
+      planAppliedRef.current = {};
+    }
+  }, [regulationDriven]);
+  useEffect(() => {
+    if (!planTestIds || isReadOnly) {
+      return;
+    }
+    const plan = new Set(planTestIds.map(String));
+    let changed = false;
+    const updated = samples.map((sample, index) => {
+      if (!sample?.sampleTypeId || !testsPerSample[index]) {
+        return sample;
+      }
+      const key = `${index}:${sample.sampleTypeId}`;
+      let state = planAppliedRef.current[key];
+      if (!state) {
+        state = { added: new Set(), declined: new Set() };
+        if ((sample.tests || []).length > 0) {
+          plan.forEach((id) => state.declined.add(id));
+        }
+        planAppliedRef.current[key] = state;
+      }
+      let tests = sample.tests || [];
+      const dropped = tests.filter(
+        (test) =>
+          state.added.has(String(test.id)) && !plan.has(String(test.id)),
+      );
+      if (dropped.length > 0) {
+        tests = tests.filter((test) => !dropped.includes(test));
+        dropped.forEach((test) => state.added.delete(String(test.id)));
+        changed = true;
+      }
+      const toAdd = testsPerSample[index].filter(
+        (test) =>
+          plan.has(String(test.id)) &&
+          !state.added.has(String(test.id)) &&
+          !state.declined.has(String(test.id)) &&
+          !tests.some((chosen) => String(chosen.id) === String(test.id)),
+      );
+      if (toAdd.length > 0) {
+        toAdd.forEach((test) => state.added.add(String(test.id)));
+        tests = [...tests, ...toAdd];
+        changed = true;
+      }
+      return tests === (sample.tests || []) ? sample : { ...sample, tests };
+    });
+    if (changed) {
+      applySamples(updated);
+    }
+  }, [planKey, testsPerSample, samples.length]);
 
   const hasSetTest = (sample, index) =>
     (sample.tests || []).some((selected) => {
@@ -443,14 +523,9 @@ const SampleTestSection = ({
   };
 
   const handleEnvFieldChange = (sampleIndex, field, value) => {
+    if ((samples[sampleIndex]?.[field] ?? "") === value) return;
     const updated = cloneSamples();
     updated[sampleIndex] = { ...updated[sampleIndex], [field]: value };
-    setSamples(updated);
-  };
-
-  const handleEnvFieldsChange = (sampleIndex, fields) => {
-    const updated = [...samples];
-    updated[sampleIndex] = { ...updated[sampleIndex], ...fields };
     setSamples(updated);
   };
 
@@ -659,6 +734,7 @@ const SampleTestSection = ({
                 id="sample.orderTests"
                 defaultMessage="Order Tests"
               />
+              <RequiredMarker />
             </h6>
             <div className="selected-tags">
               {sample.tests?.map((test) => (
@@ -943,25 +1019,20 @@ const SampleTestSection = ({
                         {sampleIndex + 1}
                       </td>
                       <td className="env-manifest-cell">
-                        <Select
+                        <SearchableSelect
                           id={`sampleType-${sampleIndex}`}
-                          labelText=""
                           hideLabel
+                          labelText={intl.formatMessage({
+                            id: "sample.type",
+                            defaultMessage: "Sample Type",
+                          })}
+                          options={sampleTypes}
                           value={sample.sampleTypeId || ""}
-                          onChange={(e) =>
-                            handleSampleTypeChange(sampleIndex, e.target.value)
+                          onChange={(id) =>
+                            handleSampleTypeChange(sampleIndex, id)
                           }
                           disabled={isReadOnly}
-                        >
-                          <SelectItem value="" text="" />
-                          {sampleTypes.map((type) => (
-                            <SelectItem
-                              key={type.id}
-                              value={type.id}
-                              text={type.value}
-                            />
-                          ))}
-                        </Select>
+                        />
                       </td>
                       <td className="env-manifest-cell">
                         <Select
@@ -1093,32 +1164,51 @@ const SampleTestSection = ({
                         />
                       </td>
                       <td className="env-manifest-cell">
-                        <input
-                          id={`collected-${sampleIndex}`}
-                          type="datetime-local"
-                          className="env-manifest-datetime"
-                          value={
-                            sample.collectionDate && sample.collectionTime
-                              ? `${sample.collectionDate}T${sample.collectionTime}`
-                              : sample.collectionDate || ""
-                          }
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (val && val.includes("T")) {
-                              const [date, time] = val.split("T");
-                              handleEnvFieldsChange(sampleIndex, {
-                                collectionDate: date,
-                                collectionTime: time,
-                              });
-                            } else {
-                              handleEnvFieldsChange(sampleIndex, {
-                                collectionDate: val,
-                                collectionTime: "",
-                              });
+                        <div className="env-manifest-when">
+                          <CustomDatePicker
+                            id={`collected-${sampleIndex}`}
+                            labelText={intl.formatMessage({
+                              id: "collect.sample.collectionDate",
+                              defaultMessage: "Collection Date",
+                            })}
+                            hideLabel
+                            value={formatIsoDateForBackend(
+                              sample.collectionDate || "",
+                              dateLocale,
+                            )}
+                            updateStateValue
+                            disallowFutureDate
+                            onChange={(value) =>
+                              handleEnvFieldChange(
+                                sampleIndex,
+                                "collectionDate",
+                                formatPickerDateForIso(value, dateLocale),
+                              )
                             }
-                          }}
-                          disabled={isReadOnly}
-                        />
+                            disabled={isReadOnly}
+                          />
+                          <TimePicker
+                            id={`collectedTime-${sampleIndex}`}
+                            labelText={intl.formatMessage({
+                              id: "collect.sample.collectionTime",
+                              defaultMessage: "Collection Time",
+                            })}
+                            hideLabel
+                            value={sample.collectionTime || ""}
+                            invalid={!isClockTime(sample.collectionTime)}
+                            invalidText={intl.formatMessage({
+                              id: "sample.time.invalid",
+                            })}
+                            onChange={(e) =>
+                              handleEnvFieldChange(
+                                sampleIndex,
+                                "collectionTime",
+                                e.target.value,
+                              )
+                            }
+                            disabled={isReadOnly}
+                          />
+                        </div>
                         <Checkbox
                           id={`labPerformedSampling-${sampleIndex}`}
                           labelText={intl.formatMessage({
@@ -1141,36 +1231,51 @@ const SampleTestSection = ({
                           when the specimen actually arrived. Capturing it
                           here makes it correctable and back-datable. */}
                       <td className="env-manifest-cell">
-                        <input
-                          id={`receivedAtLab-${sampleIndex}`}
-                          type="datetime-local"
-                          className="env-manifest-datetime"
-                          aria-label={intl.formatMessage({
-                            id: "env.sample.receivedAtLab",
-                            defaultMessage: "Received at Lab",
-                          })}
-                          value={
-                            sample.receivedDate && sample.receivedTime
-                              ? `${sample.receivedDate}T${sample.receivedTime}`
-                              : sample.receivedDate || ""
-                          }
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (val && val.includes("T")) {
-                              const [date, time] = val.split("T");
-                              handleEnvFieldsChange(sampleIndex, {
-                                receivedDate: date,
-                                receivedTime: time,
-                              });
-                            } else {
-                              handleEnvFieldsChange(sampleIndex, {
-                                receivedDate: val,
-                                receivedTime: "",
-                              });
+                        <div className="env-manifest-when">
+                          <CustomDatePicker
+                            id={`receivedAtLab-${sampleIndex}`}
+                            labelText={intl.formatMessage({
+                              id: "collect.sample.receivedDate",
+                              defaultMessage: "Received Date",
+                            })}
+                            hideLabel
+                            value={formatIsoDateForBackend(
+                              sample.receivedDate || "",
+                              dateLocale,
+                            )}
+                            updateStateValue
+                            disallowFutureDate
+                            onChange={(value) =>
+                              handleEnvFieldChange(
+                                sampleIndex,
+                                "receivedDate",
+                                formatPickerDateForIso(value, dateLocale),
+                              )
                             }
-                          }}
-                          disabled={isReadOnly}
-                        />
+                            disabled={isReadOnly}
+                          />
+                          <TimePicker
+                            id={`receivedAtLabTime-${sampleIndex}`}
+                            labelText={intl.formatMessage({
+                              id: "collect.sample.receivedTime",
+                              defaultMessage: "Received Time",
+                            })}
+                            hideLabel
+                            value={sample.receivedTime || ""}
+                            invalid={!isClockTime(sample.receivedTime)}
+                            invalidText={intl.formatMessage({
+                              id: "sample.time.invalid",
+                            })}
+                            onChange={(e) =>
+                              handleEnvFieldChange(
+                                sampleIndex,
+                                "receivedTime",
+                                e.target.value,
+                              )
+                            }
+                            disabled={isReadOnly}
+                          />
+                        </div>
                       </td>
                       <td className="env-manifest-cell env-manifest-cell--toggle">
                         <Button
@@ -1521,38 +1626,23 @@ const SampleTestSection = ({
 
             <Grid>
               <Column lg={8} md={4} sm={4}>
-                <Select
+                <SearchableSelect
                   id={`sampleType-${sampleIndex}`}
-                  labelText={
-                    <span>
-                      {intl.formatMessage({
-                        id: "sample.type",
-                        defaultMessage: "Sample Type",
-                      })}
-                      <RequiredMarker />
-                    </span>
-                  }
-                  {...requiredProps()}
+                  required
+                  labelText={intl.formatMessage({
+                    id: "sample.type",
+                    defaultMessage: "Sample Type",
+                  })}
+                  options={sampleTypes}
                   value={sample.sampleTypeId || ""}
-                  onChange={(e) =>
-                    handleSampleTypeChange(sampleIndex, e.target.value)
-                  }
+                  onChange={(id) => handleSampleTypeChange(sampleIndex, id)}
                   helperText={intl.formatMessage({
                     id: "sample.type.helper",
                     defaultMessage:
                       "Select a specimen type — available panels and tests update after selection.",
                   })}
                   disabled={isReadOnly}
-                >
-                  <SelectItem value="" text="" />
-                  {sampleTypes.map((type) => (
-                    <SelectItem
-                      key={type.id}
-                      value={type.id}
-                      text={type.value}
-                    />
-                  ))}
-                </Select>
+                />
               </Column>
 
               {hasSetTest(sample, sampleIndex) && (
@@ -1804,6 +1894,7 @@ const SampleTestSection = ({
                         id="sample.orderTests"
                         defaultMessage="Order Tests"
                       />
+                      <RequiredMarker />
                     </h6>
                     <div className="selected-tags">
                       {sample.tests?.map((test) => (
@@ -1844,7 +1935,25 @@ const SampleTestSection = ({
                               <Checkbox
                                 key={test.id}
                                 id={`test-${sampleIndex}-${test.id}`}
-                                labelText={test.name}
+                                labelText={
+                                  test.opensMicrobiologyCase ? (
+                                    <>
+                                      {test.name}{" "}
+                                      <Tag
+                                        type="cool-gray"
+                                        size="sm"
+                                        className="micro-test-tag"
+                                      >
+                                        {intl.formatMessage({
+                                          id: "microbiology.case.title",
+                                          defaultMessage: "Microbiology case",
+                                        })}
+                                      </Tag>
+                                    </>
+                                  ) : (
+                                    test.name
+                                  )
+                                }
                                 checked={isTestSelected(sampleIndex, test.id)}
                                 onChange={(_, { checked }) =>
                                   handleTestToggle(sampleIndex, test, checked)
@@ -1894,6 +2003,7 @@ const SampleTestSection = ({
                 </Column>
               )}
             </Grid>
+            {renderSampleNote?.(sampleIndex)}
           </div>
         ),
       )}

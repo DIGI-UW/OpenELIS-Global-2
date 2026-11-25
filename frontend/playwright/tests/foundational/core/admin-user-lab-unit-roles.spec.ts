@@ -44,8 +44,7 @@ async function createScopedUser(page: Page) {
       loginUserId: "",
       systemUserId: "",
       userLoginName: loginName,
-      // Names are unique per run: a repeated first+last name is refused as a
-      // duplicate system user, silently, with the same 200 as a success.
+      // Names are unique per run so each run's user is easy to find.
       userFirstName: "Playwright",
       userLastName: `LabUnit ${suffix}`,
       userPassword: password,
@@ -55,8 +54,9 @@ async function createScopedUser(page: Page) {
       selectedTestSectionLabUnits: { [sections[0].id]: [roles[0].roleId] },
     },
   });
-  expect(created.status()).toBe(200);
-  // A validation failure also answers 200; only the redirect means "written".
+  // A refused save answers 400 with the reason (OGC-1545); the redirect means
+  // the user was written.
+  expect(created.status(), await created.text()).toBe(200);
   const outcome = await created.json();
   expect(outcome.forward, JSON.stringify(outcome)).toBe(
     "redirect:/UnifiedSystemUser",

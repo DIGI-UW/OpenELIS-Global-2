@@ -1,5 +1,6 @@
 import { test, expect } from "../../../helpers/test-base";
 import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 
 /**
  * OGC-1187 — opening Admin → Batch test reassignment and cancelation fired two
@@ -29,6 +30,12 @@ test.describe("OGC-1187 batch test reassignment provider calls", () => {
       }
     });
 
+    const pageData = page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response.url().endsWith("/rest/BatchTestReassignment"),
+      { timeout: NAV_TIMEOUT },
+    );
     await page.goto("/MasterListsPage/batchTestReassignment", {
       waitUntil: "domcontentloaded",
     });
@@ -36,14 +43,11 @@ test.describe("OGC-1187 batch test reassignment provider calls", () => {
     await expect(
       main.getByRole("heading", { name: /batch test reassignment/i }),
     ).toBeVisible({ timeout: NAV_TIMEOUT });
-
-    const sampleType = main.locator("#selectSampleType");
+    const { sampleList } = (await (await pageData).json()) as {
+      sampleList: { id: string; value: string }[];
+    };
+    const sampleType = main.getByRole("combobox", { name: "Sample Type" });
     await expect(sampleType).toBeVisible({ timeout: UI_TIMEOUT });
-    // The sample types come from the page's own first fetch; more than the
-    // placeholder means it has settled.
-    await expect
-      .poll(() => sampleType.locator("option").count(), { timeout: UI_TIMEOUT })
-      .toBeGreaterThan(1);
     await page.waitForLoadState("networkidle");
 
     expect(providerCalls, "no provider call while the ids are unset").toEqual(
@@ -52,23 +56,24 @@ test.describe("OGC-1187 batch test reassignment provider calls", () => {
     expect(serverErrors, "no server error while the page settles").toEqual([]);
 
     // Choosing a sample type is what asks for its tests, with that id.
-    const chosen = sampleType.locator("option").nth(1);
-    const chosenId = await chosen.getAttribute("value");
-    expect(chosenId).toMatch(/^\d+$/);
+    const chosen = sampleList[0];
+    expect(chosen?.id).toMatch(/^\d+$/);
     const testsRequest = page.waitForRequest(
       (request) =>
         request.url().includes("AllTestsForSampleTypeProvider") &&
-        new URL(request.url()).searchParams.get("sampleTypeId") === chosenId,
+        new URL(request.url()).searchParams.get("sampleTypeId") === chosen.id,
     );
-    await sampleType.selectOption(chosenId as string);
+    await chooseCarbonOption(sampleType, chosen.value);
     await testsRequest;
 
-    const currentTest = main.locator("#selectSampleType1");
-    await expect
-      .poll(() => currentTest.locator("option").count(), {
-        timeout: UI_TIMEOUT,
-      })
-      .toBeGreaterThan(1);
+    const currentTest = main.getByRole("combobox", { name: "Current test" });
+    await currentTest.click();
+    await expect(
+      page
+        .locator(`[id="${await currentTest.getAttribute("aria-controls")}"]`)
+        .getByRole("option")
+        .first(),
+    ).toBeVisible({ timeout: UI_TIMEOUT });
     expect(
       providerCalls.filter((url) => /=null(&|$)/.test(url)),
       "no call ever carried a null id",

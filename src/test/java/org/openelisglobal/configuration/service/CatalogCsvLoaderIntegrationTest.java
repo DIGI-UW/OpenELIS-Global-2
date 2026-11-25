@@ -152,6 +152,30 @@ public class CatalogCsvLoaderIntegrationTest extends BaseWebContextSensitiveTest
     }
 
     @Test
+    public void tests_microbiologyRoutingSurvivesReloadAndRejectsInvalidRows() throws Exception {
+        loadSampleTypes();
+        String header = "testName,testSection,sampleType,localCode,opensMicrobiologyCase,microbiologyCaseRole,collectedInSets\n";
+        String culture = PREFIX + "Culture," + SECTION + "," + PREFIX + "Blood,I93CULT,Y,CULTURE,Y\n";
+        load(testHandler,
+                header + culture + PREFIX + "Bad routing," + SECTION + "," + PREFIX + "Blood,I93BAD,Y,DIRECT,Y\n",
+                "routing.csv");
+        assertEquals("SUMMARY file=routing.csv domain=tests created=1 updated=0 skipped=1",
+                testHandler.getLastSummary().toLine());
+        Map<String, Object> first = testRow(PREFIX + "Culture");
+        assertEquals(Boolean.TRUE, first.get("opens_microbiology_case"));
+        assertEquals("CULTURE", first.get("microbiology_case_role"));
+        assertEquals(Boolean.TRUE, first.get("collected_in_sets"));
+        load(testHandler, header + culture, "routing.csv");
+        load(testHandler, "testName,testSection,sampleType,localCode\n" + PREFIX + "Culture," + SECTION + "," + PREFIX
+                + "Blood,I93CULT\n", "ordinary-catalog.csv");
+        Map<String, Object> reloaded = testRow(PREFIX + "Culture");
+        assertEquals(first.get("id"), reloaded.get("id"));
+        assertEquals(Boolean.TRUE, reloaded.get("opens_microbiology_case"));
+        assertEquals("CULTURE", reloaded.get("microbiology_case_role"));
+        assertEquals(Boolean.TRUE, reloaded.get("collected_in_sets"));
+    }
+
+    @Test
     public void legacyVariants_areUpdatedInPlaceAndJoinPanelsForTheirSpecimens() throws Exception {
         loadSampleTypes();
         // The shape an earlier loader left behind: one record per specimen, both
@@ -222,7 +246,7 @@ public class CatalogCsvLoaderIntegrationTest extends BaseWebContextSensitiveTest
         assertEquals(Integer.valueOf(1), count("sampletype_test", "test_id = " + serumVariant));
         assertEquals(Integer.valueOf(1), count("sampletype_test", "test_id = " + plasmaVariant));
         assertEquals("the numeric result definition survives the update", Integer.valueOf(1),
-                count("test_result", "test_id = " + serumVariant + " AND significant_digits = 2 AND is_active"));
+                count("test_result", "test_id = " + serumVariant + " AND reporting_decimal_places = 2 AND is_active"));
         Map<String, Object> unlisted = testRow("IT1193VL(" + PREFIX + "Blood)");
         assertEquals("a variant for a specimen the row does not list is a different test and stays untouched",
                 Long.valueOf(bloodVariant), Long.valueOf(((Number) unlisted.get("id")).longValue()));
@@ -389,11 +413,11 @@ public class CatalogCsvLoaderIntegrationTest extends BaseWebContextSensitiveTest
                 testId, PREFIX + "Legacy", description, UUID.randomUUID().toString(), localizationId);
     }
 
-    private void insertNumericResult(long id, long testId, int significantDigits) {
+    private void insertNumericResult(long id, long testId, int reportingDecimalPlaces) {
         jdbc.update(
-                "INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, significant_digits, sort_order,"
+                "INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, reporting_decimal_places, sort_order,"
                         + " is_active, lastupdated) VALUES (?, ?, 'N', ?, 1, true, NOW())",
-                id, testId, significantDigits);
+                id, testId, reportingDecimalPlaces);
     }
 
     private void load(DomainConfigurationHandler handler, String csv, String fileName) throws Exception {
@@ -406,7 +430,7 @@ public class CatalogCsvLoaderIntegrationTest extends BaseWebContextSensitiveTest
 
     private Map<String, Object> testRow(String description) {
         return jdbc.queryForMap("SELECT id, description, local_code, is_reportable, notify_results, is_active,"
-                + " orderable, loinc, test_section_id, name_localization_id FROM clinlims.test WHERE description = ?",
+                + " orderable, loinc, test_section_id, name_localization_id, opens_microbiology_case, microbiology_case_role, collected_in_sets FROM clinlims.test WHERE description = ?",
                 description);
     }
 
