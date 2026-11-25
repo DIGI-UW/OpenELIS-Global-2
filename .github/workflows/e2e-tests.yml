@@ -53,7 +53,7 @@ jobs:
       - name: Download triggering pull request
         id: download_scope
         if: github.event.workflow_run.event == 'pull_request'
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: e2e-scope-context
           path: /tmp/e2e-scope-context
@@ -106,7 +106,7 @@ jobs:
 
       - name: Download early build context artifact
         id: download_context
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: e2e-build-context-core
           path: /tmp/e2e-build-context
@@ -116,7 +116,7 @@ jobs:
 
       - name: Download transfer-state artifact
         id: download_transfer
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: e2e-build-transfer-state
           path: /tmp/e2e-transfer-state
@@ -242,7 +242,7 @@ jobs:
       actions: read
     steps:
       - name: Download fork image handoff from build workflow
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: e2e-image-handoff
           path: /tmp/e2e-image-handoff
@@ -334,7 +334,7 @@ jobs:
           cat /tmp/e2e-image-map.txt
 
       - name: Upload Docker image map artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-image-map
           path: /tmp/e2e-image-map.txt
@@ -342,7 +342,7 @@ jobs:
           retention-days: 1
 
       - name: Upload base Docker image map artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-image-map-base
           path: /tmp/e2e-image-map-base.txt
