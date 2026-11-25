@@ -11,6 +11,7 @@ import {
 } from "../../../helpers/batch-workplan";
 import {
   AMYLASE_TEST,
+  API,
   SERUM,
   orderTests,
   signIfAsked,
@@ -25,23 +26,23 @@ import { LONG_TIMEOUT } from "../../../helpers/timeouts";
  * the run.
  */
 
+/**
+ * The worklist filtered to the lab number, and to Biochemistry when the row's
+ * control capture is needed (it is scoped by lab unit). Both filters go in the
+ * URL, so the worklist loads once: choosing the unit and then searching loads
+ * it twice, and a late load re-renders the table and closes an opened row.
+ */
 const openRow = async (page: Page, accession: string, labUnit = false) => {
-  await page.goto(`/Results?accessionNumber=${accession}`);
+  let unitFilter = "";
   if (labUnit) {
-    const unit = page.getByRole("combobox", { name: "Lab Unit" });
-    await unit.click();
-    await unit.fill("Biochem");
-    await page.getByRole("option", { name: "Biochemistry" }).click();
-    const search = page.getByRole("searchbox");
-    await search.fill(accession);
-    const searched = page.waitForResponse(
-      (response) =>
-        response.request().method() === "GET" &&
-        response.url().includes(accession),
-    );
-    await search.press("Enter");
-    await searched;
+    const units = (await (
+      await page.request.get(`${API}/rest/results-entry/lab-units`)
+    ).json()) as Array<{ id: string; value: string }>;
+    const biochemistry = units.find((unit) => unit.value === "Biochemistry");
+    expect(biochemistry, "Biochemistry is a lab unit").toBeTruthy();
+    unitFilter = `testSectionId=${biochemistry!.id}&`;
   }
+  await page.goto(`/Results?${unitFilter}accessionNumber=${accession}`);
   await expect(page.getByText(accession).first()).toBeVisible({
     timeout: LONG_TIMEOUT,
   });
@@ -56,11 +57,15 @@ const saveValue = async (page: Page, value: string) => {
   await signIfAsked(page);
 };
 
-const expandRow = async (page: Page) =>
-  page
+const expandRow = async (page: Page) => {
+  await page
     .getByRole("button", { name: /expand row/i })
     .first()
     .click();
+  await expect(
+    page.getByRole("button", { name: /Reagents, QC & Controls/ }),
+  ).toBeVisible({ timeout: LONG_TIMEOUT });
+};
 
 const recordControl = async (
   page: Page,
@@ -114,10 +119,7 @@ test.describe("OGC-1200 a single save is a run of one", () => {
     await saved;
 
     await openRow(page, accession);
-    await page
-      .getByRole("button", { name: /expand row/i })
-      .first()
-      .click();
+    await expandRow(page);
     const summary = page.getByTestId("row-run-summary");
     await expect(summary).toContainText("Recorded in RUN-", {
       timeout: LONG_TIMEOUT,
@@ -142,10 +144,7 @@ test.describe("OGC-1200 a single save is a run of one", () => {
     const accession = await orderTests(page, SERUM, [AMYLASE_TEST]);
 
     await openRow(page, accession, true);
-    await page
-      .getByRole("button", { name: /expand row/i })
-      .first()
-      .click();
+    await expandRow(page);
     await page.getByTestId("qc-outcome").selectOption("FAIL");
     const lot = page.getByTestId("qc-lot");
     const lotValue = await lot
