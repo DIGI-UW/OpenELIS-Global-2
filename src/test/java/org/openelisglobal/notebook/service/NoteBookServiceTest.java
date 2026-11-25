@@ -35,6 +35,32 @@ public class NoteBookServiceTest extends BaseWebContextSensitiveTest {
         authenticateAs("alice");
     }
 
+    @Test
+    @org.springframework.transaction.annotation.Transactional
+    public void invalidAttachmentDoesNotReplaceExistingNotebookContent() {
+        NoteBook existing = noteBookService.get(2);
+        org.openelisglobal.notebook.valueholder.NoteBookFile retained = new org.openelisglobal.notebook.valueholder.NoteBookFile();
+        retained.setFileName("existing.txt");
+        retained.setFileType("data:text/plain");
+        retained.setFileData("keep this".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        retained.setNotebook(existing);
+        existing.getFiles().add(retained);
+        assertFalse(existing.getPages().isEmpty());
+        String title = existing.getTitle();
+        var files = new java.util.ArrayList<>(existing.getFiles());
+        var pages = new java.util.ArrayList<>(existing.getPages());
+        NoteBookForm form = new NoteBookForm();
+        form.setTitle("must not replace title");
+        NoteBookForm.NoteBookFileForm file = new NoteBookForm.NoteBookFileForm();
+        file.setBase64File("data:text/html;base64,PHNjcmlwdD4=");
+        form.setFiles(List.of(file));
+        org.junit.Assert.assertThrows(InvalidNotebookAttachmentException.class,
+                () -> noteBookService.updateWithFormValues(2, form));
+        assertEquals(title, existing.getTitle());
+        assertEquals(files, existing.getFiles());
+        assertEquals(pages, existing.getPages());
+    }
+
     // ========== Template Entry Retrieval ==========
     @Test
     public void getNoteBookEntries_validTemplateId_returnsEntries() {

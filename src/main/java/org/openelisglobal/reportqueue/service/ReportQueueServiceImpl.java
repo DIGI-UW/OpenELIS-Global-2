@@ -38,6 +38,11 @@ import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroReportVersionDAO;
+import org.openelisglobal.microbiology.valueholder.MicroCase;
+import org.openelisglobal.microbiology.valueholder.MicroReportVersion;
+import org.openelisglobal.microbiology.valueholder.MicroReportVersionType;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.note.valueholder.Note;
@@ -110,6 +115,10 @@ public class ReportQueueServiceImpl implements ReportQueueService {
     @Autowired
     private SampleDAO sampleDAO;
     @Autowired
+    private MicroCaseDAO microCaseDAO;
+    @Autowired
+    private MicroReportVersionDAO microReportVersionDAO;
+    @Autowired
     private HistoryService historyService;
     @Autowired
     private SampleHumanService sampleHumanService;
@@ -166,6 +175,7 @@ public class ReportQueueServiceImpl implements ReportQueueService {
      */
     static final class Snapshot {
         final List<SnapshotItem> items = new ArrayList<>();
+        final List<MicroReportVersion> microVersions = new ArrayList<>();
         boolean anyCorrected;
         Timestamp latestRelease;
 
@@ -191,13 +201,16 @@ public class ReportQueueServiceImpl implements ReportQueueService {
         final Map<ReportVersionItem, SnapshotItem> changed = new LinkedHashMap<>();
         final List<ReportVersionItem> awaitingValidation = new ArrayList<>();
         boolean legacyNewer;
+        boolean microNewer;
+        boolean microAmended;
 
         boolean changedOrRemoved() {
-            return awaitingValidation.isEmpty() && (!changed.isEmpty() || !removed.isEmpty());
+            return awaitingValidation.isEmpty() && (!changed.isEmpty() || !removed.isEmpty() || microAmended);
         }
 
         boolean contentDiffers() {
-            return legacyNewer || (awaitingValidation.isEmpty() && (!added.isEmpty() || changedOrRemoved()));
+            return legacyNewer
+                    || (awaitingValidation.isEmpty() && (!added.isEmpty() || microNewer || changedOrRemoved()));
         }
     }
 
@@ -792,6 +805,13 @@ public class ReportQueueServiceImpl implements ReportQueueService {
 
     Snapshot snapshot(Sample sample) {
         Snapshot snapshot = new Snapshot();
+        for (MicroCase microCase : microCaseDAO.getByOrder(sample.getId())) {
+            for (MicroReportVersion version : microReportVersionDAO.getByCaseId(microCase.getId())) {
+                if (version.getStructuredContent() != null) {
+                    snapshot.microVersions.add(version);
+                }
+            }
+        }
         String finalized = statusService.getStatusID(AnalysisStatus.Finalized);
         List<String> excluded = excludedStatusIds();
         Patient patient = sampleHumanService.getPatientForSample(sample);
@@ -907,6 +927,13 @@ public class ReportQueueServiceImpl implements ReportQueueService {
         Comparison comparison = new Comparison();
         if (last == null) {
             return comparison;
+        }
+        for (MicroReportVersion version : current.microVersions) {
+            if (last.getIssuedAt() != null
+                    && version.getReleasedAt().toInstant().isAfter(last.getIssuedAt().toInstant())) {
+                comparison.microNewer = true;
+                comparison.microAmended |= MicroReportVersionType.AMENDED.name().equals(version.getReleaseType());
+            }
         }
         if (last.isLegacy()) {
             comparison.legacyNewer = current.latestRelease != null && last.getIssuedAt() != null

@@ -76,7 +76,11 @@ const SAVED_CALCULATION = {
   ],
 };
 
-const { postSpy } = vi.hoisted(() => ({ postSpy: vi.fn() }));
+const { postSpy, notificationSpy, response } = vi.hoisted(() => ({
+  postSpy: vi.fn(),
+  notificationSpy: vi.fn(),
+  response: { status: 200, body: null as unknown },
+}));
 
 vi.mock("../../../utils/Utils", async () => ({
   resolveApiErrorMessage: (
@@ -91,7 +95,7 @@ vi.mock("../../../utils/Utils", async () => ({
       return;
     }
     if (url === "/rest/math-functions") {
-      callback([{ id: "ABS", value: "abs" }]);
+      callback([{ id: "+", value: "Plus" }]);
       return;
     }
     if (url === "/rest/displayList/SAMPLE_TYPE_ACTIVE") {
@@ -111,7 +115,12 @@ vi.mock("../../../utils/Utils", async () => ({
   postToOpenElisServerFullResponse: vi.fn((url, body, callback) => {
     postSpy(url, body);
     if (typeof callback === "function")
-      callback(new Response(null, { status: 200 }));
+      callback(
+        new Response(
+          response.body === null ? null : JSON.stringify(response.body),
+          { status: response.status },
+        ),
+      );
   }),
 }));
 
@@ -119,7 +128,7 @@ vi.mock("../../../layout/Layout", () => ({
   NotificationContext: React.createContext({
     notificationVisible: false,
     setNotificationVisible: () => {},
-    addNotification: () => {},
+    addNotification: notificationSpy,
   }),
 }));
 
@@ -163,6 +172,13 @@ describe("Final Result is described by its component", () => {
   beforeEach(() => {
     cleanup();
     postSpy.mockReset();
+    notificationSpy.mockReset();
+    response.status = 200;
+    response.body = null;
+    SAVED_CALCULATION.operations = [
+      { id: null, order: 0, type: "INTEGER", value: "1", sampleId: null },
+    ];
+    delete (globalThis as any).__calculationExecuted;
   });
 
   test("every component may receive the final result, not only numeric ones", async () => {
@@ -254,5 +270,38 @@ describe("Final Result is described by its component", () => {
       Object.keys(saved),
       "componentPending describes the editor, not the calculation",
     ).not.toContain("componentPending");
+  });
+
+  test("stored operation text is never executed and backend rejection allows correction", async () => {
+    SAVED_CALCULATION.operations = [
+      {
+        id: null,
+        order: 0,
+        type: "MATH_FUNCTION",
+        value: "globalThis.__calculationExecuted = 1",
+        sampleId: null,
+      },
+    ];
+    response.status = 400;
+    response.body = {
+      messageKey: "error.invalid.calculation.logic",
+      messageArgs: {},
+    };
+    renderForm();
+    await flush();
+    const form = componentPicker().closest("form") as HTMLFormElement;
+    fireEvent.submit(form);
+    await flush();
+    expect((globalThis as any).__calculationExecuted).toBeUndefined();
+    expect(postSpy).toHaveBeenCalledTimes(1);
+    expect(notificationSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        message: messages["error.invalid.calculation.logic"],
+      }),
+    );
+    fireEvent.submit(form);
+    await flush();
+    expect(postSpy).toHaveBeenCalledTimes(2);
   });
 });

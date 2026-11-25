@@ -14,6 +14,7 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.ResultSaveService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.util.DateUtil;
@@ -37,9 +38,11 @@ import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.testcalculated.action.util.TestCalculatedUtil;
 import org.openelisglobal.testreflex.action.util.TestReflexBean;
 import org.openelisglobal.testreflex.action.util.TestReflexUtil;
+import org.openelisglobal.validationpolicy.service.AnalysisAutoReleaseService;
 import org.openelisglobal.vector.deconvolution.service.VectorDeconvolutionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -75,6 +78,11 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
     private VectorDeconvolutionService vectorDeconvolutionService;
     @Autowired
     private ApplicationEventPublisher eventPublisher;
+    @Lazy
+    @Autowired
+    private AnalysisAutoReleaseService autoReleaseService;
+    @Autowired
+    private IStatusService statusService;
 
     @Override
     @Transactional
@@ -186,9 +194,19 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
             updater.transactionalUpdate(actionDataSet);
         }
 
-        // Results finalized at entry skip validation, so announce them here too.
-        eventPublisher.publishEvent(
-                new ResultsValidatedEvent(ResultsValidatedEvent.finalizedSamples(actionDataSet.getModifiedAnalysis())));
+        String finalizedId = statusService.getStatusID(AnalysisStatus.Finalized);
+        List<Analysis> releasedAtEntry = actionDataSet.getModifiedAnalysis().stream()
+                .filter(analysis -> actionDataSet.getReleasedAtEntry().contains(analysis.getId())
+                        && finalizedId.equals(analysis.getStatusId()))
+                .toList();
+        if (!releasedAtEntry.isEmpty()) {
+            autoReleaseService.record(releasedAtEntry, sysUserId);
+        }
+
+        // Results finalized at entry skip validation, so announce them here too,
+        // but not the ones that were already finalized before this save.
+        eventPublisher.publishEvent(ResultsValidatedEvent.finalized(actionDataSet.getModifiedAnalysis().stream()
+                .filter(analysis -> !actionDataSet.getFinalizedBeforeSave().contains(analysis.getId())).toList()));
         return reflexAnalysises;
     }
 

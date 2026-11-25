@@ -38,7 +38,7 @@ const VectorOrderComplete = () => {
   })();
 
   const displayLabNumber =
-    labNumber || orderData?.sampleOrderItems?.labNo || queryLabNumber || "";
+    queryLabNumber || labNumber || orderData?.sampleOrderItems?.labNo || "";
 
   // Pull samples back from the server when context is empty (refresh, deep link)
   // or when the URL points at an order different from the one in context.

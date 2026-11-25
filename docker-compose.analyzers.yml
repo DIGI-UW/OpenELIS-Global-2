@@ -16,7 +16,12 @@ services:
       certs:
         condition: service_completed_successfully
     volumes:
-      - key_trust-store-volume:/etc/openelis-global:ro
+      - type: volume
+        source: key_trust-store-volume
+        target: /etc/openelis-global
+        read_only: true
+        volume:
+          nocopy: true
       - analyzer-imports:/data/analyzer-imports
       # FILE state store, delivery outbox, and the Bridge's own key pair and
       # pairing record; the outbox holds results OpenELIS has not accepted yet,

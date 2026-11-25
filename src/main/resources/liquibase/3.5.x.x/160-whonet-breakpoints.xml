@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+ <changeSet id="160-whonet-breakpoint-table" author="openelis">
+  <createTable schemaName="clinlims" tableName="micro_whonet_breakpoint" remarks="WHONET's breakpoint table as published">
+   <column name="id" type="varchar(36)" defaultValueComputed="gen_random_uuid()::varchar">
+    <constraints primaryKey="true" nullable="false"/>
+   </column>
+   <column name="guidelines" type="varchar(255)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="year" type="varchar(255)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="test_method" type="varchar(255)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="potency" type="varchar(255)"/>
+   <column name="organism_code" type="varchar(255)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="organism_code_type" type="varchar(255)"/>
+   <column name="breakpoint_type" type="varchar(255)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="host" type="varchar(255)"/>
+   <column name="site_of_infection" type="varchar(255)"/>
+   <column name="reference_table" type="varchar(255)"/>
+   <column name="reference_sequence" type="varchar(255)"/>
+   <column name="whonet_abx_code" type="varchar(255)"/>
+   <column name="whonet_test" type="varchar(255)"/>
+   <column name="r" type="varchar(255)"/>
+   <column name="i" type="varchar(255)"/>
+   <column name="sdd" type="varchar(255)"/>
+   <column name="s" type="varchar(255)"/>
+   <column name="ecv_ecoff" type="varchar(255)"/>
+   <column name="ecv_ecoff_tentative" type="varchar(255)"/>
+   <column name="date_entered" type="varchar(255)"/>
+   <column name="date_modified" type="varchar(255)"/>
+   <column name="comments" type="text"/>
+   <column name="last_updated" type="timestamp" defaultValueComputed="now()">
+    <constraints nullable="false"/>
+   </column>
+  </createTable>
+  <sql>CREATE INDEX idx_micro_whonet_breakpoint_edition_abx ON clinlims.micro_whonet_breakpoint (guidelines, year, whonet_abx_code);</sql>
+  <sql>CREATE INDEX idx_micro_whonet_breakpoint_test ON clinlims.micro_whonet_breakpoint (whonet_test);</sql>
+  <rollback>
+   <dropTable schemaName="clinlims" tableName="micro_whonet_breakpoint"/>
+  </rollback>
+ </changeSet>
+</databaseChangeLog>

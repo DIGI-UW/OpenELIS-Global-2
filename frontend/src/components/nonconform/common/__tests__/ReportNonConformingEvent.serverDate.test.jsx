@@ -5,7 +5,10 @@ import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
 import messages from "../../../../languages/en.json";
 import { ReportNonConformingEvent } from "../ReportNonConformingEvent";
-import { NotificationContext } from "../../../layout/Layout";
+import {
+  ConfigurationContext,
+  NotificationContext,
+} from "../../../layout/Layout";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import { loadLabClock, resetLabClock } from "../../../utils/labClock";
 
@@ -68,5 +71,26 @@ describe("ReportNonConformingEvent event date", () => {
   it("defaults the date of event to the lab server's today, not the browser's", async () => {
     await renderForm();
     expect(document.getElementById("date-of-event")).toHaveValue("03/06/2031");
+  });
+
+  it("shows the date of event day first on a day-first site", async () => {
+    await act(async () =>
+      render(
+        <ConfigurationContext.Provider
+          value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "fr-FR" } }}
+        >
+          <IntlProvider locale="en" messages={messages}>
+            <NotificationContext.Provider value={{ addNotification: vi.fn() }}>
+              <MemoryRouter initialEntries={["/ReportNonConformingEvent"]}>
+                <ReportNonConformingEvent />
+              </MemoryRouter>
+            </NotificationContext.Provider>
+          </IntlProvider>
+        </ConfigurationContext.Provider>,
+      ),
+    );
+    const date = document.getElementById("date-of-event");
+    expect(date).toHaveValue("06/03/2031");
+    expect(date).toHaveAttribute("placeholder", "dd/mm/yyyy");
   });
 });

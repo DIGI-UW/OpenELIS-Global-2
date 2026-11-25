@@ -1,3 +1,6 @@
+vi.mock("../../common/textMacro/TextMacroService", () => ({
+  getTextMacros: vi.fn(() => Promise.resolve([])),
+}));
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
@@ -6,6 +9,12 @@ import { IntlProvider } from "react-intl";
 import { vi } from "vitest";
 import OrderDetailPanel from "../OrderDetailPanel";
 import messages from "../../../languages/en.json";
+import { getTextMacros } from "../../common/textMacro/TextMacroService";
+import {
+  expandedPhrase,
+  offerOnePhrasePerContext,
+  typePhraseCode,
+} from "./phraseFields";
 
 const renderPanel = (props) =>
   render(
@@ -71,6 +80,45 @@ describe("OrderDetailPanel", () => {
         clinicalHistory: "Fever, suspected sepsis",
         antibioticExposure: true,
       }),
+    );
+  });
+
+  it("expands clinical-history phrases and keeps antibiotic exposure a yes/no choice", async () => {
+    const user = userEvent.setup();
+    offerOnePhrasePerContext();
+    const service = {
+      getPatientOrigins: vi.fn().mockResolvedValue({
+        defaultCode: null,
+        options: patientOrigins,
+      }),
+      saveOrderDetail: vi.fn().mockResolvedValue({ orderDetail: {} }),
+    };
+    renderPanel({ service });
+    await screen.findByRole("option", { name: "Emergency" });
+
+    const history = screen.getByLabelText("Clinical history");
+    await typePhraseCode(history);
+    expect(history).toHaveValue(
+      "Seen Phrase for MICROBIOLOGY_CLINICAL_HISTORY ",
+    );
+    expect(getTextMacros).toHaveBeenCalledWith(
+      "MICROBIOLOGY_CLINICAL_HISTORY",
+      expect.any(AbortSignal),
+    );
+    expect(
+      screen.getByLabelText(/Patient has recent antibiotic exposure/i),
+    ).toHaveAttribute("type", "checkbox");
+
+    await user.click(screen.getByRole("button", { name: "Save order detail" }));
+    await waitFor(() =>
+      expect(service.saveOrderDetail).toHaveBeenCalledWith(
+        "case-1",
+        expect.objectContaining({
+          clinicalHistory: expect.stringMatching(
+            expandedPhrase("MICROBIOLOGY_CLINICAL_HISTORY"),
+          ),
+        }),
+      ),
     );
   });
 

@@ -8,11 +8,15 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.resultrun.form.ResultRunChip;
 import org.openelisglobal.resultrun.form.ResultRunHeader;
 import org.openelisglobal.resultrun.form.ResultRunListResponse;
 import org.openelisglobal.resultrun.form.ResultRunRowsPage;
+import org.openelisglobal.resultrun.form.ResultRunSelection;
+import org.openelisglobal.resultrun.form.ResultRunSelectionSummary;
 import org.openelisglobal.resultrun.form.RunViewer;
 import org.openelisglobal.resultrun.form.WaitingRun;
+import org.openelisglobal.resultrun.service.ResultRunRowClassifier.ClassifiedRow;
 import org.openelisglobal.resultrun.valueholder.ResultRun;
 import org.openelisglobal.test.beanItems.TestResultItem;
 
@@ -34,16 +38,47 @@ public interface ResultRunService extends BaseObjectService<ResultRun, Long> {
     void addRows(Long runId, int count);
 
     /**
-     * A value of the run left staging (accepted, rejected or ignored). An analyzer
-     * run whose last value has left is complete (FR-E5).
+     * A value of the run left staging (accepted, rejected or ignored) by the given
+     * user. An analyzer run whose last value has left is complete (FR-E5), or
+     * superseded when every test it covers was retested and linked (FR-A3).
      */
-    void rowLeftStaging(Long runId);
+    void rowLeftStaging(Long runId, String sysUserId);
 
     ResultRunListResponse listActiveRuns(RunViewer viewer, String testSectionId);
 
     Optional<ResultRunHeader> getHeader(Long runId, RunViewer viewer);
 
-    Optional<ResultRunRowsPage> getRows(Long runId, RunViewer viewer, int page, int pageSize);
+    default Optional<ResultRunRowsPage> getRows(Long runId, RunViewer viewer, int page, int pageSize) {
+        return getRows(runId, viewer, ResultRunChip.ALL, page, pageSize);
+    }
+
+    /**
+     * One page of the run's rows the chip matches, in review order: exceptions and
+     * held rows first, then critical, abnormal and normal values (FR-E1a, FR-E12).
+     */
+    Optional<ResultRunRowsPage> getRows(Long runId, RunViewer viewer, ResultRunChip chip, int page, int pageSize);
+
+    /**
+     * What a bulk action on the selection would cover, from the run, the chip and
+     * the excluded rows, never from a list of every row (FR-E11, FR-E11a, FR-E12).
+     */
+    Optional<ResultRunSelectionSummary> summarizeSelection(Long runId, RunViewer viewer, ResultRunSelection selection);
+
+    /**
+     * Re-evaluates the run's QC holds and state once its values and controls are
+     * in: a message with no control for a test that requires one under a Hold
+     * policy holds that test at once (FR-C7).
+     */
+    void refreshQcState(Long runId, String sysUserId);
+
+    /** Whether the run exists and the viewer may see it. */
+    boolean canSee(Long runId, RunViewer viewer);
+
+    /**
+     * The run's waiting values the viewer may see, each with its flag, category and
+     * exception kind; empty when the viewer may not see the run.
+     */
+    Optional<List<ClassifiedRow>> classifiedRows(Long runId, RunViewer viewer);
 
     /** The message the run was opened from, as it was accepted. */
     Optional<String> getRawMessage(Long runId, RunViewer viewer);
@@ -56,14 +91,30 @@ public interface ResultRunService extends BaseObjectService<ResultRun, Long> {
 
     Optional<WaitingRun> findWaiting(String accessionNumber, String testId);
 
-    /** Names, on each pending worklist row, the run its analyzer value waits in. */
+    /**
+     * Names, on each pending worklist row, the run its analyzer value waits in: a
+     * value of that row's part, the main value counting as the primary part's.
+     */
     void markWaiting(List<TestResultItem> items);
 
     /**
-     * The run an analysis with no stored result has a value waiting in. Such an
-     * analysis is resulted from its run, not entered around it (FR-D3).
+     * The run a value of this analysis's component waits in while that component
+     * has no stored result. Such a component is resulted from its run, not entered
+     * around it (FR-D3). A missing component is the test's primary one.
      */
-    Optional<WaitingRun> waitingFor(Analysis analysis);
+    Optional<WaitingRun> waitingFor(Analysis analysis, String componentId);
+
+    /**
+     * The staged value a run row holds, when that row is still in an open or held
+     * run (a held run holds only the tests a failed control covers) and names this
+     * analysis's order, test and component, and is not a control, a duplicate or an
+     * import exception. Accepting it is a Results Entry save of this analysis
+     * (FR-E10, FR-E13).
+     */
+    Optional<AnalyzerResults> stagedValueFor(String runRowId, Analysis analysis, String componentId);
+
+    /** The run that holds a row, as the worklist names it (FR-D4). */
+    WaitingRun heldRun(Long runId, String testId);
 
     static String waitingKey(String accessionNumber, String testId) {
         return accessionNumber + "|" + testId;

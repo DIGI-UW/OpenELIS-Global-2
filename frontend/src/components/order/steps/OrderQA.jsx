@@ -346,7 +346,7 @@ const OrderQA = () => {
   if (isSubmitted) {
     return (
       <OrderWorkflowLayout
-        title={isClinical ? "order.step.sampleCheck" : "order.step.qa"}
+        title="order.step.sampleCheck"
         showSaveButtons={false}
       >
         <Tile className="qa-success-tile">

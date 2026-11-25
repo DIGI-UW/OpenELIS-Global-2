@@ -5,6 +5,7 @@ import java.util.List;
 import org.openelisglobal.microbiology.form.MicroAntibioticAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAdminForm;
 import org.openelisglobal.microbiology.form.MicroOrganismAdminForm;
+import org.openelisglobal.microbiology.form.MicroPanelCoverageForm;
 import org.openelisglobal.microbiology.form.MicroPatientOriginAdminForm;
 import org.openelisglobal.microbiology.form.MicroReferenceAdminPageForm;
 import org.openelisglobal.microbiology.form.MicroReferenceAdminQueryForm;
@@ -96,6 +97,14 @@ public class MicrobiologyReferenceAdminRestController extends MicrobiologyRestCo
     public ResponseEntity<MicroReferenceAdminPageForm<MicroAstPanelAdminForm>> getAstPanels(
             @ModelAttribute MicroReferenceAdminQueryForm query) {
         return ResponseEntity.ok(service.getAstPanels(query));
+    }
+
+    @GetMapping("/ast-panels/organism-coverage")
+    public ResponseEntity<List<MicroPanelCoverageForm>> getPanelOrganismCoverage(
+            @RequestParam(name = "antibioticId", required = false) List<String> antibioticIds,
+            @RequestParam(defaultValue = "GENERAL") String protocol) {
+        return ResponseEntity
+                .ok(service.getPanelOrganismCoverage(antibioticIds == null ? List.of() : antibioticIds, protocol));
     }
 
     @GetMapping("/ast-panels/{id}")

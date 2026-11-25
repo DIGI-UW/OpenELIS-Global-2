@@ -20,6 +20,7 @@ import org.junit.Test;
 import org.openelisglobal.AppTestConfig;
 import org.openelisglobal.BaseTestConfig;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.IsolatedDatabase;
 import org.openelisglobal.analyzer.service.AnalyzerMappingDefaults;
 import org.openelisglobal.analyzer.service.AnalyzerMappingDraft;
 import org.openelisglobal.analyzer.service.BridgeAnalyzerProfile;
@@ -42,6 +43,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 @ContextConfiguration(inheritLocations = false, classes = { AppTestConfig.class,
         HarnessDictionaryIntegrationTest.TestConfig.class })
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@IsolatedDatabase
 public class HarnessDictionaryIntegrationTest extends BaseWebContextSensitiveTest {
 
     private static final Path DICTIONARY = Path.of("projects", "analyzer-harness", "dictionary");

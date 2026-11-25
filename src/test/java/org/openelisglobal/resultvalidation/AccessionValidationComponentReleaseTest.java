@@ -24,6 +24,8 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.systemuser.service.SystemUserService;
@@ -177,6 +179,91 @@ public class AccessionValidationComponentReleaseTest extends BaseWebContextSensi
 
         assertNull("a changed value is validated again", resultService.get("100").getValidatedDate());
         assertEquals(List.of("100", "101"), queueResultIds());
+    }
+
+    /**
+     * OGC-1608: a required part with no result keeps the test open. Validating the
+     * part that has a value validates that part only; the test is released once the
+     * required part is resulted and validated.
+     */
+    @Test
+    public void aRequiredPartWithoutAResultHoldsTheTestOpenUntilItIsResulted() throws Exception {
+        jdbcTemplate.update("DELETE FROM clinlims.result WHERE id = 101");
+        jdbcTemplate.update("UPDATE clinlims.test_result_component SET is_required = true WHERE id = 'vcu-ct'");
+
+        mockMvc.perform(post("/rest/AccessionValidation/analysis/100/release").session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(row("100", "1010"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.outcome").value("accepted"));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertEquals("the test waits for its required Ct",
+                statusService.getStatusID(AnalysisStatus.TechnicalAcceptance),
+                analysisService.get("100").getStatusId());
+        assertNotNull(resultService.get("100").getValidatedDate());
+        assertEquals("nothing is left to validate until the Ct is entered", List.of(), queueResultIds());
+
+        jdbcTemplate.update("INSERT INTO clinlims.result (id, analysis_id, test_result_id, result_type, value,"
+                + " is_reportable, lastupdated) VALUES (101, 100, 2, 'N', '33.0', 'Y', NOW())");
+        mockMvc.perform(post("/rest/AccessionValidation/analysis/100/release").session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(row("101", "33.0"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.outcome").value("released"));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertEquals(statusService.getStatusID(AnalysisStatus.Finalized), analysisService.get("100").getStatusId());
+    }
+
+    /**
+     * OGC-1608: an optional part with no result does not hold the test open; the
+     * test is released with the parts that have a result.
+     */
+    @Test
+    public void anOptionalPartWithoutAResultDoesNotHoldTheTestOpen() throws Exception {
+        jdbcTemplate.update("DELETE FROM clinlims.result WHERE id = 101");
+        jdbcTemplate.update("UPDATE clinlims.test_result_component SET is_required = false WHERE id = 'vcu-ct'");
+
+        mockMvc.perform(post("/rest/AccessionValidation/analysis/100/release").session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(row("100", "1010"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.outcome").value("released"));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertEquals(statusService.getStatusID(AnalysisStatus.Finalized), analysisService.get("100").getStatusId());
+    }
+
+    /**
+     * OGC-1608: Release all clear validates the clear part of a test that a
+     * required part without a result holds open, and reports that test as accepted,
+     * not released.
+     */
+    @Test
+    public void releasingAllClearReportsATestHeldOpenByARequiredPartAsAccepted() throws Exception {
+        jdbcTemplate.update("DELETE FROM clinlims.result WHERE id = 101");
+        jdbcTemplate.update("UPDATE clinlims.test_result_component SET is_required = true WHERE id = 'vcu-ct'");
+        jdbcTemplate.update("INSERT INTO clinlims.result_limits (id, test_id, test_result_type_id, min_age, max_age,"
+                + " low_normal, high_normal, low_valid, high_valid, low_reporting_range, high_reporting_range,"
+                + " always_validate, component_id, lastupdated) VALUES (9481, 1, (SELECT id FROM"
+                + " clinlims.type_of_test_result WHERE test_result_type = 'N' LIMIT 1), 0, 'Infinity', 0, 5000,"
+                + " '-Infinity', 'Infinity', '-Infinity', 'Infinity', false, 'vcu-load', NOW())");
+        String bulkFlag = ConfigurationProperties.getInstance().getPropertyValue(Property.ALLOW_BULK_RELEASE_CLEAR);
+        ConfigurationProperties.getInstance().setPropertyValue(Property.ALLOW_BULK_RELEASE_CLEAR, "true");
+        try {
+            mockMvc.perform(post("/rest/AccessionValidation/release-clear").session(session)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"accessionNumber\":\"" + ACCESSION + "\",\"doRange\":false,\"rows\":[{\"analysisId\":"
+                            + "\"100\",\"accessionNumber\":\"" + ACCESSION + "\",\"noteContext\":\"VALIDATION\"}]}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.released.length()").value(0))
+                    .andExpect(jsonPath("$.accepted[0]").value("100"));
+        } finally {
+            ConfigurationProperties.getInstance().setPropertyValue(Property.ALLOW_BULK_RELEASE_CLEAR, bulkFlag);
+        }
+        entityManager.flush();
+        entityManager.clear();
+
+        assertEquals(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance),
+                analysisService.get("100").getStatusId());
+        assertNotNull(resultService.get("100").getValidatedDate());
     }
 
     /** The rows the Validation page is served for the accession. */

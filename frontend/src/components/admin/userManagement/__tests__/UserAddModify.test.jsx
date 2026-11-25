@@ -5,7 +5,11 @@ import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter, Route } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  loadMessagesForLocale,
+  resolveMessagesForLocale,
+} from "../../../../languages";
 import messages from "../../../../languages/en.json";
 import {
   getFromOpenElisServer,
@@ -75,14 +79,22 @@ const user = (loginName, selectedTestSectionLabUnits = {}) => ({
 
 const rowSelect = (key) => document.getElementById(`select-${key}`);
 
+const REGIONAL_ENGLISH = ["en", "en-US", "en-GB", "en-PG", "en-LK"];
+
 describe("UserAddModify", () => {
+  // Each regional bundle is a separate chunk the app downloads on demand.
+  beforeAll(() => Promise.all(REGIONAL_ENGLISH.map(loadMessagesForLocale)));
+
   let assign;
   let addNotification;
 
-  const renderAt = (path, client = createQueryClient()) =>
+  const renderAt = (path, client = createQueryClient(), locale = "en") =>
     render(
       <MemoryRouter initialEntries={[path]}>
-        <IntlProvider locale="en" messages={messages}>
+        <IntlProvider
+          locale={locale}
+          messages={resolveMessagesForLocale(locale).messages}
+        >
           <QueryClientProvider client={client}>
             <ConfigurationContext.Provider
               value={{
@@ -139,6 +151,32 @@ describe("UserAddModify", () => {
       value: { ...window.location, reload: vi.fn(), assign },
     });
   });
+
+  it.each(REGIONAL_ENGLISH)(
+    "explains unfiltered CSV access in %s without stale administrator-only guidance",
+    async (locale) => {
+      renderAt("/MasterListsPage/userEdit", createQueryClient(), locale);
+      // Expected text comes from the locale's own bundle so Transifex wording
+      // changes don't break the test; what matters is that the current key is
+      // rendered rather than a stale one. The instructions are sibling text
+      // nodes separated by <br>s, so match on content rather than an element.
+      const expected =
+        resolveMessagesForLocale(locale).messages[
+          "systemuserrole.instruction.labUnitRoles"
+        ];
+      expect(expected).toBeTruthy();
+      await waitFor(() =>
+        expect(document.body).toHaveTextContent(expected, {
+          normalizeWhitespace: true,
+        }),
+      );
+      expect(
+        screen.queryByText(
+          /CSV export only Availbale for Global Administrators/,
+        ),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it("goes back to the user list without leaving the app", async () => {
     renderAt("/MasterListsPage/userManagement/5");

@@ -10,6 +10,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
@@ -39,6 +40,7 @@ import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.eqa.service.EQACycleSubmissionService;
 import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.microbiology.service.MicroCaseLockedException;
 import org.openelisglobal.notifications.dao.NotificationDAO;
 import org.openelisglobal.notifications.entity.Notification;
 import org.openelisglobal.patient.service.PatientService;
@@ -61,6 +63,7 @@ import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultEntryAcknowledgement;
 import org.openelisglobal.resultrun.form.WaitingRun;
 import org.openelisglobal.resultrun.service.ResultRunService;
+import org.openelisglobal.resultrun.service.RunQcService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -141,6 +144,8 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
     private AnalysisService analysisService;
     @Autowired
     private ResultRunService resultRunService;
+    @Autowired
+    private RunQcService runQcService;
     @Autowired
     private AnalysisAnchorService analysisAnchorService;
     @Autowired
@@ -516,14 +521,25 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         rejectEqaRowsMissingAnalyst(tests);
 
         for (TestResultItem modified : actionDataSet.getModifiedItems()) {
-            Optional<WaitingRun> waiting = resultRunService.waitingFor(analysisService.get(modified.getAnalysisId()));
+            Optional<WaitingRun> waiting = resultRunService.waitingFor(analysisService.get(modified.getAnalysisId()),
+                    modified.getTestResultComponentId());
             if (waiting.isPresent()) {
                 Map<String, Object> refusal = new HashMap<>();
                 refusal.put("error",
-                        MessageUtil.getMessage("run.refusal.waiting", new String[] { waiting.get().label() }));
+                        MessageUtil.getMessage(waiting.get().refusalKey(), new String[] { waiting.get().label() }));
                 refusal.put("waitingRun", waiting.get());
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(refusal);
             }
+        }
+
+        Map<String, Long> holding = runQcService.entryHoldingRuns(actionDataSet.getModifiedItems().stream()
+                .map(TestResultItem::getAnalysisId).filter(Objects::nonNull).toList());
+        if (!holding.isEmpty()) {
+            Map<String, Object> refusal = new HashMap<>();
+            WaitingRun held = resultRunService.heldRun(holding.values().iterator().next(), null);
+            refusal.put("error", MessageUtil.getMessage(held.refusalKey(), new String[] { held.label() }));
+            refusal.put("waitingRun", held);
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(refusal);
         }
 
         List<ResultEntryAlert> alerts = acknowledgementService.alertsForItems(actionDataSet.getModifiedItems());
@@ -540,6 +556,10 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         ResultUtil.createResultsFromItems(actionDataSet, supportReferrals, alwaysValidate, useTechnicianName,
                 statusRuleSet, request);
         ResultUtil.createAnalysisOnlyUpdates(actionDataSet, request);
+        ResultUtil.holdOpenWhileRequiredComponentsBlank(actionDataSet);
+        runQcService.detachFromDecidedRuns(java.util.stream.Stream
+                .concat(actionDataSet.getNewResults().stream(), actionDataSet.getModifiedResults().stream())
+                .map(resultSet -> resultSet.result).toList());
 
         try {
             List<Analysis> reflexAnalysises = logbookPersistService.persistDataSet(actionDataSet, updaters,
@@ -606,7 +626,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                                 + String.join(", ", calcAccessions));
             }
             // OGC-763: evaluate per-test alert rules on the newly entered results and
-            // dispatch matches to the header bell + SMS/Email senders.
+            // dispatch matches to the header bell.
             if (testAlertEvaluationService != null) {
                 // An edited value is as alertable as a first one - a result
                 // corrected into the critical range has to raise the alert the
@@ -643,6 +663,9 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             failure.put("error", MessageUtil.getMessage(errorMsg));
             return ResponseEntity.status(e.getCause() instanceof StaleObjectStateException ? HttpStatus.CONFLICT
                     : HttpStatus.INTERNAL_SERVER_ERROR).body(failure);
+        } catch (MicroCaseLockedException e) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(Map.of("error", MessageUtil.getMessage("result.refusal." + e.getMessage())));
         }
 
         for (IResultUpdate updater : updaters) {

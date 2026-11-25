@@ -9,12 +9,14 @@ import liquibase.database.*;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.Test;
+import org.openelisglobal.IsolatedDatabase;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.MountableFile;
 
 /**
  * Upgrade preserves old selections; rollback refuses to erase clinical history.
  */
+@IsolatedDatabase
 public class MicroAstReportingLiquibaseRollbackTest {
     @Test
     public void upgradeBackfillsSelectedReadingsAndRollbackPreservesHistory() throws Exception {

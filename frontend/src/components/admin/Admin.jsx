@@ -51,6 +51,7 @@ import SearchIndexManagement from "./searchIndexManagement/SearchIndexManagement
 import LoggingManagement from "./loggingManagement/LoggingManagement";
 import TestManagementConfigMenu from "./testManagementConfigMenu/TestManagementConfigMenu";
 import SampleTypeEditor from "./sampleTypeManagement/SampleTypeManagement.jsx";
+import ContainerTypes from "./containerTypes/ContainerTypes.jsx";
 import LabUnitManagement from "./labUnitManagement/LabUnitManagement.jsx";
 import ComplianceStandardsAdmin from "./complianceStandards/ComplianceStandardsAdmin";
 import {
@@ -66,12 +67,14 @@ import AdminDashboard from "./AdminDashboard";
 import ModulesAdminPage from "../../modules/ModulesAdminPage";
 import StuckAnalyzerEvents from "./StuckAnalyzerEvents";
 import MicrobiologyReferenceAdmin from "./microbiologyReference/MicrobiologyReferenceAdmin";
+import MacroLibraryPage from "./textMacro/MacroLibraryPage";
 
 function Admin() {
   const { path } = useRouteMatch();
 
   return (
     <Switch>
+      <Route path={`${path}/MacroLibrary`} component={MacroLibraryPage} />
       <Route
         path={`${path}/MicrobiologyReference/:section/:detailId?`}
         component={MicrobiologyReferenceAdmin}
@@ -217,6 +220,7 @@ function Admin() {
         path={`${path}/SampleTypeEditor/:sampleTypeId?/:section?`}
         component={SampleTypeEditor}
       />
+      <Route path={`${path}/ContainerTypes`} component={ContainerTypes} />
       <Route
         path={[
           `${path}/TestSectionManagement`,

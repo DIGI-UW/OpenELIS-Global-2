@@ -8,6 +8,7 @@ import {
 import {
   createMicrobiologyIsolate,
   identifyMicrobiologyIsolate,
+  expectMicrobiologyCaseScopeOpen,
   openMicrobiologyCaseSection,
 } from "../../../helpers/microbiology-ui";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
@@ -74,9 +75,7 @@ test("keeps two laboratory units through case, bench and AST navigation and relo
   await table
     .getByRole("button", { name: first.accessionNumber, exact: true })
     .click();
-  await expect(page.getByLabel("Testing section", { exact: true })).toHaveValue(
-    "CULTURE",
-  );
+  await expectMicrobiologyCaseScopeOpen(page, "CULTURE");
   await page
     .getByTestId("microbiology-case-view")
     .getByRole("link", { name: "Microbiology worklist", exact: true })

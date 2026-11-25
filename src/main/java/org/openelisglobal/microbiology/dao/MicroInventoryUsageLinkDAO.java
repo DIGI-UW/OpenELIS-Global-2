@@ -7,4 +7,6 @@ import org.openelisglobal.microbiology.valueholder.MicroInventoryUsageLink;
 public interface MicroInventoryUsageLinkDAO extends BaseDAO<MicroInventoryUsageLink, String> {
 
     List<MicroInventoryUsageLink> getByCaseId(String caseId);
+
+    List<Long> getAstRunLotIds(String runId);
 }

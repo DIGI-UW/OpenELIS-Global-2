@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <micro_whonet_antibiotic />
+    <micro_antibiotic id="lab-kanamycin"
+        display_name="Kanamycin" whonet_code="KAN1" notes="Lab note"
+        reference_source="AMR" reference_code="KAN1" is_active="Y"
+        seeded="false" resistance_role="NONE"
+        lastupdated="2026-01-01 00:00:00" last_updated="2026-01-01 00:00:00" />
+</dataset>

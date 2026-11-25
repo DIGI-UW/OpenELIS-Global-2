@@ -19,6 +19,98 @@ def github_script(job):
 
 
 class PublicationWorkflowTest(unittest.TestCase):
+    def test_remote_workspace_is_validated_and_cleanup_survives_deployment_failure(self):
+        workflow = yaml.safe_load((ROOT / ".github/workflows/publish-images.yml").read_text())
+        steps = {step.get("name"): step for step in workflow["jobs"]["deploy-testing"]["steps"]}
+        deploy = steps["Deploy published images and require readiness"]["run"]
+        collect = steps["Collect deployment diagnostics"]["run"]
+        cleanup = steps["Remove the deployment working directory"]
+        self.assertEqual("always()", cleanup["if"])
+        fake = '''#!/usr/bin/env python3
+import json, os, sys
+from pathlib import Path
+with Path(os.environ['CALL_LOG']).open('a') as log:
+    log.write(json.dumps([Path(sys.argv[0]).name, *sys.argv[1:]]) + '\\n')
+if Path(sys.argv[0]).name == 'ssh':
+    if 'mktemp' in sys.argv[-1]:
+        print(os.environ['ALLOCATED_PATH'])
+    elif sys.argv[-1].startswith('python3 '):
+        sys.exit(int(os.environ['DEPLOY_EXIT']))
+'''
+        for path, exit_code in [("/tmp/openelis-deploy.Abc123Def4", "0"),
+                                ("/tmp/openelis-deploy.Abc123Def4", "1"),
+                                ("/tmp/openelis-deploy.bad;touch /tmp/other", "0")]:
+            with self.subTest(path=path, exit_code=exit_code), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                key = root / "id_deploy"
+                key.touch()
+                for name in ("ssh", "scp"):
+                    executable = root / name
+                    executable.write_text(fake)
+                    executable.chmod(0o755)
+                env_file = root / "github-env"
+                log = root / "calls.jsonl"
+                env = {**os.environ, "PATH": str(root) + os.pathsep + os.environ["PATH"],
+                       "GITHUB_ENV": str(env_file), "CALL_LOG": str(log), "ALLOCATED_PATH": path,
+                       "DEPLOY_EXIT": exit_code, "DEPLOY_PORT": "22", "DEPLOY_USER": "ubuntu",
+                       "DEPLOY_HOST": "test.example.org"}
+                def execute(script):
+                    return subprocess.run(["bash", "-c", script.replace("~/.ssh/id_deploy", str(key))],
+                                          cwd=root, env=env, capture_output=True, text=True)
+                result = execute(deploy)
+                calls = [json.loads(line) for line in log.read_text().splitlines()]
+                if ";" in path:
+                    self.assertNotEqual(0, result.returncode)
+                    self.assertEqual(1, len(calls), "unsafe allocator output must never reach scp or execution")
+                    self.assertFalse(env_file.exists())
+                    env["REMOTE_RUN"] = path
+                    self.assertEqual(0, execute(cleanup["run"]).returncode)
+                    self.assertEqual(calls, [json.loads(line) for line in log.read_text().splitlines()])
+                else:
+                    self.assertEqual(int(exit_code), result.returncode, result.stderr)
+                    self.assertEqual("REMOTE_RUN=" + path + "\n", env_file.read_text())
+                    self.assertIn("umask 077; mktemp -d", calls[0][-1])
+                    env["REMOTE_RUN"] = path
+                    self.assertEqual(0, execute(collect).returncode)
+                    self.assertEqual(0, execute(cleanup["run"]).returncode)
+                    calls = [json.loads(line) for line in log.read_text().splitlines()]
+                    self.assertIn(path + "/diagnostics/.", " ".join(calls[-2]))
+                    self.assertEqual("rm -rf -- '" + path + "'", calls[-1][-1])
+
+    def test_release_image_publish_rejects_replacement_and_registry_errors(self):
+        workflow = yaml.safe_load((ROOT / ".github/workflows/publish-images.yml").read_text())
+        script = next(step["run"] for step in workflow["jobs"]["publish-images"]["steps"]
+                      if step.get("name") == "Retag and publish tested image to DockerHub")
+        script = script.replace("${{ steps.source.outputs.ghcr_source }}", "source")
+        script = script.replace("${{ steps.tags.outputs.tags }}", "target")
+        fake = """#!/usr/bin/env python3
+import os, sys
+from pathlib import Path
+args = sys.argv[1:]
+mode = os.environ['REGISTRY_MODE']
+if args[:2] == ['manifest', 'inspect']:
+    if mode in ('missing','unavailable'):
+        print('manifest unknown' if mode == 'missing' else 'registry connection refused', file=sys.stderr)
+        sys.exit(1)
+elif args[:2] == ['image', 'inspect']:
+    print('changed' if mode == 'changed' and args[-1] == 'target' else 'original')
+elif args[0] == 'push':
+    Path(os.environ['PUSH_RECORD']).write_text('pushed')
+"""
+        for mode, success, pushed in [('missing', True, True), ('identical', True, False),
+                                      ('changed', False, False), ('unavailable', False, False)]:
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                (root / 'docker').write_text(fake)
+                (root / 'docker').chmod(0o755)
+                record = root / 'pushed'
+                env = {**os.environ, 'PATH': str(root) + os.pathsep + os.environ['PATH'],
+                       'EVENT_NAME': 'release', 'SOURCE_IMAGE': 'source', 'RUNNER_TEMP': directory,
+                       'REGISTRY_MODE': mode, 'PUSH_RECORD': str(record)}
+                result = subprocess.run(['bash', '-ec', script], env=env, text=True, capture_output=True, timeout=15)
+                self.assertEqual(success, result.returncode == 0, result.stderr)
+                self.assertEqual(pushed, record.exists())
+
     def test_request_builder_passes_configured_namespace_and_rejects_invalid_input(self):
         workflow = yaml.load((ROOT / ".github/workflows/publish-images.yml").read_text(), Loader=yaml.BaseLoader)
         step = next(step for step in workflow["jobs"]["deploy-testing"]["steps"]
@@ -26,7 +118,8 @@ class PublicationWorkflowTest(unittest.TestCase):
         images = {service: "test-org/openelis-global-2" + suffix + "@sha256:" + "b" * 64
                   for service, suffix in [("oe.openelis.org", ""), ("db.openelis.org", "-database"),
                                           ("fhir.openelis.org", "-fhir"), ("frontend.openelis.org", "-frontend"),
-                                          ("proxy", "-proxy"), ("openelis-analyzer-bridge", "-analyzer-bridge"),
+                                          ("proxy", "-proxy"), ("certs", "-certs"),
+                                          ("openelis-analyzer-bridge", "-analyzer-bridge"),
                                           ("astm-simulator", "-analyzer-mock")]}
         env = {**os.environ, "DEPLOY_HOST": "testing.example.org", "DEPLOY_USER": "ubuntu", "DEPLOY_PORT": "22",
                "DOCKERHUB_NAMESPACE": "test-org", "SITE_PATH": "/srv/openelis-testing", "GITHUB_RUN_ID": "123",
@@ -60,14 +153,33 @@ class PublicationWorkflowTest(unittest.TestCase):
                                     "External workflow inputs must not prevent publication from loading")
 
     def test_publication_takes_no_runner_for_builds_it_cannot_publish(self):
-        # A pull request build has nothing to publish, and a cancelled build
-        # never gets its E2E checkpoint. Both are decided in job conditions, so
-        # no runner is taken; a regression here would queue two jobs per pull
-        # request build again.
+        # Evaluate the actual job condition: only explicitly allowed publication
+        # events may allocate a runner. The E2E wait still excludes cancellation.
         workflow = yaml.load((ROOT / ".github/workflows/publish-images.yml").read_text(), Loader=yaml.BaseLoader)
         jobs = workflow["jobs"]
-        self.assertIn("github.event.workflow_run.event != 'pull_request'", jobs["setup"]["if"])
-        self.assertIn("github.event_name == 'workflow_dispatch'", jobs["setup"]["if"])
+        harness = """
+const fs = require('node:fs');
+const vm = require('node:vm');
+const input = JSON.parse(fs.readFileSync(0, 'utf8'));
+console.log(JSON.stringify(Boolean(vm.runInNewContext(input.condition, {github:input.github}, {timeout:1000}))));
+"""
+        for repository, trigger, event, conclusion, allowed in [
+            ("DIGI-UW/OpenELIS-Global-2", "workflow_dispatch", "", "", True),
+            ("DIGI-UW/OpenELIS-Global-2", "workflow_run", "push", "success", True),
+            ("DIGI-UW/OpenELIS-Global-2", "workflow_run", "release", "success", True),
+            ("DIGI-UW/OpenELIS-Global-2", "workflow_run", "pull_request", "success", False),
+            ("DIGI-UW/OpenELIS-Global-2", "workflow_run", "pull_request_target", "success", False),
+            ("DIGI-UW/OpenELIS-Global-2", "workflow_run", "schedule", "success", False),
+            ("DIGI-UW/OpenELIS-Global-2", "workflow_run", "push", "in_progress", False),
+            ("other/fork", "workflow_dispatch", "", "", False),
+        ]:
+            with self.subTest(repository=repository, trigger=trigger, event=event, conclusion=conclusion):
+                github = {"repository": repository, "event_name": trigger,
+                          "event": {"workflow_run": {"event": event, "conclusion": conclusion}}}
+                result = subprocess.run([os.environ.get("NODE_BINARY", "node"), "-e", harness],
+                                        input=json.dumps({"condition": jobs["setup"]["if"], "github": github}),
+                                        capture_output=True, text=True, check=True, timeout=10)
+                self.assertEqual(allowed, json.loads(result.stdout))
         self.assertIn("github.event.workflow_run.conclusion != 'cancelled'", jobs["wait-for-e2e-checkpoint"]["if"])
         self.assertIn("needs.setup.result != 'skipped'", jobs["deployment-summary"]["if"])
 

@@ -9,12 +9,14 @@ import liquibase.database.*;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.Test;
+import org.openelisglobal.IsolatedDatabase;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.MountableFile;
 
 /**
  * Real upgrade and rollback against retained isolate identification history.
  */
+@IsolatedDatabase
 public class MicroIsolateLiquibaseRollbackTest {
     @Test
     public void preservesHistoricIsolatesAndIdentificationWhileReversingM5() throws Exception {

@@ -1576,7 +1576,7 @@ for (const viewport of [
     expect(returned.map((row) => row.slice(4))).toEqual([
       [
         "Synthetic Reference Lab",
-        "Viral Load",
+        "Viral Load(Whole Blood)",
         "2026-05-07",
         "450",
         "2026-05-08",
@@ -1584,7 +1584,7 @@ for (const viewport of [
       ],
       [
         "Synthetic Reference Lab",
-        "Viral Load",
+        "Viral Load(Whole Blood)",
         "2026-05-07",
         "450",
         "2026-05-09",
@@ -1596,7 +1596,7 @@ for (const viewport of [
       "",
       "",
       "Synthetic Reference Lab",
-      "Viral Load",
+      "Viral Load(Whole Blood)",
       "2026-05-07",
       "",
       "",

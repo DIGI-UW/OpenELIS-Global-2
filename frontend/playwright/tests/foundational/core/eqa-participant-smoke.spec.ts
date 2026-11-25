@@ -171,18 +171,17 @@ test.describe.serial("EQA participant lane", () => {
       });
 
       await test.step("the laboratory enters its results", async () => {
-        // Entry is within a bench user's rights. Validation is not — it
-        // answers 401 for this session — so the analyses stay unfinalised
-        // here and the entry tag reads as in progress rather than entered.
+        // A bench user can't validate (401), so the results stay awaiting
+        // validation, which counts as entered.
         await enterResults(page, accession);
         await page.reload({ timeout: NAV_TIMEOUT });
         await expect(row()).toBeVisible({ timeout: UI_TIMEOUT });
-        await expect(row().getByText("0 / 1")).toBeVisible();
+        await expect(row().getByText("1 / 1")).toBeVisible();
         await row().click();
         await expect(
           page
             .getByTestId(`cycle-expanded-${seed.cycleId}`)
-            .getByText("In progress", { exact: true }),
+            .getByText("Entered", { exact: true }),
         ).toBeVisible();
       });
     });
@@ -198,13 +197,13 @@ test.describe.serial("EQA participant lane", () => {
     // handoff is real either way, so this phase runs as someone who holds
     // both. Asserting the refusals instead would pin today's behaviour in
     // place.
-    test("validation flips the progress and the review gate submits", async ({
+    test("validation marks the sample validated and the review gate submits", async ({
       page,
     }) => {
       test.setTimeout(180_000);
       const row = () => page.getByTestId(`cycle-row-${seed.cycleId}`);
 
-      await test.step("validated results show as live progress", async () => {
+      await test.step("validated results show as validated", async () => {
         // Load a page first: the REST helpers read the session token from the
         // app's own storage, which a blank tab does not have.
         await page.goto("/qa/eqa/my-cycles", { timeout: NAV_TIMEOUT });
@@ -216,7 +215,7 @@ test.describe.serial("EQA participant lane", () => {
         await expect(
           page
             .getByTestId(`cycle-expanded-${seed.cycleId}`)
-            .getByText("Entered", { exact: true }),
+            .getByTitle("Validated", { exact: true }),
         ).toBeVisible();
       });
 

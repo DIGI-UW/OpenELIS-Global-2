@@ -178,6 +178,61 @@ public class TestMethodServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(null, displayList);
     }
 
+    /**
+     * OGC-1614: a result's Method list offers the test's linked methods that are
+     * still active, A to Z.
+     */
+    @Test
+    public void getMethodDisplayListForTest_shouldLeaveOutInactiveMethodsAndSortByName() {
+        jdbcTemplate.update("UPDATE clinlims.test_method SET is_active = 'Y' WHERE id = '1002'");
+        jdbcTemplate.update("UPDATE clinlims.method SET is_active = 'N' WHERE id = 200");
+
+        List<IdValuePair> displayList = testMethodService.getMethodDisplayListForTest("10");
+
+        assertEquals(java.util.List.of("Culture", "Microscopy"),
+                displayList.stream().map(IdValuePair::getValue).toList());
+    }
+
+    /**
+     * OGC-1614: a test with no linked method offers every active method, A to Z.
+     */
+    @Test
+    public void getMethodChoicesForTest_shouldOfferEveryActiveMethodByNameWhenNoneIsLinked() {
+        jdbcTemplate.update("UPDATE clinlims.method SET is_active = 'N' WHERE id = 200");
+
+        List<IdValuePair> choices = testMethodService.getMethodChoicesForTest("999");
+
+        List<String> names = choices.stream().map(IdValuePair::getValue).toList();
+        assertEquals(names.stream().sorted(String.CASE_INSENSITIVE_ORDER).toList(), names);
+        assertEquals(false, choices.stream().anyMatch(pair -> "200".equals(pair.getId())));
+        assertEquals(true, names.contains("Microscopy"));
+    }
+
+    /**
+     * OGC-1614: a test whose only linked method was deactivated offers every active
+     * method and names no default.
+     */
+    @Test
+    public void aTestWhoseLinkedMethodsAreAllInactiveFallsBackWithNoDefault() {
+        jdbcTemplate.update("UPDATE clinlims.method SET is_active = 'N' WHERE id = 200");
+
+        assertEquals(null, testMethodService.getMethodDisplayListForTest("20"));
+        assertEquals(null, testMethodService.getDefaultMethodId("20"));
+        assertEquals(true, testMethodService.getMethodChoicesForTest("20").stream()
+                .anyMatch(pair -> "Microscopy".equals(pair.getValue())));
+    }
+
+    /**
+     * OGC-1614: a default method that was deactivated is not offered as the
+     * default.
+     */
+    @Test
+    public void getDefaultMethodId_shouldNotNameAnInactiveMethod() {
+        jdbcTemplate.update("UPDATE clinlims.method SET is_active = 'N' WHERE id = 100");
+
+        assertEquals(null, testMethodService.getDefaultMethodId("10"));
+    }
+
     @Test
     public void getLinkedMethodDtos_shouldReturnDtoListWithDetails() {
         List<TestMethodDto> dtos = testMethodService.getLinkedMethodDtos("10");

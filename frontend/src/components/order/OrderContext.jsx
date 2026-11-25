@@ -9,20 +9,23 @@ import React, {
 } from "react";
 import { newClientKey, withClientKeys } from "./saveKeys";
 import { useLocation } from "react-router-dom";
+import { FormattedMessage } from "react-intl";
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
   putToOpenElisServer,
 } from "../utils/Utils";
+import { NotificationKinds } from "../common/CustomNotification";
 import {
   toRequestedSampleTypes,
   getRequestsBySample,
   mergeCollectedAndPendingSamples,
 } from "./api/sampleTypeRequestApi";
 import { createSampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
-import { ConfigurationContext } from "../layout/Layout";
+import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { getEnforcement } from "./api/sampleAcceptanceApi";
+import { uploadOrderAttachments } from "./api/orderAttachmentsApi";
 import {
   buildLoadedOrderData,
   buildSubmissionSampleOrderItems,
@@ -33,6 +36,7 @@ import {
   normalizeDateForState,
   todayLocalIso,
 } from "./dateUtils";
+import { restoreRemovedTests } from "./cancelReasons";
 
 /**
  * OrderContext - Shared state for the decoupled sample collection workflow.
@@ -113,6 +117,8 @@ export const OrderContext = createContext({
   // Actions
   loadOrder: () => {},
   saveOrder: () => {},
+  cancelReasonAsked: false,
+  answerCancelReason: () => {},
   setCurrentStep: () => {},
   setOrderData: () => {},
   seedOrderData: () => {},
@@ -267,12 +273,37 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
   const dateLocale = configurationProperties.DEFAULT_DATE_LOCALE || "en-US";
   const location = useLocation();
   const { userSessionDetails } = useContext(UserSessionDetailsContext) || {};
+  const { addNotification, setNotificationVisible } =
+    useContext(NotificationContext) || {};
   const signedIn = userSessionDetails
     ? userSessionDetails.authenticated === true
     : true;
 
   const [orderId, setOrderId] = useState(null);
   const [labNumber, setLabNumber] = useState(null);
+  const [stagedAttachments, setStagedAttachments] = useState([]);
+  const [attachmentsVersion, setAttachmentsVersion] = useState(0);
+
+  // Attachments are keyed by lab number, so files chosen on a new order wait
+  // here, outside the step, until a save gives the order an id.
+  useEffect(() => {
+    if (!orderId || !labNumber || stagedAttachments.length === 0) {
+      return;
+    }
+    setStagedAttachments([]);
+    uploadOrderAttachments(labNumber, stagedAttachments, (status) => {
+      setAttachmentsVersion((version) => version + 1);
+      if (status >= 200 && status < 300) {
+        return;
+      }
+      addNotification?.({
+        kind: NotificationKinds.warning,
+        title: <FormattedMessage id="notification.title" />,
+        message: <FormattedMessage id="order.attachment.staged.uploadFailed" />,
+      });
+      setNotificationVisible?.(true);
+    });
+  }, [orderId, labNumber, stagedAttachments]);
   const [orderData, setOrderDataState] = useState(() =>
     getInitialOrderData(workflowType),
   );
@@ -381,6 +412,11 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
   const lastSavedDataRef = useRef(null);
   const orderKeyRef = useRef(newClientKey());
   const inFlightSaveRef = useRef(null);
+  const cancelReasonRef = useRef(null);
+  const cancelReasonAnswerRef = useRef(null);
+  const [cancelReasonAsked, setCancelReasonAsked] = useState(false);
+  const saveOrderRef = useRef(null);
+  const saveOrderEntryRef = useRef(null);
 
   // Mirror of orderData read by loadOrder (which is memoised with []
   // deps) so it can preserve the reference-data lists ( sampleTypes,
@@ -450,16 +486,16 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     async (searchLabNumber, readOnly = true) => {
       setIsLoading(true);
       setError(null);
+      setStagedAttachments([]);
 
       return new Promise((resolve, reject) => {
         getFromOpenElisServer(
           `/rest/order/search?labNumber=${encodeURIComponent(searchLabNumber)}`,
           (response) => {
-            setIsLoading(false);
-
             if (response && response.labNumber) {
               setOrderId(response.id);
               setLabNumber(response.labNumber);
+              setIsLoading(false);
 
               const loadedOrderData = buildLoadedOrderData(
                 response,
@@ -540,6 +576,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
                 resolve(response);
               }
             } else {
+              setIsLoading(false);
               const errorMsg = "Order not found";
               setError(errorMsg);
               reject(new Error(errorMsg));
@@ -680,7 +717,11 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
             envFields.vecCollectionSiteId ||
             "";
 
-          sampleXmlString += `<sample sampleID='${sampleIndex}' typeId='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' sampleTypeRequestId='${xmlAttribute(sampleItem.sampleTypeRequestId || "")}' cultureSetNumber='${xmlAttribute(sampleItem.cultureSetNumber ?? "")}' bodySite='${xmlAttribute(sampleItem.bodySite || "")}' clientKey='${sampleItem.clientKey || ""}' date='${collectionDate}' time='${collectionTime}' collector='${xmlAttribute(collector)}' collectionConditions='${xmlAttribute(collectionConditions)}' collectionMethod='${xmlAttribute(collectionMethod)}' sampleTemperature='${xmlAttribute(sampleTemperature)}' specimenOrigin='${xmlAttribute(specimenOrigin)}' quantity='${xmlAttribute(quantity)}' uom='${xmlAttribute(uom)}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${xmlAttribute(rejectReasonId)}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' storageNotes='${storageNotes}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${xmlAttribute(gpsCaptureMethod)}' container='${xmlAttribute(container)}' locationDetails='${xmlAttribute(locationDetails)}' labPerformedSampling='${labPerformedSampling}' receivedById='${xmlAttribute(sampleItem.receivedById || "")}' arrivalCondition='${xmlAttribute(sampleItem.arrivalCondition || "")}' arrivalTemperature='${xmlAttribute(sampleItem.arrivalTemperature ?? "")}' collectionLocationId='${collectionLocationId}' qcType='${qcType}' qcParentSampleIndex='${qcParentSampleIndex}' qcExpectedValue='${xmlAttribute(qcExpectedValue)}'/>`;
+          const containerTypeAttribute =
+            sampleItem.containerTypeId === undefined
+              ? ""
+              : ` containerTypeId='${xmlAttribute(sampleItem.containerTypeId ?? "")}'`;
+          sampleXmlString += `<sample sampleID='${sampleIndex}' typeId='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' sampleTypeRequestId='${xmlAttribute(sampleItem.sampleTypeRequestId || "")}' cultureSetNumber='${xmlAttribute(sampleItem.cultureSetNumber ?? "")}' bodySite='${xmlAttribute(sampleItem.bodySite || "")}' clientKey='${sampleItem.clientKey || ""}' date='${collectionDate}' time='${collectionTime}' collector='${xmlAttribute(collector)}' collectionConditions='${xmlAttribute(collectionConditions)}' collectionMethod='${xmlAttribute(collectionMethod)}' sampleTemperature='${xmlAttribute(sampleTemperature)}' specimenOrigin='${xmlAttribute(specimenOrigin)}' quantity='${xmlAttribute(quantity)}' uom='${xmlAttribute(uom)}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${xmlAttribute(rejectReasonId)}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' storageNotes='${storageNotes}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${xmlAttribute(gpsCaptureMethod)}' container='${xmlAttribute(container)}'${containerTypeAttribute} locationDetails='${xmlAttribute(locationDetails)}' labPerformedSampling='${labPerformedSampling}' receivedById='${xmlAttribute(sampleItem.receivedById || "")}' arrivalCondition='${xmlAttribute(sampleItem.arrivalCondition || "")}' arrivalTemperature='${xmlAttribute(sampleItem.arrivalTemperature ?? "")}' collectionLocationId='${collectionLocationId}' qcType='${qcType}' qcParentSampleIndex='${qcParentSampleIndex}' qcExpectedValue='${xmlAttribute(qcExpectedValue)}'/>`;
         }
       });
 
@@ -875,6 +916,53 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     setRangeNotApplied({ labNumber: labNo || null, tests });
   }, []);
 
+  const askCancelReason = () =>
+    new Promise((resolve) => {
+      cancelReasonAnswerRef.current = resolve;
+      setCancelReasonAsked(true);
+    });
+
+  const answerCancelReason = useCallback((reason) => {
+    const answer = cancelReasonAnswerRef.current;
+    cancelReasonAnswerRef.current = null;
+    setCancelReasonAsked(false);
+    if (answer) {
+      answer(reason || null);
+    }
+  }, []);
+
+  /**
+   * A save refused only because a removed test with results needs a reason:
+   * ask for it and send the same save again with it. True when the retry took
+   * over the save; otherwise the failure reads as a sentence, not a field name.
+   */
+  const retryWithCancelReason = async (failure, retry, resolve, reject) => {
+    if (!failure.fieldErrors?.cancelReason || cancelReasonRef.current) {
+      return false;
+    }
+    const reason = await askCancelReason();
+    if (!reason) {
+      let savedSamples = [];
+      try {
+        savedSamples = JSON.parse(lastSavedDataRef.current || "{}").samples;
+      } catch (unreadable) {
+        savedSamples = [];
+      }
+      setSamplesState((current) => restoreRemovedTests(current, savedSamples));
+      failure.fieldErrors = {};
+      failure.message = "order.removeTest.kept";
+      return false;
+    }
+    cancelReasonRef.current = reason;
+    inFlightSaveRef.current = null;
+    retry()
+      .then(resolve, reject)
+      .finally(() => {
+        cancelReasonRef.current = null;
+      });
+    return true;
+  };
+
   const saveOrder = useCallback(
     async (
       silent = false,
@@ -916,7 +1004,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         useReferral: useReferral,
         // Flag for decoupled workflow: samples not required when orderEntryOnly=true
         orderEntryOnly: orderEntryOnly,
-        cancelReason: orderData.cancelReason,
+        cancelReason: cancelReasonRef.current || orderData.cancelReason,
         // Clean up display lists that shouldn't be sent. The step the client
         // has completed travels with the save (FR-F5), as does the storage
         // decision staged on the order.
@@ -1061,6 +1149,22 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
               const failure = response
                 ? await readSaveFailure(response)
                 : { message: "Failed to save order", fieldErrors: {} };
+              const retried = await retryWithCancelReason(
+                failure,
+                () =>
+                  saveOrderRef.current(
+                    silent,
+                    orderEntryOnly,
+                    samplesOverride,
+                    skipReload,
+                    progressStep,
+                  ),
+                resolve,
+                reject,
+              );
+              if (retried) {
+                return;
+              }
               setSaveStatus(SaveStatus.ERROR);
               setFieldErrors(failure.fieldErrors);
               setError(failure.message);
@@ -1171,6 +1275,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
       referralItems: [],
       useReferral: false,
       orderEntryOnly: true, // Flag for backend to skip sample validation
+      cancelReason: cancelReasonRef.current || orderData.cancelReason,
       sampleOrderItems: buildSubmissionSampleOrderItems({
         ...orderData.sampleOrderItems,
         // Include per-sample vector observations merged above.
@@ -1287,6 +1392,15 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
             const failure = response
               ? await readSaveFailure(response)
               : { message: "Failed to save order", fieldErrors: {} };
+            const retried = await retryWithCancelReason(
+              failure,
+              () => saveOrderEntryRef.current(),
+              resolve,
+              reject,
+            );
+            if (retried) {
+              return;
+            }
             setIsSubmitting(false);
             setSaveStatus(SaveStatus.ERROR);
             setFieldErrors(failure.fieldErrors);
@@ -1304,6 +1418,8 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     save.then(settle, settle);
     return save;
   }, [orderId, orderData, samples, isReadOnly, isEditMode, dateLocale]);
+  saveOrderRef.current = saveOrder;
+  saveOrderEntryRef.current = saveOrderEntry;
 
   /**
    * Enable edit mode for a read-only order
@@ -1458,6 +1574,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
   const resetOrder = useCallback(() => {
     setOrderId(null);
     setLabNumber(null);
+    setStagedAttachments([]);
     setOrderDataState(getInitialOrderData(workflowType));
     setSamplesState([sampleObject]);
     setIsReadOnly(false);
@@ -1583,14 +1700,28 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
   // After load, if the order's workflowType doesn't match this provider's
   // (e.g. a clinical ?order= carried into the environmental provider), strip
   // the param and reset so the form starts clean.
+  // The address can also change while the provider stays mounted (Back to a
+  // step page after the dashboard was reloaded, or after New Order), so the
+  // order it names is loaded whenever it is not the one held, unless the one
+  // held has unsaved edits. Each address is tried once (OGC-1657).
   const configurationReady =
     configurationProperties?.DEFAULT_DATE_LOCALE !== undefined;
-  const urlOrderLoadStarted = useRef(false);
+  const urlOrderAttempt = useRef(null);
   useEffect(() => {
-    if (urlOrderLoadStarted.current || !configurationReady) return;
+    if (!configurationReady) return;
     const params = new URLSearchParams(location.search);
     const orderParam = params.get("order") || params.get("labNumber");
-    if (!orderParam || orderId) return;
+    if (!orderParam) {
+      urlOrderAttempt.current = null;
+      return;
+    }
+    if (
+      orderParam === labNumber ||
+      isDirty ||
+      urlOrderAttempt.current === orderParam
+    ) {
+      return;
+    }
 
     const path = location.pathname;
     const pathWorkflow = path.startsWith("/order/vector")
@@ -1601,9 +1732,9 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
 
     if (pathWorkflow !== workflowType) return;
 
-    urlOrderLoadStarted.current = true;
+    urlOrderAttempt.current = orderParam;
     loadOrder(orderParam, false); // eslint-disable-line react-hooks/set-state-in-effect
-  }, [configurationReady]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [configurationReady, location.search, labNumber, isDirty]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Auto-save effect - saves every 30 seconds if form is dirty and has minimum required data.
@@ -1630,6 +1761,8 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
   }, [isDirty]);
 
   const value = {
+    cancelReasonAsked,
+    answerCancelReason,
     // State
     orderId,
     labNumber,
@@ -1653,9 +1786,12 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     sampleCheckEnabled,
     testSampleAssignments,
     rangeNotApplied,
+    stagedAttachments,
+    attachmentsVersion,
 
     // Actions
     loadOrder,
+    setStagedAttachments,
     saveOrder,
     saveOrderEntry, // Step 1: saves order + creates sample_type_requests (no sample_items)
     setCurrentStep,

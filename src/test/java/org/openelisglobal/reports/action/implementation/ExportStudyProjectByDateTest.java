@@ -52,6 +52,7 @@ public class ExportStudyProjectByDateTest extends BaseWebContextSensitiveTest {
     @Test
     public void aProjectWithoutAStudyExportIsRefusedWithItsOwnMessage() {
         ExportStudyProjectByDate report = new ExportStudyProjectByDate();
+        report.setSystemUserId("990901");
         ReportForm form = new ReportForm();
         form.setLowerDateRange("01/01/2026");
         form.setUpperDateRange("01/12/2026");

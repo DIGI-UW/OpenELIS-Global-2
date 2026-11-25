@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.openelisglobal.barcode.util.LabelQuantityPolicy;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.labelpreset.dao.LabelPresetDAO;
 import org.openelisglobal.labelpreset.dao.OrderLabelRequestDAO;
@@ -65,6 +66,7 @@ public class OrderLabelRequestServiceImpl implements OrderLabelRequestService {
             throw new IllegalArgumentException("Cannot persist label requests: no Sample with id " + orderId);
         }
 
+        validateQuantities(payload);
         orderLabelRequestDAO.deleteByParentSampleId(orderId);
 
         Map<String, String> resolvedSampleIds = sampleIdMap == null ? Map.of() : sampleIdMap;
@@ -105,6 +107,26 @@ public class OrderLabelRequestServiceImpl implements OrderLabelRequestService {
         }
 
         return persisted;
+    }
+
+    @Override
+    public void validateQuantities(OrderLabelPersistRequest payload) {
+        if (payload == null) {
+            return;
+        }
+        long total = 0;
+        for (OrderLabelPersistRequest.PersistCell cell : payload.getOrderCells()) {
+            LabelQuantityPolicy.require(normalizeQty(cell.getQty()), 0);
+            total += normalizeQty(cell.getQty());
+            LabelQuantityPolicy.requireTotal(total);
+        }
+        for (OrderLabelPersistRequest.PersistSampleRow row : payload.getSampleRows()) {
+            for (OrderLabelPersistRequest.PersistCell cell : row.getCells()) {
+                LabelQuantityPolicy.require(normalizeQty(cell.getQty()), 0);
+                total += normalizeQty(cell.getQty());
+                LabelQuantityPolicy.requireTotal(total);
+            }
+        }
     }
 
     /**

@@ -171,10 +171,13 @@ test.describe("Unified Results filters", () => {
       );
     });
 
-    await test.step("text that is not a date is cleared and not sent", async () => {
+    await test.step("text that is not a date stays marked and is not sent", async () => {
       await date.fill("31/31/2026");
       await main.getByRole("button", { name: "Search by patient" }).focus();
-      await expect(date).toHaveValue("");
+      await expect(date).toHaveValue("31/31/2026");
+      await expect(main.getByText(/Enter a valid date as/)).toBeVisible({
+        timeout: UI_TIMEOUT,
+      });
       const loaded = worklistLoad(page, () => true);
       await main.getByRole("button", { name: "Load results" }).click();
       expect(

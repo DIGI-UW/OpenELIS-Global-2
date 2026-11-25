@@ -94,8 +94,8 @@ public class TestCatalogEditorRestController {
      * envelope so the shell can branch once v2 lights up domain-conditional
      * visibility.
      */
-    private static final List<String> V1_SECTIONS = List.of("basic-info", "sample-results", "methods", "ranges",
-            "qc-targets", "storage", "panels", "terminology", "analyzers", "display-order");
+    private static final List<String> V1_SECTIONS = List.of("basic-info", "sample-results", "containers", "methods",
+            "ranges", "qc-targets", "storage", "panels", "terminology", "analyzers", "display-order");
 
     private final TestService testService;
 
@@ -563,10 +563,17 @@ public class TestCatalogEditorRestController {
     public static class LocalizationFieldRef {
         public String field;
         public String localizationId;
+        // Names a field the page has no message for, such as a result component.
+        public String label;
 
         public LocalizationFieldRef(String field, String localizationId) {
             this.field = field;
             this.localizationId = localizationId;
+        }
+
+        public LocalizationFieldRef(String field, String localizationId, String label) {
+            this(field, localizationId);
+            this.label = label;
         }
     }
 
@@ -588,6 +595,12 @@ public class TestCatalogEditorRestController {
             String localizationId = ids.get(field);
             if (localizationId != null) {
                 refs.fields.add(new LocalizationFieldRef(field, localizationId));
+            }
+        }
+        for (TestResultComponent component : componentService.getActiveComponentsByTestId(testId)) {
+            if (component.getLabelLocalization() != null) {
+                refs.fields.add(new LocalizationFieldRef("component:" + component.getCode(),
+                        component.getLabelLocalization().getId(), component.getLabel()));
             }
         }
         return ResponseEntity.ok(refs);
@@ -1079,6 +1092,7 @@ public class TestCatalogEditorRestController {
         public String resultType;
         public Integer sortOrder;
         public Boolean normal;
+        public Boolean critical;
         // Choosing this option opens a text box for a qualifying value at result entry.
         public Boolean qualifiable;
         // A value the admin typed rather than picked from the dictionary. It is
@@ -1106,6 +1120,10 @@ public class TestCatalogEditorRestController {
         // Per-component default for printing on the patient report (OGC-1127).
         // Null/absent = true (backward-compatible: existing components print).
         public Boolean showOnReport;
+        // OGC-1608: a required component without a result keeps its test open.
+        // Null/absent keeps a stored component's value; a new one is required
+        // only when it is the primary.
+        public Boolean isRequired;
         // Detection limits of a quantitative component (OGC-1148), both optional.
         public java.math.BigDecimal lod;
         public java.math.BigDecimal loq;
@@ -1319,6 +1337,7 @@ public class TestCatalogEditorRestController {
             e.setAllowMultipleReadings(Boolean.TRUE.equals(c.allowMultipleReadings));
             e.setIsPrimary(Boolean.TRUE.equals(c.isPrimary));
             e.setShowOnReport(!Boolean.FALSE.equals(c.showOnReport));
+            e.setIsRequired(c.isRequired != null ? c.isRequired : storedIsRequired(testId, c));
             e.setLod(c.lod);
             e.setLoq(c.loq);
             desired.add(e);
@@ -1348,6 +1367,7 @@ public class TestCatalogEditorRestController {
                 tr.setFreeText(isFreeTextOption(o));
                 tr.setSortOrder(o.sortOrder != null ? String.valueOf(o.sortOrder) : null);
                 tr.setIsNormal(Boolean.TRUE.equals(o.normal));
+                tr.setIsCritical(Boolean.TRUE.equals(o.critical));
                 tr.setIsQuantifiable(Boolean.TRUE.equals(o.qualifiable));
                 // Option rows must carry the component's type ('D'/'M'/'C') —
                 // result entry derives the widget from them, so a stale
@@ -1386,6 +1406,18 @@ public class TestCatalogEditorRestController {
         return components.isEmpty() ? null : components.get(0).getId();
     }
 
+    /**
+     * A save that leaves isRequired out keeps the value the component has: the one
+     * stored under its id, else under its code, else required only for the primary.
+     */
+    private boolean storedIsRequired(String testId, ResultComponentDto c) {
+        List<TestResultComponent> active = componentService.getActiveComponentsByTestId(testId);
+        TestResultComponent stored = active.stream().filter(e -> !isBlank(c.id) && c.id.equals(e.getId())).findFirst()
+                .orElseGet(() -> active.stream().filter(e -> !isBlank(c.code) && c.code.equalsIgnoreCase(e.getCode()))
+                        .findFirst().orElse(null));
+        return stored != null ? stored.getIsRequired() : Boolean.TRUE.equals(c.isPrimary);
+    }
+
     private SampleResults toSampleResults(String testId) {
         SampleResults sr = new SampleResults();
         sr.testId = testId;
@@ -1419,6 +1451,7 @@ public class TestCatalogEditorRestController {
             dto.allowMultipleReadings = c.getAllowMultipleReadings();
             dto.isPrimary = c.getIsPrimary();
             dto.showOnReport = c.getShowOnReport();
+            dto.isRequired = c.getIsRequired();
             dto.lod = c.getLod();
             dto.loq = c.getLoq();
             for (TestResultInterpretation i : interpretationService.getActiveByComponentId(c.getId())) {
@@ -1440,6 +1473,7 @@ public class TestCatalogEditorRestController {
                 odto.sortOrder = parseIntOrNull(o.getSortOrder());
                 odto.normal = Boolean.TRUE.equals(o.getIsNormal())
                         || (o.getValue() != null && o.getValue().trim().equals(normalValueByComponent.get(c.getId())));
+                odto.critical = Boolean.TRUE.equals(o.getIsCritical());
                 odto.qualifiable = Boolean.TRUE.equals(o.getIsQuantifiable());
                 dto.options.add(odto);
             }
