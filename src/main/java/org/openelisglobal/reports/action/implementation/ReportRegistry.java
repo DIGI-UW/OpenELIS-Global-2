@@ -17,12 +17,6 @@ public class ReportRegistry {
             return null;
         }
 
-        IReportCreator creator = getBeanIfTypeMatches(reportName, IReportCreator.class);
-
-        if (creator != null) {
-            return creator;
-        }
-
         return getBeanIfTypeMatches(reportName + "Creator", IReportCreator.class);
     }
 

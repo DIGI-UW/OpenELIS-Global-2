@@ -26,8 +26,17 @@ public class ReportImplementationFactoryTest extends BaseWebContextSensitiveTest
 
         for (String reportName : menuReportNames) {
             assertTrue("No report creator registered for menu report: " + reportName,
-                    isCreatorBean(reportName) || isCreatorBean(reportName + "Creator"));
+                    isCreatorBean(reportName + "Creator"));
         }
+    }
+
+    @Test
+    public void creatorStaysTheCreatorBeanAfterTheParameterPageWasBuilt() {
+        assertTrue(ReportImplementationFactory.getParameterSetter("patientCILNSP") instanceof PatientClinicalReport);
+
+        IReportCreator creator = ReportImplementationFactory.getReportCreator("patientCILNSP");
+
+        assertEquals(PatientCILNSPClinical.class, creator.getClass());
     }
 
     private boolean isCreatorBean(String beanName) {

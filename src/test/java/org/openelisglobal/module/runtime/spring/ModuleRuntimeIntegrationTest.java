@@ -384,7 +384,7 @@ public class ModuleRuntimeIntegrationTest {
         // Register the built-in report after the module provider.
         IReportCreator builtInReport = mock(IReportCreator.class);
 
-        root.getBeanFactory().registerSingleton("activityReportByTest", builtInReport);
+        root.getBeanFactory().registerSingleton("activityReportByTestCreator", builtInReport);
         IReportCreator actual = ReportImplementationFactory.getReportCreator("activityReportByTest");
 
         assertSame("Built-in report should take priority over module report", builtInReport, actual);
