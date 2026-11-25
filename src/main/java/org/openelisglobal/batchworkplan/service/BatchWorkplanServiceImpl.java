@@ -473,7 +473,7 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
         resultRunService.openWorkplanRun(batch.getId(),
                 batch.getTestSectionId() == null ? null : String.valueOf(batch.getTestSectionId()),
                 batch.getInstrumentId() == null ? null : String.valueOf(batch.getInstrumentId()),
-                batch.getReagentLotId(), batch.getItems() == null ? 0 : batch.getItems().size(),
+                batch.getReagentLotId(),
                 batch.getCreatedByUserId() == null ? null : userDisplayName(String.valueOf(batch.getCreatedByUserId())),
                 sysUserId);
     }

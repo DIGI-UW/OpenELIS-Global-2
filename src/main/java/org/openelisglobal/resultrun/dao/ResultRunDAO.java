@@ -28,10 +28,15 @@ public interface ResultRunDAO extends BaseDAO<ResultRun, Long> {
     long countBatchAnalysesAwaiting(Long runId, String cancelledStatusId);
 
     /**
-     * The analyses of a workplan run's batch that wait for a result: not cancelled
-     * and without a recorded value, in the batch's order.
+     * The analyses a workplan run waits for: its batch's analyses, of the test when
+     * one is given, that are not cancelled and have no recorded value, in the
+     * batch's order. Only the batch's current open run waits for any; an earlier or
+     * closed run has none.
      */
-    List<String> getBatchAnalysisIdsAwaiting(Long runId, String cancelledStatusId);
+    List<String> getBatchAnalysisIdsAwaiting(Long runId, String cancelledStatusId, String testId);
+
+    /** How many analyses have a value recorded in the run. */
+    int countResultedAnalyses(Long runId);
 
     /** The tests of a workplan run's batched analyses. */
     List<String> getBatchTestIds(Long runId);
@@ -66,9 +71,8 @@ public interface ResultRunDAO extends BaseDAO<ResultRun, Long> {
     List<String> getTestIdsOfResults(Long runId);
 
     /**
-     * The analyses of one test in a run: those with a result stored from it, those
-     * its staged values were reported for, and, for a workplan run, its batch's
-     * analyses of that test.
+     * The analyses of one test in a run: those with a result stored from it and
+     * those its staged values were reported for.
      */
     List<String> getAnalysisIdsOfRunTest(Long runId, String testId);
 }

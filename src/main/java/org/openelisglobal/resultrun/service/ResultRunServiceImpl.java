@@ -305,12 +305,8 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
      * again, has none: those analyses are no longer in it.
      */
     private List<ResultRunRow> workplanRows(ResultRun run) {
-        boolean current = run.getState().isActive() && baseObjectDAO.findBatchRun(run.getBatchWorkplanId())
-                .map(latest -> latest.getId().equals(run.getId())).orElse(false);
-        List<String> ids = current
-                ? baseObjectDAO.getBatchAnalysisIdsAwaiting(run.getId(),
-                        statusService.getStatusID(AnalysisStatus.Canceled))
-                : List.of();
+        List<String> ids = baseObjectDAO.getBatchAnalysisIdsAwaiting(run.getId(),
+                statusService.getStatusID(AnalysisStatus.Canceled), null);
         if (ids.isEmpty()) {
             return List.of();
         }
@@ -336,9 +332,7 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     }
 
     private int workplanDispositioned(ResultRun run) {
-        long awaiting = baseObjectDAO.countBatchAnalysesAwaiting(run.getId(),
-                statusService.getStatusID(AnalysisStatus.Canceled));
-        return (int) Math.max(0, run.getRowCount() - awaiting);
+        return baseObjectDAO.countResultedAnalyses(run.getId());
     }
 
     private static List<String> workplanUnits(ResultRun run) {
@@ -355,7 +349,7 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     @Override
     @Transactional
     public ResultRun openWorkplanRun(Long batchWorkplanId, String testSectionId, String instrumentId, Long reagentLotId,
-            int rowCount, String operatorName, String sysUserId) {
+            String operatorName, String sysUserId) {
         Timestamp now = Timestamp.from(Instant.now());
         ResultRun run = baseObjectDAO.findBatchRun(batchWorkplanId).orElse(null);
         if (run != null && (run.getState() == ResultRunState.SUPERSEDED || runQcService.hasDecisions(run.getId()))) {
@@ -376,15 +370,15 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
         run.setTestSectionId(StringUtils.trimToNull(testSectionId));
         run.setAnalyzerId(StringUtils.trimToNull(instrumentId));
         run.setReagentLotId(reagentLotId);
-        run.setRowCount(rowCount);
         run.setOperatorName(StringUtils.trimToNull(operatorName));
         run.setLastActivityAt(now);
         run.setSysUserId(sysUserId);
         if (created) {
             run.setId(insert(run));
-        } else {
-            update(run);
         }
+        run.setRowCount(baseObjectDAO.countResultedAnalyses(run.getId()) + (int) baseObjectDAO
+                .countBatchAnalysesAwaiting(run.getId(), statusService.getStatusID(AnalysisStatus.Canceled)));
+        update(run);
         runQcService.refreshState(run.getId(), sysUserId);
         return run;
     }

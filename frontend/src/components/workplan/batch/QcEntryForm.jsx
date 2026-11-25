@@ -18,6 +18,7 @@ import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 import {
   displayDateToIso,
   isoToDisplayDate,
+  isCurrentMinute,
   toLocalDateTime,
 } from "./batchWorkplanUtils";
 
@@ -28,8 +29,9 @@ import {
  * as any other bench run; the workplan evaluates nothing itself. While the
  * batch's run is open (OGC-1200 FR-B2), the control is recorded on that run
  * through the run's own endpoint, so its verdict covers the batch's test there.
- * The QC time defaults to now; left as it is, the control is stamped when it is
- * saved, so a per-run control always follows the release before it.
+ * The QC time defaults to now; left as it is, or set to the current minute, the
+ * control is stamped by the server when it is saved, so a per-run control
+ * always follows the release before it whatever the browser's clock says.
  */
 export default function QcEntryForm({
   batchId,
@@ -77,9 +79,10 @@ export default function QcEntryForm({
         controlLotId: lot.controlLotId,
         testId: lot.testId,
         testSectionId: lot.testSectionId,
-        runDateTime: timeEdited
-          ? toLocalDateTime(date, time, dateLocale, labNow())
-          : format(labNow(), "yyyy-MM-dd'T'HH:mm:ss"),
+        runDateTime:
+          !timeEdited || isCurrentMinute(date, time, dateLocale, labNow())
+            ? null
+            : runDateTime,
         notes: notes.trim() || null,
       }),
       (response) => {

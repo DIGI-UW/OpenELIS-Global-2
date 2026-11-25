@@ -17,6 +17,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.hibernate.exception.ConstraintViolationException;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.qaevent.service.NCEventService;
 import org.openelisglobal.qaevent.service.QcViolationNceService;
@@ -102,6 +104,9 @@ public class RunQcServiceImpl implements RunQcService {
     @Lazy
     @Autowired
     private TestQcPolicyService testQcPolicyService;
+    @Lazy
+    @Autowired
+    private IStatusService statusService;
 
     @Override
     @Transactional(readOnly = true)
@@ -575,7 +580,7 @@ public class RunQcServiceImpl implements RunQcService {
             throw new IllegalArgumentException(MessageUtil.getMessage("run.refusal.reasonRequired"));
         }
         ResultRun run = resultRunDAO.get(runId).orElseThrow();
-        List<String> analysisIds = resultRunDAO.getAnalysisIdsOfRunTest(runId, testId);
+        List<String> analysisIds = analysesOfRunTest(runId, testId);
         ResultRunTestDisposition decision = new ResultRunTestDisposition();
         decision.setRunId(runId);
         decision.setTestId(testId);
@@ -629,6 +634,19 @@ public class RunQcServiceImpl implements RunQcService {
         }
     }
 
+    /**
+     * The analyses of one test in a run: those resulted in it or staged from it,
+     * and, while it is its batch's open run, the batch's analyses of that test it
+     * still waits for. An analysis resulted in an earlier run of the batch is that
+     * run's.
+     */
+    private List<String> analysesOfRunTest(Long runId, String testId) {
+        Set<String> ids = new java.util.LinkedHashSet<>(resultRunDAO.getAnalysisIdsOfRunTest(runId, testId));
+        ids.addAll(resultRunDAO.getBatchAnalysisIdsAwaiting(runId, statusService.getStatusID(AnalysisStatus.Canceled),
+                testId));
+        return List.copyOf(ids);
+    }
+
     private void rememberSetAside(ResultRunTestDisposition decision, List<String> analysisIds, String sysUserId) {
         for (String analysisId : analysisIds) {
             ResultRunRetest retest = new ResultRunRetest();
@@ -648,8 +666,7 @@ public class RunQcServiceImpl implements RunQcService {
     }
 
     private List<RunLink> retestSuggestions(Long runId, String testId) {
-        Map<Long, Long> unlinkedByRun = retestDAO
-                .findUnlinked(testId, resultRunDAO.getAnalysisIdsOfRunTest(runId, testId), runId).stream()
+        Map<Long, Long> unlinkedByRun = retestDAO.findUnlinked(testId, analysesOfRunTest(runId, testId), runId).stream()
                 .collect(Collectors.groupingBy(RetestedSample::runId, java.util.TreeMap::new, Collectors.counting()));
         return unlinkedByRun.entrySet().stream().map(entry -> new RunLink(entry.getKey(),
                 ResultRun.labelOf(entry.getKey()), entry.getValue().intValue(), setAsideCount(entry.getKey(), testId)))
@@ -702,8 +719,8 @@ public class RunQcServiceImpl implements RunQcService {
                         .orElse(null);
         List<RetestedSample> unlinked = testId == null || retestOfRunId == null
                 || !offersRetestLinks(testId, heldTestIds(runId), decision) ? List.of()
-                        : retestDAO.findUnlinked(testId, resultRunDAO.getAnalysisIdsOfRunTest(runId, testId), runId)
-                                .stream().filter(sample -> retestOfRunId.equals(sample.runId())).toList();
+                        : retestDAO.findUnlinked(testId, analysesOfRunTest(runId, testId), runId).stream()
+                                .filter(sample -> retestOfRunId.equals(sample.runId())).toList();
         int linked = unlinked.isEmpty() ? 0
                 : retestDAO.link(unlinked.get(0).dispositionId(),
                         unlinked.stream().map(RetestedSample::analysisId).toList(), runId, sysUserId,

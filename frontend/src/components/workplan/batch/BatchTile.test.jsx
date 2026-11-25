@@ -414,9 +414,7 @@ describe("BatchTile inline QC", () => {
       testId: "1",
       testSectionId: "5",
     });
-    expect(JSON.parse(body).runDateTime).toMatch(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/,
-    );
+    expect(JSON.parse(body).runDateTime).toBeNull();
     await waitFor(() =>
       expect(getFromOpenElisServer).toHaveBeenCalledWith(
         "/rest/batch-workplans/batches/7/qc-status",
@@ -500,7 +498,7 @@ describe("BatchTile inline QC", () => {
     vi.useRealTimers();
   });
 
-  it("stamps an untouched QC time with the moment the control is saved", () => {
+  it("lets the server stamp a QC time left at, or typed as, the current minute", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date(2026, 10, 25, 7, 28, 59));
     postToOpenElisServerJsonResponse.mockImplementation(
@@ -510,6 +508,9 @@ describe("BatchTile inline QC", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Run QC" }));
     vi.setSystemTime(new Date(2026, 10, 25, 7, 29, 1));
+    fireEvent.change(screen.getByLabelText("QC time"), {
+      target: { value: "07:29" },
+    });
     fireEvent.change(screen.getByLabelText("Value"), {
       target: { value: "101.5" },
     });
@@ -518,7 +519,7 @@ describe("BatchTile inline QC", () => {
 
     expect(
       JSON.parse(postToOpenElisServerJsonResponse.mock.calls[0][1]).runDateTime,
-    ).toBe("2026-11-25T07:29:01");
+    ).toBeNull();
     vi.useRealTimers();
   });
 

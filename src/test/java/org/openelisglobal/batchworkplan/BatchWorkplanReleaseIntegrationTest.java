@@ -352,6 +352,56 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
                 jdbcTemplate.queryForObject("SELECT state FROM clinlims.result_run WHERE id = ?", String.class, runId));
     }
 
+    /**
+     * OGC-1200 FR-B2 with a batch released more than once: each run owns the
+     * analyses resulted in it and, while it is the batch's open run, those it still
+     * waits for. A value recorded in the first run is neither counted nor set aside
+     * by the run that follows it.
+     */
+    @Test
+    public void eachRunOfABatchCountsAndDecidesOnlyItsOwnAnalyses() {
+        jdbcTemplate.update(
+                "INSERT INTO clinlims.batch_workplan_item (id, batch_workplan_id, analysis_id, sort_order)"
+                        + " VALUES (nextval('clinlims.batch_workplan_item_seq'), ?," + " CAST(? AS numeric), 2)",
+                batchId, createAnalysis());
+        Long firstRunId = releaseIntoRun();
+        String resulted = batchAnalysisIds().get(0);
+        String waiting = batchAnalysisIds().get(1);
+        recordInvalidControl(firstRunId);
+        runQcService.decide(firstRunId, testId, org.openelisglobal.resultrun.valueholder.RunTestAction.ACCEPT_DESPITE,
+                "Control repeated and passed", true, ACTOR);
+        jdbcTemplate.update(
+                "INSERT INTO clinlims.result (id, analysis_id, value, result_type, run_id, lastupdated)"
+                        + " VALUES (nextval('clinlims.result_seq'), CAST(? AS numeric), '81'," + " 'N', ?, now())",
+                resulted, firstRunId);
+
+        batchWorkplanService.transitionBatch(batchId, BatchWorkplanStatus.DRAFT, ACTOR);
+        recordBenchRun(QCQualitativeOutcome.PASS, LocalDateTime.now().minusMinutes(1));
+        Long laterRunId = batchWorkplanService.generate(batchId, false, null, false, ACTOR).getRunId();
+
+        org.openelisglobal.resultrun.form.ResultRunHeader first = resultRunService.getHeader(firstRunId, unitViewer())
+                .orElseThrow();
+        assertEquals("the first run counts the value recorded in it", 1, first.dispositioned());
+        assertEquals(2, first.total());
+        org.openelisglobal.resultrun.form.ResultRunHeader later = resultRunService.getHeader(laterRunId, unitViewer())
+                .orElseThrow();
+        assertEquals("the later run holds only the analysis still waiting", 1, later.total());
+        assertEquals(0, later.dispositioned());
+
+        recordInvalidControl(laterRunId);
+        runQcService.decide(laterRunId, testId, org.openelisglobal.resultrun.valueholder.RunTestAction.RETEST, null,
+                false, ACTOR);
+        assertEquals("the later run sets aside only its own analysis", List.of(waiting),
+                jdbcTemplate.queryForList("SELECT CAST(rr.analysis_id AS VARCHAR) FROM clinlims.result_run_retest rr"
+                        + " JOIN clinlims.result_run_test_disposition d ON d.id = rr.disposition_id"
+                        + " WHERE d.run_id = ?", String.class, laterRunId));
+    }
+
+    private List<String> batchAnalysisIds() {
+        return jdbcTemplate.queryForList("SELECT CAST(analysis_id AS VARCHAR) FROM clinlims.batch_workplan_item"
+                + " WHERE batch_workplan_id = ? ORDER BY sort_order", String.class, batchId);
+    }
+
     private Long releaseIntoRun() {
         jdbcTemplate.update("UPDATE clinlims.batch_workplan SET test_section_id = CAST(? AS numeric) WHERE id = ?",
                 testSectionId, batchId);

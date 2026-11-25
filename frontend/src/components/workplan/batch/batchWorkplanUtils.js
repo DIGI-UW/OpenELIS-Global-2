@@ -92,21 +92,26 @@ export const isoToDisplayDate = (date, dateLocale) =>
   date ? format(date, displayPattern(dateLocale)) : "";
 
 /**
- * The LocalDateTime the bench QC capture expects ("yyyy-MM-ddTHH:mm:ss"), from
- * a display date and an HH:mm time, or null when either is incomplete. A time in
- * the minute of `now` carries now's seconds: a per-run control recorded in the
- * minute a batch was released is after that release, not at the minute's start.
+ * The LocalDateTime the bench QC capture expects ("yyyy-MM-ddTHH:mm:00"), from
+ * a display date and an HH:mm time, or null when either is incomplete.
  */
-export const toLocalDateTime = (displayDate, time, dateLocale, now) => {
+export const toLocalDateTime = (displayDate, time, dateLocale) => {
   const isoDate = displayDateToIso(displayDate, dateLocale);
   if (!isoDate || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time || "")) {
     return null;
   }
-  const minute = `${isoDate}T${time}`;
-  return now && format(now, "yyyy-MM-dd'T'HH:mm") === minute
-    ? format(now, "yyyy-MM-dd'T'HH:mm:ss")
-    : `${minute}:00`;
+  return `${isoDate}T${time}:00`;
 };
+
+/**
+ * Whether a display date and HH:mm time name the minute of `now`, the lab's
+ * current minute: a control timed then is stamped by the server when it is
+ * saved, which a minute's precision or a skewed browser clock cannot misorder
+ * against a release made in that minute.
+ */
+export const isCurrentMinute = (displayDate, time, dateLocale, now) =>
+  toLocalDateTime(displayDate, time, dateLocale) ===
+  format(now, "yyyy-MM-dd'T'HH:mm:00");
 
 export const formatDateTime = (intl, value) =>
   value

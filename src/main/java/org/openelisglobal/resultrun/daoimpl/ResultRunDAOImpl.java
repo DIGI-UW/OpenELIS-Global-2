@@ -101,13 +101,13 @@ public class ResultRunDAOImpl extends BaseDAOImpl<ResultRun, Long> implements Re
     @Override
     @Transactional(readOnly = true)
     public long countBatchAnalysesAwaiting(Long runId, String cancelledStatusId) {
-        return getBatchAnalysisIdsAwaiting(runId, cancelledStatusId).size();
+        return getBatchAnalysisIdsAwaiting(runId, cancelledStatusId, null).size();
     }
 
     @Override
     @Transactional(readOnly = true)
     @SuppressWarnings("unchecked")
-    public List<String> getBatchAnalysisIdsAwaiting(Long runId, String cancelledStatusId) {
+    public List<String> getBatchAnalysisIdsAwaiting(Long runId, String cancelledStatusId, String testId) {
         if (runId == null) {
             return List.of();
         }
@@ -116,13 +116,30 @@ public class ResultRunDAOImpl extends BaseDAOImpl<ResultRun, Long> implements Re
                     .createNativeQuery("SELECT CAST(item.analysis_id AS VARCHAR) FROM clinlims.batch_workplan_item item"
                             + " JOIN clinlims.result_run run ON run.batch_workplan_id = item.batch_workplan_id"
                             + " JOIN clinlims.analysis a ON a.id = item.analysis_id WHERE run.id = :run"
+                            + " AND run.state IN ('OPEN', 'HELD') AND run.id = (SELECT MAX(latest.id)"
+                            + " FROM clinlims.result_run latest WHERE latest.batch_workplan_id = run.batch_workplan_id)"
                             + " AND CAST(a.status_id AS VARCHAR) <> :cancelled AND NOT EXISTS (SELECT 1"
                             + " FROM clinlims.result r WHERE r.analysis_id = a.id AND COALESCE(r.value, '') <> '')"
+                            + " AND (CAST(:test AS VARCHAR) IS NULL OR CAST(a.test_id AS VARCHAR) = CAST(:test AS VARCHAR))"
                             + " ORDER BY item.sort_order, item.analysis_id")
                     .setParameter("run", runId).setParameter("cancelled", String.valueOf(cancelledStatusId))
-                    .getResultList()).stream().map(String::valueOf).toList();
+                    .setParameter("test", testId).getResultList()).stream().map(String::valueOf).toList();
         } catch (RuntimeException e) {
             throw new LIMSRuntimeException("Error finding the analyses a workplan run waits for", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int countResultedAnalyses(Long runId) {
+        try {
+            Long count = session()
+                    .createQuery("SELECT COUNT(DISTINCT r.analysis.id) FROM Result r WHERE r.runId = :runId"
+                            + " AND r.value IS NOT NULL AND r.value <> ''", Long.class)
+                    .setParameter("runId", runId).uniqueResult();
+            return count == null ? 0 : count.intValue();
+        } catch (RuntimeException e) {
+            throw new LIMSRuntimeException("Error counting the analyses resulted in a run", e);
         }
     }
 
@@ -251,22 +268,10 @@ public class ResultRunDAOImpl extends BaseDAOImpl<ResultRun, Long> implements Re
                             + " WHERE ar.runId = :runId AND ar.testId = :testId AND ar.isControl = false"
                             + " AND a.test.id = ar.testId AND a.sampleItem.sample.accessionNumber = ar.accessionNumber",
                     String.class).setParameter("runId", runId).setParameter("testId", testId).list());
-            ids.addAll(batchAnalysisIdsOfTest(runId, testId));
             return List.copyOf(ids);
         } catch (RuntimeException e) {
             throw new LIMSRuntimeException("Error finding the analyses of a run's test", e);
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private List<String> batchAnalysisIdsOfTest(Long runId, String testId) {
-        return ((List<Object>) session().createNativeQuery("SELECT CAST(item.analysis_id AS VARCHAR)"
-                + " FROM clinlims.batch_workplan_item item"
-                + " JOIN clinlims.result_run run ON run.batch_workplan_id = item.batch_workplan_id"
-                + " JOIN clinlims.analysis a ON a.id = item.analysis_id"
-                + " WHERE run.id = :run AND CAST(a.test_id AS VARCHAR) = :test ORDER BY item.sort_order, item.analysis_id")
-                .setParameter("run", runId).setParameter("test", String.valueOf(testId)).getResultList()).stream()
-                .map(String::valueOf).toList();
     }
 
     private Session session() {

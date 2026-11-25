@@ -76,10 +76,11 @@ public interface ResultRunService extends BaseObjectService<ResultRun, Long> {
      * release, reopened and brought up to date when it is released again, and
      * opened afresh when a QC decision was taken on the earlier one, whose tests'
      * QC is closed. It carries the batch's lab unit, instrument, reagent lot and
-     * operator, and its holds follow the tests' QC policies at once.
+     * operator; its rows are the analyses resulted in it and those it waits for,
+     * and its holds follow the tests' QC policies at once.
      */
     ResultRun openWorkplanRun(Long batchWorkplanId, String testSectionId, String instrumentId, Long reagentLotId,
-            int rowCount, String operatorName, String sysUserId);
+            String operatorName, String sysUserId);
 
     /** Completes the run of a batch that is marked complete (FR-B2). */
     void completeWorkplanRun(Long batchWorkplanId, String sysUserId);
