@@ -43,6 +43,7 @@ const STATUS_TAG = { QUEUED: "blue", SENT: "green", FAILED: "red", SKIPPED: "gra
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
+  { label: "common.reports", link: "/RoutineReports" },
   { label: "sidenav.label.reports.sentMessages", link: "/SentMessages" },
 ];
 
@@ -87,6 +88,7 @@ function readFilters(search) {
     to: params.get("to") || "",
     labNo: params.get("labNo") || "",
     recipient: params.get("recipient") || "",
+    message: /^\d+$/.test(params.get("message") || "") ? params.get("message") : "",
   };
 }
 
@@ -172,6 +174,12 @@ export default function SentMessages() {
     applyFilters(empty);
   };
 
+  const showMessage = (id) => {
+    const only = { ...readFilters(""), message: String(id) };
+    setTyped(only);
+    applyFilters(only);
+  };
+
   const loadDetail = useCallback((id) => {
     setDetails((current) => ({ ...current, [id]: { loading: true } }));
     getFromOpenElisServer(`/rest/delivery/messages/${id}`, (detail) => {
@@ -233,13 +241,17 @@ export default function SentMessages() {
     }
     if (entry.error) {
       return (
-        <InlineNotification
-          kind="error"
-          lowContrast
-          hideCloseButton
-          title={intl.formatMessage({ id: "delivery.sent.detail.loadError" })}
-          actions={<Button kind="ghost" size="sm" onClick={() => loadDetail(row.id)}>Retry</Button>}
-        />
+        <div data-testid={`sent-detail-error-${row.id}`}>
+          <InlineNotification
+            kind="error"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({ id: "delivery.sent.detail.loadError" })}
+          />
+          <Button kind="ghost" size="sm" onClick={() => loadDetail(row.id)}>
+            <FormattedMessage id="common.retry" />
+          </Button>
+        </div>
       );
     }
     const detail = entry.detail;
@@ -256,6 +268,22 @@ export default function SentMessages() {
           <pre style={{ whiteSpace: "pre-wrap", fontFamily: "monospace", background: "#f4f4f4", padding: "0.5rem" }}>
             {detail.renderedMessage || "–"}
           </pre>
+          {detail.resentFromId && (
+            <div data-testid={`sent-resent-from-${row.id}`}>
+              <FormattedMessage
+                id="delivery.sent.detail.resentFrom"
+                values={{ time: detail.resentFromFiredAt ? formatDateTime(detail.resentFromFiredAt) : "–" }}
+              />{" "}
+              <Button
+                kind="ghost"
+                size="sm"
+                data-testid={`sent-show-original-${row.id}`}
+                onClick={() => showMessage(detail.resentFromId)}
+              >
+                <FormattedMessage id="delivery.sent.detail.showOriginal" />
+              </Button>
+            </div>
+          )}
           {detail.ruleName && (
             <div>
               <FormattedMessage id="delivery.sent.detail.rule" />: {detail.ruleName}
@@ -432,14 +460,32 @@ export default function SentMessages() {
           </Grid>
         </form>
 
+        {filters.message && (
+          <div data-testid="sent-one-message">
+            <InlineNotification
+              kind="info"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({ id: "delivery.sent.oneMessage" })}
+            />
+            <Button kind="ghost" size="sm" onClick={clearFilters}>
+              <FormattedMessage id="delivery.sent.showAll" />
+            </Button>
+          </div>
+        )}
+
         {loadError && (
-          <InlineNotification
-            kind="error"
-            lowContrast
-            hideCloseButton
-            title={intl.formatMessage({ id: "delivery.sent.loadError" })}
-            actions={<Button kind="ghost" size="sm" onClick={load}>Retry</Button>}
-          />
+          <div data-testid="sent-load-error">
+            <InlineNotification
+              kind="error"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({ id: "delivery.sent.loadError" })}
+            />
+            <Button kind="ghost" size="sm" onClick={load}>
+              <FormattedMessage id="common.retry" />
+            </Button>
+          </div>
         )}
 
         {loading && !data ? (
@@ -480,7 +526,7 @@ export default function SentMessages() {
                             {...rowProps}
                             data-testid={`sent-row-${row.id}`}
                             onExpand={(event) => {
-                              if (!tableRow.isExpanded && !details[row.id]) {
+                              if (!tableRow.isExpanded && (!details[row.id] || details[row.id].error)) {
                                 loadDetail(row.id);
                               }
                               rowProps.onExpand(event);
@@ -517,6 +563,11 @@ export default function SentMessages() {
                               <Tag type={STATUS_TAG[row.status] || "gray"} size="sm" data-testid={`sent-status-${row.id}`}>
                                 {label("delivery.status", row.status)}
                               </Tag>
+                              {row.resentFromId && (
+                                <Tag type="outline" size="sm" data-testid={`sent-resend-${row.id}`}>
+                                  <FormattedMessage id="delivery.sent.resendTag" />
+                                </Tag>
+                              )}
                               {row.channels
                                 .filter((channel) => channel.errorMessage)
                                 .map((channel) => (

@@ -33,6 +33,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class ReportingCatalogService {
     @Autowired
+    private ExportTestNames testNames;
+    @Autowired
     private List<ReportingSource> sources;
     @Autowired
     private ReportDefinitionService definitions;
@@ -154,6 +156,20 @@ public class ReportingCatalogService {
         return true;
     }
 
+    /**
+     * The columns among {@code ids} the user may export: test and component columns
+     * only for tests of their lab sections, every other column as is.
+     */
+    public List<String> permittedFor(String owner, List<String> ids) {
+        var sectionIds = access.requestSections(owner).stream().map(s -> s.getId()).collect(Collectors.toSet());
+        var testIds = samples.tests().stream()
+                .filter(t -> t.getTestSection() != null && sectionIds.contains(t.getTestSection().getId()))
+                .map(t -> t.getId()).collect(Collectors.toSet());
+        var componentIds = samples.components().stream().filter(c -> testIds.contains(c.getTestId()))
+                .map(c -> c.getId()).collect(Collectors.toSet());
+        return ids.stream().filter(id -> permitted(id, testIds, componentIds)).toList();
+    }
+
     public Map<String, Object> catalog(String owner, String type, String layout) {
         var definition = definition(type);
         var sections = access.requestSections(owner);
@@ -170,11 +186,15 @@ public class ReportingCatalogService {
         var fields = variables(definition, layout).stream()
                 .filter(v -> permitted(v.id(), permittedTestIds, permittedComponentIds)).toList();
         List<String> defaults = defaultColumns(definition, layout, fields, false);
-        var tests = permittedTests.stream().map(t -> Map.of("id", t.getId(), "label", t.getDescription())).toList();
-        return Map.of("definition", definition, "variables", fields, "defaultColumns", defaults, "labSections",
-                sections.stream().map(s -> Map.of("id", s.getId(), "label", s.getValue())).toList(), "tests", tests,
-                "statuses", statusOptions(definition), "maxDays", settings.maxDays(), "maxActive", settings.maxActive(),
-                "retentionDays", settings.retentionDays(), "timezone", settings.zone().getId());
+        var names = testNames.labels(permittedTests, LocaleContextHolder.getLocale());
+        var tests = permittedTests.stream().map(t -> Map.of("id", t.getId(), "label", names.get(t.getId()))).toList();
+        return Map.ofEntries(Map.entry("definition", definition), Map.entry("variables", fields),
+                Map.entry("defaultColumns", defaults), Map.entry("dateBases", source(definition.source()).dateBases()),
+                Map.entry("labSections",
+                        sections.stream().map(s -> Map.of("id", s.getId(), "label", s.getValue())).toList()),
+                Map.entry("tests", tests), Map.entry("statuses", statusOptions(definition)),
+                Map.entry("maxDays", settings.maxDays()), Map.entry("maxActive", settings.maxActive()),
+                Map.entry("retentionDays", settings.retentionDays()), Map.entry("timezone", settings.zone().getId()));
     }
 
     private List<Map<String, String>> statusOptions(ReportSourceConfig definition) {
@@ -200,7 +220,8 @@ public class ReportingCatalogService {
         }
         var definition = definition(request.reportType());
         var filter = request.filterSpec();
-        validateRequestedFilters(definition, filter.labSectionIds(), filter.testIds(), filter.resultStatuses());
+        validateRequestedFilters(definition, filter.labSectionIds(), filter.testIds(), filter.resultStatuses(),
+                filter.dateBasis());
         ExportDateRange.of(filter.dateFrom(), filter.dateTo(), settings.zone(), settings.maxDays());
         var available = variables(definition, request.layout()).stream()
                 .collect(Collectors.toMap(ReportingVariable::id, Function.identity()));
@@ -234,7 +255,7 @@ public class ReportingCatalogService {
         }
         return new ExportSnapshot(definition, request.layout(), selected,
                 new ExportFilter(filter.dateFrom(), filter.dateTo(), scope,
-                        filter.testIds().stream().distinct().sorted().toList(), selectedStatuses),
+                        filter.testIds().stream().distinct().sorted().toList(), selectedStatuses, filter.dateBasis()),
                 settings.zone().getId(), ids, LocaleContextHolder.getLocale().toLanguageTag());
     }
 
@@ -246,7 +267,7 @@ public class ReportingCatalogService {
         }
         var definition = definition(request.reportType());
         validateRequestedFilters(definition, request.filters().labSectionIds(), request.filters().testIds(),
-                request.filters().resultStatuses());
+                request.filters().resultStatuses(), request.filters().dateBasis());
         var available = variables(definition, request.layout()).stream()
                 .collect(Collectors.toMap(ReportingVariable::id, Function.identity()));
         if (!available.keySet().containsAll(request.selectedVariables()))
@@ -268,7 +289,8 @@ public class ReportingCatalogService {
 
         var selectedStatuses = normalizeStatuses(definition, request.filters().resultStatuses());
         return new SavedReportDefinition(1, definition.id(), request.layout(), request.selectedVariables(),
-                new SavedReportFilters(requestedSections, requestedTests, selectedStatuses));
+                new SavedReportFilters(requestedSections, requestedTests, selectedStatuses,
+                        request.filters().dateBasis()));
     }
 
     public void validateCurrent(ExportSnapshot snapshot) {
@@ -285,7 +307,13 @@ public class ReportingCatalogService {
     }
 
     private void validateRequestedFilters(ReportSourceConfig definition, List<String> sections, List<String> tests,
-            List<String> requestedStatuses) {
+            List<String> requestedStatuses, String dateBasis) {
+        if (dateBasis != null && !definition.filters().contains("dateBasis")) {
+            throw new ReportingException(422, "reporting.filters.unsupported");
+        }
+        if (dateBasis != null && !source(definition.source()).dateBases().contains(dateBasis)) {
+            throw new ReportingException(422, "reporting.dateBasis.invalid");
+        }
         // Saved definitions may already contain the source's normalized default.
         boolean defaultStatus = requestedStatuses.isEmpty()
                 || requestedStatuses.equals(source(definition.source()).defaultResultStatuses());

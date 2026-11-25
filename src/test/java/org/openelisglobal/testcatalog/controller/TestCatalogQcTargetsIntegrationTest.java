@@ -79,6 +79,8 @@ public class TestCatalogQcTargetsIntegrationTest extends BaseWebContextSensitive
     private org.openelisglobal.panelitem.service.PanelItemService panelItemService;
     @Autowired
     private javax.sql.DataSource dataSource;
+    @Autowired
+    private org.openelisglobal.testcatalog.service.TestQcPolicyService policyService;
 
     private TestCatalogQcTargetsRestController controller;
     private TestCatalogEditorRestController editor;
@@ -93,7 +95,7 @@ public class TestCatalogQcTargetsIntegrationTest extends BaseWebContextSensitive
         // The test context scans services and DAOs, not this controller package,
         // so the controllers are built directly (same as the other editor ITs).
         controller = new TestCatalogQcTargetsRestController(testService, componentService, testResultService,
-                targetService, controlLotService, dictionaryService, unitOfMeasureService);
+                targetService, controlLotService, dictionaryService, unitOfMeasureService, policyService);
         editor = new TestCatalogEditorRestController(testService, componentService, interpretationService,
                 testResultService, resultLimitService, coverageService, handlingService, analyzerService,
                 typeOfSampleService, typeOfSampleTestService, terminologyService, panelService, panelItemService);
@@ -124,6 +126,7 @@ public class TestCatalogQcTargetsIntegrationTest extends BaseWebContextSensitive
 
     private void cleanup() {
         jdbc.update("DELETE FROM clinlims.test_qc_target WHERE test_id = ?", TEST_ID);
+        jdbc.update("DELETE FROM clinlims.test_qc_policy WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM qc_control_lot WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM clinlims.analyzer WHERE name = ?", ANALYZER_NAME);
         // The component save materializes a test_result row per numeric component.
@@ -153,6 +156,13 @@ public class TestCatalogQcTargetsIntegrationTest extends BaseWebContextSensitive
         dto.qcControlLotId = lotId;
         dto.expectedValue = BigDecimal.valueOf(expected);
         dto.uncertainty = BigDecimal.valueOf(uncertainty);
+        return dto;
+    }
+
+    private static TestCatalogQcTargetsRestController.QcPolicyDto policy(boolean required, String whenMissing) {
+        TestCatalogQcTargetsRestController.QcPolicyDto dto = new TestCatalogQcTargetsRestController.QcPolicyDto();
+        dto.controlRequired = required;
+        dto.controlWhenMissing = whenMissing;
         return dto;
     }
 
@@ -215,6 +225,38 @@ public class TestCatalogQcTargetsIntegrationTest extends BaseWebContextSensitive
         EffectiveTarget fallback = effective("NORMAL", LOT_ID);
         assertEquals("the deactivated override no longer applies", "LEVEL", fallback.source);
         assertEquals("deactivated, never deleted", 2, controller.getTargets(testId()).getBody().targets.size());
+    }
+
+    /**
+     * OGC-1200 FR-H1: the section's QC policy is saved with its targets; a policy
+     * that is neither Warn nor Hold is refused before anything is written, and a
+     * client that sends no policy leaves it as it was.
+     */
+    @org.junit.Test
+    public void thePolicyIsSavedWithTheTargets_aRefusedOneWritesNothing_andNoPolicyKeepsIt() {
+        QcTargets fresh = controller.getTargets(testId()).getBody();
+        assertFalse("a test requires no control until its policy says so", fresh.policy.controlRequired);
+        assertEquals("WARN", fresh.policy.controlWhenMissing);
+
+        QcTargets withPolicy = body(target("NORMAL", null, 5.5d, 0.4d));
+        withPolicy.policy = policy(true, "hold");
+        QcTargets saved = (QcTargets) controller.saveTargets(testId(), withPolicy, authedRequest()).getBody();
+        assertTrue(saved.policy.controlRequired);
+        assertEquals("HOLD", saved.policy.controlWhenMissing);
+
+        QcTargets refused = new QcTargets();
+        refused.targets = List.of(saved.targets.get(0));
+        saved.targets.get(0).expectedValue = BigDecimal.valueOf(9.9d);
+        refused.policy = policy(false, "SOMETIMES");
+        assertEquals(422, controller.saveTargets(testId(), refused, authedRequest()).getStatusCode().value());
+        QcTargets after = controller.getTargets(testId()).getBody();
+        assertTrue("the refused policy changed nothing", after.policy.controlRequired);
+        assertEquals(0, BigDecimal.valueOf(5.5d).compareTo(after.targets.get(0).expectedValue));
+
+        QcTargets noPolicy = new QcTargets();
+        noPolicy.targets = after.targets;
+        assertEquals(200, controller.saveTargets(testId(), noPolicy, authedRequest()).getStatusCode().value());
+        assertEquals("HOLD", controller.getTargets(testId()).getBody().policy.controlWhenMissing);
     }
 
     @org.junit.Test

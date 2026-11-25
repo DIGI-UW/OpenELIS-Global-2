@@ -44,17 +44,26 @@ public class MicroProgramReportingTrackConfigurationHandler implements DomainCon
                 throw new IllegalArgumentException("programCode and reportingTrack are required");
             var existing = programs.getAll();
             for (var row : rows) {
-                var track = dictionary.getDictionaryEntryByNameAndCategoryName(row.get("reportingTrack"),
-                        "Reporting track");
-                if (track == null || !"Y".equals(track.getIsActive()))
-                    throw new IllegalArgumentException(
-                            "Unknown or inactive reporting track: " + row.get("reportingTrack"));
+                String trackName = row.get("reportingTrack");
+                var track = trackName.isEmpty() ? null
+                        : dictionary.getDictionaryEntryByNameAndCategoryName(trackName, "Reporting track");
+                if (!trackName.isEmpty() && (track == null || !"Y".equals(track.getIsActive())))
+                    throw new IllegalArgumentException("Unknown or inactive reporting track: " + trackName);
+                String mark = row.isMapped("showOnMicroCase") ? row.get("showOnMicroCase") : "";
+                if (!mark.isEmpty() && !"true".equalsIgnoreCase(mark) && !"false".equalsIgnoreCase(mark))
+                    throw new IllegalArgumentException("showOnMicroCase must be true, false or blank: " + mark);
                 for (var program : existing) {
                     if (!row.get("programCode").equalsIgnoreCase(program.getCode()))
                         continue;
-                    if (java.util.Objects.equals(track.getId(), program.getReportingTrackId()))
+                    boolean newTrack = track != null
+                            && !java.util.Objects.equals(track.getId(), program.getReportingTrackId());
+                    boolean newMark = !mark.isEmpty() && Boolean.parseBoolean(mark) != program.isShowOnMicroCase();
+                    if (!newTrack && !newMark)
                         continue;
-                    program.setReportingTrackId(track.getId());
+                    if (newTrack)
+                        program.setReportingTrackId(track.getId());
+                    if (newMark)
+                        program.setShowOnMicroCase(Boolean.parseBoolean(mark));
                     program.setSysUserId("1");
                     programs.update(program);
                 }

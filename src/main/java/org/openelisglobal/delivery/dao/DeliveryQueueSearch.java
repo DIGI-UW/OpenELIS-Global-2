@@ -16,6 +16,19 @@ public class DeliveryQueueSearch {
     private String labNumber;
     private String recipient;
     private String eventCode;
+    private Long messageId;
+
+    /**
+     * One message by its id, as a resend links to the message it repeats
+     * (OGC-1551).
+     */
+    public Long getMessageId() {
+        return messageId;
+    }
+
+    public void setMessageId(Long messageId) {
+        this.messageId = messageId;
+    }
 
     public String getEventCode() {
         return eventCode;

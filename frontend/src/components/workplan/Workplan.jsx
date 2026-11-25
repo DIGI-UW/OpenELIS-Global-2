@@ -123,7 +123,7 @@ export default function Workplan(props) {
     setSubjectOnWorkplan(configurationProperties.SUBJECT_ON_WORKPLAN);
     setNextVisitOnWorkplan(configurationProperties.NEXT_VISIT_DATE_ON_WORKPLAN);
     setConfigurationName(configurationProperties.configurationName);
-  }, []);
+  }, [configurationProperties]);
 
   const reportStatus = (pdfGenerated) => {
     setNotificationVisible(true);
@@ -261,6 +261,7 @@ export default function Workplan(props) {
       "patientInfo",
       "receivedDate",
       "testName",
+      "nextVisitDate",
       "notIncludedInWorkplan",
     ];
     rawData.forEach((item) => {
