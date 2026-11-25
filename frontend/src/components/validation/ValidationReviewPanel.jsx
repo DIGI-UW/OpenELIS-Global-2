@@ -21,6 +21,7 @@ import {
 } from "../utils/Utils";
 import ReferenceSection from "../resultPage/unified/ReferenceSection";
 import HistorySection from "../resultPage/unified/HistorySection";
+import RunQcProvenance from "../resultPage/unified/runs/RunQcProvenance";
 import CriticalBanner from "../resultPage/unified/CriticalBanner";
 import ResultAlertModal, {
   acknowledgementRefusal,
@@ -101,14 +102,6 @@ const Field = ({ labelKey, value, testId }) => (
 const modifyStartValue = (row) =>
   row.displayResultAsLog ? displayResult(row) : (row.result ?? "");
 
-const signedWhen = (value) => {
-  if (!value) {
-    return "";
-  }
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
-};
-
 /**
  * OGC-1364 v2: who signed which review level in this pass, and the signatures
  * a modification, retest or rejection superseded.
@@ -136,7 +129,7 @@ const SignOffs = ({ review, intl }) => (
                 levels: signOff.levels,
                 name: signOff.signerName,
                 role: signOff.roleName,
-                when: signedWhen(signOff.signedAt),
+                when: signOff.signedWhen || "",
               },
             )}
           </li>
@@ -157,7 +150,7 @@ const SignOffs = ({ review, intl }) => (
                   level: signOff.level,
                   levels: signOff.levels,
                   name: signOff.signerName,
-                  when: signedWhen(signOff.signedAt),
+                  when: signOff.signedWhen || "",
                   reason: intl.formatMessage({
                     id: `label.validation.review.signOffs.reason.${signOff.supersededReason}`,
                   }),
@@ -351,7 +344,8 @@ const ValidationReviewPanel = ({
   const qcAckBlocksRelease = Boolean(qcAck?.required && !qcAck?.satisfied);
   const qcHoldBlocksRelease =
     row.qcHold === true &&
-    configurationProperties?.QC_FAIL_BLOCKS_VALIDATION === "true";
+    (row.qcHoldBlocksRelease === true ||
+      configurationProperties?.QC_FAIL_BLOCKS_VALIDATION === "true");
   const selfValidationBlocked = row.selfValidationBlocked === true;
   const review = reviewStateOf(row);
   const reviewBlocked = Boolean(review.blockedReason) && !selfValidationBlocked;
@@ -1002,13 +996,15 @@ const ValidationReviewPanel = ({
         <ReferenceSection
           sectionId="qc"
           title={<FormattedMessage id="label.validation.review.qcSection" />}
-          summary={
-            qcStatus
-              ? intl.formatMessage({
-                  id: `label.validation.review.qc.${qcStatus}`,
-                })
-              : ""
-          }
+          summary={[
+            qcStatus &&
+              intl.formatMessage({
+                id: `label.validation.review.qc.${qcStatus}`,
+              }),
+            row.runQc?.runLabel,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
           open={sectionOpen("qc")}
           onToggle={toggleSection("qc")}
         >
@@ -1019,9 +1015,13 @@ const ValidationReviewPanel = ({
               })}
             </Tag>
           )}
-          <div className="unifiedFieldHint">
-            <FormattedMessage id="label.validation.review.reagents.followUp" />
-          </div>
+          {row.runQc ? (
+            <RunQcProvenance runQc={row.runQc} />
+          ) : (
+            <div className="unifiedFieldHint">
+              <FormattedMessage id="label.validation.review.reagents.followUp" />
+            </div>
+          )}
         </ReferenceSection>
 
         <OrderInfoSection

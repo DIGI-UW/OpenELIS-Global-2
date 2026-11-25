@@ -246,6 +246,10 @@ export const unitsDiffer = (
 
 export interface UnifiedResultsProps {
   accessionNumber?: string;
+  /**
+   * Shown inside another page (a run, a notebook, a case), which shows the
+   * notifications, so an embedded worklist does not show them a second time.
+   */
   embedded?: boolean;
   includeFinished?: boolean;
   /** Opens a run on /Results (OGC-1200); absent where runs are not offered. */
@@ -1553,7 +1557,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
 
   return (
     <>
-      <AlertDialog />
+      {!embedded && <AlertDialog />}
       {!embedded && <PageBreadCrumb breadcrumbs={breadcrumbs} />}
       {loading && (
         <Loading

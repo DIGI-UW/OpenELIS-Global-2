@@ -8,6 +8,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
+import org.openelisglobal.audittrail.dao.AuditTrailService;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.services.StaleSaveGuard;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.role.service.RoleService;
@@ -37,6 +40,8 @@ public class ValidationPolicyServiceImpl implements ValidationPolicyService {
 
     private static final String ONE_OVERRIDE_PER_UNIT = "uq_validation_policy_test_section";
 
+    static final String AUDIT_TABLE = "validation_policy";
+
     @Autowired
     private ValidationPolicyDAO validationPolicyDAO;
     @Lazy
@@ -51,6 +56,9 @@ public class ValidationPolicyServiceImpl implements ValidationPolicyService {
     @Lazy
     @Autowired
     private AnalysisReviewService analysisReviewService;
+    @Lazy
+    @Autowired
+    private AuditTrailService auditTrailService;
 
     @Override
     @Transactional(readOnly = true)
@@ -62,6 +70,7 @@ public class ValidationPolicyServiceImpl implements ValidationPolicyService {
     @Transactional
     public ValidationPolicyView saveLabWideDefault(ValidationPolicyForm form, String sysUserId) {
         ValidationPolicy policy = validationPolicyDAO.findLabWideDefault().orElseGet(ValidationPolicy::new);
+        refuseStale(policy, form.lastupdated());
         ReviewTrigger trigger = apply(policy, form, sysUserId);
         writeValidateAllResults(trigger == ReviewTrigger.ALL, sysUserId);
         return toView(policy);
@@ -115,6 +124,7 @@ public class ValidationPolicyServiceImpl implements ValidationPolicyService {
     @Transactional
     public LabUnitPolicyView saveLabUnitOverride(Long id, ValidationPolicyForm form, String sysUserId) {
         ValidationPolicy policy = labUnitOverride(id);
+        refuseStale(policy, form.lastupdated());
         if (!policy.isActive()) {
             throw new ValidationPolicyRefusedException("id", "overrideDeactivated");
         }
@@ -124,14 +134,44 @@ public class ValidationPolicyServiceImpl implements ValidationPolicyService {
 
     @Override
     @Transactional
-    public LabUnitPolicyView setLabUnitOverrideActive(Long id, boolean active, String sysUserId) {
+    public LabUnitPolicyView setLabUnitOverrideActive(Long id, boolean active, String lastupdated, String sysUserId) {
         ValidationPolicy policy = labUnitOverride(id);
+        refuseStale(policy, lastupdated);
         if (policy.isActive() != active) {
+            ValidationPolicy prior = copyOf(policy);
             policy.setActive(active);
             stamp(policy, sysUserId);
             validationPolicyDAO.update(policy);
+            auditTrailService.saveHistory(policy, prior, sysUserId, IActionConstants.AUDIT_TRAIL_UPDATE, AUDIT_TABLE);
         }
         return toLabUnitView(policy);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ValidationPolicyStaleException lostRace(Long labUnitOverrideId) {
+        ValidationPolicy policy = labUnitOverrideId == null ? labWideDefault() : labUnitOverride(labUnitOverrideId);
+        return new ValidationPolicyStaleException(policy.getId(), policy.getLastupdated());
+    }
+
+    private static void refuseStale(ValidationPolicy policy, String lastupdated) {
+        if (policy.getId() != null && StaleSaveGuard.isStale(lastupdated, policy.getLastupdated())) {
+            throw new ValidationPolicyStaleException(policy.getId(), policy.getLastupdated());
+        }
+    }
+
+    private static ValidationPolicy copyOf(ValidationPolicy policy) {
+        ValidationPolicy copy = new ValidationPolicy();
+        copy.setId(policy.getId());
+        copy.setTestSectionId(policy.getTestSectionId());
+        copy.setReviewTrigger(policy.getReviewTrigger());
+        copy.setReviewLevels(policy.getReviewLevels());
+        copy.setActive(policy.isActive());
+        copy.setChangedBy(policy.getChangedBy());
+        copy.setLevelRoleIds(new HashMap<>(policy.getLevelRoleIds()));
+        copy.setLastupdated(policy.getLastupdated());
+        copy.setSysUserId(policy.getSysUserId());
+        return copy;
     }
 
     @Override
@@ -161,16 +201,19 @@ public class ValidationPolicyServiceImpl implements ValidationPolicyService {
         ReviewTrigger trigger = parseTrigger(form.trigger());
         int levels = checkedLevels(trigger, form.levels());
         Map<Integer, Integer> roles = levelRoles(levels, form.roleIds());
+        ValidationPolicy prior = policy.getId() == null ? null : copyOf(policy);
         policy.setReviewTrigger(trigger);
         policy.setReviewLevels(levels);
         policy.setActive(true);
         policy.getLevelRoleIds().clear();
         policy.getLevelRoleIds().putAll(roles);
         stamp(policy, sysUserId);
-        if (policy.getId() == null) {
+        if (prior == null) {
             policy.setId(validationPolicyDAO.insert(policy));
+            auditTrailService.saveNewHistory(policy, sysUserId, AUDIT_TABLE);
         } else {
             validationPolicyDAO.update(policy);
+            auditTrailService.saveHistory(policy, prior, sysUserId, IActionConstants.AUDIT_TRAIL_UPDATE, AUDIT_TABLE);
         }
         return trigger;
     }
@@ -315,13 +358,14 @@ public class ValidationPolicyServiceImpl implements ValidationPolicyService {
         Optional<TestSection> unit = testSectionService.getMatch("id", testSectionId);
         return new LabUnitPolicyView(policy.getId(), testSectionId, unit.map(this::labUnitName).orElse(testSectionId),
                 unit.map(TestSection::getDomain).orElse(null), policy.getReviewTrigger().name(),
-                policy.getReviewLevels(), levels(policy), policy.isActive());
+                policy.getReviewLevels(), levels(policy), policy.isActive(),
+                StaleSaveGuard.token(policy.getLastupdated()));
     }
 
     private ValidationPolicyView toView(ValidationPolicy policy) {
         boolean blockSelfValidation = ConfigurationProperties.getInstance()
                 .isPropertyValueEqual(Property.BLOCK_SELF_VALIDATION, "true");
         return new ValidationPolicyView(policy.getReviewTrigger().name(), policy.getReviewLevels(), levels(policy),
-                isEnabled(), MAX_LEVELS, blockSelfValidation);
+                isEnabled(), MAX_LEVELS, blockSelfValidation, StaleSaveGuard.token(policy.getLastupdated()));
     }
 }

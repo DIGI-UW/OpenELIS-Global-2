@@ -16,6 +16,7 @@ import org.openelisglobal.resultrun.form.ResultRunSelection;
 import org.openelisglobal.resultrun.form.ResultRunSelectionSummary;
 import org.openelisglobal.resultrun.form.RunViewer;
 import org.openelisglobal.resultrun.form.WaitingRun;
+import org.openelisglobal.resultrun.service.ResultRunRowClassifier.ClassifiedRow;
 import org.openelisglobal.resultrun.valueholder.ResultRun;
 import org.openelisglobal.test.beanItems.TestResultItem;
 
@@ -37,10 +38,11 @@ public interface ResultRunService extends BaseObjectService<ResultRun, Long> {
     void addRows(Long runId, int count);
 
     /**
-     * A value of the run left staging (accepted, rejected or ignored). An analyzer
-     * run whose last value has left is complete (FR-E5).
+     * A value of the run left staging (accepted, rejected or ignored) by the given
+     * user. An analyzer run whose last value has left is complete (FR-E5), or
+     * superseded when every test it covers was retested and linked (FR-A3).
      */
-    void rowLeftStaging(Long runId);
+    void rowLeftStaging(Long runId, String sysUserId);
 
     ResultRunListResponse listActiveRuns(RunViewer viewer, String testSectionId);
 
@@ -61,6 +63,22 @@ public interface ResultRunService extends BaseObjectService<ResultRun, Long> {
      * the excluded rows, never from a list of every row (FR-E11, FR-E11a, FR-E12).
      */
     Optional<ResultRunSelectionSummary> summarizeSelection(Long runId, RunViewer viewer, ResultRunSelection selection);
+
+    /**
+     * Re-evaluates the run's QC holds and state once its values and controls are
+     * in: a message with no control for a test that requires one under a Hold
+     * policy holds that test at once (FR-C7).
+     */
+    void refreshQcState(Long runId, String sysUserId);
+
+    /** Whether the run exists and the viewer may see it. */
+    boolean canSee(Long runId, RunViewer viewer);
+
+    /**
+     * The run's waiting values the viewer may see, each with its flag, category and
+     * exception kind; empty when the viewer may not see the run.
+     */
+    Optional<List<ClassifiedRow>> classifiedRows(Long runId, RunViewer viewer);
 
     /** The message the run was opened from, as it was accepted. */
     Optional<String> getRawMessage(Long runId, RunViewer viewer);
@@ -96,7 +114,7 @@ public interface ResultRunService extends BaseObjectService<ResultRun, Long> {
     Optional<AnalyzerResults> stagedValueFor(String runRowId, Analysis analysis, String componentId);
 
     /** The run that holds a row, as the worklist names it (FR-D4). */
-    WaitingRun heldRun(Long runId);
+    WaitingRun heldRun(Long runId, String testId);
 
     static String waitingKey(String accessionNumber, String testId) {
         return accessionNumber + "|" + testId;

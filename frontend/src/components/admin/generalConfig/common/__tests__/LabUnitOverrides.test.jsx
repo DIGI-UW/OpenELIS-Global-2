@@ -354,6 +354,56 @@ describe("Lab unit overrides on Result Configuration (OGC-1364 v1 slice 2)", () 
     expect(JSON.parse(reactivateBody)).toEqual({ active: true });
   });
 
+  it("an override edited or toggled from an outdated page is refused, naming who changed it (OGC-1017)", async () => {
+    served = {
+      labUnits,
+      overrides: [{ ...waterQuality, lastupdated: "1763892000000" }, serology],
+    };
+    vi.mocked(putToOpenElisServerFullResponse).mockImplementation(
+      (url, body, callback) =>
+        callback({
+          ok: false,
+          status: 409,
+          json: async () => ({
+            conflict: "stale",
+            modifiedBy: "Ada Admin",
+            modifiedAt: "23/11/2026 10:15",
+          }),
+        }),
+    );
+    renderSection();
+
+    fireEvent.click(await screen.findByTestId("validation-override-edit-3"));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByLabelText("All results"));
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Save override" }),
+    );
+
+    expect(
+      await within(dialog).findByTestId("validation-override-stale"),
+    ).toHaveTextContent(
+      "This policy was changed by Ada Admin at 23/11/2026 10:15",
+    );
+    const [, editBody] = vi.mocked(putToOpenElisServerFullResponse).mock
+      .calls[0];
+    expect(JSON.parse(editBody).lastupdated).toBe("1763892000000");
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    fireEvent.click(
+      await screen.findByTestId("validation-override-deactivate-3"),
+    );
+    expect(
+      await screen.findByTestId("validation-overrides-stale"),
+    ).toHaveTextContent("This policy was changed by Ada Admin");
+    const [, toggleBody] = vi.mocked(putToOpenElisServerFullResponse).mock
+      .calls[1];
+    expect(JSON.parse(toggleBody)).toEqual({
+      active: false,
+      lastupdated: "1763892000000",
+    });
+  });
+
   it("shows the policy each active lab unit follows, with unsaved default changes", async () => {
     renderSection();
 

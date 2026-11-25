@@ -453,6 +453,12 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
 
     @Override
     @Transactional(readOnly = true)
+    public List<Sample> getSamplesWithAccessionNumberStartingWith(String prefix, int max) {
+        return getBaseObjectDAO().getSamplesWithAccessionNumberStartingWith(prefix, max);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Sample> getEnvironmentalSamplesWithAccessionNumberStartingWith(String prefix, int max) {
         return getBaseObjectDAO().getEnvironmentalSamplesWithAccessionNumberStartingWith(prefix, max);
     }
