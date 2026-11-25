@@ -19,6 +19,6 @@ public record SuggestedTest(String testId, String testName, String loinc, List<S
     }
 
     public record Threshold(String standardId, String regulationNumber, String type, BigDecimal min, BigDecimal max,
-            BigDecimal target, String units) {
+            BigDecimal target, String units, String valueDescriptive) {
     }
 }

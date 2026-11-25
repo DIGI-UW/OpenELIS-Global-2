@@ -143,6 +143,30 @@ beforeEach(() => {
 });
 
 describe("Regulation-driven environmental order (OGC-768)", () => {
+  it("shows the descriptive requirements in the conflict comparison and standard cards", () => {
+    suggestedResponse = [
+      {
+        ...SUGGESTED[2],
+        thresholds: ["Absent", "Present"].map((valueDescriptive, index) => ({
+          ...cover(String(index + 1)),
+          type: "DESCRIPTIVE",
+          valueDescriptive,
+        })),
+      },
+    ];
+    render(<Harness samples={[]} />);
+
+    const comparison = screen.getByTestId("compliance-plan-limits-33");
+    expect(comparison).toHaveTextContent("PP 22/2021Absent");
+    expect(comparison).toHaveTextContent("WHO-DWG-4Present");
+    expect(
+      screen.getByTestId("compliance-standard-thresholds-1"),
+    ).toHaveTextContent("pH: Absent");
+    expect(
+      screen.getByTestId("compliance-standard-thresholds-2"),
+    ).toHaveTextContent("pH: Present");
+  });
+
   it("shows a card per standard and a test plan with every suggested test once", () => {
     render(<Harness samples={[{ index: 0, sampleTypeId: "7", tests: [] }]} />);
 
