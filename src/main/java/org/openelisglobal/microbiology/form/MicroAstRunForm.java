@@ -11,9 +11,11 @@ public class MicroAstRunForm {
     public String isolateId;
     public String panelId;
     public Integer panelVersion;
+    public String panelLabel;
     public String panelProvenance;
     public String panelAdjustmentReason;
     public String breakpointStandardId;
+    public String breakpointAuthority;
     public String breakpointVersion;
     public String attemptType;
     public String sourceRunId;
@@ -47,6 +49,7 @@ public class MicroAstRunForm {
     public Timestamp analyzerCompletedAt;
     public String analyzerMessageCodes;
     public String sourceEventId;
+    public boolean intrinsicContradiction;
     public List<MicroAstRunAntibioticForm> orderedAntibiotics = new ArrayList<>();
     public List<MicroAstReadingForm> readings = new ArrayList<>();
 }

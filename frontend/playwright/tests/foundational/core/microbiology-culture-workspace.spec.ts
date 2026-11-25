@@ -1,4 +1,7 @@
-import { selectCultureMedium } from "../../../helpers/microbiology-ui";
+import {
+  openMicrobiologyCaseScope,
+  selectCultureMedium,
+} from "../../../helpers/microbiology-ui";
 import { expect, test } from "../../../helpers/test-base";
 import { seedMicrobiologyCultureWorkspace } from "../../../helpers/seed-microbiology-data";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
@@ -20,19 +23,24 @@ test("inoculates cultures, appends readings, extends, subcultures and attaches G
   await page.goto(`/Microbiology/cases/${seeded.caseId}`, {
     waitUntil: "domcontentloaded",
   });
-  await page
-    .getByLabel("Testing section", { exact: true })
-    .selectOption("CULTURE");
+  await openMicrobiologyCaseScope(page, "CULTURE");
   await page
     .getByRole("button", { name: "Inoculate culture", exact: true })
     .click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Bottle or plate identifier").fill("M4-PARENT");
   await selectCultureMedium(page, seeded.mediumItemId!);
-  await firstOption(dialog.getByLabel("Medium lot", { exact: true }));
-  await firstOption(dialog.getByLabel("Atmosphere", { exact: true }));
+  await firstOption(
+    dialog.getByRole("combobox", { name: "Medium lot", exact: true }),
+  );
+  await firstOption(
+    dialog.getByRole("combobox", { name: "Atmosphere", exact: true }),
+  );
   await expect(
-    dialog.getByLabel("Incubation duration", { exact: true }),
+    dialog.getByRole("spinbutton", {
+      name: "Incubation duration",
+      exact: true,
+    }),
   ).toHaveValue("48");
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
   const parent = page
@@ -104,7 +112,9 @@ test("inoculates cultures, appends readings, extends, subcultures and attaches G
     .first()
     .click();
   await dialog.getByLabel("Bottle or plate identifier").fill("M4-CHILD");
-  await firstOption(dialog.getByLabel("Medium lot", { exact: true }));
+  await firstOption(
+    dialog.getByRole("combobox", { name: "Medium lot", exact: true }),
+  );
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
   const child = page
     .locator('[data-testid^="culture-row-"]')
@@ -120,9 +130,7 @@ test("inoculates cultures, appends readings, extends, subcultures and attaches G
     timeout: LONG_TIMEOUT,
   });
   await page.reload();
-  await page
-    .getByLabel("Testing section", { exact: true })
-    .selectOption("CULTURE");
+  await openMicrobiologyCaseScope(page, "CULTURE");
   await expect(
     page
       .getByTestId(`culture-row-${parentId}`)

@@ -57,6 +57,8 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
     @Autowired
     private MicroCaseMembershipService membership;
     @Autowired
+    private MicroCaseWorkspaceService caseWorkspace;
+    @Autowired
     private MicroCaseAmendmentService amendments;
     @Autowired
     private MicroReportVersionService reports;
@@ -92,6 +94,12 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
     private org.openelisglobal.referral.service.ReferralReasonService reasons;
     @Autowired
     private org.openelisglobal.referral.dao.ReferralDAO referrals;
+    @Autowired
+    private MicroCaseResultService results;
+    @Autowired
+    private MicroCaseAnalysisDAO caseAnalyses;
+    @Autowired
+    private org.openelisglobal.dataexchange.fhir.service.FhirTransformService fhir;
     @Autowired
     private org.openelisglobal.systemuser.service.SystemUserService users;
     @Autowired
@@ -354,6 +362,25 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
+    public void reidentifyingKeepsAStoredMethodMissingFromTheMethodList() {
+        String id = pick();
+        workspace.act(c.getId(), id, "identify", identification(id, organismA), writer);
+        em.flush();
+        isolates.get(id).orElseThrow().setIdentificationMethod("MALDI_TOF");
+        em.flush();
+        var unknown = identification(id, organismB);
+        unknown.identificationMethod = "999999999";
+        assertEquals("MICROBIOLOGY_ISOLATE_METHOD", assertThrows(IllegalArgumentException.class,
+                () -> workspace.act(c.getId(), id, "reidentify", unknown, validator)).getMessage());
+        var kept = identification(id, organismB);
+        kept.identificationMethod = "MALDI_TOF";
+        workspace.act(c.getId(), id, "reidentify", kept, validator);
+        var i = reload().isolates.getFirst();
+        assertEquals(organismB, i.organismId());
+        assertEquals("MALDI_TOF", i.method());
+    }
+
+    @Test
     public void rejectsStaleIdentificationWithoutAppendingHistory() {
         String id = pick();
         var stale = identification(id, organismB);
@@ -529,40 +556,37 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
+    public void openAndReturnedReferralsTagTheCaseAndFilterTheSearch() {
+        refer(List.of(pick()));
+        assertReferralTags("REFERRED");
+        var referral = referrals
+                .getWorkspaceReferrals(
+                        reload().isolates.stream().map(MicroIsolateWorkspaceForm.Isolate::sampleItemId).toList())
+                .getFirst();
+        referral.setStatus(org.openelisglobal.referral.valueholder.ReferralStatus.COMPLETED);
+        referrals.update(referral);
+        assertReferralTags("REFERRAL_RETURNED");
+        referral.setReconciled(true);
+        referrals.update(referral);
+        assertReferralTags();
+    }
+
+    private void assertReferralTags(String... tags) {
+        em.flush();
+        assertEquals(List.of(tags), caseWorkspace.get(c.getId(), writer).statusTags);
+        for (String tag : List.of("REFERRED", "REFERRAL_RETURNED")) {
+            var q = new MicroCaseSearchForm();
+            q.accessionNumber = source.getSample().getAccessionNumber();
+            q.caseStatus = tag;
+            assertEquals(tag, List.of(tags).contains(tag),
+                    caseWorkspace.search(q, writer).rows.stream().anyMatch(r -> r.id.equals(c.getId())));
+        }
+    }
+
+    @Test
     public void sameTestOnTwoIsolatesProducesTwoCorrectlyLinkedReferrals() {
         String first = pick(), second = pick();
-        var test = fixtures.createCatalogTest();
-        test.setTestSection(org.openelisglobal.spring.util.SpringContext
-                .getBean(org.openelisglobal.test.service.TestSectionService.class).get(c.getLabUnitId()));
-        tests.update(test);
-        var mapping = new org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest();
-        mapping.setTypeOfSampleId(isolateType.getId());
-        mapping.setTestId(test.getId());
-        mapping.setSysUserId(writer);
-        sampleTests.insert(mapping);
-        var facility = new org.openelisglobal.organization.valueholder.Organization();
-        facility.setOrganizationName("M5 reference " + UUID.randomUUID());
-        facility.setIsActive("Y");
-        facility.setMlsSentinelLabFlag("N");
-        facility.setSysUserId(writer);
-        organizations.insert(facility);
-        markReferralLab(facility);
-        var reason = new org.openelisglobal.referral.valueholder.ReferralReason();
-        reason.setName("M5 " + UUID.randomUUID().toString().substring(0, 12));
-        reason.setSysUserId(writer);
-        reasons.insert(reason);
-        for (String id : List.of(first, second)) {
-            var r = new MicroIsolateWorkspaceRequestForm();
-            r.sampleTypeId = isolateType.getId();
-            r.testId = test.getId();
-            r.referral = new ReferralItem();
-            r.referral.setReferredInstituteId(facility.getId());
-            r.referral.setReferralReasonId(reason.getId());
-            r.referral.setReferredSendDate(org.openelisglobal.common.util.DateUtil.getCurrentDateAsText());
-            r.referral.setSubcontractNotes("Transport at room temperature");
-            workspace.act(c.getId(), id, "referral", r, writer);
-            reload();
-        }
+        refer(List.of(first, second));
         var form = reload();
         assertTrue(form.referred);
         assertEquals(2, form.referrals.size());
@@ -589,6 +613,41 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
             referrals.update(ref);
         }
         assertFalse(reload().referred);
+    }
+
+    private void refer(List<String> isolateIds) {
+        var test = fixtures.createCatalogTest();
+        test.setTestSection(org.openelisglobal.spring.util.SpringContext
+                .getBean(org.openelisglobal.test.service.TestSectionService.class).get(c.getLabUnitId()));
+        tests.update(test);
+        var mapping = new org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest();
+        mapping.setTypeOfSampleId(isolateType.getId());
+        mapping.setTestId(test.getId());
+        mapping.setSysUserId(writer);
+        sampleTests.insert(mapping);
+        var facility = new org.openelisglobal.organization.valueholder.Organization();
+        facility.setOrganizationName("M5 reference " + UUID.randomUUID());
+        facility.setIsActive("Y");
+        facility.setMlsSentinelLabFlag("N");
+        facility.setSysUserId(writer);
+        organizations.insert(facility);
+        markReferralLab(facility);
+        var reason = new org.openelisglobal.referral.valueholder.ReferralReason();
+        reason.setName("M5 " + UUID.randomUUID().toString().substring(0, 12));
+        reason.setSysUserId(writer);
+        reasons.insert(reason);
+        for (String id : isolateIds) {
+            var r = new MicroIsolateWorkspaceRequestForm();
+            r.sampleTypeId = isolateType.getId();
+            r.testId = test.getId();
+            r.referral = new ReferralItem();
+            r.referral.setReferredInstituteId(facility.getId());
+            r.referral.setReferralReasonId(reason.getId());
+            r.referral.setReferredSendDate(org.openelisglobal.common.util.DateUtil.getCurrentDateAsText());
+            r.referral.setSubcontractNotes("Transport at room temperature");
+            workspace.act(c.getId(), id, "referral", r, writer);
+            reload();
+        }
     }
 
     @Test
@@ -1095,6 +1154,89 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
         referral.setSubcontract(null);
         assertEquals(legacy, reload().referrals.get(0).sentAt());
 
+    }
+
+    @Test
+    public void aSpecimenReferralNeverTakesTheCultureAnalysisOfTheSameTest() {
+        var request = minimalReferralRequest();
+        allowOnSource(request.testId);
+        var cultureTest = new MicroCaseAddTestsForm();
+        cultureTest.sampleItemId = source.getId();
+        cultureTest.placement = "CULTURE";
+        cultureTest.cultureId = culture("GROWTH").getId();
+        cultureTest.testIds = List.of(request.testId);
+        String cultureAnalysis = results.addTests(c.getId(), cultureTest, writer).getFirst().analysisId;
+
+        request.sampleItemId = source.getId();
+        workspace.refer(c.getId(), request, writer);
+
+        var referred = referrals.getWorkspaceReferrals(List.of(source.getId())).getFirst().getAnalysis();
+        assertNotEquals(cultureAnalysis, referred.getId());
+        assertNull(caseAnalyses.getByCaseAndAnalysis(c.getId(), referred.getId()).getCultureId());
+    }
+
+    @Test
+    public void anOfferedDescendantAliquotCanBeReferred() {
+        var request = minimalReferralRequest();
+        allowOnSource(request.testId);
+        var aliquot = new SampleItem();
+        aliquot.setSample(source.getSample());
+        aliquot.setParentSampleItem(source);
+        aliquot.setTypeOfSample(source.getTypeOfSample());
+        aliquot.setSortOrder("2");
+        aliquot.setStatusId(source.getStatusId());
+        aliquot.setSysUserId(writer);
+        sampleItems.insert(aliquot);
+        assertTrue(workspace.options(c.getId()).sources.stream().anyMatch(s -> aliquot.getId().equals(s.id())));
+
+        request.sampleItemId = aliquot.getId();
+        workspace.refer(c.getId(), request, writer);
+
+        assertEquals(aliquot.getId(), referrals.getWorkspaceReferrals(List.of(aliquot.getId())).getFirst().getAnalysis()
+                .getSampleItem().getId());
+    }
+
+    @Test
+    public void publishingATestOnAnIsolatePublishesTheIsolateSpecimen() throws Exception {
+        var request = minimalReferralRequest();
+        String isolateId = pick();
+        workspace.act(c.getId(), isolateId, "test", request, writer);
+        var specimen = sampleItems.get(reload().isolates.getFirst().sampleItemId());
+        String analysisId = caseAnalyses.getAnalyses(c.getId()).stream()
+                .filter(a -> a.getSampleItem().getId().equals(specimen.getId())).findFirst().orElseThrow().getId();
+
+        var published = new ArrayList<org.hl7.fhir.r4.model.Resource>();
+        var target = (org.openelisglobal.dataexchange.fhir.service.FhirTransformServiceImpl) org.springframework.test.util.AopTestUtils
+                .getUltimateTargetObject(fhir);
+        var store = org.springframework.test.util.ReflectionTestUtils.getField(target, "fhirPersistanceService");
+        org.springframework.test.util.ReflectionTestUtils.setField(target, "fhirPersistanceService",
+                new org.openelisglobal.dataexchange.fhir.service.FhirPersistanceServiceImpl() {
+                    @Override
+                    @SuppressWarnings("unchecked")
+                    public org.hl7.fhir.r4.model.Bundle createUpdateFhirResourcesInFhirStore(
+                            FhirOperations operations) {
+                        published.addAll(
+                                ((Map<String, org.hl7.fhir.r4.model.Resource>) org.springframework.test.util.ReflectionTestUtils
+                                        .getField(operations, "updateResources")).values());
+                        return new org.hl7.fhir.r4.model.Bundle();
+                    }
+                });
+        try {
+            target.transformAnalysisByIds(List.of(analysisId));
+        } finally {
+            org.springframework.test.util.ReflectionTestUtils.setField(target, "fhirPersistanceService", store);
+        }
+
+        assertTrue(published.stream().anyMatch(r -> r instanceof org.hl7.fhir.r4.model.Specimen
+                && specimen.getFhirUuidAsString().equals(r.getIdElement().getIdPart())));
+    }
+
+    private void allowOnSource(String testId) {
+        var mapping = new org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest();
+        mapping.setTypeOfSampleId(source.getTypeOfSampleId());
+        mapping.setTestId(testId);
+        mapping.setSysUserId(writer);
+        sampleTests.insert(mapping);
     }
 
     private MicroIsolateWorkspaceRequestForm minimalReferralRequest() {

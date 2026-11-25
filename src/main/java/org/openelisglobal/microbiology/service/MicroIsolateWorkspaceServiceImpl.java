@@ -132,8 +132,6 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
         var f = new MicroIsolateWorkspaceForm.Options();
         f.methods = methods.getAllActiveMethods().stream().map(m -> new IdValuePair(m.getId(), m.getMethodName()))
                 .toList();
-        f.organisms = organisms.getActiveOrganisms().stream().map(o -> new IdValuePair(o.getId(), o.getDisplayName()))
-                .toList();
         f.sampleTypes = sampleTypes.getAll().stream().filter(t -> t.getIsActive() && t.isMicrobiologyIsolate())
                 .map(t -> new IdValuePair(t.getId(), t.getDescription())).toList();
         f.originalSpecimenTypes = sampleTypes.getAll().stream()
@@ -221,10 +219,10 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
             if (identified(i) != "reidentify".equals(action))
                 bad("IDENTIFICATION_ACTION");
             requireVersion(i, r.version);
-            var method = methods.findById(r.identificationMethod);
-            if (method == null || !"Y".equals(method.getIsActive()))
-                bad("METHOD");
-            text(method.getMethodName(), 80, true);
+            String method = Objects.equals(r.identificationMethod, i.getIdentificationMethod())
+                    ? i.getIdentificationMethod()
+                    : activeMethodName(r.identificationMethod);
+            text(method, 80, true);
             text(r.reason, 2000, "reidentify".equals(action));
             if (r.identificationStatus == null || !List.of("PRELIMINARY", "FINAL").contains(r.identificationStatus))
                 bad("STATUS");
@@ -241,7 +239,7 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
             identification.updateIdentification(isolateId, r.organismId, null, parseSignificance(r.significance),
                     "FINAL".equals(r.identificationStatus) ? MicroIsolateIdentificationStatus.CONFIRMED
                             : MicroIsolateIdentificationStatus.PRELIMINARY,
-                    method.getMethodName(), r.confidence, r.reason, r.identifiedAt, actor);
+                    method, r.confidence, r.reason, r.identifiedAt, actor);
         }
         case "sample-item" -> ensureSampleItem(c, i, r.sampleTypeId, r.purpose, actor);
         case "received-origin" -> {
@@ -356,7 +354,8 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
         body.testIds = List.of(testId);
         results.addTests(caseId, body, actor);
         return analyses.getAnalyses(caseId).stream()
-                .filter(a -> a.getSampleItem().getId().equals(sampleItemId) && a.getTest().getId().equals(testId))
+                .filter(a -> a.getSampleItem().getId().equals(sampleItemId) && a.getTest().getId().equals(testId)
+                        && analyses.getByCaseAndAnalysis(caseId, a.getId()).getCultureId() == null)
                 .findFirst().orElseThrow(() -> new IllegalStateException("Isolate analysis missing"));
     }
 
@@ -517,6 +516,13 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
     private static void text(String value, int max, boolean required) {
         if ((required && trim(value) == null) || (value != null && value.length() > max))
             bad("TEXT");
+    }
+
+    private String activeMethodName(String methodId) {
+        var method = methods.findById(methodId);
+        if (method == null || !"Y".equals(method.getIsActive()))
+            bad("METHOD");
+        return method.getMethodName();
     }
 
     private static void bad(String code) {

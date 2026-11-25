@@ -24,6 +24,7 @@ import {
   formatHoldingMinutes,
   formatIsoDateForBackend,
   formatPickerDateForIso,
+  isClockTime,
 } from "../../dateUtils";
 import {
   getHandlingRequirements,
@@ -649,6 +650,8 @@ const SampleCollectionCard = ({
               defaultMessage: "Collection Time",
             })}
             value={sample.collectionTime || ""}
+            invalid={!isClockTime(sample.collectionTime)}
+            invalidText={intl.formatMessage({ id: "sample.time.invalid" })}
             onChange={(e) =>
               handleFieldChange("collectionTime", e.target.value)
             }
@@ -879,6 +882,8 @@ const SampleCollectionCard = ({
                 (sample.sampleItemId ? "" : serverReceivedTime) ||
                 ""
               }
+              invalid={!isClockTime(sample.receivedTime)}
+              invalidText={intl.formatMessage({ id: "sample.time.invalid" })}
               onChange={(e) =>
                 handleFieldChange("receivedTime", e.target.value)
               }

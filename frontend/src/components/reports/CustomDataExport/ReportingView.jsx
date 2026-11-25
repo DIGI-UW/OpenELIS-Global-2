@@ -27,6 +27,7 @@ const sourceTagColors = {
   SAMPLE_TESTING: "blue",
   REFERRALS: "teal",
   NON_CONFORMANCE: "magenta",
+  SAMPLE_REJECTIONS: "red",
 };
 
 // The presentation follows ReportBuilder/ReportQueue in openelis-work 5b2df7e34f.
@@ -63,6 +64,9 @@ export default function ReportingView(p) {
     job,
   } = p;
   const data = catalog.data;
+  const dateAnchor =
+    (data?.definition.filters?.includes("dateBasis") && draft.dateBasis) ||
+    data?.definition.dateAnchor;
   const busy =
     submission.isLoading || ["QUEUED", "GENERATING"].includes(job.data?.state);
   const notification = (kind, title, subtitle) => (
@@ -74,7 +78,12 @@ export default function ReportingView(p) {
     />
   );
   const pending = t("reporting.design.pending");
-  const declaredTypes = ["SAMPLE_TESTING", "REFERRALS", "NON_CONFORMANCE"];
+  const declaredTypes = [
+    "SAMPLE_TESTING",
+    "REFERRALS",
+    "NON_CONFORMANCE",
+    "SAMPLE_REJECTIONS",
+  ];
   const connectedTypes = declaredTypes.filter((id) =>
     types.data?.some((type) => type.id === id),
   );
@@ -767,13 +776,35 @@ export default function ReportingView(p) {
                     <p className="column-hint">
                       {t("reporting.periodHelp", {
                         // i18n-keys: reporting.dateAnchor.*
-                        dateMeaning: t(
-                          `reporting.dateAnchor.${data.definition.dateAnchor}`,
-                        ),
+                        dateMeaning: t(`reporting.dateAnchor.${dateAnchor}`),
                         days: data.maxDays,
                         timezone: data.timezone,
                       })}
                     </p>
+                    {data.dateBases?.length > 0 && (
+                      <Select
+                        id="reporting-date-basis"
+                        labelText={t("reporting.dateBasis.label")}
+                        value={dateAnchor}
+                        onChange={(event) =>
+                          update({
+                            dateBasis:
+                              event.target.value === data.definition.dateAnchor
+                                ? null
+                                : event.target.value,
+                          })
+                        }
+                      >
+                        {data.dateBases.map((basis) => (
+                          <SelectItem
+                            key={basis}
+                            value={basis}
+                            // i18n-keys: reporting.dateBasis.*
+                            text={t(`reporting.dateBasis.${basis}`)}
+                          />
+                        ))}
+                      </Select>
+                    )}
                     <div className="filter-grid">
                       <TextInput
                         id="reporting-from"
@@ -932,9 +963,9 @@ export default function ReportingView(p) {
                       <h3>{t("reporting.reportType")}</h3>
                       <Tag
                         type={
-                          sourceTagColors[
-                            data.definition.source || data.definition.id
-                          ] || "gray"
+                          sourceTagColors[data.definition.id] ||
+                          sourceTagColors[data.definition.source] ||
+                          "gray"
                         }
                       >
                         {data.definition.label}
@@ -958,9 +989,7 @@ export default function ReportingView(p) {
                           count: p.periodDays,
                         })}
                         {" · "}
-                        {t(
-                          `reporting.dateAnchor.${data.definition.dateAnchor}`,
-                        )}
+                        {t(`reporting.dateAnchor.${dateAnchor}`)}
                       </span>
                     </div>
                     <div className="review-section">
@@ -1117,8 +1146,22 @@ export default function ReportingView(p) {
                 </div>
               </>
             )}
-            {stale.length > 0 &&
-              notification("warning", t("reporting.columns.stale"))}
+            {stale.length > 0 && (
+              <div data-testid="reporting-stale-columns">
+                {notification("warning", t("reporting.columns.stale"))}
+                <Button
+                  kind="tertiary"
+                  size="sm"
+                  onClick={() =>
+                    p.setColumns(selected.filter((id) => byId.has(id)))
+                  }
+                >
+                  {t("reporting.columns.removeUnavailable", {
+                    count: stale.length,
+                  })}
+                </Button>
+              </div>
+            )}
             {submission.error &&
               notification(
                 "error",

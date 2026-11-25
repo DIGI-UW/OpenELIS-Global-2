@@ -32,10 +32,7 @@ import {
   deleteDevice,
   createRoom,
 } from "../api";
-import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/CustomNotification";
+import { NotificationKinds } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import { hasRole, Roles } from "../../utils/Utils";
@@ -98,7 +95,7 @@ const PARITY_OPTIONS = [
 
 function DeviceManagement() {
   const intl = useIntl();
-  const { notificationVisible, setNotificationVisible, addNotification } =
+  const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   // Device writes on FreezerDeviceController require ADMIN, so a non-admin who
@@ -550,7 +547,6 @@ function DeviceManagement() {
 
   return (
     <div style={{ padding: "1rem 0" }}>
-      {notificationVisible === true ? <AlertDialog /> : ""}
       <DataTable rows={rows} headers={getDeviceColumns(intl, canManageDevices)}>
         {({
           rows,

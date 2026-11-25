@@ -2,12 +2,15 @@ import React from "react";
 import { vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { format } from "date-fns";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../languages/en.json";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import EnvironmentalDashboard from "./EnvironmentalDashboard";
 import { getFromOpenElisServer } from "../utils/Utils";
+import { ConfigurationContext as SiteConfigurationContext } from "../layout/contexts";
+import { generateCompliancePdf } from "./utils/compliancePdfGenerator";
 
 vi.mock("../utils/Utils", async () => {
   const actual = await vi.importActual("../utils/Utils");
@@ -44,13 +47,15 @@ const serveSummary = (summary) => {
   });
 };
 
-const renderDashboard = () =>
+const renderDashboard = (configurationProperties = {}) =>
   render(
-    <IntlProvider locale="en" messages={messages}>
-      <UserSessionDetailsContext.Provider value={{ userSessionDetails: {} }}>
-        <EnvironmentalDashboard />
-      </UserSessionDetailsContext.Provider>
-    </IntlProvider>,
+    <SiteConfigurationContext.Provider value={{ configurationProperties }}>
+      <IntlProvider locale="en" messages={messages}>
+        <UserSessionDetailsContext.Provider value={{ userSessionDetails: {} }}>
+          <EnvironmentalDashboard />
+        </UserSessionDetailsContext.Provider>
+      </IntlProvider>
+    </SiteConfigurationContext.Provider>,
   );
 
 const rateTile = () =>
@@ -116,15 +121,86 @@ describe("EnvironmentalDashboard date filter", () => {
     const user = userEvent.setup();
     const start = screen.getByLabelText("Date Range");
     await user.clear(start);
-    await user.type(start, "2026-09-28{Enter}");
+    await user.type(start, "09/28/2026{Enter}");
 
     await vi.waitFor(() =>
-      expect(
-        getFromOpenElisServer.mock.calls
-          .map(([url]) => url)
-          .filter((url) => url.startsWith("/rest/compliance/dashboard/summary"))
-          .pop(),
-      ).toContain("startDate=2026-09-28&"),
+      expect(lastSummaryUrl()).toContain("startDate=2026-09-28&"),
+    );
+  });
+});
+
+const lastSummaryUrl = () =>
+  getFromOpenElisServer.mock.calls
+    .map(([url]) => url)
+    .filter((url) => url.startsWith("/rest/compliance/dashboard/summary"))
+    .pop();
+
+describe("EnvironmentalDashboard dates follow the site date format (OGC-1657)", () => {
+  const dayFirst = { DEFAULT_DATE_LOCALE: "fr-FR" };
+  const exceedance = {
+    date: "2026-03-05 00:00:00.0",
+    labNumber: "ENV26000001",
+    siteName: "Bekasi Riverside",
+    parameter: "Lead",
+    result: "0.9",
+    threshold: "<= 0.5",
+    status: "FAIL",
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.startsWith("/rest/compliance/dashboard/summary")) {
+        callback({ totalOrders: 1, totalExceedances: 1, sitesMonitored: 1 });
+      } else if (url.startsWith("/rest/compliance/dashboard/trend")) {
+        callback({ series: [] });
+      } else if (url.startsWith("/rest/compliance/dashboard/exceedances")) {
+        callback({ items: [exceedance], totalCount: 1 });
+      } else {
+        callback([]);
+      }
+    });
+  });
+
+  it("filters show and read dates day first on a dd/MM/yyyy site", async () => {
+    renderDashboard(dayFirst);
+    const start = screen.getByLabelText("Date Range");
+    const end = screen.getByLabelText("End date");
+
+    expect(start).toHaveAttribute("placeholder", "dd/mm/yyyy");
+    expect(end.value).toBe(format(new Date(), "dd/MM/yyyy"));
+    expect(lastSummaryUrl()).toContain(
+      `endDate=${format(new Date(), "yyyy-MM-dd")}`,
+    );
+
+    const user = userEvent.setup();
+    await user.clear(start);
+    await user.type(start, "05/03/2026{Enter}");
+
+    await vi.waitFor(() =>
+      expect(lastSummaryUrl()).toContain("startDate=2026-03-05&"),
+    );
+    expect(start.value).toBe("05/03/2026");
+  });
+
+  it("the exceedance table and the PDF show their dates day first", async () => {
+    renderDashboard(dayFirst);
+
+    expect(await screen.findByText("05/03/2026")).toBeInTheDocument();
+    expect(screen.queryByText(exceedance.date)).not.toBeInTheDocument();
+
+    await userEvent.setup().click(screen.getByText("Export PDF"));
+
+    await vi.waitFor(() => expect(generateCompliancePdf).toHaveBeenCalled());
+    const [data, meta] = generateCompliancePdf.mock.calls[0];
+    expect(data.exceedances.items[0].date).toBe("05/03/2026");
+    expect(meta.period).toMatch(
+      new RegExp(
+        `^\\d{2}/\\d{2}/\\d{4} – ${format(new Date(), "dd/MM/yyyy")}$`,
+      ),
+    );
+    expect(meta.generatedAt).toMatch(
+      new RegExp(`^${format(new Date(), "dd/MM/yyyy")} \\d{2}:\\d{2}$`),
     );
   });
 });

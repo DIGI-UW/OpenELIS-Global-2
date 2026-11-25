@@ -86,6 +86,12 @@ public interface SampleDAO extends BaseDAO<Sample, String> {
      */
     List<Sample> getEnvironmentalSamplesWithAccessionNumberStartingWith(String prefix, int max);
 
+    /**
+     * Orders of any domain whose lab number starts with the prefix, ignoring case,
+     * in lab number order, at most max.
+     */
+    List<Sample> getSamplesWithAccessionNumberStartingWith(String prefix, int max);
+
     String getLargestAccessionNumberMatchingPattern(String startingWith, int size) throws LIMSRuntimeException;
 
     List<Sample> getSamplesWithPendingQaEventsByService(String serviceId) throws LIMSRuntimeException;
