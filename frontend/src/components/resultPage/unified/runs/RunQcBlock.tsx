@@ -17,7 +17,7 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import useSiteDateFormat from "../../../common/useSiteDateFormat";
-import { formatRunTime } from "./runFormat";
+import { describeControl, runVerdictTagType } from "./runFormat";
 import RunTestDecision from "./RunTestDecision";
 import RunRetestLink from "./RunRetestLink";
 
@@ -50,6 +50,8 @@ export interface RunQcTestLine {
   retestOf?: RunLinkItem[];
   retestSuggestions?: RunLinkItem[];
   supersededBy?: RunLinkItem[];
+  holdCause?: "QC_FAILED" | "QC_MISSING" | null;
+  whenMissing?: "WARN" | "HOLD" | null;
 }
 
 export interface RunQc {
@@ -68,6 +70,8 @@ interface RunQcBlockProps {
   qc: RunQc;
   onRecorded: (qc: RunQc) => void;
   onOpenRun?: (runId: number) => void;
+  /** Whether the run still takes values (Open or Held). */
+  active?: boolean;
 }
 
 type Kind = "measured" | "controlLine";
@@ -94,38 +98,22 @@ const emptyDraft = (testId: string): Draft => ({
   outcome: "",
 });
 
-const OUTCOME_LABELS: Record<string, string> = {
-  PASS: "label.qc.pass",
-  FAIL: "label.qc.fail",
-  VALID: "label.results.control.capture.valid",
-  INVALID: "label.results.control.capture.invalid",
-};
-
-const verdictTag = (verdict?: string | null) => {
-  switch (verdict) {
-    case "FAIL":
-    case "HELD":
-      return "red";
-    case "DECIDED":
-      return "purple";
-    case "PASS":
-      return "green";
-    default:
-      return "gray";
-  }
-};
+const verdictTag = runVerdictTagType;
 
 /**
  * OGC-1200 FR-E2: the run header's QC block. The run's overall verdict, one
  * line per test it covers with that test's verdict and each control covering
  * it, and Record control, which adds a control to the run. A failed control
- * holds that test's rows, and only those (FR-C4).
+ * holds that test's rows, and only those (FR-C4); so does a required control
+ * that is missing when the test's policy holds, while a Warn policy only names
+ * it (FR-H1, FR-C7).
  */
 const RunQcBlock: React.FC<RunQcBlockProps> = ({
   runId,
   qc,
   onRecorded,
   onOpenRun,
+  active = true,
 }) => {
   const intl = useIntl();
   const { pattern } = useSiteDateFormat();
@@ -217,32 +205,8 @@ const RunQcBlock: React.FC<RunQcBlockProps> = ({
     );
   };
 
-  const observedText = (observed?: string | null) =>
-    observed && OUTCOME_LABELS[observed]
-      ? intl.formatMessage({ id: OUTCOME_LABELS[observed] })
-      : observed;
-
   const controlText = (control: RunControlLine) =>
-    [
-      control.level,
-      control.lotNumber,
-      observedText(control.observed) &&
-        (control.expected
-          ? intl.formatMessage(
-              { id: "run.qc.observedAgainst" },
-              {
-                observed: observedText(control.observed),
-                expected: control.expected,
-              },
-            )
-          : observedText(control.observed)),
-      control.verdictSource &&
-        intl.formatMessage({ id: `run.qc.source.${control.verdictSource}` }),
-      control.operator,
-      control.recordedAt && formatRunTime(intl, control.recordedAt, pattern),
-    ]
-      .filter(Boolean)
-      .join(" · ");
+    describeControl(intl, control, pattern);
 
   const outcomes =
     draft.kind === "measured"
@@ -280,6 +244,24 @@ const RunQcBlock: React.FC<RunQcBlockProps> = ({
             <Tag type={verdictTag(test.verdict)} size="sm">
               {intl.formatMessage({ id: `run.verdict.${test.verdict}` })}
             </Tag>
+            {test.verdict === "NO_CONTROL" &&
+              test.whenMissing &&
+              !test.decision && (
+                <p
+                  className="unifiedFieldHint"
+                  data-testid={`run-qc-missing-${test.testId}`}
+                >
+                  <FormattedMessage
+                    id={
+                      test.holdCause === "QC_MISSING"
+                        ? "run.qc.missingHold"
+                        : active
+                          ? "run.qc.missingWarn"
+                          : "run.qc.missingWarnClosed"
+                    }
+                  />
+                </p>
+              )}
             <RunTestDecision runId={runId} test={test} onDecided={onRecorded} />
             <RunRetestLink
               runId={runId}

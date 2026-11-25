@@ -34,6 +34,7 @@ public class SampleStorageRestControllerMetricsTest extends BaseWebContextSensit
         executeDataSetWithStateManagement("testdata/sample-storage-integration-test-data.xml");
         executeDataSetWithStateManagement("testdata/inventory-lot-storage-test-data.xml");
         cleanRowsInCurrentConnection(new String[] { "sample_storage_movement", "sample_storage_assignment" });
+        authenticateAs("testuser");
     }
 
     @After
