@@ -8,6 +8,7 @@ import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.referral.form.ReferredOutTestsForm;
 import org.openelisglobal.referral.service.ReferralService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.InitBinder;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/")
+@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS', 'VALIDATION', 'ADMIN')")
 public class ReferredOutTestsRestController {
 
     private static final String[] ALLOWED_FIELDS = new String[] { "labNumber", "testIds", "testUnitIds", "endDate",
