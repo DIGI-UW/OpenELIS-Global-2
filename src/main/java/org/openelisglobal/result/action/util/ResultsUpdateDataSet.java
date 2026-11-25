@@ -37,6 +37,7 @@ public class ResultsUpdateDataSet implements IResultSaveService {
     private List<ResultSet> newResults = new ArrayList<>();
     private List<Analysis> modifiedAnalysis = new ArrayList<>();
     private final Set<String> finalizedBeforeSave = new HashSet<>();
+    private final Set<String> releasedAtEntry = new HashSet<>();
     private List<Result> deletableResults = new ArrayList<>();
     private List<Result> calculatedResults = new ArrayList<>();
     private List<ReferralSet> savableReferralSets = new ArrayList<>();
@@ -84,6 +85,24 @@ public class ResultsUpdateDataSet implements IResultSaveService {
 
     public Set<String> getFinalizedBeforeSave() {
         return finalizedBeforeSave;
+    }
+
+    /**
+     * OGC-1017: called right after result entry decides an analysis's status. One
+     * it finalizes that was not finalized before this save is released without a
+     * validator; a later decision for the same analysis replaces this one.
+     */
+    public void statusDecidedAtEntry(Analysis analysis, String finalizedStatusId) {
+        if (finalizedStatusId.equals(analysis.getStatusId()) && !finalizedBeforeSave.contains(analysis.getId())) {
+            releasedAtEntry.add(analysis.getId());
+        } else {
+            releasedAtEntry.remove(analysis.getId());
+        }
+    }
+
+    /** The analyses result entry released without a validator in this save. */
+    public Set<String> getReleasedAtEntry() {
+        return releasedAtEntry;
     }
 
     public Analysis findModifiedAnalysis(String analysisId) {

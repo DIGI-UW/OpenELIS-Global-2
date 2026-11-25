@@ -194,8 +194,10 @@ A failed file rolls back its writes and is not marked successfully loaded.
 Previously successful concept files may remain when a later breakpoint file
 fails. Each breakpoint file is atomic: it cannot leave half an edition loaded.
 Provide the complete edition in one file; do not split it across files. New
-editions load inactive. An authorized administrator explicitly activates one. An
-application's HTTP health alone does not demonstrate a successful import.
+editions load inactive. After a WHONET breakpoint load, if no edition is active,
+the default edition named in microbiology-settings is activated; otherwise an
+authorized administrator explicitly activates one. An application's HTTP health
+alone does not demonstrate a successful import.
 
 Configuration-managed editions reject changed content under the same identity
 and cannot be edited through the rule editor or an administrator CSV upload.

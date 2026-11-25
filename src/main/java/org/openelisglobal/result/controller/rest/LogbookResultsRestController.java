@@ -526,8 +526,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             if (waiting.isPresent()) {
                 Map<String, Object> refusal = new HashMap<>();
                 refusal.put("error",
-                        MessageUtil.getMessage(waiting.get().held() ? "run.refusal.held" : "run.refusal.waiting",
-                                new String[] { waiting.get().label() }));
+                        MessageUtil.getMessage(waiting.get().refusalKey(), new String[] { waiting.get().label() }));
                 refusal.put("waitingRun", waiting.get());
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(refusal);
             }
@@ -537,8 +536,8 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                 .map(TestResultItem::getAnalysisId).filter(Objects::nonNull).toList());
         if (!holding.isEmpty()) {
             Map<String, Object> refusal = new HashMap<>();
-            WaitingRun held = resultRunService.heldRun(holding.values().iterator().next());
-            refusal.put("error", MessageUtil.getMessage("run.refusal.held", new String[] { held.label() }));
+            WaitingRun held = resultRunService.heldRun(holding.values().iterator().next(), null);
+            refusal.put("error", MessageUtil.getMessage(held.refusalKey(), new String[] { held.label() }));
             refusal.put("waitingRun", held);
             return ResponseEntity.status(HttpStatus.CONFLICT).body(refusal);
         }

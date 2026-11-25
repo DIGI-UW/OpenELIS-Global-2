@@ -11,6 +11,7 @@ export interface WaitingRun {
   source: string;
   openedAt?: string | null;
   held?: boolean;
+  heldCause?: "QC_FAILED" | "QC_MISSING" | null;
 }
 
 interface WaitingTagProps {
@@ -21,8 +22,9 @@ interface WaitingTagProps {
 /**
  * OGC-1200 FR-D3: a pending test whose analyzer value waits in an open run.
  * The value is not shown here and the row cannot be entered; the tag opens
- * the run, where the value is reviewed. When a control for the test failed in
- * that run the row is held, and the tag says so in red (FR-D4).
+ * the run, where the value is reviewed. When the run holds the test, for a
+ * failed control or a required control that is missing, the row is held and the
+ * tag says so, and why, in red (FR-D4).
  */
 const WaitingTag: React.FC<WaitingTagProps> = ({ run, onOpenRun }) => {
   const intl = useIntl();
@@ -51,7 +53,13 @@ const WaitingTag: React.FC<WaitingTagProps> = ({ run, onOpenRun }) => {
         onClick={open}
       >
         {intl.formatMessage(
-          { id: run.held ? "run.tag.heldQcFailed" : "run.tag.waiting" },
+          {
+            id: !run.held
+              ? "run.tag.waiting"
+              : run.heldCause === "QC_MISSING"
+                ? "run.tag.heldQcMissing"
+                : "run.tag.heldQcFailed",
+          },
           { runId: run.label },
         )}
       </Tag>
