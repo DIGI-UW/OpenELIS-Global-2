@@ -18,8 +18,8 @@ public class MicroAstWorkspaceForm {
     public record Choice(String antibioticId, String readingId) {
     }
 
-    public record Isolate(String id, String label, String organism, String protocol, List<Option> panels,
-            List<Assignment> assignments, List<MicroAstRunForm> runs, List<Choice> choices) {
+    public record Isolate(String id, String label, String organism, String protocol, String defaultPanelId,
+            List<Option> panels, List<Assignment> assignments, List<MicroAstRunForm> runs, List<Choice> choices) {
     }
 
     public static class Action {
@@ -30,6 +30,7 @@ public class MicroAstWorkspaceForm {
         public String runId, readingId, panelId, technique, breakpointStandardId, antibioticId, interpretation, reason,
                 analyzerCardId, analyzerInstrumentId, clinicalContext;
         public boolean awaitAnalyzerResults;
+        public boolean reported;
         public List<MicroLotSelectionRequestForm> lotSelections = List.of();
         public List<String> orderedAntibioticIds;
         public java.math.BigDecimal rawValue;

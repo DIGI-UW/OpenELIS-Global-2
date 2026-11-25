@@ -1,7 +1,11 @@
 import { useCallback, useRef, useState } from "react";
 
-/** How long a toast of this kind stays up, in milliseconds. */
-export const notificationTimeout = (kind) => (kind !== "error" ? 2000 : 3000);
+/**
+ * How long a toast stays up, in milliseconds: its own time when it names one,
+ * where 0 keeps it until it is closed, otherwise its kind's.
+ */
+export const notificationTimeout = (kind, own) =>
+  own ?? (kind !== "error" ? 2000 : 3000);
 
 /**
  * The page-wide notification queue. Each notification gets an id when it is
@@ -38,10 +42,13 @@ export function useNotificationList() {
         return;
       }
       expiring.current.add(notification.id);
-      setTimeout(
-        () => removeNotification(notification.id),
-        notificationTimeout(notification.kind),
+      const timeout = notificationTimeout(
+        notification.kind,
+        notification.timeout,
       );
+      if (timeout > 0) {
+        setTimeout(() => removeNotification(notification.id), timeout);
+      }
     },
     [removeNotification],
   );

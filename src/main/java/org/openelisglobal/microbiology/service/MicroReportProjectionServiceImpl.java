@@ -1,13 +1,25 @@
 package org.openelisglobal.microbiology.service;
 
+import java.util.EnumSet;
 import java.util.List;
+import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.microbiology.dao.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional(readOnly = true)
 public class MicroReportProjectionServiceImpl implements MicroReportProjectionService {
+    @Autowired
+    private MicroCaseAnalysisDAO links;
+    @Autowired
+    private IStatusService statuses;
+    @Autowired
+    private AnalysisService analyses;
     private final MicroPatientReportService reports;
     private final MicroReportVersionDAO versions;
     private final MicroCaseDAO cases;
@@ -47,6 +59,19 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
     @Override
     @Transactional
     public MicroReportProjectionResult releaseFinal(String caseId, String actor) {
+        var settled = EnumSet.of(AnalysisStatus.Finalized, AnalysisStatus.Canceled, AnalysisStatus.SampleRejected);
+        for (var analysis : links.getAnalyses(caseId)) {
+            if (!links.getByCaseAndAnalysis(caseId, analysis.getId()).isCultureOrder()
+                    || settled.contains(statuses.getAnalysisStatusForID(analysis.getStatusId())))
+                continue;
+            var stored = new Analysis();
+            stored.setId(analysis.getId());
+            analyses.getData(stored);
+            analysis.setStatusId(statuses.getStatusID(AnalysisStatus.Finalized));
+            analysis.setReleasedDate(MicroCaseServiceImpl.now());
+            analysis.setSysUserId(actor);
+            analyses.updateAgainst(analysis, stored);
+        }
         return current(caseId);
     }
 

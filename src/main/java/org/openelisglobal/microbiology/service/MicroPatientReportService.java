@@ -25,6 +25,8 @@ public class MicroPatientReportService {
     private final MicroOrganismDAO organisms;
     private final MicroAntibioticDAO antibiotics;
     private final MicroAstRunDAO runs;
+    private final MicroAstRunAntibioticDAO runAntibiotics;
+    private final MicroReportingRuleDAO reportingRules;
     private final MicroAstReportChoiceService choices;
     private final MicroBreakpointStandardDAO standards;
     private final MicroCaseTimelineService timeline;
@@ -39,6 +41,7 @@ public class MicroPatientReportService {
 
     public MicroPatientReportService(MicroCaseDAO cases, MicroCaseAnalysisDAO links, MicroCaseInoculationDAO cultures,
             MicroIsolateDAO isolates, MicroOrganismDAO organisms, MicroAntibioticDAO antibiotics, MicroAstRunDAO runs,
+            MicroAstRunAntibioticDAO runAntibiotics, MicroReportingRuleDAO reportingRules,
             MicroAstReportChoiceService choices, MicroBreakpointStandardDAO standards,
             MicroCaseTimelineService timeline, MicroDstService dst, ResultService results, IStatusService statuses,
             TestSectionService units, MicroCaseAuthorizationService authorization, MicroCaseActivityDAO activities,
@@ -50,6 +53,8 @@ public class MicroPatientReportService {
         this.organisms = organisms;
         this.antibiotics = antibiotics;
         this.runs = runs;
+        this.runAntibiotics = runAntibiotics;
+        this.reportingRules = reportingRules;
         this.choices = choices;
         this.standards = standards;
         this.timeline = timeline;
@@ -84,7 +89,7 @@ public class MicroPatientReportService {
                     || !"Finalized".equals(statuses.getAnalysisStatusForID(a.getStatusId()).name()))
                 continue;
             var definitions = components.getComponentsByTestId(a.getTest().getId());
-            var values = new ArrayList<MicroPatientReportForm.Value>();
+            var values = new LinkedHashMap<String, MicroPatientReportForm.Value>();
             var analysisResults = results.getResultsByAnalysis(a);
             for (var result : analysisResults) {
                 if ("N".equals(result.getIsReportable()) || result.getParentResult() != null)
@@ -109,12 +114,16 @@ public class MicroPatientReportService {
                     if (!quantified.isEmpty())
                         value += " " + String.join(" ", quantified);
                 }
-                values.add(new MicroPatientReportForm.Value(result.getId(), componentId, label, value));
+                values.merge(componentId + "|" + label,
+                        new MicroPatientReportForm.Value(result.getId(), componentId, label, value),
+                        (first, next) -> new MicroPatientReportForm.Value(first.resultId(), componentId, label,
+                                first.value() + ", " + next.value()));
             }
             if (values.isEmpty())
                 continue;
             var target = "ADDITIONAL".equals(link.getPlacement()) ? form.additional : form.initial;
-            target.add(new MicroPatientReportForm.Test(a.getId(), a.getTest().getName(), values));
+            target.add(new MicroPatientReportForm.Test(a.getId(), a.getTest().getName(),
+                    new ArrayList<>(values.values())));
             form.validatedResults += values.size();
         }
         for (var row : cultures.getRows(caseId))
@@ -127,7 +136,11 @@ public class MicroPatientReportService {
                     || isolate.getOrganismId() == null)
                 continue;
             var rows = new ArrayList<MicroPatientReportForm.Susceptibility>();
-            for (var reading : choices.getSelectedReadings(isolate.getId())) {
+            var selectedReadings = choices.getSelectedReadings(isolate.getId());
+            for (var reading : selectedReadings) {
+                var agent = runAntibiotics.getByRunIdAndAntibioticId(reading.getAstRunId(), reading.getAntibioticId());
+                if (agent.isPresent() && !agent.get().isReported())
+                    continue;
                 var run = runs.get(reading.getAstRunId()).orElseThrow();
                 var standard = standards.get(run.getBreakpointStandardId()).orElseThrow();
                 var antibiotic = antibiotics.get(reading.getAntibioticId()).orElseThrow();
@@ -135,18 +148,23 @@ public class MicroPatientReportService {
                         reading.getId(), run.getId(), reading.getRawText(), reading.getUnits(),
                         MicroAstReportChoiceService.interpretation(reading), standard.getAuthority(),
                         run.getBreakpointVersion(), reading.getMatchedBy(), run.getClinicalContext()));
+                agent.map(MicroAstRunAntibiotic::getReportRuleId).flatMap(reportingRules::get)
+                        .map(rule -> rule.noteFor(MicroAstReportChoiceService.interpretation(reading)))
+                        .ifPresent(text -> form.notes
+                                .add(new MicroPatientReportForm.Note(text, null, null, "DRUG", reading.getId(), true)));
             }
             rows.sort(Comparator.comparing(MicroPatientReportForm.Susceptibility::agent));
             form.validatedResults += rows.size();
             form.isolates.add(new MicroPatientReportForm.Isolate(isolate.getId(), isolate.getIsolateLabel(),
-                    organisms.get(isolate.getOrganismId()).orElseThrow().getDisplayName(), rows));
+                    organisms.get(isolate.getOrganismId()).orElseThrow().getDisplayName(), rows,
+                    selectedReadings.size()));
         }
         form.classification = dst.evaluate(caseId).classification;
-        form.notes = timeline.getReportNotes(caseId).stream()
-                .filter(n -> includedNoteTarget(form, n.targetType, n.targetId))
-                .map(n -> new MicroPatientReportForm.Note(n.note, n.performedByDisplay, n.occurredAt, n.targetType,
-                        n.targetId))
-                .toList();
+        form.notes.addAll(0,
+                timeline.getReportNotes(caseId).stream().filter(n -> includedNoteTarget(form, n.targetType, n.targetId))
+                        .map(n -> new MicroPatientReportForm.Note(n.note, n.performedByDisplay, n.occurredAt,
+                                n.targetType, n.targetId, false))
+                        .toList());
         return form;
     }
 
@@ -201,6 +219,11 @@ public class MicroPatientReportService {
 
     public List<org.openelisglobal.analysis.valueholder.Analysis> issuedAnalysesForSample(String sampleId) {
         return links.getIssuedAnalysesForSample(sampleId);
+    }
+
+    public boolean hasUnreleasedCase(String sampleId) {
+        return cases.getByOrder(sampleId).stream().anyMatch(c -> c.getStatus() == MicroCaseStatus.ACTIVE
+                && List.of("NOT_READY", "PRELIMINARY_RELEASED").contains(c.getFinalReleaseState()));
     }
 
     public Boolean mayReportAnalysis(String analysisId, String actor) {

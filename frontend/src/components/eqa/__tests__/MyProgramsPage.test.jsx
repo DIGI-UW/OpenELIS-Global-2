@@ -8,7 +8,7 @@ import {
   postToOpenElisServerJsonResponse,
   putToOpenElisServerFullResponse,
 } from "../../utils/Utils";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 
 vi.mock("../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
@@ -22,7 +22,7 @@ vi.mock("../../utils/Utils", () => ({
     ).padStart(2, "0")}`,
 }));
 
-vi.mock("../../layout/Layout", () => {
+vi.mock("../../layout/contexts", () => {
   // Replaced inline React require
   return {
     NotificationContext: React.createContext({

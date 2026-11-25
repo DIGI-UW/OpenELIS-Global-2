@@ -4,7 +4,6 @@ import { labNow } from "../../utils/labClock";
 import {
   Button,
   Column,
-  DatePicker,
   DatePickerInput,
   Grid,
   Select,
@@ -21,6 +20,7 @@ import {
   Tile,
   Tag,
 } from "@carbon/react";
+import { DatePicker } from "../../common/DatePicker";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useLocation } from "react-router-dom";
 import {
@@ -594,6 +594,7 @@ export const ReportNonConformingEvent = () => {
                 parseDate={siteDate.parseDate}
                 id="date-of-event-picker"
                 datePickerType="single"
+                invalid={!!errors.dateOfEvent}
                 value={
                   nceForm.dateOfEvent
                     ? parse(nceForm.dateOfEvent, "MM/dd/yyyy", labNow())
@@ -601,12 +602,15 @@ export const ReportNonConformingEvent = () => {
                 }
                 maxDate={labNow().setHours(23, 59, 59, 999)}
                 onChange={(dates) => {
-                  if (dates && dates[0]) {
-                    const formatted = format(new Date(dates[0]), "MM/dd/yyyy");
-                    setnceForm((prev) => ({
-                      ...prev,
-                      dateOfEvent: formatted,
-                    }));
+                  const formatted =
+                    dates && dates[0]
+                      ? format(new Date(dates[0]), "MM/dd/yyyy")
+                      : "";
+                  setnceForm((prev) => ({
+                    ...prev,
+                    dateOfEvent: formatted,
+                  }));
+                  if (formatted) {
                     setErrors((prev) => ({ ...prev, dateOfEvent: "" }));
                   }
                 }}
@@ -624,7 +628,6 @@ export const ReportNonConformingEvent = () => {
                       <RequiredMarker />
                     </>
                   }
-                  invalid={!!errors.dateOfEvent}
                   invalidText={errors.dateOfEvent}
                 />
               </DatePicker>
