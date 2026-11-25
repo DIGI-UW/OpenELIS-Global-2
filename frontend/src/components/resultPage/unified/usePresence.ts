@@ -55,6 +55,7 @@ export function usePresence(
   // fresh page wouldn't show "In review by" until the next interval).
   const visibleKey = visibleAnalysisIds.join(",");
   useEffect(() => {
+    let current = true;
     postToOpenElisServerJsonResponse(
       "/rest/results-entry/presence",
       JSON.stringify({
@@ -62,11 +63,14 @@ export function usePresence(
         visibleAnalysisIds: visibleRef.current,
       }),
       (response: Record<string, string> | undefined) => {
-        if (response && typeof response === "object") {
+        if (current && response && typeof response === "object") {
           setPresence(response);
         }
       },
     );
+    return () => {
+      current = false;
+    };
   }, [editingAnalysisId, visibleKey]);
 
   return presence;

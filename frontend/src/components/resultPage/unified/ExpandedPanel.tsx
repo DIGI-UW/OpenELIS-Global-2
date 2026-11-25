@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import {
   Button,
   InlineNotification,
@@ -41,6 +41,8 @@ import InlineNceForm from "../../nonconform/common/InlineNceForm";
 import { FlagChip, accentClass } from "./flags";
 import { resultFlagFor } from "./resultFlagFor";
 import SampleKindTag from "../SampleKindTag";
+import EQABadge from "../../eqa/EQABadge";
+import { getFromOpenElisServer } from "../../utils/Utils";
 import { AnalysisNote, noteVisibleOnRow } from "./noteScope";
 import { NceDisposition } from "./nceDisposition";
 import { ResultsDomain, formatDomainMessage } from "./domainIntl";
@@ -53,6 +55,7 @@ import {
 } from "./sectionLayout";
 import { labNow } from "../../utils/labClock";
 import { ConfigurationContext } from "../../layout/Layout";
+import { methodOptions, useMethodChoices } from "./methodChoices";
 
 /**
  * OGC-1021 (R2 of OGC-811) — the expanded row panel.
@@ -129,6 +132,12 @@ interface ExpandedPanelProps {
   domain: ResultsDomain;
   editable: boolean;
   editing: boolean;
+  /**
+   * OGC-1200: the row is resulted from a run (its value waits there, or the
+   * run's failed control holds it), so nothing is saved from the worklist and
+   * no referral or rejection is offered.
+   */
+  inRun?: boolean;
   /** the worklist's lab unit — scopes OGC-1025 control capture. */
   testSectionId?: string;
   /** analyzerId as loaded from the server — drives the provenance tag (FR-B2). */
@@ -139,7 +148,10 @@ interface ExpandedPanelProps {
   dilutionDraft: DilutionDraft;
   sectionLayout: SectionLayout;
   onSectionLayoutChange: (layout: SectionLayout) => void;
-  onFieldChange: (field: "testMethod" | "analyzerId", value: string) => void;
+  onFieldChange: (
+    field: "testMethod" | "analyzerId" | "eqaAnalystId",
+    value: string,
+  ) => void;
   onValueChange: (
     field: "resultValue" | "multiSelectResultValues",
     value: string,
@@ -203,6 +215,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   domain,
   editable,
   editing,
+  inRun = false,
   testSectionId,
   loadedAnalyzerId,
   methods,
@@ -243,6 +256,12 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
 
   const methodName =
     methods.find((m) => m.id === row.testMethod)?.value || row.testMethod || "";
+  const methodChoices = useMethodChoices(row.testId as string | undefined);
+  const methodsOffered = methodOptions(
+    methodChoices,
+    methods,
+    row.testMethod as string | undefined,
+  );
   const analyzerName =
     analyzers.find((a) => a.id === row.analyzerId)?.value ||
     row.analyzerId ||
@@ -260,6 +279,31 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
       onValueChange("resultValue", computed);
     }
   };
+
+  const eqaSchemeId = row.eqaPerAnalyst
+    ? (row.eqaSchemeId as string | undefined)
+    : undefined;
+  const [eqaAnalysts, setEqaAnalysts] = useState<
+    { id: string; displayName: string }[]
+  >([]);
+  useEffect(() => {
+    if (!eqaSchemeId) {
+      return undefined;
+    }
+    let active = true;
+    getFromOpenElisServer(
+      `/rest/eqa/schemes/${eqaSchemeId}/eligible-analysts`,
+      (list: { id: string; displayName: string }[]) => {
+        if (active) {
+          setEqaAnalysts(list || []);
+        }
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [eqaSchemeId]);
+  const eqaAnalystId = (row.eqaAnalystId as string | undefined) || "";
 
   // one order-record fetch per accession feeds Order info + Programme
   const orderContext = useOrderContext(row.accessionNumber);
@@ -306,7 +350,11 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           data-testid={`sample-kind-${rowKey}`}
         >
           <FormattedMessage id="column.name.sampleKind" />
-          <SampleKindTag qcType={row.qcType} />
+          {row.eqaSample ? (
+            <EQABadge priority={row.eqaPriority} />
+          ) : (
+            <SampleKindTag qcType={row.qcType} />
+          )}
         </span>
         {row.referredOut && (
           <Tag type="cyan" size="sm">
@@ -327,6 +375,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
                 row={row}
                 editable={editable}
                 onValueChange={onValueChange}
+                scope="panel"
               />
               {row.unitsOfMeasure && <span>{row.unitsOfMeasure}</span>}
               <FlagChip flag={flag} />
@@ -373,7 +422,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
                 }
               >
                 <SelectItem text="" value="" />
-                {methods.map((m) => (
+                {methodsOffered.map((m) => (
                   <SelectItem text={m.value} value={m.id} key={m.id} />
                 ))}
               </Select>
@@ -413,6 +462,47 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
             <div className="unifiedFieldHint">
               <FormattedMessage id="label.results.methodAnalyzerHint" />
             </div>
+
+            {eqaSchemeId && (
+              <>
+                <div className="cds--label unifiedFieldSpacer">
+                  <FormattedMessage id="eqa.result.analyst" />
+                </div>
+                {editable ? (
+                  <Select
+                    id={`eqaAnalyst-${rowKey}`}
+                    noLabel
+                    value={eqaAnalystId}
+                    invalid={!eqaAnalystId}
+                    invalidText={intl.formatMessage({
+                      id: "eqa.result.analystRequired",
+                    })}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                      onFieldChange("eqaAnalystId", e.target.value)
+                    }
+                  >
+                    <SelectItem
+                      text={intl.formatMessage({
+                        id: "eqa.result.analystChoose",
+                      })}
+                      value=""
+                    />
+                    {eqaAnalysts.map((analyst) => (
+                      <SelectItem
+                        text={analyst.displayName}
+                        value={analyst.id}
+                        key={analyst.id}
+                      />
+                    ))}
+                  </Select>
+                ) : (
+                  <span>
+                    {eqaAnalysts.find((a) => a.id === eqaAnalystId)
+                      ?.displayName || "—"}
+                  </span>
+                )}
+              </>
+            )}
           </div>
         </div>
 
@@ -519,7 +609,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           >
             <FormattedMessage id="label.results.nce.report" />
           </Button>
-          {allowResultRejection && (
+          {allowResultRejection && !inRun && (
             <Button
               kind="ghost"
               size="sm"
@@ -534,34 +624,38 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           {/* A referred test cannot be referred again: the save has no way to
               amend an existing referral, so a second click would raise a rival
               one. The referral is edited or cancelled from Referred Out. */}
-          <Button
-            kind="ghost"
-            size="sm"
-            disabled={row.referredOut}
-            onClick={() =>
-              onReferralDraftChange(
-                referralDraft
-                  ? null
-                  : emptyReferralDraft(
-                      todayForReferral(
-                        configurationProperties?.DEFAULT_DATE_LOCALE,
-                      ),
-                    ),
-              )
-            }
-            data-testid={`referral-toggle-${rowKey}`}
-          >
-            {row.referredOut ? (
-              <FormattedMessage id="label.results.referredOut" />
-            ) : referralDraft ? (
-              <FormattedMessage id="label.results.referral.editing" />
-            ) : (
-              <FormattedMessage id="label.results.referral.refer" />
-            )}
-          </Button>
-          <span className="unifiedFieldHint">
-            <FormattedMessage id="label.results.saveHint" />
-          </span>
+          {!inRun && (
+            <>
+              <Button
+                kind="ghost"
+                size="sm"
+                disabled={row.referredOut}
+                onClick={() =>
+                  onReferralDraftChange(
+                    referralDraft
+                      ? null
+                      : emptyReferralDraft(
+                          todayForReferral(
+                            configurationProperties?.DEFAULT_DATE_LOCALE,
+                          ),
+                        ),
+                  )
+                }
+                data-testid={`referral-toggle-${rowKey}`}
+              >
+                {row.referredOut ? (
+                  <FormattedMessage id="label.results.referredOut" />
+                ) : referralDraft ? (
+                  <FormattedMessage id="label.results.referral.editing" />
+                ) : (
+                  <FormattedMessage id="label.results.referral.refer" />
+                )}
+              </Button>
+              <span className="unifiedFieldHint">
+                <FormattedMessage id="label.results.saveHint" />
+              </span>
+            </>
+          )}
         </div>
 
         {allowResultRejection && rejectReasons.length > 0 && rejectDraft && (
@@ -716,13 +810,13 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
       {/* Critical banner (FR-C2) — the one full-width banner. The person
           entering the value acknowledges it at Save (OGC-1417); the banner's
           dashboard acknowledgement is the follow-up. */}
-      {flag === "CRITICAL" && (
+      {flag === "CRITICAL" && !row.eqaSample && (
         <CriticalBanner
           analysisId={row.analysisId as string | undefined}
           criticalRange={row.criticalRange}
         />
       )}
-      {flag === "CRITICAL" && !editable && (
+      {flag === "CRITICAL" && !editable && !row.eqaSample && (
         <CriticalCallbackAction
           row={{
             resultId: row.resultId as string | undefined,

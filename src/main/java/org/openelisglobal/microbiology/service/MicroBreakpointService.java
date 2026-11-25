@@ -1,6 +1,7 @@
 package org.openelisglobal.microbiology.service;
 
 import java.util.List;
+import java.util.Set;
 import org.openelisglobal.microbiology.form.MicroBreakpointDefaultForm;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
@@ -17,10 +18,17 @@ public interface MicroBreakpointService {
 
     MicroBreakpointStandard getStandard(String standardId);
 
-    MicroBreakpointRule findBreakpointRule(String standardId, String organismId, String organismGroup,
+    MicroBreakpointRule findBreakpointRule(String standardId, String organismId, Set<String> organismGroups,
             String antibioticId, String method, String specimenTypeId, String breakpointType);
 
-    MicroBreakpointRule findContextualBreakpointRule(String standardId, String organismId, String organismGroup,
+    MicroBreakpointRule findContextualBreakpointRule(String standardId, String organismId, Set<String> organismGroups,
             String antibioticId, String method, String specimenTypeId, String breakpointType, String clinicalContext,
             String diskContent);
+
+    /**
+     * The closest WHONET organism level decides, then the specimen (its WHONET
+     * specimen code) and the indication, then WHONET's order of sites.
+     */
+    MicroBreakpointRule findWhonetBreakpointRule(String standardId, String organismId, String antibioticId,
+            String breakpointType, String diskContent, String specimenCode, String clinicalContext);
 }

@@ -102,7 +102,8 @@ public class TestMethodServiceImpl extends AuditableBaseObjectServiceImpl<TestMe
     @Transactional(readOnly = true)
     public String getDefaultMethodId(String testId) {
         return baseObjectDAO.getActiveTestMethodsByTestId(testId).stream().filter(TestMethod::getIsDefaultMethod)
-                .map(TestMethod::getMethodId).findFirst().orElse(null);
+                .map(TestMethod::getMethodId).filter(methodId -> isActive(methodService.findById(methodId))).findFirst()
+                .orElse(null);
     }
 
     @Override
@@ -112,10 +113,28 @@ public class TestMethodServiceImpl extends AuditableBaseObjectServiceImpl<TestMe
         if (links.isEmpty()) {
             return null;
         }
-        return links.stream().map(tm -> {
-            Method m = methodService.findById(tm.getMethodId());
-            return m != null ? new IdValuePair(m.getId(), m.getLocalizedValue()) : null;
-        }).filter(java.util.Objects::nonNull).collect(Collectors.toList());
+        List<IdValuePair> active = links.stream().map(tm -> methodService.findById(tm.getMethodId()))
+                .filter(TestMethodServiceImpl::isActive).map(m -> new IdValuePair(m.getId(), m.getLocalizedValue()))
+                .sorted(BY_NAME).collect(Collectors.toList());
+        return active.isEmpty() ? null : active;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<IdValuePair> getMethodChoicesForTest(String testId) {
+        List<IdValuePair> linked = getMethodDisplayListForTest(testId);
+        if (linked != null && !linked.isEmpty()) {
+            return linked;
+        }
+        return methodService.getAllActiveMethods().stream().map(m -> new IdValuePair(m.getId(), m.getLocalizedValue()))
+                .sorted(BY_NAME).collect(Collectors.toList());
+    }
+
+    private static final java.util.Comparator<IdValuePair> BY_NAME = java.util.Comparator
+            .comparing(pair -> pair.getValue() == null ? "" : pair.getValue(), String.CASE_INSENSITIVE_ORDER);
+
+    private static boolean isActive(Method method) {
+        return method != null && !"N".equals(method.getIsActive());
     }
 
     @Override

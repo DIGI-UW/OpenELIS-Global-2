@@ -82,7 +82,6 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
-import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
@@ -787,9 +786,15 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             throws FhirTransformationException, FhirPersistanceException {
         FhirOperations fhirOperations = new FhirOperations();
         CountingTempIdGenerator tempIdGenerator = new CountingTempIdGenerator();
+        Set<String> specimens = new HashSet<>();
 
         for (String analysisId : analysisIds) {
             Analysis analysis = analysisService.get(analysisId);
+            SampleItem sampleItem = analysis.getSampleItem();
+            if (sampleItem != null && specimens.add(sampleItem.getId())) {
+                this.addToOperations(fhirOperations, tempIdGenerator,
+                        specimenTransformService.transformToSpecimen(sampleItem));
+            }
             ServiceRequest serviceRequest = serviceRequestTransformService.transformToServiceRequest(analysis);
             if (serviceRequest != null) {
                 this.addServiceRequestWithSites(fhirOperations, tempIdGenerator, serviceRequest);
@@ -879,11 +884,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     @Override
     public Specimen transformToSpecimen(SampleItem sampleItem) {
         return specimenTransformService.transformToSpecimen(sampleItem);
-    }
-
-    @Override
-    public TestResultItem createResultFromObservation(org.hl7.fhir.r4.model.Observation observation) {
-        return observationTransformService.createResultFromObservation(observation);
     }
 
     @Override

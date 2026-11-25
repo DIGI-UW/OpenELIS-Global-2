@@ -1,7 +1,6 @@
 import {
   Button,
   Column,
-  DatePicker,
   DatePickerInput,
   Grid,
   InlineNotification,
@@ -22,6 +21,7 @@ import {
   TableRow,
   Tag,
 } from "@carbon/react";
+import { DatePicker } from "../common/DatePicker";
 import {
   CheckmarkOutline,
   Send,
@@ -36,6 +36,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { unstable_batchedUpdates } from "react-dom";
 import { FormattedMessage, useIntl } from "react-intl";
 import { Link as RouterLink, useHistory, useLocation } from "react-router-dom";
 import { AlertDialog } from "../common/CustomNotification";
@@ -51,6 +52,7 @@ import {
 import MarkLostModal from "./MarkLostModal";
 import RejectModal from "./RejectModal";
 import "./ReferenceLabResults.css";
+import useSiteDateFormat from "../common/useSiteDateFormat";
 
 const VIEWS = ["outstanding", "returned", "history"];
 // The real OrderPriority enum, which is what a sample actually carries. The
@@ -97,6 +99,7 @@ const METRIC_COLOR = {
 
 const ReferenceLabResults = () => {
   const intl = useIntl();
+  const siteDate = useSiteDateFormat();
   const history = useHistory();
   const location = useLocation();
   const componentMounted = useRef(true);
@@ -453,29 +456,29 @@ const ReferenceLabResults = () => {
               onChange={(id) => setFilterRefLab(id || null)}
             />
           </Column>
-          <Column lg={4} md={4} sm={4}>
+          <Column lg={8} md={4} sm={4}>
             <DatePicker
+              dateFormat={siteDate.dateFormat}
+              parseDate={siteDate.parseDate}
               datePickerType="range"
-              onChange={([from, to]) => {
-                setFilterDateFrom(from || null);
-                setFilterDateTo(to || null);
-              }}
-              value={
-                filterDateFrom && filterDateTo
-                  ? [filterDateFrom, filterDateTo]
-                  : []
+              onChange={([from, to]) =>
+                unstable_batchedUpdates(() => {
+                  setFilterDateFrom(from || null);
+                  setFilterDateTo(to || null);
+                })
               }
+              value={[filterDateFrom, filterDateTo].filter(Boolean)}
             >
               <DatePickerInput
                 id="date-from"
-                placeholder="mm/dd/yyyy"
+                placeholder={siteDate.placeholder}
                 labelText={intl.formatMessage({
                   id: "referral.filter.dateRange",
                 })}
               />
               <DatePickerInput
                 id="date-to"
-                placeholder="mm/dd/yyyy"
+                placeholder={siteDate.placeholder}
                 labelText={" "}
               />
             </DatePicker>
@@ -496,7 +499,7 @@ const ReferenceLabResults = () => {
             />
           </Column>
           {activeView === "outstanding" && (
-            <Column lg={3} md={4} sm={4}>
+            <Column lg={4} md={4} sm={4}>
               <Select
                 id="days-bucket-filter"
                 labelText={intl.formatMessage({
@@ -522,7 +525,7 @@ const ReferenceLabResults = () => {
               </Select>
             </Column>
           )}
-          <Column lg={1} md={4} sm={4}>
+          <Column lg={2} md={4} sm={4}>
             <div className="reference-lab-results__clear">
               <Button kind="ghost" size="sm" onClick={clearFilters}>
                 <FormattedMessage id="referral.action.clearFilters" />

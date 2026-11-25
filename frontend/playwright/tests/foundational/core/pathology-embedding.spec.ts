@@ -4,18 +4,21 @@ import {
   createPathologyCase,
   discoverPathologyOrderTarget,
   ensureTissueType,
+  moveCaseToStage,
   SeededPathologyCase,
   TissueType,
 } from "../../../helpers/seed-pathology-data";
 import {
+  advanceCase,
   cassetteRows,
   expandSection,
+  expectStageSwitchesOn,
   openCase,
+  primaryAction,
   railStep,
   rowNamed,
   saveDraft,
   sectionHeader,
-  setStage,
   summaryRow,
 } from "../../../helpers/pathology-case-view";
 import { chooseCarbonOption } from "../../../helpers/carbon-select";
@@ -40,8 +43,9 @@ import { UI_TIMEOUT } from "../../../helpers/timeouts";
  * cassettes cut at grossing are what wait here, and each embed changes what
  * the next test reads.
  *
- * The Embedding stage must be tracked on the stack (its stage switch on, the
- * shipped default); with it off the section says so instead.
+ * The Embedding and Microtomy stages must be tracked on the stack (their
+ * stage switches on, the shipped default); with Embedding off the section
+ * says so instead, so the spec checks both first.
  */
 
 let seeded: SeededPathologyCase;
@@ -170,6 +174,7 @@ test.describe.serial("Pathology embedding section", () => {
     });
     const page = await context.newPage();
     await page.goto("/", { waitUntil: "domcontentloaded" });
+    await expectStageSwitchesOn(page, ["EMBEDDING", "MICROTOMY"]);
     const target = await discoverPathologyOrderTarget(page);
     seeded = await createPathologyCase(page, target);
     tissue = await ensureTissueType(page);
@@ -180,7 +185,7 @@ test.describe.serial("Pathology embedding section", () => {
     await openCase(page, seeded);
 
     await test.step("three cassettes are cut at grossing, the first with a tissue", async () => {
-      await setStage(page, "Grossing");
+      await advanceCase(page, { label: "Begin grossing" });
       await expandSection(page, GROSSING);
       await page
         .getByLabel("Macroscopic description", { exact: true })
@@ -202,8 +207,10 @@ test.describe.serial("Pathology embedding section", () => {
     });
 
     await test.step("at the stage, the section opens", async () => {
-      await setStage(page, "Embedding");
-      await saveDraft(page, seeded.pathologySampleId);
+      // Processing is not what this spec is about, so the case is taken on
+      // through the move endpoints and opened again to show it.
+      await moveCaseToStage(page, seeded, "EMBEDDING");
+      await openCase(page, seeded);
       await expect(sectionHeader(page, EMBEDDING)).toBeEnabled();
       await expandSection(page, EMBEDDING);
     });
@@ -215,6 +222,15 @@ test.describe.serial("Pathology embedding section", () => {
         3,
         "A1, A2, A3",
         "A1, A2 and 1 more outstanding",
+      );
+    });
+
+    await test.step("the case is not sent on while any cassette waits", async () => {
+      await expect(primaryAction(page)).toHaveText("Send to microtomy");
+      await expect(primaryAction(page)).toBeDisabled();
+      await expect(primaryAction(page)).toHaveAttribute(
+        "title",
+        /^Embed every cassette first \(A1, A2/,
       );
     });
 
@@ -348,8 +364,7 @@ test.describe.serial("Pathology embedding section", () => {
     });
 
     await test.step("once the case moves on, the rail marks the stage done", async () => {
-      await setStage(page, "Microtomy");
-      await saveDraft(page, seeded.pathologySampleId);
+      await advanceCase(page, { label: "Send to microtomy" });
       await expect(railStep(page, "Embedding")).toHaveClass(
         /cds--progress-step--complete/,
       );

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    A slide label is checked against its block before the slide is sectioned,
+    by scanning it or, where there is no scanner, by typing what it says. These
+    two columns record when that check passed and who did it. An empty
+    label_verified_at means the label was never verified.
+
+    Slides on file get no backfill. Nobody checked them, so none may be
+    marked as verified.
+    -->
+
+    <changeSet id="OGC-264-pathology-slide-label-verification" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="pathology_slide"/>
+                <not>
+                    <columnExists schemaName="clinlims" tableName="pathology_slide" columnName="label_verified_at"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>Record when a slide label was checked against its block, and by whom</comment>
+        <addColumn schemaName="clinlims" tableName="pathology_slide">
+            <column name="label_verified_at" type="TIMESTAMP"/>
+            <column name="label_verified_by" type="NUMERIC(10)"/>
+        </addColumn>
+        <!-- No cascade: the slide is retained even if the user row were ever removed. -->
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims" baseTableName="pathology_slide" baseColumnNames="label_verified_by"
+            referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"
+            constraintName="pathology_slide_label_verified_by_fk"/>
+        <rollback>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="pathology_slide"
+                constraintName="pathology_slide_label_verified_by_fk"/>
+            <dropColumn schemaName="clinlims" tableName="pathology_slide">
+                <column name="label_verified_at"/>
+                <column name="label_verified_by"/>
+            </dropColumn>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

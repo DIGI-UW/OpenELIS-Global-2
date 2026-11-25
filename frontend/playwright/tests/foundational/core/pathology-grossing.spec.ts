@@ -8,15 +8,17 @@ import {
   TissueType,
 } from "../../../helpers/seed-pathology-data";
 import {
+  advanceCase,
   cassetteRows,
   expandSection,
+  expectStageSwitchesOn,
   openCase,
-  openStageMenu,
+  primaryAction,
   railStep,
+  returnCase,
   rowNamed,
   saveDraft,
   sectionHeader,
-  setStage,
   summaryRow,
 } from "../../../helpers/pathology-case-view";
 import { chooseCarbonOption } from "../../../helpers/carbon-select";
@@ -42,9 +44,10 @@ import { chooseCarbonOption } from "../../../helpers/carbon-select";
  * set at grossing is what opens Decalcification later, and the cassettes cut
  * early are what the last screenshots show.
  *
- * The Decalcification stage must be tracked on the stack (its stage switch
- * on, the shipped default); with it off the section says so instead and every
- * assertion about the flag here would be about the switch.
+ * The Decalcification and Processing stages must be tracked on the stack
+ * (their stage switches on, the shipped default); with Decalcification off
+ * the section says so instead and every assertion about the flag here would
+ * be about the switch, so the spec checks both first.
  */
 
 let seeded: SeededPathologyCase;
@@ -154,6 +157,7 @@ test.describe.serial("Pathology grossing section", () => {
     });
     const page = await context.newPage();
     await page.goto("/", { waitUntil: "domcontentloaded" });
+    await expectStageSwitchesOn(page, ["DECALCIFICATION", "PROCESSING"]);
     const target = await discoverPathologyOrderTarget(page);
     seeded = await createPathologyCase(page, target);
     tissue = await ensureTissueType(page);
@@ -164,24 +168,17 @@ test.describe.serial("Pathology grossing section", () => {
     page,
   }, testInfo) => {
     await openCase(page, seeded);
-    await setStage(page, "Grossing");
-    await saveDraft(page, seeded.pathologySampleId);
+    await advanceCase(page, { label: "Begin grossing" });
 
     await expectDecalcificationNotRequired(page);
     await expect(summaryRow(page, FLAG_ROW)).toHaveText(
       new RegExp(`^${FLAG_ROW}\\s*No$`),
     );
 
-    await test.step("the stage control does not offer the stage", async () => {
-      const options = await openStageMenu(page);
-      // The stage after it is offered, so the menu is open and populated and
-      // the one missing is missing on purpose.
-      await expect(options.filter({ hasText: /^Processing$/ })).toHaveCount(1);
-      await expect(
-        options.filter({ hasText: /^Decalcification$/ }),
-      ).toHaveCount(0);
-      await page.keyboard.press("Escape");
-      await expect(options).toHaveCount(0);
+    await test.step("the case is sent on past the stage, to Processing", async () => {
+      // Held until grossing is done, but already naming where it goes.
+      await expect(primaryAction(page)).toHaveText("Send for processing");
+      await expect(primaryAction(page)).toBeDisabled();
     });
 
     await page.screenshot({
@@ -252,6 +249,11 @@ test.describe.serial("Pathology grossing section", () => {
       await expect(summaryRow(page, "Cassettes")).toHaveText(/^Cassettes\s*2$/);
     });
 
+    await test.step("flagged and saved, the case goes to Decalcification next", async () => {
+      await expect(primaryAction(page)).toHaveText("Send for decalcification");
+      await expect(primaryAction(page)).toBeEnabled();
+    });
+
     await test.step("the flag puts Decalcification back on the case's path", async () => {
       await expect(summaryRow(page, FLAG_ROW)).toHaveText(
         new RegExp(`^${FLAG_ROW}\\s*Yes$`),
@@ -312,8 +314,7 @@ test.describe.serial("Pathology grossing section", () => {
     await openCase(page, seeded);
 
     await test.step("at the stage, the section opens on its placeholder", async () => {
-      await setStage(page, "Decalcification");
-      await saveDraft(page, seeded.pathologySampleId);
+      await advanceCase(page, { label: "Send for decalcification" });
       await expandSection(page, DECALCIFICATION);
       await expect(
         page
@@ -340,10 +341,10 @@ test.describe.serial("Pathology grossing section", () => {
       fullPage: true,
     });
 
-    await test.step("back at grossing, the unflagged case does not need it", async () => {
-      await setStage(page, "Grossing");
-      await saveDraft(page, seeded.pathologySampleId);
+    await test.step("returned to grossing, the unflagged case does not need it", async () => {
+      await returnCase(page, "Specimen re-examined, no bone found");
       await expectDecalcificationNotRequired(page);
+      await expect(primaryAction(page)).toHaveText("Send for processing");
       await expect(summaryRow(page, FLAG_ROW)).toHaveText(
         new RegExp(`^${FLAG_ROW}\\s*No$`),
       );

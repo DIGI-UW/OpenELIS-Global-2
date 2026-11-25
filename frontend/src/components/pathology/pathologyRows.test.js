@@ -7,12 +7,17 @@ import {
   countedRows,
   deactivatedCount,
   embeddingSummary,
+  hasVerifiableLabel,
   isDeactivatedRow,
   isEmbeddedRow,
+  isLabelVerified,
   isUnsavedRow,
+  heldOrServedItems,
   labelStreamUrl,
+  microtomyGroups,
+  nextAfter,
   nextOutstandingCassette,
-  needsParentBlock,
+  nextUnverifiedSlide,
   newRowName,
   objectNaming,
   parentBlockOf,
@@ -21,8 +26,8 @@ import {
   slideIdentifier,
   slideOnBlockName,
   stripClientKeys,
-  tissueTypeItems,
   unsavedPosition,
+  unverifiedSlides,
   withClientKey,
 } from "./pathologyRows";
 
@@ -254,13 +259,104 @@ describe("withClientKey and stripClientKeys", () => {
   });
 });
 
-describe("needsParentBlock", () => {
-  it("holds back only a new slide that names no block", () => {
-    expect(needsParentBlock({ blockId: null, location: "" })).toBe(true);
-    expect(needsParentBlock({ location: "" })).toBe(true);
-    expect(needsParentBlock({ blockId: "1", location: "" })).toBe(false);
-    // A slide cut before slides named their block is already on the case.
-    expect(needsParentBlock({ id: "6", blockId: null })).toBe(false);
+describe("microtomyGroups", () => {
+  const a1 = { id: 1, designation: "A1", cassetteState: "BLOCK" };
+  const a2 = { id: "2", designation: "A2", cassetteState: "CASSETTE" };
+  const retiredA3 = {
+    id: 3,
+    designation: "A3",
+    cassetteState: "BLOCK",
+    active: false,
+  };
+  const designations = (groups) =>
+    groups.map((group) => (group.legacy ? "legacy" : group.block.designation));
+
+  it("lists every saved block in use, cassettes included, in list order, and no block added since the last save", () => {
+    const groups = microtomyGroups(
+      [a2, { designation: "", location: "" }, a1],
+      [],
+      false,
+    );
+
+    expect(designations(groups)).toEqual(["A2", "A1"]);
+    expect(groups.every((group) => group.slides.length === 0)).toBe(true);
+    expect(groups.map((group) => group.retired)).toEqual([false, false]);
+  });
+
+  it("puts each slide under the block it was cut from, an unsaved one under the block it was added to", () => {
+    const saved = { id: 5, designation: "1", blockId: "1" };
+    const underA2 = { id: 6, designation: "1", blockId: 2 };
+    const unsaved = { blockId: 1, level: "", stainId: null, location: "" };
+
+    const groups = microtomyGroups([a1, a2], [saved, underA2, unsaved], false);
+
+    expect(groups[0].slides).toEqual([saved, unsaved]);
+    expect(groups[1].slides).toEqual([underA2]);
+  });
+
+  it("keeps a retired block that still holds a slide in use, whatever the switch says", () => {
+    const slide = { id: 5, designation: "1", blockId: 3 };
+
+    const groups = microtomyGroups([a1, retiredA3], [slide], false);
+
+    expect(designations(groups)).toEqual(["A1", "A3"]);
+    expect(groups[1]).toEqual({
+      block: retiredA3,
+      slides: [slide],
+      retired: true,
+      legacy: false,
+    });
+  });
+
+  it("lists a retired block with no slide in use only when retired rows are asked for", () => {
+    const retiredSlide = { id: 5, designation: "1", blockId: 3, active: false };
+
+    expect(
+      designations(microtomyGroups([a1, retiredA3], [retiredSlide], false)),
+    ).toEqual(["A1"]);
+    expect(
+      designations(microtomyGroups([a1, retiredA3], [retiredSlide], true)),
+    ).toEqual(["A1", "A3"]);
+  });
+
+  it("lists a retired slide only when retired rows are asked for", () => {
+    const inUse = { id: 5, designation: "1", blockId: 1 };
+    const retired = { id: 6, designation: "2", blockId: 1, active: false };
+
+    expect(microtomyGroups([a1], [inUse, retired], false)[0].slides).toEqual([
+      inUse,
+    ]);
+    expect(microtomyGroups([a1], [inUse, retired], true)[0].slides).toEqual([
+      inUse,
+      retired,
+    ]);
+  });
+
+  it("gathers last the slides with no block recorded and those naming a block not on the case", () => {
+    const noBlock = { id: 5, designation: "7", blockId: null };
+    const elsewhere = { id: 6, designation: "2", blockId: 99 };
+
+    const groups = microtomyGroups([a1], [noBlock, elsewhere], false);
+
+    expect(designations(groups)).toEqual(["A1", "legacy"]);
+    expect(groups[1]).toEqual({
+      block: null,
+      slides: [noBlock, elsewhere],
+      retired: false,
+      legacy: true,
+    });
+  });
+
+  it("adds no group for slides without a block when there are none to show", () => {
+    const retiredLegacy = { id: 5, designation: "7", active: false };
+
+    expect(
+      designations(microtomyGroups([a1], [{ id: 6, blockId: 1 }], false)),
+    ).toEqual(["A1"]);
+    expect(designations(microtomyGroups([a1], [retiredLegacy], false))).toEqual(
+      ["A1"],
+    );
+    expect(microtomyGroups(undefined, undefined, false)).toEqual([]);
   });
 });
 
@@ -323,39 +419,40 @@ describe("rowListEditors", () => {
   });
 });
 
-// The served tissue types are the active ones only, so a cassette holding a
-// type retired after it was recorded has to bring its own entry.
-describe("tissueTypeItems", () => {
+// The served entries are the active ones only, so a row holding a tissue type
+// or a stain retired after it was recorded has to bring its own entry.
+describe("heldOrServedItems", () => {
   const served = [
     { id: "21", value: "Skin" },
     { id: "22", value: "Bone" },
   ];
 
-  it("offers the served list as it is when the cassette holds nothing, or holds one of them", () => {
-    expect(tissueTypeItems(served, { tissueTypeId: null }, {})).toEqual(served);
-    expect(tissueTypeItems(served, { tissueTypeId: "" }, {})).toEqual(served);
-    expect(tissueTypeItems(served, {}, undefined)).toEqual(served);
-    expect(tissueTypeItems(served, { tissueTypeId: 22 }, {})).toEqual(served);
+  it("offers the served list as it is when the row holds nothing, or holds one of them", () => {
+    expect(heldOrServedItems(served, null, {})).toEqual(served);
+    expect(heldOrServedItems(served, "", {})).toEqual(served);
+    expect(heldOrServedItems(served, undefined, undefined)).toEqual(served);
+    expect(heldOrServedItems(served, 22, {})).toEqual(served);
   });
 
   it("adds the held type the list no longer serves, under the name the case carries for it", () => {
-    expect(
-      tissueTypeItems(served, { tissueTypeId: "23" }, { 23: "Cartilage" }),
-    ).toEqual([...served, { id: "23", value: "Cartilage" }]);
+    expect(heldOrServedItems(served, "23", { 23: "Cartilage" })).toEqual([
+      ...served,
+      { id: "23", value: "Cartilage" },
+    ]);
   });
 
   it("falls back to the id when the case carries no name for it, rather than showing nothing", () => {
-    expect(tissueTypeItems(served, { tissueTypeId: "23" }, {})).toEqual([
+    expect(heldOrServedItems(served, "23", {})).toEqual([
       ...served,
       { id: "23", value: "23" },
     ]);
   });
 
   it("still names the held type while the served list has not arrived", () => {
-    expect(
-      tissueTypeItems(null, { tissueTypeId: "23" }, { 23: "Cartilage" }),
-    ).toEqual([{ id: "23", value: "Cartilage" }]);
-    expect(tissueTypeItems(null, { tissueTypeId: null }, {})).toEqual([]);
+    expect(heldOrServedItems(null, "23", { 23: "Cartilage" })).toEqual([
+      { id: "23", value: "Cartilage" },
+    ]);
+    expect(heldOrServedItems(null, null, {})).toEqual([]);
   });
 });
 
@@ -448,6 +545,25 @@ describe("embeddingSummary", () => {
   });
 });
 
+describe("nextAfter", () => {
+  const rows = [{ id: 1 }, { id: "2" }, { id: 3 }];
+
+  it("moves to the row after the given one, matching ids as strings", () => {
+    expect(nextAfter(rows, { id: "1" })).toBe(rows[1]);
+    expect(nextAfter(rows, { id: 2 })).toBe(rows[2]);
+  });
+
+  it("wraps to the first after the last, and finds none once the given row is the only one left", () => {
+    expect(nextAfter(rows, rows[2])).toBe(rows[0]);
+    expect(nextAfter([rows[1]], rows[1])).toBeUndefined();
+  });
+
+  it("starts from the first when the given row is no longer on the list", () => {
+    expect(nextAfter(rows, { id: 9 })).toBe(rows[0]);
+    expect(nextAfter([], { id: 9 })).toBeUndefined();
+  });
+});
+
 describe("nextOutstandingCassette", () => {
   const cassette = (id, designation, overrides = {}) => ({
     id,
@@ -495,5 +611,88 @@ describe("isEmbeddedRow", () => {
     expect(isEmbeddedRow({ cassetteState: "CASSETTE" })).toBe(false);
     expect(isEmbeddedRow({})).toBe(false);
     expect(isEmbeddedRow(undefined)).toBe(false);
+  });
+});
+
+describe("slide label verification", () => {
+  const blocks = [
+    { id: 1, designation: "A1", cassetteState: "BLOCK" },
+    { id: 2, designation: "A2", cassetteState: "BLOCK" },
+  ];
+  const stamp = { verifiedAt: "09/11/2026 10:00", verifiedBy: "Tech, Tina" };
+
+  // The case read keys the map by slide id as JSON does, as a string; a row's
+  // id arrives as a number or a string depending on the path.
+  it.each([
+    [
+      "a numeric id against a string key",
+      { id: 5, blockId: 1 },
+      { 5: stamp },
+      true,
+    ],
+    ["a string id", { id: "5", blockId: 1 }, { 5: stamp }, true],
+    [
+      "a slide missing from the map",
+      { id: 6, blockId: 1 },
+      { 5: stamp },
+      false,
+    ],
+    ["no map at all", { id: 5, blockId: 1 }, undefined, false],
+    ["an unsaved slide", { blockId: 1 }, { undefined: stamp }, false],
+  ])("isLabelVerified reads %s", (_, slide, map, expected) => {
+    expect(isLabelVerified(slide, map)).toBe(expected);
+  });
+
+  it.each([
+    ["a saved slide with a block", { id: 5, blockId: 1 }, true],
+    ["a slide whose block id is a string", { id: 5, blockId: "1" }, true],
+    ["an unsaved slide", { blockId: 1 }, false],
+    ["a slide with no block recorded", { id: 5, blockId: null }, false],
+    ["a slide whose row has no block id", { id: 5 }, false],
+  ])("hasVerifiableLabel says %s can be checked: %s", (_, slide, expected) => {
+    expect(hasVerifiableLabel(slide)).toBe(expected);
+  });
+
+  it("lists the unchecked slides in use in list order, named under their block", () => {
+    const slides = [
+      { id: 5, designation: "1", blockId: 1, active: true },
+      { id: 6, designation: "2", blockId: 1, active: true },
+      { id: 7, designation: "1", blockId: 2, active: true },
+      { id: 8, designation: "3", blockId: 1, active: false },
+      { designation: "", blockId: 2 },
+      { id: 9, designation: "4", blockId: null, active: true },
+    ];
+
+    expect(
+      unverifiedSlides(blocks, slides, { 6: stamp }).map((entry) => [
+        entry.slide.id,
+        entry.name,
+      ]),
+    ).toEqual([
+      [5, "A1.1"],
+      [7, "A2.1"],
+    ]);
+    expect(
+      unverifiedSlides(blocks, slides, { 5: stamp, 6: stamp, 7: stamp }),
+    ).toEqual([]);
+    expect(unverifiedSlides(blocks, undefined, undefined)).toEqual([]);
+  });
+
+  it("finds the unchecked slide after the given one, wrapping to the first, and none once it is the last", () => {
+    const slides = [
+      { id: 5, designation: "1", blockId: 1, active: true },
+      { id: 6, designation: "2", blockId: 1, active: true },
+      { id: 7, designation: "1", blockId: 2, active: true },
+    ];
+
+    expect(nextUnverifiedSlide(blocks, slides, {}, slides[0])?.id).toBe(6);
+    expect(nextUnverifiedSlide(blocks, slides, {}, slides[2])?.id).toBe(5);
+    expect(
+      nextUnverifiedSlide(blocks, slides, { 5: stamp, 7: stamp }, slides[1]),
+    ).toBeUndefined();
+    // A slide no longer among the unchecked ones still has a next.
+    expect(
+      nextUnverifiedSlide(blocks, slides, { 6: stamp }, slides[1])?.id,
+    ).toBe(5);
   });
 });

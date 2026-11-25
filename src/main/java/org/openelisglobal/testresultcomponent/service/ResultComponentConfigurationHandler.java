@@ -1,6 +1,7 @@
 package org.openelisglobal.testresultcomponent.service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -10,6 +11,7 @@ import org.openelisglobal.configuration.service.CsvLoadSummary;
 import org.openelisglobal.configuration.service.CsvRow;
 import org.openelisglobal.configuration.service.LoadedRow;
 import org.openelisglobal.configuration.service.RowTransactionRunner;
+import org.openelisglobal.localization.service.LocalizationValueService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
@@ -23,7 +25,7 @@ import org.springframework.stereotype.Component;
  * section defines them.
  * <p>
  * Columns:
- * {@code testName,sampleType,code,label,resultType,unitOfMeasure,reportingDecimalPlaces,displayOrder,isPrimary,showOnReport,displayLog10,log10SourceComponentCode,defaultResult,allowMultipleReadings}.
+ * {@code testName,sampleType,code,label,resultType,unitOfMeasure,reportingDecimalPlaces,displayOrder,isPrimary,showOnReport,isRequired,displayLog10,log10SourceComponentCode,defaultResult,allowMultipleReadings}.
  * {@code testName} and {@code code} are required; {@code sampleType} only
  * disambiguates a legacy {@code Name(Specimen)} record. The rows of one test
  * are one unit of work, written through
@@ -33,16 +35,25 @@ import org.springframework.stereotype.Component;
  * interpretations are not touched here; options come from the
  * {@code test-results} domain. {@code resultType} is one of the result type
  * letters (N numeric, D dictionary, A alpha, R remark, T titer, M/C
- * multi-select).
+ * multi-select). {@code isRequired} (Y/N) left blank makes a new component
+ * required only when it is the primary, and leaves an existing one as it is.
+ * {@code localization:<language>} columns translate the label.
  */
 @Component
 public class ResultComponentConfigurationHandler extends AbstractCatalogCsvHandler {
+
+    // Every test starts with this primary; a file naming another primary takes it
+    // over.
+    private static final String SEEDED_PRIMARY = "PRIMARY";
 
     @Autowired
     private TestResultComponentService componentService;
 
     @Autowired
     private CatalogReferenceResolver resolver;
+
+    @Autowired
+    private LocalizationValueService localizationValueService;
 
     @Override
     public String getDomainName() {
@@ -102,6 +113,7 @@ public class ResultComponentConfigurationHandler extends AbstractCatalogCsvHandl
         for (TestResultComponent existing : componentService.getActiveComponentsByTestId(test.getId())) {
             byCode.put(existing.getCode().toUpperCase(), existing);
         }
+        boolean namesSeededPrimary = group.stream().anyMatch(row -> SEEDED_PRIMARY.equalsIgnoreCase(row.get("code")));
         List<CsvLoadSummary.Outcome> rowOutcomes = new ArrayList<>();
         for (CsvRow row : group) {
             String code = row.get("code");
@@ -109,6 +121,14 @@ public class ResultComponentConfigurationHandler extends AbstractCatalogCsvHandl
                 throw new IllegalArgumentException("line " + row.lineNumber() + " has no code");
             }
             TestResultComponent component = byCode.get(code.toUpperCase());
+            if (component == null && !namesSeededPrimary && row.flag("isPrimary", false)) {
+                component = byCode.remove(SEEDED_PRIMARY);
+                if (component != null) {
+                    component.setCode(code);
+                    component.setLabel(code);
+                    byCode.put(code.toUpperCase(), component);
+                }
+            }
             boolean created = component == null;
             if (created) {
                 component = new TestResultComponent();
@@ -121,9 +141,24 @@ public class ResultComponentConfigurationHandler extends AbstractCatalogCsvHandl
                 byCode.put(code.toUpperCase(), component);
             }
             applyRow(row, component, fileName);
+            if (created && row.isBlank("isRequired")) {
+                component.setIsRequired(component.getIsPrimary());
+            }
             rowOutcomes.add(created ? CsvLoadSummary.Outcome.CREATED : CsvLoadSummary.Outcome.UPDATED);
         }
-        componentService.saveSampleResults(test.getId(), new ArrayList<>(byCode.values()), null, null, SYS_USER_ID);
+        Map<String, TestResultComponent> savedByCode = new HashMap<>();
+        for (TestResultComponent saved : componentService.saveSampleResults(test.getId(),
+                new ArrayList<>(byCode.values()), null, null, SYS_USER_ID)) {
+            savedByCode.put(saved.getCode().toUpperCase(), saved);
+        }
+        for (CsvRow row : group) {
+            Map<String, String> translations = row.translations();
+            if (!translations.isEmpty()) {
+                String localizationId = savedByCode.get(row.get("code").toUpperCase()).getLabelLocalization().getId();
+                translations.forEach((language, label) -> localizationValueService.setTranslation(localizationId,
+                        language, label, SYS_USER_ID));
+            }
+        }
         for (CsvLoadSummary.Outcome outcome : rowOutcomes) {
             outcomes.add(outcome == CsvLoadSummary.Outcome.CREATED ? LoadedRow.created(test.getId())
                     : LoadedRow.updated(test.getId()));
@@ -176,6 +211,9 @@ public class ResultComponentConfigurationHandler extends AbstractCatalogCsvHandl
         }
         if (!row.isBlank("showOnReport")) {
             component.setShowOnReport(row.flag("showOnReport", true));
+        }
+        if (!row.isBlank("isRequired")) {
+            component.setIsRequired(row.flag("isRequired", false));
         }
         if (!row.isBlank("defaultResult")) {
             component.setDefaultResult(row.get("defaultResult"));

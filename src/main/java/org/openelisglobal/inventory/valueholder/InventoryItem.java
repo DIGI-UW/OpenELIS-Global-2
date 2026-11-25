@@ -16,7 +16,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.sql.Timestamp;
 import java.time.LocalDate;
@@ -52,8 +52,8 @@ public class InventoryItem extends BaseObject<Long> {
     private String code;
 
     @Column(name = "name", nullable = false, length = 255)
-    @NotNull
-    @Size(min = 1, max = 255)
+    @NotBlank
+    @Size(max = 255)
     private String name;
 
     @Column(name = "description", columnDefinition = "TEXT")
@@ -88,8 +88,8 @@ public class InventoryItem extends BaseObject<Long> {
     private Integer quantityPerUnit;
 
     @Column(name = "units", nullable = false, length = 50)
-    @NotNull
-    @Size(min = 1, max = 50)
+    @NotBlank
+    @Size(max = 50)
     private String units;
 
     @Column(name = "low_stock_threshold")

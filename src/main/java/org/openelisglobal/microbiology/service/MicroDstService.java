@@ -59,7 +59,7 @@ public class MicroDstService {
         for (var i : tb)
             for (var r : choices.getSelectedReadings(i.getId()))
                 evidence.computeIfAbsent(r.getAntibioticId(), x -> new ArrayList<>()).add(new MicroDstForm.Evidence(
-                        "PHENOTYPIC", r.getId(), MicroAstReportChoiceService.interpretation(r), true));
+                        "PHENOTYPIC", r.getId(), MicroAstReportChoiceService.interpretation(r)));
         var configured = bindings.getBindings();
         for (var a : links.getAnalyses(caseId)) {
             var link = links.getByCaseAndAnalysis(caseId, a.getId());
@@ -76,7 +76,7 @@ public class MicroDstService {
                                 : Objects.equals(b.getSusceptibleValue(), result.getValue()) ? "SUSCEPTIBLE"
                                         : "INDETERMINATE";
                         evidence.computeIfAbsent(b.getAntibioticId(), x -> new ArrayList<>())
-                                .add(new MicroDstForm.Evidence("MOLECULAR", result.getId(), interpretation, true));
+                                .add(new MicroDstForm.Evidence("MOLECULAR", result.getId(), interpretation));
                     }
             }
         }
@@ -110,8 +110,8 @@ public class MicroDstService {
                             && r.getEvidenceFingerprint().equals(fingerprint))
                     .max(Comparator.comparing(MicroDstResolution::getResolvedAt)).orElse(null);
             String interpretation = discordant ? resolution == null ? "DISCORDANT" : resolution.getInterpretation()
-                    : observed.size() == 1 && entries.stream().allMatch(
-                            e -> e.validated() && Set.of("SUSCEPTIBLE", "RESISTANT").contains(e.interpretation()))
+                    : observed.size() == 1 && entries.stream()
+                            .allMatch(e -> Set.of("SUSCEPTIBLE", "RESISTANT").contains(e.interpretation()))
                                     ? observed.iterator().next()
                                     : "INDETERMINATE";
             form.unresolvedDiscordance |= discordant && resolution == null;
@@ -150,10 +150,14 @@ public class MicroDstService {
         return evaluate(caseId);
     }
 
-    private static String fingerprint(List<MicroDstForm.Evidence> evidence) {
+    // Stored resolutions match on this hash; changing its text reopens every
+    // resolved discordance.
+    static String fingerprint(List<MicroDstForm.Evidence> evidence) {
+        String text = evidence.stream().map(e -> e.source() + "|" + e.sourceId() + "|" + e.interpretation())
+                .collect(java.util.stream.Collectors.joining("\n"));
         try {
-            return HexFormat.of().formatHex(
-                    MessageDigest.getInstance("SHA-256").digest(evidence.toString().getBytes(StandardCharsets.UTF_8)));
+            return HexFormat.of()
+                    .formatHex(MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8)));
         } catch (java.security.NoSuchAlgorithmException e) {
             throw new IllegalStateException(e);
         }

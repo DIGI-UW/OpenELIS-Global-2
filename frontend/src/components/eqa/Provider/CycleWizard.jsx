@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import {
   Button,
   Column,
-  DatePicker,
   DatePickerInput,
   FilterableMultiSelect,
   Grid,
@@ -26,6 +25,7 @@ import {
   TextInput,
   Tile,
 } from "@carbon/react";
+import { DatePicker } from "../../common/DatePicker";
 import { useIntl } from "react-intl";
 import { useHistory, useParams } from "react-router-dom";
 import {

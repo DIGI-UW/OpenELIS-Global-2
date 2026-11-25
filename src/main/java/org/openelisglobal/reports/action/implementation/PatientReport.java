@@ -1024,9 +1024,10 @@ public abstract class PatientReport extends Report {
      * cell, and the matching line in the Unit and Reference-value cells. A
      * component carries its own unit, and its own range for the patient's age and
      * sex, this specimen and that component — resolved through the same selection
-     * Results Entry and Validation use, so all three agree. A component the report
-     * carries that has no result yet prints as in progress, as a whole test without
-     * a result does, instead of being left out.
+     * Results Entry and Validation use, so all three agree. A component without a
+     * result is left out (OGC-1608), unless the test is not released yet and the
+     * component is required: it then prints as in progress, since the test is held
+     * open until it is resulted.
      */
     private void buildMultiComponentRow(List<Result> resultList, List<TestResultComponent> components,
             ClinicalPatientData data) {
@@ -1037,8 +1038,8 @@ public abstract class PatientReport extends Report {
      * @param validatedOnly the analysis is not released yet: its components are
      *                      validated one by one, so a component prints its value
      *                      only once it was validated on its own and otherwise
-     *                      prints its own status, awaiting validation with a value
-     *                      and in progress without one
+     *                      prints its own status: awaiting validation with a value,
+     *                      in progress without one when it is required
      */
     private void buildMultiComponentRow(List<Result> resultList, List<TestResultComponent> components,
             ClinicalPatientData data, boolean validatedOnly) {
@@ -1068,16 +1069,19 @@ public abstract class PatientReport extends Report {
                             !hasReceivedLog(component, components, resultList));
             String status = null;
             if (GenericValidator.isBlankOrNull(componentValue)) {
+                if (!validatedOnly || !component.getIsRequired()) {
+                    continue;
+                }
                 status = componentInProgressText();
             } else if (validatedOnly
                     && componentResults.stream().noneMatch(result -> result.getValidatedDate() != null)) {
                 status = componentAwaitingValidationText();
             }
             if (status != null) {
-                results.append(component.getLabel()).append(": ").append(status).append("\n");
+                results.append(component.getLocalizedLabel()).append(": ").append(status).append("\n");
                 uoms.append("\n");
                 ranges.append("\n");
-                lines.add(new ReportComponentLine(component.getLabel(), status, "", "", ""));
+                lines.add(new ReportComponentLine(component.getLocalizedLabel(), status, "", "", ""));
                 continue;
             }
             Result first = componentResults.get(0);
@@ -1086,7 +1090,7 @@ public abstract class PatientReport extends Report {
             String letter = ResultAlertFlags.componentLetter(limit, first.getResultType(),
                     StringUtil.getActualNumericValue(first.getValue()));
             alerts.add(letter);
-            results.append(component.getLabel()).append(": ").append(componentValue);
+            results.append(component.getLocalizedLabel()).append(": ").append(componentValue);
             if (!letter.isEmpty()) {
                 results.append(" <b>").append(letter).append("</b>");
             }
@@ -1100,7 +1104,7 @@ public abstract class PatientReport extends Report {
             String range = limit == null ? ""
                     : resultLimitService.getDisplayReferenceRange(limit, reportingDecimalPlaces, " - ");
             ranges.append(range).append("\n");
-            lines.add(new ReportComponentLine(component.getLabel(), componentValue, letter, range, uom));
+            lines.add(new ReportComponentLine(component.getLocalizedLabel(), componentValue, letter, range, uom));
         }
         data.setComponents(lines);
         trimTrailingNewline(results);
@@ -1172,7 +1176,7 @@ public abstract class PatientReport extends Report {
             if (GenericValidator.isBlankOrNull(componentValue)) {
                 continue;
             }
-            reportBuilder.append(component.getLabel()).append(": ").append(componentValue).append("\n");
+            reportBuilder.append(component.getLocalizedLabel()).append(": ").append(componentValue).append("\n");
         }
         if (reportBuilder.length() > 0) {
             reportBuilder.setLength(reportBuilder.length() - 1);

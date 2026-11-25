@@ -16,6 +16,7 @@ import java.util.UUID;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.analyzer.service.AnalyzerMappingDefinition;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
@@ -222,6 +223,29 @@ public class ResultRunServiceIntegrationTest extends BaseWebContextSensitiveTest
     }
 
     @Test
+    public void runSettingsNameTheMethodAsTheAnalyzerTypeCatalogNamesIt() {
+        long mappingId = 97671L;
+        jdbc.update("INSERT INTO clinlims.analyzer_mapping (id, analyzer_id, revision_number, profile_id,"
+                + " profile_revision, profile_fingerprint, mapping_fingerprint, created_by, source_definition_json)"
+                + " VALUES (?, ?::numeric, 1, 'site.0b5ed486-1200', 1, ?, ?, '1', ?)", mappingId, ANALYZER,
+                "sha256:" + "a".repeat(64), "sha256:" + "b".repeat(64),
+                new AnalyzerMappingDefinition("site.0b5ed486-1200", 1, "sha256:" + "a".repeat(64),
+                        "Lab copy of GeneXpert", "ASTM", List.of()).toJson());
+        jdbc.update("UPDATE clinlims.analyzer SET mapping_id = ? WHERE id = ?::numeric", mappingId, ANALYZER);
+        ResultRun run = open("msg-method", List.of(row("RUN1200T", TEST_A, "1", false)));
+        entityManager.clear();
+
+        assertEquals("Lab copy of GeneXpert",
+                resultRunService.getHeader(run.getId(), seesUnitA()).orElseThrow().method());
+
+        jdbc.update("UPDATE clinlims.analyzer_mapping SET source_definition_json = NULL WHERE id = ?", mappingId);
+        entityManager.clear();
+
+        assertEquals("a mapping older than the kept definition names the type by its id", "site.0b5ed486-1200",
+                resultRunService.getHeader(run.getId(), seesUnitA()).orElseThrow().method());
+    }
+
+    @Test
     public void rowsPageOverTheValuesTheUserMaySee() {
         List<AnalyzerResults> rows = new ArrayList<>();
         for (int i = 0; i < 30; i++) {
@@ -270,6 +294,35 @@ public class ResultRunServiceIntegrationTest extends BaseWebContextSensitiveTest
 
         assertEquals("RUN-" + run.getId(), pending.getWaitingRun().label());
         assertNull("a row already resulted is not waiting", resulted.getWaitingRun());
+    }
+
+    /**
+     * A test with parts is waiting part by part: the part a run holds a value for
+     * says so, the main value names the primary part, and a part the run sent
+     * nothing for is entered at the bench as usual.
+     */
+    @Test
+    public void eachPartOfATestIsMarkedWaitingOnlyForTheValueTheRunHoldsForIt() {
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, display_order, is_active,"
+                + " lastupdated, is_primary) VALUES ('rrs-main', ?::numeric, 'VL', 'Viral load', 0, 'Y', NOW(), true),"
+                + " ('rrs-ct', ?::numeric, 'CT', 'Ct', 1, 'Y', NOW(), false),"
+                + " ('rrs-call', ?::numeric, 'CALL', 'Call', 2, 'Y', NOW(), false)", TEST_A, TEST_A, TEST_A);
+        AnalyzerResults main = row("RUN1200P", TEST_A, "1009.64", false);
+        AnalyzerResults ct = row("RUN1200P", TEST_A, "33.0", false);
+        ct.setComponentId("rrs-ct");
+        ResultRun run = open("msg-13", List.of(main, ct));
+        TestResultItem mainRow = item("RUN1200P", null);
+        mainRow.setTestResultComponentId("rrs-main");
+        TestResultItem ctRow = item("RUN1200P", null);
+        ctRow.setTestResultComponentId("rrs-ct");
+        TestResultItem callRow = item("RUN1200P", null);
+        callRow.setTestResultComponentId("rrs-call");
+
+        resultRunService.markWaiting(List.of(mainRow, ctRow, callRow));
+
+        assertEquals("RUN-" + run.getId(), mainRow.getWaitingRun().label());
+        assertEquals("RUN-" + run.getId(), ctRow.getWaitingRun().label());
+        assertNull("the run sent nothing for the call", callRow.getWaitingRun());
     }
 
     @Test

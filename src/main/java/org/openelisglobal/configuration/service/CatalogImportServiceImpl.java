@@ -275,15 +275,27 @@ public class CatalogImportServiceImpl implements CatalogImportService {
         return previous;
     }
 
-    private static void restore(Path path, byte[] earlier) {
+    private void restore(Path path, byte[] earlier) {
         try {
             if (earlier == null) {
                 Files.deleteIfExists(path);
+                Path base = Paths.get(configurationBaseDir).toAbsolutePath().normalize();
+                for (Path directory = path.toAbsolutePath().normalize().getParent(); directory != null
+                        && directory.startsWith(base) && !directory.equals(base)
+                        && isEmpty(directory); directory = directory.getParent()) {
+                    Files.delete(directory);
+                }
             } else {
                 Files.write(path, earlier);
             }
         } catch (IOException e) {
             LogEvent.logWarn(CLASS_NAME, "restore", "Could not restore " + path + ": " + e.getMessage());
+        }
+    }
+
+    private static boolean isEmpty(Path directory) throws IOException {
+        try (var entries = Files.list(directory)) {
+            return entries.findAny().isEmpty();
         }
     }
 

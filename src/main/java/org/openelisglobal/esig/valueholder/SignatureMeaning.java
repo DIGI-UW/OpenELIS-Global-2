@@ -34,5 +34,12 @@ public enum SignatureMeaning {
      * Supervisor rejected the results. Results are returned to technologist for
      * correction.
      */
-    REJECTED
+    REJECTED,
+
+    /**
+     * A reviewer signed one review level of a result that needs several sequential
+     * reviews (OGC-1364). The result stays in review until its last level is
+     * signed, which carries {@link #VALIDATED_AND_RELEASED}.
+     */
+    REVIEWED
 }

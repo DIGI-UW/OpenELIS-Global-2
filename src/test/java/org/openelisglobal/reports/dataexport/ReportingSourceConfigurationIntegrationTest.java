@@ -164,7 +164,7 @@ public class ReportingSourceConfigurationIntegrationTest extends BaseWebContextS
             StringWriter csv = new StringWriter();
             assertEquals(2, catalog.source(definition.source()).write(csv, snapshot));
             assertEquals(layout.equals("SPREADSHEET")
-                    ? "\uFEFFSpecimen ID,Accession Number,Blood Test\r\n1,12345,120\r\n1,12345,120\r\n"
+                    ? "\uFEFFSpecimen ID,Accession Number,Test Localization 1\r\n1,12345,120\r\n1,12345,120\r\n"
                     : "\uFEFFAccession Number,Result Value\r\n12345,120\r\n12345,120\r\n", csv.toString());
         }
     }

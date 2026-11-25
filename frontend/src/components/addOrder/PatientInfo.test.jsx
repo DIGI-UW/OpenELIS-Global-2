@@ -3,7 +3,7 @@
  * user has already moved on. The step then skips its own tab and selection
  * state (it is gone), but the order must still receive the patient.
  */
-import React from "react";
+import React, { useState } from "react";
 import { vi } from "vitest";
 import { act, render } from "@testing-library/react";
 import { IntlProvider } from "react-intl";
@@ -42,6 +42,32 @@ const renderStep = (setOrderFormValues) =>
     </IntlProvider>,
   );
 
+const handedToOrder = (setOrderFormValues) => {
+  const [update] = setOrderFormValues.mock.calls.at(-1);
+  return typeof update === "function" ? update(orderFormValues) : update;
+};
+
+let orderState;
+const StatefulStep = () => {
+  const [values, setValues] = useState({
+    ...orderFormValues,
+    providerFirstName: "",
+    providerLastName: "",
+    providerId: "",
+  });
+  orderState = { values, setValues };
+  return (
+    <IntlProvider locale="en" messages={messages}>
+      <PatientInfo
+        orderFormValues={values}
+        setOrderFormValues={setValues}
+        error={() => null}
+        setPhoneValidation={vi.fn()}
+      />
+    </IntlProvider>
+  );
+};
+
 describe("PatientInfo", () => {
   it("hands the picked patient to the order", () => {
     const setOrderFormValues = vi.fn();
@@ -55,7 +81,7 @@ describe("PatientInfo", () => {
       });
     });
 
-    expect(setOrderFormValues).toHaveBeenCalledWith(
+    expect(handedToOrder(setOrderFormValues)).toEqual(
       expect.objectContaining({
         patientUpdateStatus: "NO_ACTION",
         patientProperties: expect.objectContaining({ lastName: "EARLIER" }),
@@ -74,7 +100,7 @@ describe("PatientInfo", () => {
 
     getSelectedPatient({ id: "5", lastName: "FIXDOB", healthRegion: [] });
 
-    expect(setOrderFormValues).toHaveBeenCalledWith(
+    expect(handedToOrder(setOrderFormValues)).toEqual(
       expect.objectContaining({
         patientProperties: expect.objectContaining({ lastName: "FIXDOB" }),
       }),
@@ -85,5 +111,26 @@ describe("PatientInfo", () => {
       ),
     ).toBe(false);
     errors.mockRestore();
+  });
+
+  it("keeps a requester set on the order while the patient was loading", () => {
+    render(<StatefulStep />);
+    const deliverPatient = latestSearchProps.getSelectedPatient;
+
+    act(() => {
+      orderState.setValues((prev) => ({
+        ...prev,
+        providerFirstName: "Sarah",
+        providerLastName: "Okello",
+        providerId: "81",
+      }));
+    });
+    act(() => {
+      deliverPatient({ id: "6", lastName: "Nakato", healthRegion: [] });
+    });
+
+    expect(orderState.values.providerId).toBe("81");
+    expect(orderState.values.providerFirstName).toBe("Sarah");
+    expect(orderState.values.patientProperties.lastName).toBe("Nakato");
   });
 });

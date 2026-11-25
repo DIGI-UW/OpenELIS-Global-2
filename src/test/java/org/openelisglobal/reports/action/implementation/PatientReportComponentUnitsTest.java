@@ -61,20 +61,27 @@ public class PatientReportComponentUnitsTest extends BaseWebContextSensitiveTest
     }
 
     /**
-     * A part the report carries but that has no result yet is printed as still in
-     * progress, not dropped as if it had never been ordered.
+     * OGC-1608: once the test is released, a part without a result is left off the
+     * report, required or not, so a final report never carries an in-progress line.
      */
     @Test
-    public void aPartWithoutAResultIsPrintedAsInProgress() {
-        PatientReport report = report();
-        Analysis analysis = analysisService.get("100");
-        ReflectionTestUtils.setField(report, "currentAnalysis", analysis);
-        ClinicalPatientData row = new ClinicalPatientData();
-        List<Result> loadOnly = resultService.getResultsByAnalysis(analysis).stream()
-                .filter(result -> "vcu-load".equals(result.getTestResult().getComponentId())).toList();
+    public void aReleasedTestLeavesAPartWithoutAResultOff() {
+        requireComponent("vcu-ct", true);
+        ClinicalPatientData row = rowFor(loadOnly(), false);
 
-        ReflectionTestUtils.invokeMethod(report, "buildMultiComponentRow", loadOnly,
-                testResultComponentService.getActiveComponentsByTestId("1"), row);
+        assertEquals(List.of("Viral load"), row.getComponents().stream().map(ReportComponentLine::label).toList());
+        assertEquals(1, row.getResult().split("\n").length);
+        assertEquals("cp/ml VCU", row.getUom());
+    }
+
+    /**
+     * OGC-1608: before release, a required part without a result prints as in
+     * progress, since it holds the test open.
+     */
+    @Test
+    public void anUnreleasedTestPrintsARequiredPartWithoutAResultAsInProgress() {
+        requireComponent("vcu-ct", true);
+        ClinicalPatientData row = rowFor(validated(loadOnly()), true);
 
         List<String> lines = List.of(row.getResult().split("\n"));
         assertEquals(2, lines.size());
@@ -82,6 +89,43 @@ public class PatientReportComponentUnitsTest extends BaseWebContextSensitiveTest
         assertEquals("Ct: In Progress", lines.get(1));
         assertEquals(List.of("cp/ml VCU", ""), List.of(row.getUom().split("\n", -1)));
         assertEquals("In Progress", row.getComponents().get(1).value());
+    }
+
+    /**
+     * OGC-1608: an optional part without a result is left off before release too;
+     * it does not hold the test open.
+     */
+    @Test
+    public void anUnreleasedTestLeavesAnOptionalPartWithoutAResultOff() {
+        requireComponent("vcu-ct", false);
+        ClinicalPatientData row = rowFor(validated(loadOnly()), true);
+
+        assertEquals(List.of("Viral load"), row.getComponents().stream().map(ReportComponentLine::label).toList());
+        assertEquals(1, row.getResult().split("\n").length);
+    }
+
+    private List<Result> loadOnly() {
+        return resultService.getResultsByAnalysis(analysisService.get("100")).stream()
+                .filter(result -> "vcu-load".equals(result.getTestResult().getComponentId())).toList();
+    }
+
+    private static List<Result> validated(List<Result> results) {
+        results.forEach(result -> result.setValidatedDate(new java.sql.Timestamp(System.currentTimeMillis())));
+        return results;
+    }
+
+    private ClinicalPatientData rowFor(List<Result> results, boolean validatedOnly) {
+        PatientReport report = report();
+        ReflectionTestUtils.setField(report, "currentAnalysis", analysisService.get("100"));
+        ClinicalPatientData row = new ClinicalPatientData();
+        ReflectionTestUtils.invokeMethod(report, "buildMultiComponentRow", results,
+                testResultComponentService.getActiveComponentsByTestId("1"), row, validatedOnly);
+        return row;
+    }
+
+    private void requireComponent(String componentId, boolean required) {
+        jdbcTemplate.update("UPDATE clinlims.test_result_component SET is_required = ? WHERE id = ?", required,
+                componentId);
     }
 
     /**
@@ -177,14 +221,14 @@ public class PatientReportComponentUnitsTest extends BaseWebContextSensitiveTest
         assertEquals(List.of("1009.64", "3.0040"),
                 data.getComponents().stream().map(ReportComponentLine::value).toList());
         ReflectionTestUtils.invokeMethod(report, "buildMultiComponentRow", List.of(measurement), components, data);
-        assertEquals("1009.64\nCalculated log10: 3.00", data.getComponents().get(0).value());
-        assertEquals("In Progress", data.getComponents().get(1).value());
+        assertEquals(List.of("1009.64\nCalculated log10: 3.00"),
+                data.getComponents().stream().map(ReportComponentLine::value).toList());
         assertEquals("1009.64", measurement.getEnteredValue());
         assertEquals("3.0040", received.getEnteredValue());
         received.setValue(" ");
         ReflectionTestUtils.invokeMethod(report, "buildMultiComponentRow", results, components, data);
-        assertEquals("1009.64\nCalculated log10: 3.00", data.getComponents().get(0).value());
-        assertEquals("In Progress", data.getComponents().get(1).value());
+        assertEquals(List.of("1009.64\nCalculated log10: 3.00"),
+                data.getComponents().stream().map(ReportComponentLine::value).toList());
         received.setValue("<2");
         ReflectionTestUtils.invokeMethod(report, "buildMultiComponentRow", results, components, data);
         assertEquals(List.of("1009.64", "<2"), data.getComponents().stream().map(ReportComponentLine::value).toList());
@@ -247,10 +291,10 @@ public class PatientReportComponentUnitsTest extends BaseWebContextSensitiveTest
 
         received.setValue(" ");
         ReflectionTestUtils.invokeMethod(report, "buildMultiComponentRow", results, components, data);
-        assertEquals(List.of("In Progress", "1009.64\nCalculated log10: 3.00"),
+        assertEquals(List.of("1009.64\nCalculated log10: 3.00"),
                 data.getComponents().stream().map(ReportComponentLine::value).toList());
         ReflectionTestUtils.invokeMethod(report, "buildMultiComponentRow", List.of(measurement), components, data);
-        assertEquals(List.of("In Progress", "1009.64\nCalculated log10: 3.00"),
+        assertEquals(List.of("1009.64\nCalculated log10: 3.00"),
                 data.getComponents().stream().map(ReportComponentLine::value).toList());
     }
 
