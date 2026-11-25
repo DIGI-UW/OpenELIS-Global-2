@@ -10,6 +10,10 @@ public class BatchWorkplanResponse {
     private Long id;
     /** The run the released batch is (OGC-1200 FR-B2), to open from the batch. */
     private Long runId;
+    /**
+     * Whether that run is open or held, so a control from the tile records onto it.
+     */
+    private boolean runOpen;
     private String name;
     private BatchWorkplanStatus status;
     private String testSectionId;
@@ -214,5 +218,13 @@ public class BatchWorkplanResponse {
 
     public void setRunId(Long runId) {
         this.runId = runId;
+    }
+
+    public boolean isRunOpen() {
+        return runOpen;
+    }
+
+    public void setRunOpen(boolean runOpen) {
+        this.runOpen = runOpen;
     }
 }

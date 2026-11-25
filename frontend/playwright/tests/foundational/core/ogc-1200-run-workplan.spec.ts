@@ -17,9 +17,11 @@ import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 /**
  * OGC-1200 slice 9a (FR-B2, FR-D5, FR-E3, FR-G4): a released workplan batch is
  * a run. The worklist row reads "Batched in RUN-x" and stays open to entry,
- * the run shows the batch's reagent lot and analyses, a failed control
- * recorded on the run holds the batch's test everywhere, and once the test is
- * decided the value entered from the run completes it.
+ * the run shows the batch's reagent lot and analyses, and a failed control
+ * recorded on the run holds the batch's test everywhere. Once the test is
+ * decided, taking the batch back to setup closes that run, the tile's QC is a
+ * plain bench capture again, and the re-release opens a fresh run whose value
+ * entry completes it.
  */
 
 test.describe("OGC-1200 a workplan batch is a run", () => {
@@ -39,7 +41,7 @@ test.describe("OGC-1200 a workplan batch is a run", () => {
   test("a released batch is a run its results and controls record into", async ({
     page,
   }) => {
-    test.setTimeout(240_000);
+    test.setTimeout(360_000);
     const accession = await orderTests(page, SERUM, [AMYLASE_TEST]);
     const { batchId, tile } = await createBatch(
       page,
@@ -107,7 +109,7 @@ test.describe("OGC-1200 a workplan batch is a run", () => {
       ).toBeVisible({ timeout: LONG_TIMEOUT });
     });
 
-    await test.step("Once decided, the value entered from the run completes it", async () => {
+    await test.step("The held test is accepted despite the failed control", async () => {
       await page.goto(`/Results?run=${runLabel.replace("RUN-", "")}`);
       const decide = page.getByTestId(`run-qc-decide-${AMYLASE_TEST}`);
       await decide
@@ -120,7 +122,62 @@ test.describe("OGC-1200 a workplan batch is a run", () => {
       await expect(
         page.getByTestId(`run-qc-decision-${AMYLASE_TEST}`),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
+    });
 
+    let freshLabel = "";
+    await test.step("Taken back to setup after the decision, the batch is released into a fresh run", async () => {
+      await page.goto("/Workplan", { waitUntil: "domcontentloaded" });
+      await page.getByRole("tab", { name: /^Batches/ }).click();
+      const batchTile = page.getByTestId(`batch-tile-${batchId}`);
+      await batchTile.getByRole("button", { name: "Batch actions" }).click();
+      await page.getByRole("menuitem", { name: "Edit" }).click();
+      await expect(
+        batchTile.getByRole("button", { name: "Run QC" }),
+      ).toBeVisible({ timeout: LONG_TIMEOUT });
+      await expect(batchTile.getByTestId(`batch-${batchId}-run`)).toHaveText(
+        `Open ${runLabel}`,
+      );
+
+      await batchTile.getByRole("button", { name: "Run QC" }).click();
+      const form = batchTile.getByTestId(`batch-${batchId}-qc-form`);
+      await form.getByLabel("Value").fill("79.8");
+      await form.locator(`label[for="batch-${batchId}-qc-pass"]`).click();
+      const recorded = page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          /\/rest\/(qc\/results|result-runs\/\d+\/controls)$/.test(
+            new URL(response.url()).pathname,
+          ),
+      );
+      await form.getByRole("button", { name: "Save QC result" }).click();
+      expect(new URL((await recorded).url()).pathname).toMatch(
+        /\/rest\/qc\/results$/,
+      );
+      await expect(batchTile.getByTestId(`batch-${batchId}-qc-tag`)).toHaveText(
+        "QC pass",
+        { timeout: LONG_TIMEOUT },
+      );
+      await batchTile
+        .getByRole("button", { name: "Generate workplan" })
+        .click();
+      const freshLink = batchTile.getByTestId(`batch-${batchId}-run`);
+      await expect(freshLink).not.toHaveText(`Open ${runLabel}`, {
+        timeout: LONG_TIMEOUT,
+      });
+      freshLabel = ((await freshLink.textContent()) || "").replace("Open ", "");
+      expect(freshLabel).toMatch(/^RUN-\d+$/);
+
+      await page.goto(`/Results?run=${runLabel.replace("RUN-", "")}`);
+      await expect(page.getByTestId("run-settings")).toContainText("Complete", {
+        timeout: LONG_TIMEOUT,
+      });
+    });
+
+    await test.step("The value entered from the fresh run completes it", async () => {
+      await page.goto(`/Results?run=${freshLabel.replace("RUN-", "")}`);
+      await expect(
+        page.getByTestId(`run-qc-decision-${AMYLASE_TEST}`),
+      ).toHaveCount(0);
       const rows = page
         .getByTestId("run-rows")
         .locator('> tbody > tr[data-testid^="run-row-"]');

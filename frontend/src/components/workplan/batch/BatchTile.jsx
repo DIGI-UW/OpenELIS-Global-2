@@ -915,7 +915,7 @@ export default function BatchTile({
               {entryOpen && (
                 <QcEntryForm
                   batchId={batch.id}
-                  runId={batch.runId}
+                  runId={batch.runOpen ? batch.runId : null}
                   lots={recordableLots}
                   onSaved={qcSaved}
                   onCancel={() => setEntryOpen(false)}

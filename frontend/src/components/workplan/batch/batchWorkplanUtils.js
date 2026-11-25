@@ -92,15 +92,20 @@ export const isoToDisplayDate = (date, dateLocale) =>
   date ? format(date, displayPattern(dateLocale)) : "";
 
 /**
- * The LocalDateTime the bench QC capture expects ("yyyy-MM-ddTHH:mm:00"), from
- * a display date and an HH:mm time, or null when either is incomplete.
+ * The LocalDateTime the bench QC capture expects ("yyyy-MM-ddTHH:mm:ss"), from
+ * a display date and an HH:mm time, or null when either is incomplete. A time in
+ * the minute of `now` carries now's seconds: a per-run control recorded in the
+ * minute a batch was released is after that release, not at the minute's start.
  */
-export const toLocalDateTime = (displayDate, time, dateLocale) => {
+export const toLocalDateTime = (displayDate, time, dateLocale, now) => {
   const isoDate = displayDateToIso(displayDate, dateLocale);
   if (!isoDate || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time || "")) {
     return null;
   }
-  return `${isoDate}T${time}:00`;
+  const minute = `${isoDate}T${time}`;
+  return now && format(now, "yyyy-MM-dd'T'HH:mm") === minute
+    ? format(now, "yyyy-MM-dd'T'HH:mm:ss")
+    : `${minute}:00`;
 };
 
 export const formatDateTime = (intl, value) =>

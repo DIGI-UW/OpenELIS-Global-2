@@ -9,13 +9,14 @@
     <columnExists schemaName="clinlims" tableName="result_run" columnName="batch_workplan_id"/>
    </not>
   </preConditions>
-  <comment>OGC-1200 FR-B2, FR-G4: a released workplan batch is a run. The run names its batch and the reagent lot the batch runs on; the batch's analyses are the run's rows.</comment>
+  <comment>OGC-1200 FR-B2, FR-G4: a released workplan batch is a run. The run names its batch and the reagent lot the batch runs on; the batch's analyses are the run's rows. A batch re-released after a QC decision on its run gets a fresh run, so a batch can name several runs over time; its latest is its run.</comment>
   <addColumn schemaName="clinlims" tableName="result_run">
    <column name="batch_workplan_id" type="bigint"/>
    <column name="reagent_lot_id" type="bigint"/>
   </addColumn>
-  <addUniqueConstraint schemaName="clinlims" tableName="result_run" columnNames="batch_workplan_id"
-   constraintName="result_run_batch_workplan_uk"/>
+  <createIndex schemaName="clinlims" tableName="result_run" indexName="result_run_batch_workplan_idx">
+   <column name="batch_workplan_id"/>
+  </createIndex>
   <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="result_run" baseColumnNames="batch_workplan_id"
    constraintName="result_run_batch_workplan_fk" referencedTableSchemaName="clinlims" referencedTableName="batch_workplan"
    referencedColumnNames="id" onDelete="SET NULL"/>

@@ -12,7 +12,10 @@ public interface ResultRunDAO extends BaseDAO<ResultRun, Long> {
     /** The run one accepted analyzer message created. */
     Optional<ResultRun> findAnalyzerRun(String connectionId, String messageId);
 
-    /** The run a workplan batch is, if it was released (FR-B2). */
+    /**
+     * The run a workplan batch is, if it was released (FR-B2): its latest, since a
+     * re-release after a QC decision opens a fresh one.
+     */
     Optional<ResultRun> findBatchRun(Long batchWorkplanId);
 
     /** The analyses of a workplan run: its batch's items (FR-G4). */
@@ -23,6 +26,12 @@ public interface ResultRunDAO extends BaseDAO<ResultRun, Long> {
      * and with no result value.
      */
     long countBatchAnalysesAwaiting(Long runId, String cancelledStatusId);
+
+    /**
+     * The analyses of a workplan run's batch that wait for a result: not cancelled
+     * and without a recorded value, in the batch's order.
+     */
+    List<String> getBatchAnalysisIdsAwaiting(Long runId, String cancelledStatusId);
 
     /** The tests of a workplan run's batched analyses. */
     List<String> getBatchTestIds(Long runId);
@@ -57,8 +66,9 @@ public interface ResultRunDAO extends BaseDAO<ResultRun, Long> {
     List<String> getTestIdsOfResults(Long runId);
 
     /**
-     * The analyses of one test in a run: those with a result stored from it and
-     * those its staged values were reported for.
+     * The analyses of one test in a run: those with a result stored from it, those
+     * its staged values were reported for, and, for a workplan run, its batch's
+     * analyses of that test.
      */
     List<String> getAnalysisIdsOfRunTest(Long runId, String testId);
 }

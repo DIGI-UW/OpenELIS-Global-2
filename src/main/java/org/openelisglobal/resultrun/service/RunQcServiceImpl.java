@@ -407,6 +407,12 @@ public class RunQcServiceImpl implements RunQcService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public boolean hasDecisions(Long runId) {
+        return runId != null && !dispositionDAO.getDispositions(runId).isEmpty();
+    }
+
+    @Override
     @Transactional
     public void refreshActiveRunsOfTest(String testId, String sysUserId) {
         if (StringUtils.isBlank(testId)) {

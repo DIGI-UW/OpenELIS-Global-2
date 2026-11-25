@@ -415,7 +415,7 @@ describe("BatchTile inline QC", () => {
       testSectionId: "5",
     });
     expect(JSON.parse(body).runDateTime).toMatch(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00$/,
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/,
     );
     await waitFor(() =>
       expect(getFromOpenElisServer).toHaveBeenCalledWith(
@@ -427,6 +427,99 @@ describe("BatchTile inline QC", () => {
       .filter(([pollUrl]) => pollUrl.endsWith("qc-status"))
       .forEach(([, callback]) => callback({ evaluationPending: false }));
     await waitFor(() => expect(onChanged).toHaveBeenCalled());
+  });
+
+  it("records the control on the batch's open run through the run's endpoint", async () => {
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (_url, _body, callback) => callback({ overall: "PASS", tests: [] }),
+    );
+    const { onChanged } = renderTile({
+      ...draftBatch("NOT_RUN"),
+      runId: 41,
+      runOpen: true,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Run QC" }));
+    fireEvent.change(screen.getByLabelText("Value"), {
+      target: { value: "101.5" },
+    });
+    fireEvent.click(screen.getByText("Pass"));
+    fireEvent.click(screen.getByRole("button", { name: "Save QC result" }));
+
+    const [url, body] = postToOpenElisServerJsonResponse.mock.calls[0];
+    expect(url).toBe("/rest/result-runs/41/controls");
+    expect(JSON.parse(body)).toMatchObject({
+      testId: "1",
+      resultValue: "101.5",
+    });
+    getFromOpenElisServer.mock.calls
+      .filter(([pollUrl]) => pollUrl.endsWith("qc-status"))
+      .forEach(([, callback]) => callback({ evaluationPending: false }));
+    await waitFor(() => expect(onChanged).toHaveBeenCalled());
+  });
+
+  it("records a plain bench control once the batch's run is closed", () => {
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (_url, _body, callback) => callback({ id: "run-9" }),
+    );
+    renderTile({ ...draftBatch("NOT_RUN"), runId: 41, runOpen: false });
+
+    fireEvent.click(screen.getByRole("button", { name: "Run QC" }));
+    fireEvent.change(screen.getByLabelText("Value"), {
+      target: { value: "101.5" },
+    });
+    fireEvent.click(screen.getByText("Pass"));
+    fireEvent.click(screen.getByRole("button", { name: "Save QC result" }));
+
+    expect(postToOpenElisServerJsonResponse.mock.calls[0][0]).toBe(
+      "/rest/qc/results",
+    );
+  });
+
+  it("keeps a QC time the technician typed, at the start of that minute", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 10, 25, 9, 30, 15));
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (_url, _body, callback) => callback({ id: "run-9" }),
+    );
+    renderTile(draftBatch("NOT_RUN"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Run QC" }));
+    fireEvent.change(screen.getByLabelText("QC time"), {
+      target: { value: "00:05" },
+    });
+    fireEvent.change(screen.getByLabelText("Value"), {
+      target: { value: "101.5" },
+    });
+    fireEvent.click(screen.getByText("Pass"));
+    fireEvent.click(screen.getByRole("button", { name: "Save QC result" }));
+
+    expect(
+      JSON.parse(postToOpenElisServerJsonResponse.mock.calls[0][1]).runDateTime,
+    ).toBe("2026-11-25T00:05:00");
+    vi.useRealTimers();
+  });
+
+  it("stamps an untouched QC time with the moment the control is saved", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 10, 25, 7, 28, 59));
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (_url, _body, callback) => callback({ id: "run-9" }),
+    );
+    renderTile(draftBatch("NOT_RUN"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Run QC" }));
+    vi.setSystemTime(new Date(2026, 10, 25, 7, 29, 1));
+    fireEvent.change(screen.getByLabelText("Value"), {
+      target: { value: "101.5" },
+    });
+    fireEvent.click(screen.getByText("Pass"));
+    fireEvent.click(screen.getByRole("button", { name: "Save QC result" }));
+
+    expect(
+      JSON.parse(postToOpenElisServerJsonResponse.mock.calls[0][1]).runDateTime,
+    ).toBe("2026-11-25T07:29:01");
+    vi.useRealTimers();
   });
 
   it("says what is missing and sends nothing when the value or result is empty", () => {

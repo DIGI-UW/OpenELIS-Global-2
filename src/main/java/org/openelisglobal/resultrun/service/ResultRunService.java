@@ -73,9 +73,10 @@ public interface ResultRunService extends BaseObjectService<ResultRun, Long> {
 
     /**
      * The run a released workplan batch is (FR-B2, FR-G4): created on its first
-     * release, reopened and brought up to date when it is released again. It
-     * carries the batch's lab unit, instrument, reagent lot and operator, and its
-     * holds follow the tests' QC policies at once.
+     * release, reopened and brought up to date when it is released again, and
+     * opened afresh when a QC decision was taken on the earlier one, whose tests'
+     * QC is closed. It carries the batch's lab unit, instrument, reagent lot and
+     * operator, and its holds follow the tests' QC policies at once.
      */
     ResultRun openWorkplanRun(Long batchWorkplanId, String testSectionId, String instrumentId, Long reagentLotId,
             int rowCount, String operatorName, String sysUserId);
@@ -83,8 +84,15 @@ public interface ResultRunService extends BaseObjectService<ResultRun, Long> {
     /** Completes the run of a batch that is marked complete (FR-B2). */
     void completeWorkplanRun(Long batchWorkplanId, String sysUserId);
 
-    /** The run a workplan batch is, once released. */
-    Optional<Long> batchRunId(Long batchWorkplanId);
+    /**
+     * A batch taken back to setup after a QC decision on its run: the run is done,
+     * so its decisions stay with the results recorded in it, and the re-release
+     * opens a fresh run whose controls cover the batch again.
+     */
+    void closeDecidedWorkplanRun(Long batchWorkplanId, String sysUserId);
+
+    /** The run a workplan batch is, once released: its latest. */
+    Optional<ResultRun> batchRun(Long batchWorkplanId);
 
     /**
      * For analyses batched in an open or held workplan run: analysis id to run id,

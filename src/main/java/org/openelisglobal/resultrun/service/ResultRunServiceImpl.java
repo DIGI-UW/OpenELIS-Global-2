@@ -301,14 +301,19 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     /**
      * The batch's analyses that still wait for a result, as run rows: entered
      * through the Results Entry panel and recorded into the run (FR-D5), held when
-     * the run holds their test.
+     * the run holds their test. A closed run, or an earlier run of a batch released
+     * again, has none: those analyses are no longer in it.
      */
     private List<ResultRunRow> workplanRows(ResultRun run) {
-        List<String> ids = baseObjectDAO.getBatchAnalysisIds(run.getId());
+        boolean current = run.getState().isActive() && baseObjectDAO.findBatchRun(run.getBatchWorkplanId())
+                .map(latest -> latest.getId().equals(run.getId())).orElse(false);
+        List<String> ids = current
+                ? baseObjectDAO.getBatchAnalysisIdsAwaiting(run.getId(),
+                        statusService.getStatusID(AnalysisStatus.Canceled))
+                : List.of();
         if (ids.isEmpty()) {
             return List.of();
         }
-        String cancelled = statusService.getStatusID(AnalysisStatus.Canceled);
         Map<String, RunHoldCause> holds = runQcService.holdCauses(run.getId());
         Set<String> noControl = runQcService.testVerdicts(run.getId()).entrySet().stream()
                 .filter(entry -> entry.getValue() == RunTestVerdict.NO_CONTROL).map(Map.Entry::getKey)
@@ -316,10 +321,6 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
         Map<String, String> names = new HashMap<>();
         List<ResultRunRow> rows = new ArrayList<>();
         for (Analysis analysis : analysisService.getAnalysesByIdsWithDetails(ids)) {
-            if (cancelled.equals(analysis.getStatusId()) || resultService.getResultsByAnalysis(analysis).stream()
-                    .anyMatch(result -> StringUtils.isNotBlank(result.getValue()))) {
-                continue;
-            }
             String testId = analysis.getTest() == null ? null : analysis.getTest().getId();
             RunHoldCause hold = testId == null ? null : holds.get(testId);
             String accession = analysis.getSampleItem() == null || analysis.getSampleItem().getSample() == null ? null
@@ -357,6 +358,10 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
             int rowCount, String operatorName, String sysUserId) {
         Timestamp now = Timestamp.from(Instant.now());
         ResultRun run = baseObjectDAO.findBatchRun(batchWorkplanId).orElse(null);
+        if (run != null && (run.getState() == ResultRunState.SUPERSEDED || runQcService.hasDecisions(run.getId()))) {
+            closeRun(run, now, sysUserId);
+            run = null;
+        }
         boolean created = run == null;
         if (created) {
             run = new ResultRun();
@@ -364,7 +369,7 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
             run.setBatchWorkplanId(batchWorkplanId);
             run.setOpenedAt(now);
             run.setState(ResultRunState.OPEN);
-        } else if (!run.getState().isActive() && run.getState() != ResultRunState.SUPERSEDED) {
+        } else if (!run.getState().isActive()) {
             run.setState(ResultRunState.OPEN);
             run.setCompletedAt(null);
         }
@@ -387,20 +392,32 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     @Override
     @Transactional
     public void completeWorkplanRun(Long batchWorkplanId, String sysUserId) {
-        baseObjectDAO.findBatchRun(batchWorkplanId).filter(run -> run.getState().isActive()).ifPresent(run -> {
-            Timestamp now = Timestamp.from(Instant.now());
-            run.setState(ResultRunState.COMPLETE);
-            run.setCompletedAt(now);
-            run.setLastActivityAt(now);
-            run.setSysUserId(sysUserId);
-            update(run);
-        });
+        baseObjectDAO.findBatchRun(batchWorkplanId)
+                .ifPresent(run -> closeRun(run, Timestamp.from(Instant.now()), sysUserId));
+    }
+
+    @Override
+    @Transactional
+    public void closeDecidedWorkplanRun(Long batchWorkplanId, String sysUserId) {
+        baseObjectDAO.findBatchRun(batchWorkplanId).filter(run -> runQcService.hasDecisions(run.getId()))
+                .ifPresent(run -> closeRun(run, Timestamp.from(Instant.now()), sysUserId));
+    }
+
+    private void closeRun(ResultRun run, Timestamp now, String sysUserId) {
+        if (!run.getState().isActive()) {
+            return;
+        }
+        run.setState(ResultRunState.COMPLETE);
+        run.setCompletedAt(now);
+        run.setLastActivityAt(now);
+        run.setSysUserId(sysUserId);
+        update(run);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<Long> batchRunId(Long batchWorkplanId) {
-        return baseObjectDAO.findBatchRun(batchWorkplanId).map(ResultRun::getId);
+    public Optional<ResultRun> batchRun(Long batchWorkplanId) {
+        return baseObjectDAO.findBatchRun(batchWorkplanId);
     }
 
     @Override

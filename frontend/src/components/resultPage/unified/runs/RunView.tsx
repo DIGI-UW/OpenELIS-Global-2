@@ -396,16 +396,33 @@ const RunView: React.FC<RunViewProps> = ({
     return (
       <div className="runRowEntry" data-testid={`run-row-entry-${row.id}`}>
         <p className="runRowProvenance" data-testid="run-row-provenance">
-          <FormattedMessage
-            id="run.entry.provenance"
-            values={{
-              run: header?.label ?? "",
-              analyzer: header?.analyzerName || "—",
-              test: `${row.testName || "—"}${row.part ? ` — ${row.part}` : ""}`,
-              value: `${row.value || "—"}${row.units ? ` ${row.units}` : ""}`,
-            }}
-          />{" "}
-          <FormattedMessage id="run.entry.noLot" />
+          {header?.source === "WORKPLAN" ? (
+            <FormattedMessage
+              id="run.entry.provenanceBatch"
+              values={{
+                run: header.label ?? "",
+                test: row.testName || "—",
+              }}
+            />
+          ) : (
+            <FormattedMessage
+              id="run.entry.provenance"
+              values={{
+                run: header?.label ?? "",
+                analyzer: header?.analyzerName || "—",
+                test: `${row.testName || "—"}${row.part ? ` — ${row.part}` : ""}`,
+                value: `${row.value || "—"}${row.units ? ` ${row.units}` : ""}`,
+              }}
+            />
+          )}{" "}
+          {header?.reagentLot ? (
+            <FormattedMessage
+              id="run.entry.lot"
+              values={{ lot: header.reagentLot }}
+            />
+          ) : (
+            <FormattedMessage id="run.entry.noLot" />
+          )}
         </p>
         {notAccepted ||
         !row.accessionNumber ||

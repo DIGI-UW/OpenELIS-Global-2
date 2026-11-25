@@ -560,6 +560,7 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
             // of the earlier release; the batch itself is no longer released.
             batch.setGeneratedAt(null);
             batch.setGeneratedByUserId(null);
+            resultRunService.closeDecidedWorkplanRun(batch.getId(), sysUserId);
         } else if (nextStatus == BatchWorkplanStatus.COMPLETED) {
             batch.setCompletedAt(now);
         } else if (nextStatus == BatchWorkplanStatus.ARCHIVED) {
@@ -949,7 +950,10 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
             }
         }
         response.setInstrumentId(batch.getInstrumentId());
-        response.setRunId(batch.getId() == null ? null : resultRunService.batchRunId(batch.getId()).orElse(null));
+        resultRunService.batchRun(batch.getId()).ifPresent(run -> {
+            response.setRunId(run.getId());
+            response.setRunOpen(run.getState().isActive());
+        });
         response.setGeneratedAt(batch.getGeneratedAt());
         response.setGeneratedBy(batch.getGeneratedByUserId() == null ? null
                 : userDisplayName(String.valueOf(batch.getGeneratedByUserId())));

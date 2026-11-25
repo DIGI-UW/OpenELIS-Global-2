@@ -25,9 +25,11 @@ import {
  * Inline QC entry on a batch tile (OGC-427 FR-QCE-001..003). It records a
  * bench control run through the existing bench QC capture endpoint, so the
  * run lands in the same QC history, Levey-Jennings chart and violation path
- * as any other bench run; the workplan evaluates nothing itself. Once the batch
- * is released it is a run (OGC-1200 FR-B2), and the control is recorded on that
- * run, so its verdict covers the batch's test there.
+ * as any other bench run; the workplan evaluates nothing itself. While the
+ * batch's run is open (OGC-1200 FR-B2), the control is recorded on that run
+ * through the run's own endpoint, so its verdict covers the batch's test there.
+ * The QC time defaults to now; left as it is, the control is stamped when it is
+ * saved, so a per-run control always follows the release before it.
  */
 export default function QcEntryForm({
   batchId,
@@ -46,6 +48,7 @@ export default function QcEntryForm({
     isoToDisplayDate(labNow(), dateLocale),
   );
   const [time, setTime] = useState(() => format(labNow(), "HH:mm"));
+  const [timeEdited, setTimeEdited] = useState(false);
   const [value, setValue] = useState("");
   const [outcome, setOutcome] = useState("");
   const [notes, setNotes] = useState("");
@@ -66,7 +69,7 @@ export default function QcEntryForm({
     setBusy(true);
     setError(null);
     postToOpenElisServerJsonResponse(
-      runId ? `/rest/qc/results?runId=${runId}` : "/rest/qc/results",
+      runId ? `/rest/result-runs/${runId}/controls` : "/rest/qc/results",
       JSON.stringify({
         source: "MANUAL",
         qualitativeOutcome: outcome,
@@ -74,14 +77,20 @@ export default function QcEntryForm({
         controlLotId: lot.controlLotId,
         testId: lot.testId,
         testSectionId: lot.testSectionId,
-        runDateTime,
+        runDateTime: timeEdited
+          ? toLocalDateTime(date, time, dateLocale, labNow())
+          : format(labNow(), "yyyy-MM-dd'T'HH:mm:ss"),
         notes: notes.trim() || null,
       }),
       (response) => {
         setBusy(false);
-        // Only a body carrying the saved run's id is a save; a transport
-        // failure also reaches this callback, with a falsy status.
-        if (!response || !response.id) {
+        // Only a body carrying the saved control's id, or the run's QC block
+        // once the control is on the run, is a save; a transport failure also
+        // reaches this callback, with a falsy status.
+        if (
+          !response ||
+          !(runId ? Array.isArray(response.tests) : response.id)
+        ) {
           setError(
             response?.message ||
               intl.formatMessage({ id: "workplan.batch.qc.entry.failed" }),
@@ -140,7 +149,10 @@ export default function QcEntryForm({
               ? "workplan.batch.qc.entry.future"
               : "workplan.batch.qc.entry.dateRequired",
           })}
-          onChange={setDate}
+          onChange={(next) => {
+            setTimeEdited(true);
+            setDate(next);
+          }}
         />
         <TextInput
           id={`${prefix}-time`}
@@ -152,7 +164,11 @@ export default function QcEntryForm({
           invalidText={intl.formatMessage({
             id: "workplan.batch.qc.entry.timeInvalid",
           })}
-          onChange={(event) => setTime(event.target.value)}
+          onChange={(event) => {
+            const next = event.target.value;
+            setTimeEdited(true);
+            setTime(next);
+          }}
         />
         <TextInput
           id={`${prefix}-value`}

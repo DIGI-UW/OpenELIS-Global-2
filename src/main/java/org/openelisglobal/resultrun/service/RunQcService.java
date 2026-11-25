@@ -36,6 +36,9 @@ public interface RunQcService {
      */
     void refreshActiveRunsOfTest(String testId, String sysUserId);
 
+    /** Whether any test of the run was decided (FR-C5), closing its QC there. */
+    boolean hasDecisions(Long runId);
+
     /**
      * Of these analyses, those whose result was stored from a run that now holds
      * the analysis's test (FR-C4: not released from any surface).
