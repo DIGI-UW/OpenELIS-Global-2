@@ -2,28 +2,35 @@ package org.openelisglobal.microbiology;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 import java.math.BigDecimal;
 import java.sql.Date;
+import java.util.List;
+import java.util.UUID;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures.AlternativeBreakpointData;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures.ReferenceData;
 import org.openelisglobal.microbiology.form.MicroWorklistPageForm;
 import org.openelisglobal.microbiology.form.MicroWorklistQueryForm;
+import org.openelisglobal.microbiology.service.MicroAstResponseService;
 import org.openelisglobal.microbiology.service.MicroAstService;
 import org.openelisglobal.microbiology.service.MicroBreakpointAdminService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.service.MicroIsolateService;
 import org.openelisglobal.microbiology.service.MicroWorklistService;
+import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
 import org.openelisglobal.microbiology.valueholder.MicroAstReading;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
+import org.openelisglobal.microbiology.valueholder.MicroAstTechnique;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
@@ -47,10 +54,16 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
     private MicroAstService astService;
 
     @Autowired
+    private MicroAstResponseService astResponses;
+
+    @Autowired
     private MicroBreakpointAdminService breakpointAdminService;
 
     @Autowired
     private MicroWorklistService worklistService;
+
+    @Autowired
+    private MicroAntibioticDAO antibiotics;
 
     private String sampleItemId;
     private String methodId;
@@ -183,6 +196,44 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
         MicroWorklistPageForm secondPage = worklistService.getWorklistPage(query);
         assertEquals(1, secondPage.total);
         assertEquals(0, secondPage.rows.size());
+    }
+
+    @Test
+    public void runFormNamesTheAuthorityOfItsBreakpointStandard() {
+        AlternativeBreakpointData eucast = fixtures.createAlternativeBreakpoint(referenceData);
+        breakpointAdminService.activate(eucast.standard().getId(), new Date(System.currentTimeMillis()),
+                fixtures.defaultUserId());
+        MicroAstRun run = astService.startRun(identifiedIsolate().getId(), referenceData.panel().getId(),
+                eucast.standard().getId(), fixtures.defaultUserId());
+
+        assertEquals("EUCAST", astResponses.toRunForm(run).breakpointAuthority);
+    }
+
+    @Test
+    public void aMicReadingWithNoBreakpointRuleIsStoredInMgPerL() {
+        MicroAntibiotic unruled = new MicroAntibiotic();
+        unruled.setDisplayName("Agent with no rule");
+        unruled.setWhonetCode("N" + UUID.randomUUID().toString().substring(0, 7));
+        antibiotics.insert(unruled);
+        MicroAstRun run = astService.startRun(identifiedIsolate().getId(), referenceData.panel().getId(),
+                referenceData.standard().getId(), "Agent with no rule", MicroAstTechnique.BROTH_MICRODILUTION,
+                List.of(), List.of(referenceData.antibiotic().getId(), unruled.getId()), fixtures.defaultUserId());
+
+        MicroAstReading reading = astService.recordReading(run.getId(), unruled.getId(), MicroAstMethod.MIC,
+                new BigDecimal("4"), fixtures.defaultUserId());
+
+        assertNull(reading.getBreakpointRuleId());
+        assertEquals("mg/L", reading.getUnits());
+    }
+
+    private MicroIsolate identifiedIsolate() {
+        MicroCase microCase = caseService.createOrGetCase(sampleItemId, methodId, fixtures.defaultUserId());
+        microCase = fixtures.prepareAstCase(microCase, fixtures.defaultUserId());
+        MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
+                "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
+                fixtures.defaultUserId());
+        identify(isolate);
+        return isolate;
     }
 
     private void identify(MicroIsolate isolate) {

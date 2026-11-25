@@ -20,7 +20,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class MicroCaseSearchDAOImpl implements MicroCaseSearchDAO {
     @PersistenceContext
     private EntityManager entityManager;
-    private static final String SELECT = "select c, s.accessionNumber, u.testSectionName, p.id, person.lastName, person.firstName, p.birthDate, p.gender, t.description, s.domain, site.name, site.code";
+    private static final String CASE_STATUS = "case when (select count(ma.id) from MicroCaseAmendment ma where ma.caseId = c.id and ma.status = 'RELEASED') > 0 then 'AMENDED'"
+            + " when c.finalReleaseState in ('FINAL_RELEASED', 'AMENDMENT_IN_PROGRESS') then 'FINAL'"
+            + " when c.finalReleaseState = 'PRELIMINARY_RELEASED' then 'PARTIAL' else 'IN_PROGRESS' end";
+    private static final String SELECT = "select c, s.accessionNumber, u.testSectionName, p.id, person.lastName, person.firstName, p.birthDate, p.gender, t.description, s.domain, site.name, site.code, s.priority, "
+            + CASE_STATUS;
     private static final String FROM = " from MicroCase c left join SampleItem original on original.id = c.sampleItemId"
             + " left join Sample s on s.id = coalesce(c.sampleId, original.sample.id)"
             + " left join TestSection u on u.id = c.labUnitId" + " left join TypeOfSample t on t.id = c.sampleTypeId"
@@ -41,6 +45,15 @@ public class MicroCaseSearchDAOImpl implements MicroCaseSearchDAO {
             hql += " and c.labUnitId = :unit";
         if (q.status != null)
             hql += " and c.status = :status";
+        if (q.caseStatus != null) {
+            if (isReleaseStatus(q.caseStatus))
+                hql += " and c.status = org.openelisglobal.microbiology.valueholder.MicroCaseStatus.ACTIVE and ("
+                        + CASE_STATUS + ") = :caseStatus";
+            else if ("AMENDMENT_OPEN".equals(q.caseStatus))
+                hql += " and c.finalReleaseState = 'AMENDMENT_IN_PROGRESS'";
+            else
+                hql += " and c.id in (:referralCases)";
+        }
         if (q.from != null)
             hql += " and c.createdAt >= :from";
         if (q.to != null)
@@ -66,6 +79,14 @@ public class MicroCaseSearchDAOImpl implements MicroCaseSearchDAO {
             query.setParameter("unit", q.labUnitId);
         if (q.status != null)
             query.setParameter("status", org.openelisglobal.microbiology.valueholder.MicroCaseStatus.valueOf(q.status));
+        if (q.caseStatus != null) {
+            if (isReleaseStatus(q.caseStatus))
+                query.setParameter("caseStatus", q.caseStatus);
+            else if (!"AMENDMENT_OPEN".equals(q.caseStatus)) {
+                var cases = "REFERRED".equals(q.caseStatus) ? openReferralCases() : referralAttentionCases();
+                query.setParameterList("referralCases", cases.isEmpty() ? java.util.List.of("__none__") : cases);
+            }
+        }
         if (q.from != null)
             query.setParameter("from", Timestamp.valueOf(LocalDate.parse(q.from).atStartOfDay()));
         if (q.to != null)
@@ -76,6 +97,10 @@ public class MicroCaseSearchDAOImpl implements MicroCaseSearchDAO {
             query.setParameter("accession", q.accessionNumber);
         if (q.q != null)
             query.setParameter("search", "%" + q.q.toLowerCase(java.util.Locale.ROOT) + "%");
+    }
+
+    private static boolean isReleaseStatus(String status) {
+        return java.util.List.of("IN_PROGRESS", "PARTIAL", "FINAL", "AMENDED").contains(status);
     }
 
     private static final String CULTURES = " left join MicroCaseInoculation r on r.caseId = c.id and r.cancelledAt is null"
@@ -186,9 +211,24 @@ public class MicroCaseSearchDAOImpl implements MicroCaseSearchDAO {
 
     @Override
     public List<String> referralAttentionCases() {
-        var frontier = new java.util.LinkedHashSet<>(session().createQuery(
-                "select distinct ref.analysis.sampleItem.id from Referral ref where ref.status = org.openelisglobal.referral.valueholder.ReferralStatus.COMPLETED and (ref.reconciled is null or ref.reconciled = false)",
-                String.class).list());
+        return referralCases(false);
+    }
+
+    @Override
+    public List<String> openReferralCases() {
+        return referralCases(true);
+    }
+
+    private List<String> referralCases(boolean open) {
+        var start = session().createQuery(open
+                ? "select distinct ref.analysis.sampleItem.id from Referral ref where ref.status not in (:terminal)"
+                : "select distinct ref.analysis.sampleItem.id from Referral ref where ref.status = org.openelisglobal.referral.valueholder.ReferralStatus.COMPLETED and (ref.reconciled is null or ref.reconciled = false)",
+                String.class);
+        if (open)
+            start.setParameterList("terminal",
+                    java.util.Arrays.stream(org.openelisglobal.referral.valueholder.ReferralStatus.values())
+                            .filter(org.openelisglobal.referral.valueholder.ReferralStatus::isTerminal).toList());
+        var frontier = new java.util.LinkedHashSet<>(start.list());
         Set<String> visited = new java.util.HashSet<>();
         Set<String> cases = new java.util.LinkedHashSet<>();
         while (!frontier.isEmpty()) {

@@ -3,6 +3,11 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
+import { MemoryRouter } from "react-router-dom";
+import {
+  ConfigurationContext,
+  NotificationContext,
+} from "../../../layout/Layout";
 
 const { utilsMock } = vi.hoisted(() => ({
   utilsMock: {
@@ -43,8 +48,8 @@ const HEADER = {
   method: "mindray-bs200",
   labUnits: ["Biochemistry"],
   operatorName: "op-7",
-  openedAt: "2026-11-04T08:00:00Z",
-  lastActivityAt: "2026-11-04T09:00:00Z",
+  openedAt: "2026-11-04T12:00:00Z",
+  lastActivityAt: "2026-11-04T13:00:00Z",
   dispositioned: 3,
   total: 12,
   rawAvailable: true,
@@ -92,17 +97,30 @@ const wire = (header: unknown, rows: unknown = ROWS) =>
     },
   );
 
-const renderRun = (filtersReplaced = false) => {
+const renderRun = (filtersReplaced = false, dateLocale = "en-US") => {
   const onBack = vi.fn();
   render(
-    <IntlProvider locale="en" messages={messages}>
-      <RunView
-        runId={7}
-        filtersReplaced={filtersReplaced}
-        onBack={onBack}
-        onOpenRun={vi.fn()}
-      />
-    </IntlProvider>,
+    <ConfigurationContext.Provider
+      value={{ configurationProperties: { DEFAULT_DATE_LOCALE: dateLocale } }}
+    >
+      <NotificationContext.Provider
+        value={{
+          notifications: [],
+          removeNotification: vi.fn(),
+          addNotification: vi.fn(),
+          setNotificationVisible: vi.fn(),
+        }}
+      >
+        <IntlProvider locale="en" messages={messages}>
+          <RunView
+            runId={7}
+            filtersReplaced={filtersReplaced}
+            onBack={onBack}
+            onOpenRun={vi.fn()}
+          />
+        </IntlProvider>
+      </NotificationContext.Provider>
+    </ConfigurationContext.Provider>,
   );
   return onBack;
 };
@@ -111,6 +129,61 @@ describe("OGC-1200 run view", () => {
   beforeEach(() => {
     cleanup();
     utilsMock.getFromOpenElisServer.mockReset();
+  });
+
+  it("recounts the Runs chip once a held test is decided", () => {
+    let held = 1;
+    utilsMock.getFromOpenElisServer.mockImplementation(
+      (endPoint: string, callback: (response: unknown) => void) => {
+        if (endPoint === "/rest/result-runs/7")
+          return callback({
+            ...HEADER,
+            state: held ? "HELD" : "COMPLETE",
+            qc: {
+              overall: held ? "HELD" : "DECIDED",
+              tests: [
+                {
+                  testId: "11",
+                  testName: "Glucose",
+                  verdict: "FAIL",
+                  controls: [],
+                  decision: held ? null : "REJECT",
+                  holdCause: held ? "QC_FAILED" : null,
+                },
+              ],
+            },
+          });
+        if (endPoint.startsWith("/rest/result-runs/7/rows"))
+          return callback(ROWS);
+        if (endPoint.startsWith("/rest/result-runs"))
+          return callback({ open: 2, held, runs: [] });
+        return callback(undefined);
+      },
+    );
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+      (url: string, body: string, callback: (response: unknown) => void) => {
+        held = 0;
+        callback({
+          overall: "DECIDED",
+          tests: [
+            {
+              testId: "11",
+              testName: "Glucose",
+              verdict: "FAIL",
+              controls: [],
+              decision: "REJECT",
+            },
+          ],
+        });
+      },
+    );
+    renderRun();
+    expect(screen.getByTestId("runs-chip")).toHaveTextContent("2 open, 1 held");
+
+    fireEvent.click(screen.getByRole("button", { name: "Reject" }));
+    fireEvent.click(screen.getByTestId("run-qc-decide-confirm-11"));
+
+    expect(screen.getByTestId("runs-chip")).toHaveTextContent("2 open, 0 held");
   });
 
   it("shows the run's settings, progress and values", () => {
@@ -135,6 +208,26 @@ describe("OGC-1200 run view", () => {
     expect(
       screen.getByRole("link", { name: /analyzer import page/i }),
     ).toHaveAttribute("href", "/AnalyzerResults?id=3");
+  });
+
+  it("shows a superseded run as history, with nothing left to accept on import", () => {
+    wire({ ...HEADER, state: "SUPERSEDED" });
+    renderRun();
+
+    expect(screen.getByTestId("run-settings")).toHaveTextContent("Superseded");
+    expect(
+      screen.queryByRole("link", { name: /analyzer import page/i }),
+    ).toBeNull();
+  });
+
+  it("shows the run's times in the site date format", () => {
+    wire(HEADER);
+    renderRun(false, "fr-FR");
+
+    expect(screen.getByTestId("run-settings")).toHaveTextContent("04/11/2026");
+    expect(screen.getByTestId("run-settings")).not.toHaveTextContent(
+      "11/4/2026",
+    );
   });
 
   it("shows the raw message inline, not in a dialog", () => {
@@ -449,14 +542,153 @@ describe("OGC-1200 slice 2: chips, paging and selection", () => {
       expect(screen.queryByTestId("embedded-entry")).not.toBeInTheDocument();
     });
 
-    it("offers nothing to accept in a held run", () => {
-      wire({ ...HEADER, state: "HELD" });
+    it("holds only the rows of the test a failed control covers", () => {
+      const held = { ...ROWS.rows[0], id: "43", category: "HELD" };
+      const open = { ...ROWS.rows[0], id: "44", category: "NORMAL" };
+      wire({ ...HEADER, state: "HELD" }, { ...ROWS, rows: [held, open] });
       renderRun();
 
-      fireEvent.click(screen.getByTestId("run-row-expand-41"));
+      expect(screen.getAllByText("Held: QC failed")).toHaveLength(1);
+      fireEvent.click(screen.getByTestId("run-row-expand-43"));
+      expect(screen.getByTestId("run-row-entry-43")).toHaveTextContent(
+        "A control for this test failed in this run, so this value is held",
+      );
+      expect(screen.queryByTestId("embedded-entry")).not.toBeInTheDocument();
 
-      expect(screen.getByTestId("run-row-entry-41")).toHaveTextContent(
-        "This run is held.",
+      fireEvent.click(screen.getByTestId("run-row-expand-44"));
+      expect(screen.getByTestId("embedded-entry")).toBeInTheDocument();
+    });
+
+    it("says a row is held for a missing control, and warns on a row whose control is only missing (OGC-1200 FR-D4, FR-A4)", () => {
+      const missing = {
+        ...ROWS.rows[0],
+        id: "45",
+        category: "HELD",
+        holdCause: "QC_MISSING",
+      };
+      const warned = {
+        ...ROWS.rows[0],
+        id: "46",
+        category: "NORMAL",
+        missingControl: true,
+      };
+      wire({ ...HEADER, state: "HELD" }, { ...ROWS, rows: [missing, warned] });
+      renderRun();
+
+      expect(screen.getByText("Held: QC missing")).toBeInTheDocument();
+      expect(screen.queryByText("Held: QC failed")).not.toBeInTheDocument();
+      expect(screen.getByTestId("run-row-no-control-46")).toHaveTextContent(
+        "No control",
+      );
+      fireEvent.click(screen.getByTestId("run-row-expand-45"));
+      expect(screen.getByTestId("run-row-entry-45")).toHaveTextContent(
+        "requires a control on every run, and none is recorded in this one",
+      );
+      fireEvent.click(screen.getByTestId("run-row-expand-46"));
+      expect(screen.getByTestId("embedded-entry")).toBeInTheDocument();
+    });
+
+    it("shows the notifications its actions raise, such as a resolved exception's", () => {
+      wire(HEADER);
+      render(
+        <ConfigurationContext.Provider
+          value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "en-US" } }}
+        >
+          <NotificationContext.Provider
+            value={{
+              notifications: [
+                {
+                  id: "n1",
+                  kind: "success",
+                  title: "Exceptions",
+                  message: "Ignored with your reason.",
+                },
+              ],
+              removeNotification: vi.fn(),
+              addNotification: vi.fn(),
+              setNotificationVisible: vi.fn(),
+            }}
+          >
+            <MemoryRouter>
+              <IntlProvider locale="en" messages={messages}>
+                <RunView runId={7} onBack={vi.fn()} onOpenRun={vi.fn()} />
+              </IntlProvider>
+            </MemoryRouter>
+          </NotificationContext.Provider>
+        </ConfigurationContext.Provider>,
+      );
+
+      expect(screen.getByText("Ignored with your reason.")).toBeInTheDocument();
+    });
+
+    it("names a value by its test and keeps the analyzer's code beside it", () => {
+      wire(HEADER, {
+        ...ROWS,
+        rows: [{ ...ROWS.rows[0], testName: "Glucose", code: "GLU-A" }],
+      });
+      renderRun();
+
+      expect(screen.getByTestId("run-row-41")).toHaveTextContent("Glucose");
+      expect(screen.getByTestId("run-row-code-41")).toHaveTextContent(
+        "Analyzer code GLU-A",
+      );
+    });
+
+    it("lists the run's exceptions in their block and points an exception row to it", () => {
+      const unmatched = {
+        ...ROWS.rows[0],
+        id: "45",
+        accessionNumber: "24-01214",
+        category: "EXCEPTION",
+        exceptionKind: "UNMATCHED",
+      };
+      wire(
+        {
+          ...HEADER,
+          exceptions: [
+            {
+              key: "UNMATCHED|24-01214",
+              kind: "UNMATCHED",
+              accessionNumber: "24-01214",
+              testId: "61",
+              rowIds: ["45"],
+            },
+          ],
+        },
+        { ...ROWS, rows: [unmatched] },
+      );
+      render(
+        <ConfigurationContext.Provider
+          value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "en-US" } }}
+        >
+          <NotificationContext.Provider
+            value={{
+              notifications: [],
+              removeNotification: vi.fn(),
+              addNotification: vi.fn(),
+              setNotificationVisible: vi.fn(),
+            }}
+          >
+            <MemoryRouter>
+              <IntlProvider locale="en" messages={messages}>
+                <RunView runId={7} onBack={vi.fn()} onOpenRun={vi.fn()} />
+              </IntlProvider>
+            </MemoryRouter>
+          </NotificationContext.Provider>
+        </ConfigurationContext.Provider>,
+      );
+
+      expect(screen.getByTestId("run-exceptions")).toHaveTextContent(
+        "Lab number 24-01214 names no order (1 value)",
+      );
+      expect(
+        screen
+          .getByTestId("run-rows")
+          .querySelector('[data-testid="run-row-45"]'),
+      ).toHaveTextContent("Unmatched sample");
+      fireEvent.click(screen.getByTestId("run-row-expand-45"));
+      expect(screen.getByTestId("run-row-entry-45")).toHaveTextContent(
+        "This value is listed under Exceptions above.",
       );
       expect(screen.queryByTestId("embedded-entry")).not.toBeInTheDocument();
     });

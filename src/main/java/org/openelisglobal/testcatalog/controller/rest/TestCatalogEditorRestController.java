@@ -563,10 +563,17 @@ public class TestCatalogEditorRestController {
     public static class LocalizationFieldRef {
         public String field;
         public String localizationId;
+        // Names a field the page has no message for, such as a result component.
+        public String label;
 
         public LocalizationFieldRef(String field, String localizationId) {
             this.field = field;
             this.localizationId = localizationId;
+        }
+
+        public LocalizationFieldRef(String field, String localizationId, String label) {
+            this(field, localizationId);
+            this.label = label;
         }
     }
 
@@ -588,6 +595,12 @@ public class TestCatalogEditorRestController {
             String localizationId = ids.get(field);
             if (localizationId != null) {
                 refs.fields.add(new LocalizationFieldRef(field, localizationId));
+            }
+        }
+        for (TestResultComponent component : componentService.getActiveComponentsByTestId(testId)) {
+            if (component.getLabelLocalization() != null) {
+                refs.fields.add(new LocalizationFieldRef("component:" + component.getCode(),
+                        component.getLabelLocalization().getId(), component.getLabel()));
             }
         }
         return ResponseEntity.ok(refs);
@@ -1079,6 +1092,7 @@ public class TestCatalogEditorRestController {
         public String resultType;
         public Integer sortOrder;
         public Boolean normal;
+        public Boolean critical;
         // Choosing this option opens a text box for a qualifying value at result entry.
         public Boolean qualifiable;
         // A value the admin typed rather than picked from the dictionary. It is
@@ -1353,6 +1367,7 @@ public class TestCatalogEditorRestController {
                 tr.setFreeText(isFreeTextOption(o));
                 tr.setSortOrder(o.sortOrder != null ? String.valueOf(o.sortOrder) : null);
                 tr.setIsNormal(Boolean.TRUE.equals(o.normal));
+                tr.setIsCritical(Boolean.TRUE.equals(o.critical));
                 tr.setIsQuantifiable(Boolean.TRUE.equals(o.qualifiable));
                 // Option rows must carry the component's type ('D'/'M'/'C') —
                 // result entry derives the widget from them, so a stale
@@ -1458,6 +1473,7 @@ public class TestCatalogEditorRestController {
                 odto.sortOrder = parseIntOrNull(o.getSortOrder());
                 odto.normal = Boolean.TRUE.equals(o.getIsNormal())
                         || (o.getValue() != null && o.getValue().trim().equals(normalValueByComponent.get(c.getId())));
+                odto.critical = Boolean.TRUE.equals(o.getIsCritical());
                 odto.qualifiable = Boolean.TRUE.equals(o.getIsQuantifiable());
                 dto.options.add(odto);
             }

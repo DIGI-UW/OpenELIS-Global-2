@@ -15,8 +15,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.analyzer.service.AnalyzerMappingDefinition;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
 import org.openelisglobal.analyzerimport.dao.AnalyzerDeliveryReceiptDAO;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt;
 import org.openelisglobal.analyzerresults.dao.AnalyzerResultsDAO;
@@ -34,6 +36,7 @@ import org.openelisglobal.resultrun.form.ResultRunRowsPage;
 import org.openelisglobal.resultrun.form.ResultRunSelection;
 import org.openelisglobal.resultrun.form.ResultRunSelectionSummary;
 import org.openelisglobal.resultrun.form.ResultRunSummary;
+import org.openelisglobal.resultrun.form.RunHoldCause;
 import org.openelisglobal.resultrun.form.RunViewer;
 import org.openelisglobal.resultrun.form.WaitingRun;
 import org.openelisglobal.resultrun.service.ResultRunRowClassifier.ClassifiedRow;
@@ -77,6 +80,12 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     @Lazy
     @Autowired
     private AnalyzerResultsDAO analyzerResultsDAO;
+    @Lazy
+    @Autowired
+    private RunQcService runQcService;
+    @Lazy
+    @Autowired
+    private RunExceptionService runExceptionService;
 
     public ResultRunServiceImpl() {
         super(ResultRun.class);
@@ -102,7 +111,7 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
             ResultRun run = existing.get();
             run.setRowCount(run.getRowCount() + runRows.size());
             run.setLastActivityAt(now);
-            if (!run.getState().isActive()) {
+            if (!run.getState().isActive() && run.getState() != ResultRunState.SUPERSEDED) {
                 run.setState(ResultRunState.OPEN);
                 run.setCompletedAt(null);
             }
@@ -151,7 +160,7 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
 
     @Override
     @Transactional
-    public void rowLeftStaging(Long runId) {
+    public void rowLeftStaging(Long runId, String sysUserId) {
         if (runId == null) {
             return;
         }
@@ -162,12 +171,16 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
         ResultRun run = found.get();
         Timestamp now = Timestamp.from(Instant.now());
         run.setLastActivityAt(now);
-        if (run.getSource() == ResultRunSource.ANALYZER && run.getState().isActive()
-                && baseObjectDAO.countStagedRows(runId) == 0) {
+        boolean completed = run.getSource() == ResultRunSource.ANALYZER && run.getState().isActive()
+                && baseObjectDAO.countStagedRows(runId) == 0;
+        if (completed) {
             run.setState(ResultRunState.COMPLETE);
             run.setCompletedAt(now);
         }
         update(run);
+        if (completed) {
+            runQcService.supersedeIfRetested(runId, sysUserId != null ? sysUserId : run.getSysUserId());
+        }
     }
 
     @Override
@@ -210,9 +223,10 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     public Optional<ResultRunHeader> getHeader(Long runId, RunViewer viewer) {
         return visibleRun(runId, viewer).map(seen -> {
             ResultRun run = seen.run();
+            List<ClassifiedRow> classified = classifyVisible(seen, viewer);
             Optional<Analyzer> analyzer = run.getAnalyzerId() == null ? Optional.empty()
                     : analyzerService.getWithMapping(run.getAnalyzerId());
-            String method = analyzer.map(Analyzer::getMapping).map(mapping -> mapping.getProfileId()).orElse(null);
+            String method = analyzer.map(Analyzer::getMapping).map(ResultRunServiceImpl::typeNameOf).orElse(null);
             List<String> unitIds = run.getTestSectionId() != null ? List.of(run.getTestSectionId())
                     : seen.analyzerUnits();
             List<String> labUnits = unitIds.stream().map(this::labUnitName).filter(Objects::nonNull).toList();
@@ -220,8 +234,29 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
                     run.getAnalyzerId(), analyzer.map(Analyzer::getName).orElse(null), method, labUnits,
                     run.getOperatorName(), iso(run.getOpenedAt()), iso(run.getLastActivityAt()),
                     iso(run.getCompletedAt()), Math.max(0, run.getRowCount() - seen.staged().size()), run.getRowCount(),
-                    run.getDeliveryReceiptId() != null, chipCounts(classifyVisible(seen, viewer)));
+                    run.getDeliveryReceiptId() != null, chipCounts(classified), runQcService.qcBlock(run.getId()),
+                    runExceptionService.exceptionsOf(run.getId(), run.getAnalyzerId(), classified));
         });
+    }
+
+    @Override
+    @Transactional
+    public void refreshQcState(Long runId, String sysUserId) {
+        if (runId != null) {
+            runQcService.refreshState(runId, sysUserId);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean canSee(Long runId, RunViewer viewer) {
+        return visibleRun(runId, viewer).isPresent();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<List<ClassifiedRow>> classifiedRows(Long runId, RunViewer viewer) {
+        return visibleRun(runId, viewer).map(seen -> classifyVisible(seen, viewer));
     }
 
     @Override
@@ -234,8 +269,9 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
                     .filter(row -> chip.matches(row.category())).toList();
             int pages = Math.max(1, (matching.size() + size - 1) / size);
             int current = Math.min(Math.max(page, 1), pages);
-            List<ResultRunRow> rows = matching.stream().skip((long) (current - 1) * size).limit(size).map(this::toRow)
-                    .toList();
+            Map<String, String> testNames = new HashMap<>();
+            List<ResultRunRow> rows = matching.stream().skip((long) (current - 1) * size).limit(size)
+                    .map(row -> toRow(row, testNames)).toList();
             return new ResultRunRowsPage(rows, current, size, matching.size());
         });
     }
@@ -252,10 +288,12 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
                     .filter(row -> ids.contains(row.row().getId())
                             || selection.all() && chip.matches(row.category()) && !excluded.contains(row.row().getId()))
                     .toList();
+            Map<String, String> testNames = new HashMap<>();
             List<ResultRunSelectionSummary.SkippedRow> skipped = selected.stream()
                     .filter(row -> SKIPPED.contains(row.category()))
                     .map(row -> new ResultRunSelectionSummary.SkippedRow(row.row().getId(),
-                            row.row().getAccessionNumber(), row.row().getTestName(), row.category()))
+                            row.row().getAccessionNumber(), rowClassifier.testNameOf(row.row(), testNames),
+                            row.category()))
                     .toList();
             return new ResultRunSelectionSummary(selected.size(), count(selected, ResultRunRowCategory.CRITICAL),
                     count(selected, ResultRunRowCategory.ABNORMAL), count(selected, ResultRunRowCategory.NORMAL),
@@ -302,9 +340,10 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
         List<AnalyzerResults> waiting = baseObjectDAO.getWaitingRowsForAccessions(accessions);
         Map<Long, WaitingRun> runs = new HashMap<>();
         Map<String, WaitingRun> byKey = new LinkedHashMap<>();
+        Map<Long, Map<String, RunHoldCause>> heldTests = new HashMap<>();
         for (AnalyzerResults row : waiting) {
             byKey.putIfAbsent(ResultRunService.waitingKey(row.getAccessionNumber(), row.getTestId()),
-                    runs.computeIfAbsent(row.getRunId(), this::waitingRun));
+                    waitingRun(row, runs, heldTests));
         }
         return byKey;
     }
@@ -324,20 +363,56 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     public void markWaiting(List<TestResultItem> items) {
         List<TestResultItem> pending = items.stream().filter(ResultRunServiceImpl::isPending).toList();
         if (pending.isEmpty()) {
+            markHeldResults(items);
             return;
         }
         List<String> accessions = pending.stream().map(TestResultItem::getAccessionNumber)
                 .filter(StringUtils::isNotBlank).distinct().toList();
         Map<Long, WaitingRun> runs = new HashMap<>();
         Map<String, WaitingRun> byPart = new HashMap<>();
+        Map<Long, Map<String, RunHoldCause>> heldTests = new HashMap<>();
         for (AnalyzerResults row : baseObjectDAO.getWaitingRowsForAccessions(accessions)) {
             byPart.putIfAbsent(partKey(row.getAccessionNumber(), row.getTestId(), row.getComponentId()),
-                    runs.computeIfAbsent(row.getRunId(), this::waitingRun));
+                    waitingRun(row, runs, heldTests));
         }
         for (TestResultItem item : pending) {
             item.setWaitingRun(
                     byPart.get(partKey(item.getAccessionNumber(), item.getTestId(), item.getTestResultComponentId())));
         }
+        markHeldResults(items);
+    }
+
+    /**
+     * A row whose stored result came from a run that holds its test undecided
+     * carries that run, held, so it is shown held and offers no entry or edit
+     * (FR-C4, FR-D4). Once the test is decided the row is open to a new value.
+     */
+    private void markHeldResults(List<TestResultItem> items) {
+        Map<String, Long> holding = runQcService
+                .entryHoldingRuns(items.stream().filter(item -> item.getWaitingRun() == null)
+                        .map(TestResultItem::getAnalysisId).filter(StringUtils::isNotBlank).distinct().toList());
+        if (holding.isEmpty()) {
+            return;
+        }
+        Map<Long, WaitingRun> runs = new HashMap<>();
+        Map<Long, Map<String, RunHoldCause>> causes = new HashMap<>();
+        for (TestResultItem item : items) {
+            Long runId = item.getWaitingRun() == null ? holding.get(item.getAnalysisId()) : null;
+            if (runId != null) {
+                item.setWaitingRun(runs.computeIfAbsent(runId, this::waitingRun)
+                        .held(causes.computeIfAbsent(runId, runQcService::holdCauses).getOrDefault(item.getTestId(),
+                                RunHoldCause.QC_FAILED)));
+            }
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WaitingRun heldRun(Long runId, String testId) {
+        Map<String, RunHoldCause> causes = runQcService.holdCauses(runId);
+        RunHoldCause cause = testId != null ? causes.get(testId)
+                : causes.values().stream().distinct().count() == 1 ? causes.values().iterator().next() : null;
+        return waitingRun(runId).held(cause == null ? RunHoldCause.QC_FAILED : cause);
     }
 
     @Override
@@ -361,7 +436,7 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
                 .stream()
                 .filter(row -> testId.equals(row.getTestId())
                         && Objects.equals(component, componentOf(testId, row.getComponentId())))
-                .findFirst().map(row -> waitingRun(row.getRunId()));
+                .findFirst().map(row -> waitingRun(row, new HashMap<>(), new HashMap<>()));
     }
 
     @Override
@@ -378,8 +453,8 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
                         && Objects.equals(analysis.getTest().getId(), row.getTestId())
                         && Objects.equals(componentOf(row.getTestId(), componentId),
                                 componentOf(row.getTestId(), row.getComponentId())))
-                .filter(row -> baseObjectDAO.get(row.getRunId()).filter(run -> run.getState() == ResultRunState.OPEN)
-                        .isPresent());
+                .filter(row -> baseObjectDAO.get(row.getRunId())
+                        .filter(run -> run.getState() != null && run.getState().isActive()).isPresent());
     }
 
     static boolean isPending(TestResultItem item) {
@@ -459,6 +534,21 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
         return analyzerService.getWithMapping(analyzerId).map(Analyzer::getName).orElse(null);
     }
 
+    /**
+     * Run settings' Method is the analyzer type (FR-E3), named as the type catalog
+     * names it: the name the mapping kept from the type it was made from, or the
+     * type's id for a mapping older than that.
+     */
+    static String typeNameOf(AnalyzerMapping mapping) {
+        if (StringUtils.isNotBlank(mapping.getSourceDefinitionJson())) {
+            String name = AnalyzerMappingDefinition.of(mapping).displayName();
+            if (StringUtils.isNotBlank(name)) {
+                return name;
+            }
+        }
+        return mapping.getProfileId();
+    }
+
     private String labUnitName(String testSectionId) {
         TestSection section = testSectionService.getTestSectionById(testSectionId);
         if (section == null) {
@@ -468,18 +558,25 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
         return StringUtils.isNotBlank(localized) ? localized : section.getTestSectionName();
     }
 
-    private ResultRunRow toRow(ClassifiedRow classified) {
+    private ResultRunRow toRow(ClassifiedRow classified, Map<String, String> testNames) {
         AnalyzerResults row = classified.row();
         String value = StringUtils.isNotBlank(row.getRawResultValue()) ? row.getRawResultValue() : row.getResult();
         String part = StringUtils.isBlank(row.getComponentId()) ? null
-                : testResultComponentService.getMatch("id", row.getComponentId()).map(TestResultComponent::getLabel)
-                        .orElse(null);
-        return new ResultRunRow(row.getId(), row.getAccessionNumber(), row.getTestName(), part, value, row.getUnits(),
-                row.getIsControl(), row.getDuplicateAnalyzerResultId() != null, row.getImportIssueReason(),
-                row.getInstrumentFlags(), iso(row.getCompleteDate()), classified.flag(), classified.category(),
-                row.getTestId(), row.getTestId() == null ? StringUtils.trimToNull(row.getComponentId())
+                : testResultComponentService.getMatch("id", row.getComponentId())
+                        .map(TestResultComponent::getLocalizedLabel).orElse(null);
+        return new ResultRunRow(row.getId(), row.getAccessionNumber(), rowClassifier.testNameOf(row, testNames), part,
+                value, row.getUnits(), row.getIsControl(), row.getDuplicateAnalyzerResultId() != null,
+                row.getImportIssueReason(), row.getInstrumentFlags(), iso(row.getCompleteDate()), classified.flag(),
+                classified.category(), row.getTestId(),
+                row.getTestId() == null ? StringUtils.trimToNull(row.getComponentId())
                         : componentOf(row.getTestId(), row.getComponentId()),
-                row.getResult());
+                row.getResult(), classified.exceptionKind(), codeOf(row), classified.holdCause(),
+                classified.missingControl());
+    }
+
+    /** What the analyzer called the value's test. */
+    static String codeOf(AnalyzerResults row) {
+        return StringUtils.defaultIfBlank(row.getRawTestCode(), row.getTestName());
     }
 
     private String partKey(String accessionNumber, String testId, String componentId) {
@@ -487,9 +584,15 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
                 + StringUtils.defaultString(componentOf(testId, componentId));
     }
 
+    private WaitingRun waitingRun(AnalyzerResults row, Map<Long, WaitingRun> runs,
+            Map<Long, Map<String, RunHoldCause>> heldTests) {
+        WaitingRun run = runs.computeIfAbsent(row.getRunId(), this::waitingRun);
+        return run.held(heldTests.computeIfAbsent(row.getRunId(), runQcService::holdCauses).get(row.getTestId()));
+    }
+
     private WaitingRun waitingRun(Long runId) {
         ResultRun run = get(runId);
-        return new WaitingRun(run.getId(), run.getLabel(), run.getSource().name(), iso(run.getOpenedAt()));
+        return new WaitingRun(run.getId(), run.getLabel(), run.getSource().name(), iso(run.getOpenedAt()), false, null);
     }
 
     /**
@@ -499,17 +602,7 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
      * import treats a test's main value.
      */
     private String componentOf(String testId, String componentId) {
-        if (testId == null) {
-            return StringUtils.trimToNull(componentId);
-        }
-        List<TestResultComponent> components = testResultComponentService.getActiveComponentsByTestId(testId);
-        if (components == null || components.size() <= 1) {
-            return null;
-        }
-        String own = StringUtils.trimToNull(componentId);
-        return own != null ? own
-                : components.stream().filter(component -> Boolean.TRUE.equals(component.getIsPrimary()))
-                        .map(TestResultComponent::getId).findFirst().orElse(null);
+        return rowClassifier.partOf(testId, componentId);
     }
 
     private static String iso(Timestamp timestamp) {

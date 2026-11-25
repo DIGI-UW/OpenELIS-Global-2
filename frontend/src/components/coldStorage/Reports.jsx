@@ -10,7 +10,6 @@ import {
   Column,
   Dropdown,
   Button,
-  DatePicker,
   DatePickerInput,
   Tag,
   Tabs,
@@ -31,13 +30,14 @@ import {
   TableToolbarSearch,
   Pagination,
 } from "@carbon/react";
+import { DatePicker } from "../common/DatePicker";
 import "./Reports.scss";
 import {
   fetchReportExcursions,
   fetchAuditTrail,
   downloadReportDirect,
 } from "./api";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import { NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 import { toDate, formatDuration } from "./shared/timeUtils";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -254,7 +254,7 @@ const mapAuditEvent = (event) => ({
 function Reports({ devices = [] }) {
   const intl = useIntl();
   const siteDate = useSiteDateFormat();
-  const { notificationVisible, setNotificationVisible, addNotification } =
+  const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const excursionHeaders = useMemo(() => getExcursionHeaders(intl), [intl]);
   const auditHeaders = useMemo(() => getAuditHeaders(intl), [intl]);
@@ -561,9 +561,12 @@ function Reports({ devices = [] }) {
     if (!rangeParams) {
       notify({
         kind: NotificationKinds.error,
-        title: "Missing date range",
-        subtitle:
-          "Please select a valid start and end date before generating a report.",
+        title: intl.formatMessage({
+          id: "coldStorage.reports.missingRange.title",
+        }),
+        subtitle: intl.formatMessage({
+          id: "coldStorage.reports.missingRange.subtitle",
+        }),
       });
       return;
     }
@@ -636,8 +639,6 @@ function Reports({ devices = [] }) {
 
   return (
     <div className="reports-page">
-      {notificationVisible === true ? <AlertDialog /> : ""}
-
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
           <h3 className="reports-title">
@@ -699,11 +700,9 @@ function Reports({ devices = [] }) {
             datePickerType="single"
             value={dateRange[0]}
             onChange={(dates) => {
-              if (dates && dates.length > 0) {
-                const newRange = [...dateRange];
-                newRange[0] = dates[0];
-                setDateRange(newRange);
-              }
+              const newRange = [...dateRange];
+              newRange[0] = dates?.[0] || null;
+              setDateRange(newRange);
             }}
           >
             <DatePickerInput
@@ -724,11 +723,9 @@ function Reports({ devices = [] }) {
             datePickerType="single"
             value={dateRange[1]}
             onChange={(dates) => {
-              if (dates && dates.length > 0) {
-                const newRange = [...dateRange];
-                newRange[1] = dates[0];
-                setDateRange(newRange);
-              }
+              const newRange = [...dateRange];
+              newRange[1] = dates?.[0] || null;
+              setDateRange(newRange);
             }}
           >
             <DatePickerInput

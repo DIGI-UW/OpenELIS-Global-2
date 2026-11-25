@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   DataTableSkeleton,
-  DatePicker,
   DatePickerInput,
   Dropdown,
   Pagination,
   Tag,
   TextInput,
 } from "@carbon/react";
+import { DatePicker } from "../../common/DatePicker";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, toLocalIsoDate } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
@@ -223,14 +223,10 @@ const CapaRegister = () => {
               value={[range.fromDate, range.toDate]}
               onChange={(dates) => {
                 setPage(0);
-                setRange(
-                  dates.length === 2
-                    ? {
-                        fromDate: toLocalIsoDate(dates[0]),
-                        toDate: toLocalIsoDate(dates[1]),
-                      }
-                    : { fromDate: "", toDate: "" },
-                );
+                setRange({
+                  fromDate: dates[0] ? toLocalIsoDate(dates[0]) : "",
+                  toDate: dates[1] ? toLocalIsoDate(dates[1]) : "",
+                });
               }}
             >
               <DatePickerInput

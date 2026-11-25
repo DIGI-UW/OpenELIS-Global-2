@@ -35,6 +35,10 @@ import { NotificationContext } from "../../../layout/Layout";
  * existing control lots (never create them). Results Entry control capture
  * prefills from the lot override, else the level default. Targets are
  * deactivated, never deleted; the whole set is saved in one PUT.
+ *
+ * OGC-1200 FR-H1: the QC policy below the targets says whether every analyzer
+ * run of the test must carry a control, and whether a missing one only warns
+ * or holds the test's rows. It is saved with the targets.
  */
 export const LEVELS = ["LOW", "NORMAL", "HIGH"];
 export const QC_LOT_MANAGEMENT_PATH = "/analyzers/qc/control-lots";
@@ -61,6 +65,10 @@ const QcTargetsSection = ({ testId }) => {
     dictionaryOptions: [],
   });
   const [targets, setTargets] = useState([]);
+  const [policy, setPolicy] = useState({
+    controlRequired: false,
+    controlWhenMissing: "WARN",
+  });
   const [showDeactivated, setShowDeactivated] = useState(false);
   const [expanded, setExpanded] = useState(null);
   const [overrideDraft, setOverrideDraft] = useState(null);
@@ -94,6 +102,10 @@ const QcTargetsSection = ({ testId }) => {
           dictionaryOptions: res.dictionaryOptions || [],
         });
         setTargets(res.targets.map((t) => ({ ...t, _key: t.id })));
+        setPolicy({
+          controlRequired: res.policy?.controlRequired === true,
+          controlWhenMissing: res.policy?.controlWhenMissing || "WARN",
+        });
       },
     );
   };
@@ -261,6 +273,7 @@ const QcTargetsSection = ({ testId }) => {
           : t.expectedDictResultId || null,
         active: isActive(t),
       })),
+      policy,
     };
     putToOpenElisServerFullResponse(
       `/rest/test-catalog/tests/${testId}/qc-targets`,
@@ -760,6 +773,126 @@ const QcTargetsSection = ({ testId }) => {
           })}
         </TableBody>
       </Table>
+
+      <Stack gap={3} data-testid="qc-policy">
+        <h4>
+          <FormattedMessage id="admin.testCatalog.qc.policy.title" />
+        </h4>
+        <p>
+          <FormattedMessage id="admin.testCatalog.qc.policy.help" />
+        </p>
+        <Table size="sm">
+          <TableHead>
+            <TableRow>
+              <TableHeader>
+                <FormattedMessage id="admin.testCatalog.qc.policy.kind" />
+              </TableHeader>
+              <TableHeader>
+                <FormattedMessage id="admin.testCatalog.qc.policy.required" />
+              </TableHeader>
+              <TableHeader>
+                <FormattedMessage id="admin.testCatalog.qc.policy.whenMissing" />
+              </TableHeader>
+              <TableHeader>
+                <FormattedMessage id="admin.testCatalog.qc.policy.whenFails" />
+              </TableHeader>
+              <TableHeader>
+                <FormattedMessage id="admin.testCatalog.qc.policy.evaluatedAgainst" />
+              </TableHeader>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            <TableRow data-testid="qc-policy-control">
+              <TableCell>
+                <strong>
+                  <FormattedMessage id="run.qc.kind.control" />
+                </strong>
+              </TableCell>
+              <TableCell>
+                <Select
+                  id="qc-policy-control-required"
+                  data-testid="qc-policy-control-required"
+                  size="sm"
+                  labelText={intl.formatMessage({
+                    id: "admin.testCatalog.qc.policy.required",
+                  })}
+                  hideLabel
+                  value={policy.controlRequired ? "yes" : "no"}
+                  onChange={(event) => {
+                    const required = event.target.value === "yes";
+                    setPolicy((current) => ({
+                      ...current,
+                      controlRequired: required,
+                    }));
+                  }}
+                >
+                  <SelectItem
+                    value="no"
+                    text={intl.formatMessage({ id: "label.no" })}
+                  />
+                  <SelectItem
+                    value="yes"
+                    text={intl.formatMessage({ id: "label.yes" })}
+                  />
+                </Select>
+              </TableCell>
+              <TableCell>
+                <Select
+                  id="qc-policy-control-when-missing"
+                  data-testid="qc-policy-control-when-missing"
+                  size="sm"
+                  labelText={intl.formatMessage({
+                    id: "admin.testCatalog.qc.policy.whenMissing",
+                  })}
+                  hideLabel
+                  disabled={!policy.controlRequired}
+                  value={policy.controlWhenMissing}
+                  onChange={(event) => {
+                    const whenMissing = event.target.value;
+                    setPolicy((current) => ({
+                      ...current,
+                      controlWhenMissing: whenMissing,
+                    }));
+                  }}
+                >
+                  <SelectItem
+                    value="WARN"
+                    text={intl.formatMessage({
+                      id: "admin.testCatalog.qc.policy.warn",
+                    })}
+                  />
+                  <SelectItem
+                    value="HOLD"
+                    text={intl.formatMessage({
+                      id: "admin.testCatalog.qc.policy.hold",
+                    })}
+                  />
+                </Select>
+              </TableCell>
+              <TableCell>
+                <FormattedMessage id="admin.testCatalog.qc.policy.controlAlwaysHolds" />
+              </TableCell>
+              <TableCell>
+                <FormattedMessage id="admin.testCatalog.qc.policy.targetsAbove" />
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+        <p
+          className="cds--form__helper-text"
+          data-testid="qc-policy-control-explained"
+        >
+          <FormattedMessage
+            id={
+              !policy.controlRequired
+                ? "admin.testCatalog.qc.policy.notRequiredHelp"
+                : policy.controlWhenMissing === "HOLD"
+                  ? "admin.testCatalog.qc.policy.holdHelp"
+                  : "admin.testCatalog.qc.policy.warnHelp"
+            }
+          />
+        </p>
+      </Stack>
 
       <div>
         <Button

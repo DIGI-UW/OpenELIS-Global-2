@@ -150,3 +150,20 @@ describe("consentApplies (OGC-1483)", () => {
     expect(consentApplies({}, { sampleOrderItems: {} })).toBe(false);
   });
 });
+
+// OGC-1657 review: a bad sample time held both saves with only the field's
+// own mark, so the checklist names it.
+describe("prepareSamplesToContinue sample times (OGC-1657)", () => {
+  it.each([[{ collectionTime: "1430" }], [{ receivedTime: "25:99" }]])(
+    "names a sample whose time is not hh:mm (%j)",
+    (fields) => {
+      expect(itemsFor([serum(fields)]).map((item) => item.id)).toEqual([
+        "sampleTimes-0",
+      ]);
+    },
+  );
+
+  it("names nothing for times on the clock", () => {
+    expect(itemsFor([serum({ receivedTime: "14:20" })])).toEqual([]);
+  });
+});

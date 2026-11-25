@@ -1,9 +1,12 @@
 package org.openelisglobal.validationpolicy.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.services.StaleSaveGuard;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.validationpolicy.form.LabUnitActiveForm;
 import org.openelisglobal.validationpolicy.form.LabUnitPoliciesView;
@@ -14,7 +17,9 @@ import org.openelisglobal.validationpolicy.form.ValidationPolicyForm;
 import org.openelisglobal.validationpolicy.form.ValidationPolicyView;
 import org.openelisglobal.validationpolicy.service.ValidationPolicyRefusedException;
 import org.openelisglobal.validationpolicy.service.ValidationPolicyService;
+import org.openelisglobal.validationpolicy.service.ValidationPolicyStaleException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,7 +34,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * OGC-1364: the lab-wide default validation policy and the lab unit overrides
- * on Result Configuration.
+ * on Result Configuration. A save from a page that loaded an older version is
+ * answered 409 with who changed the policy and when (OGC-1017).
  */
 @RestController
 @RequestMapping("/rest/validation-policy")
@@ -38,6 +44,8 @@ public class ValidationPolicyRestController extends BaseRestController {
 
     @Autowired
     private ValidationPolicyService validationPolicyService;
+    @Autowired
+    private StaleSaveGuard staleSaveGuard;
 
     @GetMapping(value = "/default", produces = MediaType.APPLICATION_JSON_VALUE)
     public ValidationPolicyView getLabWideDefault() {
@@ -46,7 +54,8 @@ public class ValidationPolicyRestController extends BaseRestController {
 
     @PutMapping(value = "/default", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ValidationPolicyView saveLabWideDefault(HttpServletRequest request, @RequestBody ValidationPolicyForm form) {
-        ValidationPolicyView saved = validationPolicyService.saveLabWideDefault(form, getSysUserId(request));
+        ValidationPolicyView saved = lostRaceIsStale(null,
+                () -> validationPolicyService.saveLabWideDefault(form, getSysUserId(request)));
         ConfigurationProperties.loadDBValuesIntoConfiguration();
         return saved;
     }
@@ -70,7 +79,7 @@ public class ValidationPolicyRestController extends BaseRestController {
     @PutMapping(value = "/lab-units/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public LabUnitPolicyView saveLabUnitOverride(HttpServletRequest request, @PathVariable Long id,
             @RequestBody ValidationPolicyForm form) {
-        return validationPolicyService.saveLabUnitOverride(id, form, getSysUserId(request));
+        return lostRaceIsStale(id, () -> validationPolicyService.saveLabUnitOverride(id, form, getSysUserId(request)));
     }
 
     @PutMapping(value = "/lab-units/{id}/active", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -79,7 +88,33 @@ public class ValidationPolicyRestController extends BaseRestController {
         if (form == null || form.active() == null) {
             throw new ValidationPolicyRefusedException("active", "activeRequired");
         }
-        return validationPolicyService.setLabUnitOverrideActive(id, form.active(), getSysUserId(request));
+        return lostRaceIsStale(id, () -> validationPolicyService.setLabUnitOverrideActive(id, form.active(),
+                form.lastupdated(), getSysUserId(request)));
+    }
+
+    /**
+     * A save that passed the version check but lost to another save committed in
+     * the meantime fails Hibernate's optimistic lock; it is the same stale save,
+     * refused with the policy as it is now stored ({@code null} is the default).
+     */
+    private <T> T lostRaceIsStale(Long labUnitOverrideId, Supplier<T> save) {
+        try {
+            return save.get();
+        } catch (RuntimeException e) {
+            if (StaleSaveGuard.isOptimisticLockFailure(e)) {
+                throw validationPolicyService.lostRace(labUnitOverrideId);
+            }
+            throw e;
+        }
+    }
+
+    @ExceptionHandler(ValidationPolicyStaleException.class)
+    public ResponseEntity<Map<String, Object>> stale(ValidationPolicyStaleException stale) {
+        Map<String, Object> body = new LinkedHashMap<>(
+                staleSaveGuard.conflictBody("admin.validationPolicy.refused.stale", "validation_policy",
+                        stale.getPolicyId() == null ? null : String.valueOf(stale.getPolicyId()), stale.getCurrent()));
+        body.put("conflict", "stale");
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
     @ExceptionHandler(ValidationPolicyRefusedException.class)

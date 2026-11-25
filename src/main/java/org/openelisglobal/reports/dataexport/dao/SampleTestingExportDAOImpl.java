@@ -13,6 +13,7 @@ import org.openelisglobal.reports.dataexport.form.ExportSnapshot;
 import org.openelisglobal.reports.dataexport.service.ExportDateRange;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 import org.springframework.stereotype.Component;
@@ -30,12 +31,15 @@ public class SampleTestingExportDAOImpl extends BaseDAOImpl<Result, String> impl
         var filter = request.filterSpec();
         var dates = ExportDateRange.of(filter.dateFrom(), filter.dateTo(), ZoneId.of(request.timezone()),
                 Integer.MAX_VALUE);
+        boolean entered = "orderEnteredDate".equals(filter.dateBasis());
+        String date = entered ? "coalesce(s.orderEnteredAt, s.enteredDate)"
+                : "receivedDate".equals(filter.dateBasis()) ? "coalesce(si.receivedDate, s.receivedTimestamp)"
+                        : "si.collectionDate";
         String hql = "select r from Result r join fetch r.analysis a join fetch a.sampleItem si "
                 + "join fetch si.sample s join fetch a.test t left join fetch t.unitOfMeasure "
                 + "left join fetch a.testSection left join fetch si.typeOfSample "
-                + "left join fetch r.testResult tr left join fetch r.parentResult "
-                + "where si.collectionDate >= :from and si.collectionDate < :to "
-                + "and a.testSection.id in :sections and a.statusId in :statuses "
+                + "left join fetch r.testResult tr left join fetch r.parentResult " + "where " + date + " >= :from and "
+                + date + " < :to " + "and a.testSection.id in :sections and a.statusId in :statuses "
                 + (filter.testIds().isEmpty() ? "" : "and t.id in :tests ")
                 + "order by si.id, a.id, coalesce(tr.componentId, ''), coalesce(r.grouping, 0), r.resultType, r.id";
         var query = entityManager.createQuery(hql, Result.class).setParameter("from", Timestamp.from(dates.start()))
@@ -110,6 +114,47 @@ public class SampleTestingExportDAOImpl extends BaseDAOImpl<Result, String> impl
         return entityManager.createQuery("select d.dictEntry from Dictionary d where d.id = :id", String.class)
                 .setParameter("id", id).getResultStream().findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("reporting.value.dictionaryMissing"));
+    }
+
+    @Override
+    public Timestamp enteredAt(String sampleId) {
+        List<?> rows = entityManager
+                .createNativeQuery(
+                        "SELECT coalesce(order_entered_at, entered_date) FROM clinlims.sample WHERE id = :id")
+                .setParameter("id", Integer.valueOf(sampleId)).getResultList();
+        Object value = rows.isEmpty() ? null : rows.get(0);
+        return value instanceof Timestamp stamp ? stamp
+                : value instanceof java.time.LocalDateTime local ? Timestamp.valueOf(local) : null;
+    }
+
+    @Override
+    public String program(String sampleId) {
+        var programs = entityManager.createQuery(
+                "select ps.program.programName from ProgramSample ps where ps.sample.id = :sample order by ps.id",
+                String.class).setParameter("sample", sampleId).getResultList();
+        if (!programs.isEmpty()) {
+            return programs.get(0);
+        }
+        var answers = entityManager.createQuery("from ObservationHistory o where o.sampleId = :sample and "
+                + "o.observationHistoryTypeId in (select t.id from ObservationHistoryType t where t.typeName = 'program') "
+                + "order by o.id", ObservationHistory.class).setParameter("sample", sampleId).getResultList();
+        if (answers.isEmpty()) {
+            return null;
+        }
+        ObservationHistory answer = answers.get(0);
+        if (!ObservationHistory.ValueType.DICTIONARY.getCode().equals(answer.getValueType())) {
+            return answer.getValue();
+        }
+        return entityManager.createQuery("select d.dictEntry from Dictionary d where d.id = :id", String.class)
+                .setParameter("id", answer.getValue()).getResultStream().findFirst().orElse(answer.getValue());
+    }
+
+    @Override
+    public List<TestSection> labUnits(String specimenId) {
+        return entityManager
+                .createQuery("select distinct ts from Analysis a join a.testSection ts where a.sampleItem.id = :item",
+                        TestSection.class)
+                .setParameter("item", specimenId).getResultList();
     }
 
     @Override

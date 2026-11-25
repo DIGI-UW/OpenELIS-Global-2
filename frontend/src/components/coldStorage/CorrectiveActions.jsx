@@ -43,7 +43,7 @@ import {
   createDevice,
   createRoom,
 } from "./api";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import { NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { useIntl, FormattedMessage } from "react-intl";
@@ -262,7 +262,7 @@ function statusTag(status, isEdited = false) {
 
 export default function CorrectiveActions() {
   const intl = useIntl();
-  const { notificationVisible, setNotificationVisible, addNotification } =
+  const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   // The retract and create-device writes both require ADMIN, and a denial
@@ -868,7 +868,6 @@ export default function CorrectiveActions() {
 
   return (
     <div style={{ padding: "1rem 0" }}>
-      {notificationVisible === true ? <AlertDialog /> : ""}
       {loading ? (
         <div>Loading corrective actions...</div>
       ) : (

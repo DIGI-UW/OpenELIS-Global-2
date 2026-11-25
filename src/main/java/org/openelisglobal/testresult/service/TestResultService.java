@@ -27,6 +27,12 @@ public interface TestResultService extends BaseObjectService<TestResult, String>
      */
     TestResult getTestResultsByTestAndDictonaryResult(String testId, String result, String componentId);
 
+    /**
+     * Falls back to any of the test's rows for the answer when the component has
+     * none.
+     */
+    boolean isCriticalAnswer(String testId, String componentId, String value);
+
     List<TestResult> getTestResultsByTestAndResultGroup(TestAnalyte testAnalyte);
 
     List<TestResult> getAllSortedTestResults();
