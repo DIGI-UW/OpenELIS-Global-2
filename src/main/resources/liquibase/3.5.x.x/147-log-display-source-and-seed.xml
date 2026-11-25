@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet id="147-log-display-source" author="oe">
+        <addColumn schemaName="clinlims" tableName="test_result_component">
+            <column name="log10_source_component_code" type="varchar(50)"/>
+        </addColumn>
+        <rollback><dropColumn schemaName="clinlims" tableName="test_result_component" columnName="log10_source_component_code"/></rollback>
+    </changeSet>
+    <changeSet id="147-shipped-viral-load-log-default" author="oe">
+        <!-- Keep the exact changed rows and versions for a rollback that does not
+             overwrite a later laboratory edit. This is migration bookkeeping. -->
+        <createTable schemaName="clinlims" tableName="log10_default_upgrade">
+            <column name="component_id" type="varchar(36)"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="previous_version" type="timestamp"/>
+            <column name="applied_version" type="timestamp"><constraints nullable="false"/></column>
+        </createTable>
+        <!-- INSERT SELECT is needed to capture the eligible rows atomically.
+             The base-image ecosystem GUID identifies the shipped seed even when
+             renamed. Name/LOINC matches and edits since 146 are not eligible. -->
+        <sql>
+            INSERT INTO clinlims.log10_default_upgrade (component_id, previous_version, applied_version)
+            SELECT c.id, c.last_updated, CURRENT_TIMESTAMP
+            FROM clinlims.test_result_component c JOIN clinlims.test t ON t.id = c.test_id
+            WHERE t.guid = 'b50d156e-0f6f-40cd-921c-4e831602a623'
+              AND c.is_primary = true AND c.is_active = 'Y' AND c.result_type IN ('N', 'A')
+              AND c.display_log10 = false AND c.log10_source_component_code IS NULL
+              AND c.last_updated &lt;= (SELECT dateexecuted FROM databasechangelog
+                  WHERE id = '146-explicit-log-display' AND author = 'oe');
+            UPDATE clinlims.test_result_component c SET display_log10 = true, last_updated = b.applied_version
+            FROM clinlims.log10_default_upgrade b WHERE c.id = b.component_id;
+        </sql>
+        <rollback>
+            <sql>
+                UPDATE clinlims.test_result_component c SET display_log10 = false, last_updated = b.previous_version
+                FROM clinlims.log10_default_upgrade b WHERE c.id = b.component_id
+                  AND c.last_updated = b.applied_version AND c.log10_source_component_code IS NULL;
+            </sql>
+            <dropTable schemaName="clinlims" tableName="log10_default_upgrade"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

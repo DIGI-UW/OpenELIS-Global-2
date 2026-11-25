@@ -14,4 +14,7 @@ public interface ResultCalculationService extends BaseObjectService<ResultCalcul
     List<ResultCalculation> getResultCalculationByTest(Test test);
 
     List<ResultCalculation> getResultCalculationByPatientAndCalculation(Patient patient, Calculation calculation);
+
+    /** The calculations that wrote this result row, on any patient's order. */
+    List<ResultCalculation> getResultCalculationsByResultId(String resultId);
 }

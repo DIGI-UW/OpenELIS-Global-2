@@ -82,7 +82,7 @@ BEGIN
         timestamp '2026-05-07 09:00:00', false, 'Whole Blood', false
       FROM reporting_workload_analyses;
     INSERT INTO result (id, fhir_uuid, analysis_id, sort_order, is_reportable, result_type,
-      value, significant_digits, "grouping", lastupdated)
+      value, reporting_decimal_places, "grouping", lastupdated)
       SELECT nextval('result_seq'),
         ('47950000-0000-4000-8004-' || lpad((CASE WHEN i = 5001 THEN 40000 + ordinal
           ELSE (i - 1) * 8 + (slot - 1) * 4 + ordinal END)::text, 12, '0'))::uuid,

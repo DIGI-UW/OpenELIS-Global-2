@@ -86,6 +86,19 @@ public interface ElectronicSignatureDAO extends BaseDAO<ElectronicSignature, Lon
     long countSearchSignatures(Timestamp startDate, Timestamp endDate, Long signerId, SignatureMeaning meaning,
             String recordType) throws LIMSRuntimeException;
 
+    /**
+     * The same search narrowed to the signatures whose signer, rejection reason,
+     * record type or record id contains the typed text, ignoring case and accents.
+     * A blank text narrows nothing.
+     */
+    List<ElectronicSignature> searchSignatures(Timestamp startDate, Timestamp endDate, Long signerId,
+            SignatureMeaning meaning, String recordType, String text, int page, int pageSize)
+            throws LIMSRuntimeException;
+
+    /** Count for {@link #searchSignatures} with typed text. */
+    long countSearchSignatures(Timestamp startDate, Timestamp endDate, Long signerId, SignatureMeaning meaning,
+            String recordType, String text) throws LIMSRuntimeException;
+
     // ========================
     // First-Use Certification
     // ========================

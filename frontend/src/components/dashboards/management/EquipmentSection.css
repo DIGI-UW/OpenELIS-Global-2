@@ -1,0 +1,48 @@
+.mgmt-equipment {
+  margin-bottom: 1.5rem;
+}
+
+.mgmt-equipment__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.mgmt-equipment__subtitle,
+.mgmt-equipment__meta {
+  font-size: 0.875rem;
+  color: var(--cds-text-helper, #6f6f6f);
+}
+
+.mgmt-equipment__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.mgmt-equipment__card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.mgmt-equipment__count {
+  font-size: 1.5rem;
+}
+
+@media (max-width: 66rem) {
+  .mgmt-equipment__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 42rem) {
+  .mgmt-equipment__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -93,6 +93,52 @@ public class OrderEditClearsFieldsIntegrationTest extends BaseWebContextSensitiv
         assertNull(stored(ObservationType.ENV_FIELD_NOTES));
     }
 
+    /**
+     * OGC-768: an environmental order switched to ad-hoc sends no standard; the
+     * links it had are removed, so a reload does not bring them back.
+     */
+    @Test
+    public void anEnvironmentalOrderSavedWithNoStandardLosesItsStandards() {
+        String standardId = complianceStandard("OGC768-A");
+        edit(item -> item.setEnvironmentalFields(envFields("complianceStandards", "[\"" + standardId + "\"]")));
+        assertEquals(1, linkedStandards());
+
+        edit(item -> item.setEnvironmentalFields(envFields("complianceStandards", "[]")));
+
+        assertEquals(0, linkedStandards());
+        assertEquals("[]", stored(ObservationType.ENV_COMPLIANCE_STANDARDS));
+    }
+
+    /**
+     * OGC-768: the order type is kept with the order, and the ad-hoc regulatory
+     * reference is cleared when the order turns regulation-driven.
+     */
+    @Test
+    public void theOrderTypeIsKeptAndTheAdHocReferenceClearsWhenEmptied() {
+        Map<String, Object> adHoc = envFields("orderBranch", "AD_HOC");
+        adHoc.put("regulatoryReference", "Permit 12/2026");
+        edit(item -> item.setEnvironmentalFields(adHoc));
+        assertEquals("AD_HOC", stored(ObservationType.ENV_ORDER_BRANCH));
+        assertEquals("Permit 12/2026", stored(ObservationType.ENV_REGULATORY_REFERENCE));
+
+        Map<String, Object> regulated = envFields("orderBranch", "REGULATION_DRIVEN");
+        regulated.put("regulatoryReference", "");
+        edit(item -> item.setEnvironmentalFields(regulated));
+
+        assertEquals("REGULATION_DRIVEN", stored(ObservationType.ENV_ORDER_BRANCH));
+        assertNull(stored(ObservationType.ENV_REGULATORY_REFERENCE));
+    }
+
+    @Test
+    public void aSaveThatDoesNotSendTheStandardsLeavesThemAlone() {
+        String standardId = complianceStandard("OGC768-B");
+        edit(item -> item.setEnvironmentalFields(envFields("complianceStandards", "[\"" + standardId + "\"]")));
+
+        edit(item -> item.setEnvironmentalFields(envFields("fieldNotes", "Clear sample")));
+
+        assertEquals(1, linkedStandards());
+    }
+
     @Test
     public void anEditLeavesTheReferringIdTheFormDoesNotShow() {
         Sample stored = sampleService.get(order.getId());
@@ -110,6 +156,22 @@ public class OrderEditClearsFieldsIntegrationTest extends BaseWebContextSensitiv
         fields.put("workflowType", "environmental");
         fields.put(key, value);
         return fields;
+    }
+
+    private String complianceStandard(String regulationNumber) {
+        Long id = jdbcTemplate.queryForObject("SELECT nextval('clinlims.compliance_standard_seq')", Long.class);
+        jdbcTemplate.update(
+                "INSERT INTO clinlims.compliance_standard (id, fhir_uuid, name, version, issuing_body,"
+                        + " regulation_number, country_region, status, effective_date, sys_user_id, last_updated)"
+                        + " VALUES (?, ?, ?, '1', 'Ministry', ?, 'Region', 'ACTIVE', DATE '2024-01-01', 1, now())",
+                id, UUID.randomUUID(), "Standard " + regulationNumber, regulationNumber);
+        return String.valueOf(id);
+    }
+
+    private int linkedStandards() {
+        return jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM clinlims.sample_compliance_standards WHERE sample_id = CAST(? AS numeric)",
+                Integer.class, order.getId());
     }
 
     private String stored(ObservationType type) {

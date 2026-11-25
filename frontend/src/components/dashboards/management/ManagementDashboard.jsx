@@ -10,8 +10,14 @@ import {
   useServerData,
 } from "../../utils/useServerData";
 import KpiStrip from "./KpiStrip";
+import QualitySection from "./QualitySection";
+import ExportBar from "./ExportBar";
 import { summaryUrl } from "./managementApi";
 import WorkloadSection from "./WorkloadSection";
+import EquipmentSection from "./EquipmentSection";
+import AntibiogramSection from "./AntibiogramSection";
+import StockSection from "./StockSection";
+import SurveillanceSection from "./SurveillanceSection";
 import "./ManagementDashboard.css";
 
 export const SCOPES = [
@@ -26,6 +32,12 @@ export const SCOPES = [
 const SECTIONS = [
   { id: "kpis", Component: KpiStrip },
   { id: "workload", Component: WorkloadSection },
+  { id: "equipment", Component: EquipmentSection },
+  { id: "antibiogram", Component: AntibiogramSection },
+  { id: "stock", Component: StockSection },
+  { id: "quality", Component: QualitySection },
+  { id: "surveillance", Component: SurveillanceSection },
+  { id: "export", Component: ExportBar },
 ];
 
 const REFRESH_COOLDOWN_MS = 15000;
@@ -196,6 +208,7 @@ const ManagementDashboard = () => {
             scope={scope}
             scopeLabel={scopeLabel}
             features={data.features}
+            labName={data.labName}
           />
         ))}
     </div>

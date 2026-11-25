@@ -103,6 +103,16 @@ const ControlLotSetup = () => {
     },
   ];
 
+  const frequencyOptions = [
+    "DAILY",
+    "PER_SHIFT",
+    "CUSTOM_HOURS",
+    "PER_RUN",
+  ].map((id) => ({
+    id,
+    label: intl.formatMessage({ id: `qc.controlLot.frequency.${id}` }),
+  }));
+
   // Validation schema
   const validationSchema = Yup.object().shape({
     lotNumber: Yup.string().required(
@@ -125,6 +135,53 @@ const ControlLotSetup = () => {
     testId: Yup.string().required(
       intl.formatMessage({ id: "qc.controlLot.validation.testRequired" }),
     ),
+    // OGC-427: a custom window needs its length; a shift needs a positive one.
+    qcFrequencyHours: Yup.number()
+      .transform((value, original) => (original === "" ? undefined : value))
+      .when("qcFrequencyType", {
+        is: "CUSTOM_HOURS",
+        then: (schema) =>
+          schema
+            .required(
+              intl.formatMessage({
+                id: "qc.controlLot.validation.frequencyHoursRequired",
+              }),
+            )
+            .positive(
+              intl.formatMessage({
+                id: "qc.controlLot.validation.frequencyHoursRequired",
+              }),
+            )
+            .integer(
+              intl.formatMessage({
+                id: "qc.controlLot.validation.frequencyHoursRequired",
+              }),
+            ),
+        otherwise: (schema) => schema.notRequired(),
+      }),
+    shiftDefinitionHours: Yup.number()
+      .transform((value, original) => (original === "" ? undefined : value))
+      .when("qcFrequencyType", {
+        is: "PER_SHIFT",
+        then: (schema) =>
+          schema
+            .required(
+              intl.formatMessage({
+                id: "qc.controlLot.validation.shiftHoursRequired",
+              }),
+            )
+            .positive(
+              intl.formatMessage({
+                id: "qc.controlLot.validation.shiftHoursRequired",
+              }),
+            )
+            .integer(
+              intl.formatMessage({
+                id: "qc.controlLot.validation.shiftHoursRequired",
+              }),
+            ),
+        otherwise: (schema) => schema.notRequired(),
+      }),
   });
 
   // Load existing lot for edit
@@ -189,6 +246,16 @@ const ControlLotSetup = () => {
             : "",
         testId: existingLot.testId != null ? String(existingLot.testId) : "",
         isActive: existingLot.status === "ACTIVE",
+        qcFrequencyType: existingLot.qcFrequencyType || "DAILY",
+        qcFrequencyHours:
+          existingLot.qcFrequencyHours != null
+            ? String(existingLot.qcFrequencyHours)
+            : "",
+        shiftDefinitionHours:
+          existingLot.shiftDefinitionHours != null
+            ? String(existingLot.shiftDefinitionHours)
+            : "8",
+        qcRequired: existingLot.qcRequired !== false,
       };
     }
     return {
@@ -199,6 +266,10 @@ const ControlLotSetup = () => {
       analyzerId: "",
       testId: "",
       isActive: true,
+      qcFrequencyType: "DAILY",
+      qcFrequencyHours: "",
+      shiftDefinitionHours: "8",
+      qcRequired: true,
     };
   };
 
@@ -255,6 +326,15 @@ const ControlLotSetup = () => {
       manufacturerStdDev: statisticsConfig.standardDeviation,
       activationDate: new Date().toISOString(),
       status: values.isActive ? "ACTIVE" : "EXPIRED",
+      qcFrequencyType: values.qcFrequencyType,
+      qcFrequencyHours:
+        values.qcFrequencyType === "CUSTOM_HOURS" && values.qcFrequencyHours
+          ? parseInt(values.qcFrequencyHours, 10)
+          : null,
+      shiftDefinitionHours: values.shiftDefinitionHours
+        ? parseInt(values.shiftDefinitionHours, 10)
+        : 8,
+      qcRequired: values.qcRequired,
     };
 
     postToOpenElisServerFullResponse(
@@ -263,6 +343,7 @@ const ControlLotSetup = () => {
       async (response) => {
         if (response && response.ok) {
           history.push("/analyzers/qc/control-lots");
+          return;
         } else {
           // Surface the backend's specific message (it returns the validation
           // reason as the 400 body) rather than a generic "save failed".
@@ -446,9 +527,11 @@ const ControlLotSetup = () => {
                     })}
                     items={controlLevelOptions}
                     itemToString={(item) => item?.label || ""}
-                    selectedItem={controlLevelOptions.find(
-                      (o) => o.id === values.controlLevel,
-                    )}
+                    selectedItem={
+                      controlLevelOptions.find(
+                        (o) => o.id === values.controlLevel,
+                      ) ?? null
+                    }
                     onChange={({ selectedItem }) =>
                       setFieldValue("controlLevel", selectedItem?.id || "")
                     }
@@ -494,9 +577,10 @@ const ControlLotSetup = () => {
                     })}
                     items={analyzerOptions}
                     itemToString={(item) => item?.name || ""}
-                    selectedItem={analyzerOptions.find(
-                      (a) => a.id === values.analyzerId,
-                    )}
+                    selectedItem={
+                      analyzerOptions.find((a) => a.id === values.analyzerId) ??
+                      null
+                    }
                     onChange={({ selectedItem }) => {
                       setFieldValue(
                         "analyzerId",
@@ -522,7 +606,9 @@ const ControlLotSetup = () => {
                     })}
                     items={tests}
                     itemToString={(item) => item?.value || item?.name || ""}
-                    selectedItem={tests.find((t) => t.id === values.testId)}
+                    selectedItem={
+                      tests.find((t) => t.id === values.testId) ?? null
+                    }
                     onChange={({ selectedItem }) =>
                       setFieldValue("testId", selectedItem?.id || "")
                     }
@@ -550,6 +636,102 @@ const ControlLotSetup = () => {
                     toggled={values.isActive}
                     onToggle={(checked) => setFieldValue("isActive", checked)}
                     data-testid="control-lot-active-toggle"
+                  />
+                </FormGroup>
+              </Column>
+
+              {/* QC frequency rule (OGC-427 FR-QC-001) */}
+              <Column lg={8} md={4} sm={4}>
+                <FormGroup legendText="">
+                  <Dropdown
+                    id="qc-frequency-type"
+                    titleText={intl.formatMessage({
+                      id: "qc.controlLot.field.frequency",
+                    })}
+                    label={intl.formatMessage({
+                      id: "qc.controlLot.field.frequency",
+                    })}
+                    helperText={intl.formatMessage({
+                      id: "qc.controlLot.field.frequencyHelper",
+                    })}
+                    items={frequencyOptions}
+                    itemToString={(item) => item?.label || ""}
+                    selectedItem={frequencyOptions.find(
+                      (option) => option.id === values.qcFrequencyType,
+                    )}
+                    onChange={({ selectedItem }) =>
+                      setFieldValue(
+                        "qcFrequencyType",
+                        selectedItem?.id || "DAILY",
+                      )
+                    }
+                    data-testid="control-lot-frequency-dropdown"
+                  />
+                </FormGroup>
+              </Column>
+              {values.qcFrequencyType === "CUSTOM_HOURS" && (
+                <Column lg={8} md={4} sm={4}>
+                  <FormGroup legendText="">
+                    <TextInput
+                      id="qc-frequency-hours"
+                      name="qcFrequencyHours"
+                      type="number"
+                      min={1}
+                      labelText={intl.formatMessage({
+                        id: "qc.controlLot.field.frequencyHours",
+                      })}
+                      value={values.qcFrequencyHours}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      invalid={
+                        touched.qcFrequencyHours && !!errors.qcFrequencyHours
+                      }
+                      invalidText={errors.qcFrequencyHours}
+                      data-testid="control-lot-frequency-hours-input"
+                    />
+                  </FormGroup>
+                </Column>
+              )}
+              {values.qcFrequencyType === "PER_SHIFT" && (
+                <Column lg={8} md={4} sm={4}>
+                  <FormGroup legendText="">
+                    <TextInput
+                      id="qc-shift-hours"
+                      name="shiftDefinitionHours"
+                      type="number"
+                      min={1}
+                      labelText={intl.formatMessage({
+                        id: "qc.controlLot.field.shiftHours",
+                      })}
+                      value={values.shiftDefinitionHours}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      invalid={
+                        touched.shiftDefinitionHours &&
+                        !!errors.shiftDefinitionHours
+                      }
+                      invalidText={errors.shiftDefinitionHours}
+                      data-testid="control-lot-shift-hours-input"
+                    />
+                  </FormGroup>
+                </Column>
+              )}
+              <Column lg={8} md={4} sm={4}>
+                <FormGroup legendText="">
+                  <Toggle
+                    id="qc-required"
+                    labelText={intl.formatMessage({
+                      id: "qc.controlLot.field.qcRequired",
+                    })}
+                    labelA={intl.formatMessage({
+                      id: "qc.controlLot.field.qcRequired.off",
+                    })}
+                    labelB={intl.formatMessage({
+                      id: "qc.controlLot.field.qcRequired.on",
+                    })}
+                    toggled={values.qcRequired}
+                    onToggle={(checked) => setFieldValue("qcRequired", checked)}
+                    data-testid="control-lot-qc-required-toggle"
                   />
                 </FormGroup>
               </Column>

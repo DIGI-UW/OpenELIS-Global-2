@@ -37,9 +37,9 @@ public class ManagementDashboardServiceIntegrationTest extends BaseWebContextSen
     @Test
     public void detectsEachOptionalModuleFromItsOwnTable() {
         jdbcTemplate.execute("TRUNCATE clinlims.inventory_item, clinlims.eqa_lab_program_enrollment,"
-                + " clinlims.analyzer, clinlims.micro_ast_reading, clinlims.qc_result CASCADE");
+                + " clinlims.analyzer, clinlims.micro_isolate, clinlims.qc_result CASCADE");
 
-        assertEquals(Map.of("inventory", false, "eqa", false, "analyzers", false, "ast", false, "qc", false),
+        assertEquals(Map.of("inventory", false, "eqa", false, "analyzers", false, "microbiology", false, "qc", false),
                 managementDashboardService.getSummary(MARCH_2026).features());
 
         jdbcTemplate.update("INSERT INTO clinlims.analyzer (id, name, is_active) VALUES (89701, 'MGMT-A', true)");
@@ -49,7 +49,7 @@ public class ManagementDashboardServiceIntegrationTest extends BaseWebContextSen
                 + " result_status, sys_user_id, last_updated, source)"
                 + " VALUES (89701, '89701', 1.0, now(), 'FINAL', '1', now(), 'MANUAL')");
 
-        assertEquals(Map.of("inventory", false, "eqa", false, "analyzers", true, "ast", false, "qc", true),
+        assertEquals(Map.of("inventory", false, "eqa", false, "analyzers", true, "microbiology", false, "qc", true),
                 managementDashboardService.getSummary(MARCH_2026).features());
     }
 }

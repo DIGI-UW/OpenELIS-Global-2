@@ -63,8 +63,7 @@ public class BlockLabel extends Label {
                             : "",
                     4));
         }
-        // adding bar code
-        setCode(labNo);
+        setRowCode(block.getBarcode(), labNo);
     }
 
     /**
@@ -126,11 +125,9 @@ public class BlockLabel extends Label {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.MAX_BLOCK_LABEL_PRINTED), 10);
     }
 
-    // The order, block and slide labels all print the lab number, so they shared
-    // one print count and the first kind printed used up the other two.
     @Override
     protected String labelInfoCode() {
-        return getCode() + "-B";
+        return orderLabNo() + "-B";
     }
 
     @Override

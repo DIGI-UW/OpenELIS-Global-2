@@ -18,6 +18,12 @@ public class PendingBatchTestResponse {
     private String statusName;
     private String groupKey;
     private boolean nonconforming;
+    private String patientName;
+    private String priority;
+    private String panelId;
+    private String panelName;
+    private String orderDate;
+    private String orderDateForDisplay;
 
     public String getAnalysisId() {
         return analysisId;
@@ -145,5 +151,53 @@ public class PendingBatchTestResponse {
 
     public void setNonconforming(boolean nonconforming) {
         this.nonconforming = nonconforming;
+    }
+
+    public String getPatientName() {
+        return patientName;
+    }
+
+    public void setPatientName(String patientName) {
+        this.patientName = patientName;
+    }
+
+    public String getPriority() {
+        return priority;
+    }
+
+    public void setPriority(String priority) {
+        this.priority = priority;
+    }
+
+    public String getPanelId() {
+        return panelId;
+    }
+
+    public void setPanelId(String panelId) {
+        this.panelId = panelId;
+    }
+
+    public String getPanelName() {
+        return panelName;
+    }
+
+    public void setPanelName(String panelName) {
+        this.panelName = panelName;
+    }
+
+    public String getOrderDate() {
+        return orderDate;
+    }
+
+    public void setOrderDate(String orderDate) {
+        this.orderDate = orderDate;
+    }
+
+    public String getOrderDateForDisplay() {
+        return orderDateForDisplay;
+    }
+
+    public void setOrderDateForDisplay(String orderDateForDisplay) {
+        this.orderDateForDisplay = orderDateForDisplay;
     }
 }

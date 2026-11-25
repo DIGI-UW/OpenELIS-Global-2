@@ -152,6 +152,46 @@ public class TransformServiceDelegationParityTest extends BaseWebContextSensitiv
                 deviceTransformService.transformAnalyzerToDevice(analyzer));
     }
 
+    @Test
+    public void observationPreservesClinicalQuantityAndComparatorRegardlessOfDisplayDecimals() throws Exception {
+        Result result = resultService.get(RESULT_ID);
+        result.setResultType("N");
+        result.setReportingDecimalPlaces(0);
+        result.setValue("1.170");
+        org.hl7.fhir.r4.model.Observation observation = fhirTransformService.transformResultToObservation(result);
+        assertEquals(new java.math.BigDecimal("1.170"), observation.getValueQuantity().getValue());
+        assertEquals("1", result.getDisplayValue());
+        org.hl7.fhir.r4.model.Observation decoded = (org.hl7.fhir.r4.model.Observation) parser
+                .parseResource(parser.encodeResourceToString(observation));
+        assertEquals(new java.math.BigDecimal("1.170"), decoded.getValueQuantity().getValue());
+        result.setValue("<1.170");
+        observation = fhirTransformService.transformResultToObservation(result);
+        assertEquals(new java.math.BigDecimal("1.170"), observation.getValueQuantity().getValue());
+        assertEquals(org.hl7.fhir.r4.model.Quantity.QuantityComparator.LESS_THAN,
+                observation.getValueQuantity().getComparator());
+    }
+
+    @Test
+    public void observationNormalizesWrittenScientificNotationAfterPreservingTheComparator() throws Exception {
+        Result result = resultService.get(RESULT_ID);
+        result.setResultType("N");
+        result.setReportingDecimalPlaces(0);
+        for (org.hl7.fhir.r4.model.Quantity.QuantityComparator comparator : new org.hl7.fhir.r4.model.Quantity.QuantityComparator[] {
+                org.hl7.fhir.r4.model.Quantity.QuantityComparator.LESS_THAN,
+                org.hl7.fhir.r4.model.Quantity.QuantityComparator.LESS_OR_EQUAL,
+                org.hl7.fhir.r4.model.Quantity.QuantityComparator.GREATER_THAN,
+                org.hl7.fhir.r4.model.Quantity.QuantityComparator.GREATER_OR_EQUAL }) {
+            result.setValue(comparator.toCode() + "1.50×10⁵");
+            org.hl7.fhir.r4.model.Observation observation = fhirTransformService.transformResultToObservation(result);
+            assertEquals(comparator, observation.getValueQuantity().getComparator());
+            assertEquals(0, new java.math.BigDecimal("150000").compareTo(observation.getValueQuantity().getValue()));
+            org.hl7.fhir.r4.model.Observation decoded = (org.hl7.fhir.r4.model.Observation) parser
+                    .parseResource(parser.encodeResourceToString(observation));
+            assertEquals(comparator, decoded.getValueQuantity().getComparator());
+            assertEquals(0, new java.math.BigDecimal("150000").compareTo(decoded.getValueQuantity().getValue()));
+        }
+    }
+
     private void assertSameResource(IBaseResource viaOrchestrator, IBaseResource viaService) {
         assertNotNull(viaOrchestrator);
         assertNotNull(viaService);

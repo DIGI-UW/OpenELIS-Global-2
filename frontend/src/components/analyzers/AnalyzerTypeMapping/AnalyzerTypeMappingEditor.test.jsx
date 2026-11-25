@@ -211,10 +211,11 @@ const ReturnStateProbe = () => {
 
 const renderEditor = (
   entry = "/analyzers/501/mapping?returnTo=%2FAnalyzerResults%3Fid%3D501",
+  localeMessages = messages,
 ) =>
   render(
     <MemoryRouter initialEntries={[entry]}>
-      <IntlProvider locale="en" messages={messages}>
+      <IntlProvider locale="en" messages={localeMessages}>
         <Route path="/analyzers/:analyzerId/mapping">
           <AnalyzerTypeMappingEditor />
           <LocationProbe />
@@ -295,6 +296,114 @@ describe("AnalyzerTypeMappingEditor", () => {
     getAnalyzerMappingComponents.mockImplementation((testId, callback) =>
       callback(componentsByTest[testId] || []),
     );
+  });
+
+  it("pages distinct received readings without losing their evidence", async () => {
+    const row = {
+      ...mapping.tests[0],
+      receivedValues: Array.from({ length: 11 }, (_, index) => ({
+        rawValue: `raw-${index}`,
+        value: `value-${index}`,
+        kind: "TEXT",
+        unit: null,
+      })),
+    };
+    getAnalyzerMapping.mockImplementation((_id, callback) =>
+      callback({ ...mapping, tests: [row] }),
+    );
+    renderEditor(undefined, {
+      ...messages,
+      "pagination.item-range": "Éléments {min}–{max} sur {total}",
+      "pagination.page-range": "sur {total} pages",
+      "pagination.page-number": "Numéro de page",
+    });
+    const table = await screen.findByRole("table", {
+      name: "Received held results for RAW-A",
+    });
+    expect(table).toHaveTextContent("value-0");
+    expect(screen.getByText("Éléments 1–10 sur 11")).toBeVisible();
+    expect(screen.getByText("sur 2 pages")).toBeVisible();
+    expect(screen.getByLabelText("Numéro de page")).toHaveValue("1");
+    expect(table).not.toHaveTextContent("value-10");
+    await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+    expect(table).toHaveTextContent("value-10");
+    expect(screen.getByText("Éléments 11–11 sur 11")).toBeVisible();
+    expect(table).not.toHaveTextContent("value-0");
+  });
+
+  it("explains text delivered to a numeric test without asking for categorical options", async () => {
+    const row = {
+      ...mapping.tests[0],
+      resultType: "quantitative",
+      results: ["1.02", "1,4"].map((rawValue) => ({
+        rawValue,
+        mappingState: "UNRESOLVED",
+        observed: true,
+      })),
+      receivedValues: ["1.02", "1,4"].map((rawValue) => ({
+        rawValue,
+        value: rawValue,
+        kind: "TEXT",
+        unit: null,
+      })),
+    };
+    getAnalyzerMapping.mockImplementation((_id, callback) =>
+      callback({ ...mapping, tests: [row] }),
+    );
+    getAnalyzerMappingComponents.mockImplementation((_id, callback) =>
+      callback([{ id: "numeric", primary: true, resultType: "N" }]),
+    );
+    getAnalyzerMappingResultOptions.mockImplementation((_id, callback) =>
+      callback([]),
+    );
+    renderEditor();
+    expect(
+      await screen.findByText("Text answers cannot map to a numeric result"),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("link", {
+        name: "Add result options in Test Catalog",
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("table", { name: "Received held results for RAW-A" }),
+    ).toHaveTextContent("1,4");
+    expect(
+      screen.getByRole("link", { name: "Review analyzer type" }),
+    ).toHaveAttribute("href", expect.stringContaining("/analyzers/types?"));
+    expect(
+      screen.getByRole("link", { name: "Review connection number format" }),
+    ).toHaveAttribute("href", expect.stringContaining("setup=connect"));
+    expect(
+      screen.getByText(/Previously received text stays held/),
+    ).toBeVisible();
+  });
+
+  it("shows the received number and raw decimal notation without offering an answer mapping", async () => {
+    getAnalyzerMapping.mockImplementation((_id, callback) =>
+      callback({
+        ...mapping,
+        tests: [
+          {
+            ...mapping.tests[1],
+            receivedValues: [
+              { rawValue: "1,4", value: "1.4", kind: "NUMBER", unit: "mg/dL" },
+            ],
+          },
+        ],
+      }),
+    );
+    renderEditor();
+    const table = await screen.findByRole("table", {
+      name: "Received held results for RAW-B",
+    });
+    expect(table).toHaveTextContent("1,4");
+    expect(table).toHaveTextContent("1.4");
+    expect(table).toHaveTextContent("Number");
+    expect(table).toHaveTextContent("mg/dL");
+    expect(
+      screen.queryByRole("combobox", { name: "OpenELIS result for 1,4" }),
+    ).not.toBeInTheDocument();
   });
 
   describe("a test that reports several records", () => {

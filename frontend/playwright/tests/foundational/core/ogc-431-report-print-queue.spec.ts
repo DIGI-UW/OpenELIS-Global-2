@@ -320,12 +320,30 @@ test("a correction awaiting validation keeps the order printed until it is valid
   });
 });
 
-test("the home dashboard's unprinted results tile opens the queue", async ({
+test("the home dashboard's unprinted results tile counts and opens the queue", async ({
   page,
 }) => {
   await page.goto("/", { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT });
-  const tile = page.getByText("UnPrinted Results Today");
+  const tile = page.getByRole("button", { name: /Unprinted results/ });
   await expect(tile).toBeVisible({ timeout: UI_TIMEOUT });
+  // Casey's ruling (22 Oct 2026): the tile counts every unprinted order, the
+  // list it opens. Other specs print and add orders, so compare one snapshot.
+  await expect
+    .poll(
+      async () => {
+        const [metrics, queue] = await Promise.all([
+          page.request.get(`${API_PREFIX}/rest/home-dashboard/metrics`),
+          page.request.get(
+            `${API_PREFIX}/rest/reportQueue?printStatus=UNPRINTED`,
+          ),
+        ]);
+        return (
+          (await metrics.json()).unPritendResults - (await queue.json()).total
+        );
+      },
+      { timeout: UI_TIMEOUT },
+    )
+    .toBe(0);
   // The queue lists as soon as it mounts, so listen before the click.
   const listed = page.waitForResponse(
     (response) =>

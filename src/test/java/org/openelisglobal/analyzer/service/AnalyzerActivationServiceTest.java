@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -86,6 +87,8 @@ public class AnalyzerActivationServiceTest {
         connection = fixture("analyzer-connection.json");
         connection.put("clientAnalyzerId", ANALYZER_ID);
         activationAcknowledgement = fixture("connection-activate-ack.json");
+        // The setup-capable Bridge adds purpose to the older base v1 fixture.
+        activationAcknowledgement.put("receptionPurpose", "ROUTINE");
         retained = new AnalyzerActivationRecord();
         retained.setVerificationConfirmation(confirmation);
 
@@ -105,6 +108,99 @@ public class AnalyzerActivationServiceTest {
                 confirmationService, testSectionService, bridgeClient, activationRecordService,
                 Clock.fixed(ACTIVATED_AT, ZoneOffset.UTC), () -> "activate-fixture-004",
                 () -> "deactivate-fixture-004");
+    }
+
+    @Test
+    public void setupReceptionStartsBeforeMappingConfirmationWithoutClinicalActivation() {
+        analyzer.setStatus(Analyzer.AnalyzerStatus.SETUP);
+        activationAcknowledgement.put("action", "START_SETUP");
+        activationAcknowledgement.put("receptionPurpose", "SETUP");
+        when(bridgeClient.applyRuntimeCommand(CONNECTION_ID, 4, "START_SETUP", "activate-fixture-004"))
+                .thenReturn(activationAcknowledgement);
+        when(activationRecordService.retain(analyzer, snapshot.mapping(), null, activationAcknowledgement, "SETUP",
+                ACTOR)).thenReturn(retained);
+
+        AnalyzerSetupReceptionResult result = service.startSetupReception(ANALYZER_ID, ACTOR);
+
+        assertTrue(result.receiving());
+        verify(confirmationService, never()).assessCurrent(snapshot);
+        assertEquals(Analyzer.AnalyzerStatus.VALIDATION, analyzer.getStatus());
+        assertFalse(analyzer.isActive());
+        assertNull(analyzer.getLastActivatedDate());
+        verify(activationRecordService).retain(analyzer, snapshot.mapping(), null, activationAcknowledgement, "SETUP",
+                ACTOR);
+    }
+
+    @Test
+    public void routineAnalyzersCannotBeChangedToSetupReception() {
+        analyzer.setLastActivatedDate(java.util.Date.from(ACTIVATED_AT));
+        assertFalse(service.startSetupReception(ANALYZER_ID, ACTOR).receiving());
+        verify(bridgeClient, never()).applyRuntimeCommand(any(), org.mockito.ArgumentMatchers.anyInt(), any(), any());
+    }
+
+    @Test
+    public void failedSetupAcknowledgementLeavesAnalyzerInactive() {
+        analyzer.setStatus(Analyzer.AnalyzerStatus.SETUP);
+        activationAcknowledgement.put("action", "START_SETUP");
+        activationAcknowledgement.put("receptionPurpose", "SETUP");
+        ObjectNode wrong = activationAcknowledgement.deepCopy();
+        wrong.put("configRevision", 99);
+        when(bridgeClient.applyRuntimeCommand(CONNECTION_ID, 4, "START_SETUP", "activate-fixture-004"))
+                .thenReturn(wrong);
+        assertFalse(service.startSetupReception(ANALYZER_ID, ACTOR).receiving());
+        assertEquals(Analyzer.AnalyzerStatus.SETUP, analyzer.getStatus());
+        assertFalse(analyzer.isActive());
+        verify(activationRecordService, never()).retain(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    public void failedSetupPersistenceStopsTheNewlyStartedTransport() {
+        analyzer.setStatus(Analyzer.AnalyzerStatus.SETUP);
+        connection.put("actualRuntimeState", "INACTIVE");
+        activationAcknowledgement.put("action", "START_SETUP");
+        activationAcknowledgement.put("receptionPurpose", "SETUP");
+        when(bridgeClient.applyRuntimeCommand(CONNECTION_ID, 4, "START_SETUP", "activate-fixture-004"))
+                .thenReturn(activationAcknowledgement);
+        when(activationRecordService.retain(analyzer, snapshot.mapping(), null, activationAcknowledgement, "SETUP",
+                ACTOR)).thenThrow(new IllegalStateException("audit unavailable"));
+        assertThrows(IllegalStateException.class, () -> service.startSetupReception(ANALYZER_ID, ACTOR));
+        assertEquals(Analyzer.AnalyzerStatus.SETUP, analyzer.getStatus());
+        verify(bridgeClient).applyRuntimeCommand(CONNECTION_ID, 4, "DEACTIVATE", "deactivate-fixture-004");
+    }
+
+    @Test
+    public void validationStateDoesNotHideNewReceptionAfterBridgeRestart() {
+        assertSetupPersistenceFailureRestoresReception("INACTIVE", true);
+    }
+
+    @Test
+    public void failedSetupPersistenceKeepsPreviouslyRunningReception() {
+        assertSetupPersistenceFailureRestoresReception("ACTIVE", false);
+    }
+
+    private void assertSetupPersistenceFailureRestoresReception(String priorRuntimeState, boolean expectStop) {
+        analyzer.setStatus(Analyzer.AnalyzerStatus.VALIDATION);
+        connection.put("actualRuntimeState", priorRuntimeState);
+        activationAcknowledgement.put("action", "START_SETUP");
+        activationAcknowledgement.put("receptionPurpose", "SETUP");
+        when(bridgeClient.applyRuntimeCommand(CONNECTION_ID, 4, "START_SETUP", "activate-fixture-004"))
+                .thenReturn(activationAcknowledgement);
+        when(activationRecordService.retain(analyzer, snapshot.mapping(), null, activationAcknowledgement, "SETUP",
+                ACTOR)).thenThrow(new IllegalStateException("audit unavailable"));
+        assertThrows(IllegalStateException.class, () -> service.startSetupReception(ANALYZER_ID, ACTOR));
+        assertUnchanged();
+        verify(bridgeClient, times(expectStop ? 1 : 0)).applyRuntimeCommand(CONNECTION_ID, 4, "DEACTIVATE",
+                "deactivate-fixture-004");
+    }
+
+    @Test
+    public void setupCommandCannotSucceedWithRoutineReceptionAcknowledgement() {
+        activationAcknowledgement.put("action", "START_SETUP");
+        activationAcknowledgement.put("receptionPurpose", "ROUTINE");
+        when(bridgeClient.applyRuntimeCommand(CONNECTION_ID, 4, "START_SETUP", "activate-fixture-004"))
+                .thenReturn(activationAcknowledgement);
+        assertFalse(service.startSetupReception(ANALYZER_ID, ACTOR).receiving());
+        verify(activationRecordService, never()).retain(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -128,6 +224,19 @@ public class AnalyzerActivationServiceTest {
         order.verify(activationRecordService).retain(analyzer, snapshot.mapping(), confirmation,
                 activationAcknowledgement, "ACTIVE", ACTOR);
         order.verify(analyzerService).update(analyzer);
+    }
+
+    @Test
+    public void clinicalActivationRequiresAnExplicitRoutinePurpose() {
+        when(bridgeClient.applyRuntimeCommand(CONNECTION_ID, 4, "ACTIVATE", "activate-fixture-004"))
+                .thenReturn(activationAcknowledgement);
+        for (String purpose : new String[] { "", "SETUP", "routine", "UNKNOWN" }) {
+            activationAcknowledgement.put("receptionPurpose", purpose);
+            assertFalse(service.activate(ANALYZER_ID, ACTOR).activated());
+        }
+        activationAcknowledgement.remove("receptionPurpose");
+        assertFalse(service.activate(ANALYZER_ID, ACTOR).activated());
+        verify(activationRecordService, never()).retain(any(), any(), any(), any(), any(), any());
     }
 
     @Test

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
   Button,
-  DatePicker,
   DatePickerInput,
   FileUploader,
   InlineNotification,
@@ -13,6 +12,7 @@ import {
   TextInput,
   Toggle,
 } from "@carbon/react";
+import { DatePicker } from "../../common/DatePicker";
 import { useIntl } from "react-intl";
 import {
   deleteFromOpenElisServer,

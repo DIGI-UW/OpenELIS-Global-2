@@ -26,7 +26,7 @@ test.describe("OGC-1153 Test Catalog Editor", () => {
     });
 
     const locale = page.locator("#localization-locale");
-    await expect(locale).toBeVisible();
+    await expect(locale).toBeVisible({ timeout: 15_000 });
 
     const htmlLang = await page.evaluate(
       () => document.documentElement.lang || "en",

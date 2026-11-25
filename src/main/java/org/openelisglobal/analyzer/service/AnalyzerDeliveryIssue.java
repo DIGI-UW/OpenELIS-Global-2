@@ -8,5 +8,6 @@ package org.openelisglobal.analyzer.service;
  */
 public record AnalyzerDeliveryIssue(String id, String state, String analyzerId, String analyzerName,
         String connectionId, String sourceId, String sender, String protocol, String accession, int attempts,
-        String receivedAt, String failureReason, Integer lastHttpStatus, String lastError, boolean actionable) {
+        String receivedAt, String failureReason, Integer lastHttpStatus, String lastError, boolean actionable,
+        Integer listenerPort, String transport) {
 }

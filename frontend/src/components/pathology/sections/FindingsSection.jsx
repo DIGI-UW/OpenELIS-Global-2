@@ -58,11 +58,19 @@ const FindingsSection = ({
   // Which assignment is missing, not merely that one is: a hint that names a
   // condition the case already satisfies sends the pathologist to check a
   // field that is already filled in (S-7.4).
-  const missingAssignmentKey = !caseInfo.assignedPathologistId
-    ? "pathology.locked.releaseNoPathologist"
-    : !caseInfo.assignedTechnicianId
-      ? "pathology.locked.releaseNoTechnician"
-      : null;
+  //
+  // Whether a release would be taken is the server's answer, by the rule it
+  // refuses one on, so that reason comes first: no assignment changes it. A
+  // case set to Completed without a release may still be released once.
+  const releaseBlockedKey = !caseInfo.releasable
+    ? caseInfo.status === "COMPLETED"
+      ? "pathology.locked.caseCompleted"
+      : "pathology.error.releaseBeforeReview"
+    : !caseInfo.assignedPathologistId
+      ? "pathology.locked.releaseNoPathologist"
+      : !caseInfo.assignedTechnicianId
+        ? "pathology.locked.releaseNoTechnician"
+        : null;
 
   return (
     <Stack gap={6}>
@@ -70,7 +78,9 @@ const FindingsSection = ({
         id="microscopyExam"
         disabled={readOnly}
         rows={6}
-        labelText={intl.formatMessage({ id: "pathology.label.microexam" })}
+        labelText={intl.formatMessage({
+          id: "pathology.label.microscopyExam",
+        })}
         value={caseInfo.microscopyExam ?? ""}
         onChange={(e) => updateCase({ microscopyExam: e.target.value })}
       />
@@ -225,15 +235,15 @@ const FindingsSection = ({
       <Checkbox
         labelText={intl.formatMessage({ id: "pathology.label.release" })}
         id="release"
-        disabled={readOnly || Boolean(missingAssignmentKey)}
+        disabled={readOnly || Boolean(releaseBlockedKey)}
         title={
-          missingAssignmentKey
-            ? intl.formatMessage({ id: missingAssignmentKey })
+          releaseBlockedKey
+            ? intl.formatMessage({ id: releaseBlockedKey })
             : undefined
         }
         helperText={
-          missingAssignmentKey
-            ? intl.formatMessage({ id: missingAssignmentKey })
+          releaseBlockedKey
+            ? intl.formatMessage({ id: releaseBlockedKey })
             : undefined
         }
         checked={Boolean(caseInfo.release)}

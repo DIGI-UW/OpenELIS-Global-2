@@ -200,7 +200,7 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
       ? `testId=${testId}&instrumentId=${fromAnalyzerId}`
       : `testId=${testId}`;
     getFromOpenElisServer(
-      `/rest/qc/controlLots?${query}`,
+      `/rest/qc/results/control-lots?${query}`,
       (body: ControlLot[]) => setControlLots(Array.isArray(body) ? body : []),
     );
   }, [testId, fromAnalyzerId, quantitative]);

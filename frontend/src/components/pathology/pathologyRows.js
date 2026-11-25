@@ -36,13 +36,6 @@ export function deactivatedCount(rows) {
 }
 
 /**
- * A new slide that names no block yet, which the server refuses to save.
- */
-export function needsParentBlock(slide) {
-  return isUnsavedRow(slide) && slide?.blockId == null;
-}
-
-/**
  * An unsaved row's place among the unsaved rows of its list, counted from
  * one, so "New cassette 1" is the first new one whatever was saved before it.
  */
@@ -93,7 +86,9 @@ export function parentBlockOf(slide, blocks) {
 /**
  * A slide's name on a screen that lists slides without their blocks: under its
  * block when one is recorded, since a slide designation repeats under every
- * block, and on its own otherwise.
+ * block, and on its own otherwise. The join is the default identifier
+ * separator; the server joins with the configured one, which only differs
+ * where a deployment changed pathology.identifier.separator.
  */
 export function slideOnBlockName(slide, blocks) {
   const parent = parentBlockOf(slide, blocks);
@@ -103,13 +98,195 @@ export function slideOnBlockName(slide, blocks) {
 }
 
 /**
+ * Whether a slide's label has been checked against its block. The case read
+ * carries the verified slides in `labelVerifications`, keyed by slide id, and
+ * the screen reads that map only, never a field of the row itself.
+ */
+export function isLabelVerified(slide, labelVerifications) {
+  if (isUnsavedRow(slide) || !labelVerifications) {
+    return false;
+  }
+  return Object.prototype.hasOwnProperty.call(
+    labelVerifications,
+    String(slide.id),
+  );
+}
+
+/**
+ * Whether a slide's label can be checked at all: it is saved, so its label
+ * can be printed, and it names the block it was cut from, which the scan is
+ * checked against. A slide cut before slides named their block has neither.
+ */
+export function hasVerifiableLabel(slide) {
+  return (
+    !isUnsavedRow(slide) &&
+    slide?.blockId !== null &&
+    slide?.blockId !== undefined &&
+    slide?.blockId !== ""
+  );
+}
+
+/**
+ * The saved slides in use whose labels are still unchecked, in list order,
+ * each with the name it goes by under its block. These hold the case at
+ * microtomy, as the server holds it (FR-7.5).
+ */
+export function unverifiedSlides(blocks, slides, labelVerifications) {
+  return activeRows(slides)
+    .filter(hasVerifiableLabel)
+    .filter((slide) => !isLabelVerified(slide, labelVerifications))
+    .map((slide) => ({ slide, name: slideOnBlockName(slide, blocks) }));
+}
+
+/**
+ * The row after the given one in a list of rows still to be worked, wrapping
+ * to the first, or undefined when the given one is the last left. A row no
+ * longer on the list still has a next, the first. Ids arrive as numbers or
+ * strings, so they are compared as strings.
+ */
+export function nextAfter(rows, row) {
+  const sameRow = (candidate) => String(candidate.id) === String(row?.id);
+  const at = rows.findIndex(sameRow);
+  const rest = [...rows.slice(at + 1), ...rows.slice(0, Math.max(at, 0))];
+  return rest.find((candidate) => !sameRow(candidate));
+}
+
+/**
+ * The unchecked slide after the given one, in list order and wrapping to the
+ * first, or undefined when the given one is the last left.
+ */
+export function nextUnverifiedSlide(blocks, slides, labelVerifications, slide) {
+  return nextAfter(
+    unverifiedSlides(blocks, slides, labelVerifications).map(
+      (entry) => entry.slide,
+    ),
+    slide,
+  );
+}
+
+// Whether a row belongs on a list that shows retired rows only on request.
+function shownOnList(row, showDeactivated) {
+  return showDeactivated || !isDeactivatedRow(row);
+}
+
+/**
+ * The microtomy section's groups, in list order: one per saved block in use,
+ * each with the slides cut from it, and last the slides no block on the case
+ * is recorded for (`block: null`, `legacy: true`), only when there are any.
+ * A retired block is listed whenever it still holds a slide in use, so no
+ * slide in use can drop out of sight with its block, and otherwise only when
+ * retired rows are asked for; retired slides likewise. An unsaved slide sits
+ * under the block it was added to. Ids arrive as numbers or strings, so they
+ * are compared as strings.
+ */
+export function microtomyGroups(blocks, slides, showDeactivated) {
+  const allSlides = slides ?? [];
+  const shownSlides = allSlides.filter((slide) =>
+    shownOnList(slide, showDeactivated),
+  );
+  const cutFrom = (block) =>
+    shownSlides.filter((slide) => String(slide.blockId) === String(block.id));
+  const holdsSlideInUse = (block) =>
+    allSlides.some(
+      (slide) =>
+        !isDeactivatedRow(slide) && String(slide.blockId) === String(block.id),
+    );
+
+  const groups = (blocks ?? [])
+    .filter((block) => !isUnsavedRow(block))
+    .filter(
+      (block) =>
+        !isDeactivatedRow(block) || showDeactivated || holdsSlideInUse(block),
+    )
+    .map((block) => ({
+      block,
+      slides: cutFrom(block),
+      retired: isDeactivatedRow(block),
+      legacy: false,
+    }));
+
+  const withoutBlock = shownSlides.filter(
+    (slide) => parentBlockOf(slide, blocks) === undefined,
+  );
+  if (withoutBlock.length > 0) {
+    groups.push({
+      block: null,
+      slides: withoutBlock,
+      retired: false,
+      legacy: true,
+    });
+  }
+  return groups;
+}
+
+/**
  * A block has been embedded, so it is a verified object; a cassette is still
  * waiting for embedding.
  */
 export function cassetteStateBadge(block) {
-  return block?.cassetteState === "BLOCK"
+  return isEmbeddedRow(block)
     ? { kind: "verified", textKey: "pathology.label.block" }
     : { kind: "pending", textKey: "pathology.label.cassette" };
+}
+
+/**
+ * A cassette that has been embedded is a block. A row with no state is a
+ * cassette, as the server reads it.
+ */
+export function isEmbeddedRow(block) {
+  return block?.cassetteState === "BLOCK";
+}
+
+// The saved cassettes in use that are not blocks yet, in list order.
+function outstandingRows(blocks) {
+  return countedRows(blocks).filter((block) => !isEmbeddedRow(block));
+}
+
+/**
+ * How far embedding has got on a case: the saved cassettes in use, how many
+ * of them are blocks, the ones still outstanding, named in list order, and
+ * whether there is nothing left to embed (FR-6.3). Derived on the screen from
+ * the rows every time, and never stored anywhere (FR-9.6).
+ */
+export function embeddingSummary(blocks) {
+  const total = countedRows(blocks).length;
+  const outstanding = outstandingRows(blocks).map(blockIdentifier);
+
+  return {
+    embedded: total - outstanding.length,
+    total,
+    outstanding,
+    complete: total > 0 && outstanding.length === 0,
+  };
+}
+
+/**
+ * The saved cassette still waiting after the given one, in list order and
+ * wrapping to the first, or undefined when the given one is the last left.
+ * Ids arrive as numbers or strings, so they are compared as strings.
+ */
+export function nextOutstandingCassette(blocks, block) {
+  return nextAfter(outstandingRows(blocks), block);
+}
+
+/**
+ * The entries a dictionary picker on a row offers: the served ones, plus the
+ * one the row already holds when it is not among them. The served list holds
+ * active entries only, so without that entry a tissue type or a stain retired
+ * after it was recorded would leave the row looking as if none had been.
+ * `names` maps a held id to its name, as the case read carries it.
+ */
+export function heldOrServedItems(served, heldId, names) {
+  const items = served ?? [];
+  if (
+    heldId === null ||
+    heldId === undefined ||
+    heldId === "" ||
+    items.some((item) => String(item.id) === String(heldId))
+  ) {
+    return items;
+  }
+  return [...items, { id: heldId, value: names?.[heldId] ?? String(heldId) }];
 }
 
 /**
@@ -224,10 +401,14 @@ export function rowListEditors(listKey, updateCase) {
         ),
       })),
     // No id key at all: the server reads a missing id as a new row and names
-    // it.
-    addRow: (row) =>
+    // it. Answers the new row's client key, so the caller can find the row
+    // once it is on the page.
+    addRow: (row) => {
+      const added = withClientKey(row);
       updateCase((prev) => ({
-        [listKey]: [...(prev[listKey] ?? []), withClientKey(row)],
-      })),
+        [listKey]: [...(prev[listKey] ?? []), added],
+      }));
+      return added.clientKey;
+    },
   };
 }
