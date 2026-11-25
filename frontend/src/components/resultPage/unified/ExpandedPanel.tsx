@@ -131,6 +131,8 @@ interface ExpandedPanelProps {
   row: PanelRow;
   domain: ResultsDomain;
   editable: boolean;
+  /** Whether attachments can be uploaded/deleted (false for finalized rows). */
+  attachmentsEditable?: boolean;
   editing: boolean;
   /**
    * OGC-1200: the row is resulted from a run (its value waits there, or the
@@ -214,6 +216,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   row,
   domain,
   editable,
+  attachmentsEditable,
   editing,
   inRun = false,
   testSectionId,
@@ -960,8 +963,12 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           analysisId={row.analysisId as string | undefined}
           componentId={row.testResultComponentId as string | undefined}
           // Non-finalized saved rows still allow managing attachments without
-          // entering result edit mode; finalized/released rows ("6") are read-only.
-          editable={String(row.analysisStatusId || "") !== "6"}
+          // entering result edit mode; finalized/released rows are read-only.
+          editable={
+            attachmentsEditable !== undefined
+              ? attachmentsEditable
+              : String(row.analysisStatusId || "") !== "6"
+          }
         />
 
         <HistorySection

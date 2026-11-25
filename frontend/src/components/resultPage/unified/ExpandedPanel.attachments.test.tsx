@@ -32,13 +32,17 @@ const baseRow = {
   resultType: "D",
 };
 
-const renderPanel = (row: Record<string, unknown>) =>
+const renderPanel = (
+  row: Record<string, unknown>,
+  attachmentsEditable?: boolean,
+) =>
   render(
     <IntlProvider locale="en" messages={messages}>
       <ExpandedPanel
         row={row}
         domain="CLINICAL"
         editable={false}
+        attachmentsEditable={attachmentsEditable}
         editing={false}
         methods={[]}
         analyzers={[]}
@@ -105,5 +109,12 @@ describe("ExpandedPanel attachment deletion gating", () => {
     expect(screen.getByText("stain.png")).toBeInTheDocument();
     expect(screen.getByTestId("attachment-delete-1")).toBeInTheDocument();
     expect(screen.getByTestId("attachment-upload")).toBeInTheDocument();
+  });
+
+  it("respects attachmentsEditable=false for custom finalized status IDs", () => {
+    renderPanel({ ...baseRow, analysisStatusId: "99" }, false);
+    expect(screen.getByText("stain.png")).toBeInTheDocument();
+    expect(screen.queryByTestId("attachment-delete-1")).toBeNull();
+    expect(screen.queryByTestId("attachment-upload")).toBeNull();
   });
 });
