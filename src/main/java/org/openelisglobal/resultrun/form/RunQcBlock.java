@@ -9,11 +9,19 @@ import java.util.List;
 public record RunQcBlock(String overall, List<TestLine> tests) {
 
     /**
-     * One test the run covers, with what was decided for it when its control failed
-     * (FR-C5) and the non-conformity that decision filed.
+     * One test the run covers, with what was decided for it when it was held
+     * (FR-C5) and the non-conformity that decision filed; the earlier runs this run
+     * is confirmed or suggested as the retest of, and the later runs that
+     * superseded it (FR-A3).
+     *
+     * @param holdCause   why the test's rows are held now, null when they are not
+     * @param whenMissing what the test's policy does when its required control is
+     *                    missing (WARN or HOLD), null when no control is required
+     *                    (FR-H1)
      */
     public record TestLine(String testId, String testName, String verdict, List<ControlLine> controls, String decision,
-            String nceNumber) {
+            String nceNumber, List<RunLink> retestOf, List<RunLink> retestSuggestions, List<RunLink> supersededBy,
+            RunHoldCause holdCause, String whenMissing) {
     }
 
     /**

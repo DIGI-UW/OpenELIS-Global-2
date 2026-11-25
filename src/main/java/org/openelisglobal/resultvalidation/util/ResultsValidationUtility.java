@@ -26,8 +26,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.alert.service.AlertService;
 import org.openelisglobal.alert.valueholder.Alert;
@@ -86,6 +88,8 @@ import org.openelisglobal.result.valueholder.ResultSignature;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimit.valueholder.ResultLimitSelection;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.openelisglobal.resultrun.form.RunQcFact;
+import org.openelisglobal.resultrun.service.RunQcService;
 import org.openelisglobal.resultvalidation.action.util.ResultValidationItem;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
 import org.openelisglobal.resultvalidation.bean.QcFailureItem;
@@ -102,6 +106,8 @@ import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
+import org.openelisglobal.validationpolicy.service.AnalysisAutoReleaseService;
+import org.openelisglobal.validationpolicy.valueholder.AnalysisAutoRelease;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -873,8 +879,37 @@ public class ResultsValidationUtility {
             }
         }
 
+        markRunQc(analysisResultList);
         markClearLane(analysisResultList);
         return analysisResultList;
+    }
+
+    /**
+     * OGC-1200 FR-G3: the verdict of the run a result came from reaches the row's
+     * quality-control slot, so a recorded failure, one accepted despite QC
+     * included, keeps the row out of Clear (clearance FR-1), and a passing run
+     * reads as passed without clearing the row by itself (D-056). No control and
+     * Not required are no fact and leave the slot as it was. A lookup failure is
+     * not swallowed: a row is never assumed clear.
+     */
+    private void markRunQc(List<AnalysisItem> rows) {
+        if (rows.isEmpty()) {
+            return;
+        }
+        Map<String, RunQcFact> facts = SpringContext.getBean(RunQcService.class)
+                .qcOfAnalyses(rows.stream().map(AnalysisItem::getAnalysisId).filter(Objects::nonNull).toList());
+        for (AnalysisItem row : rows) {
+            RunQcFact fact = facts.get(row.getAnalysisId());
+            if (fact == null) {
+                continue;
+            }
+            row.setRunQc(fact);
+            if (fact.failed()) {
+                row.setQcStatus(ValidationSignals.QC_FAIL);
+            } else if (fact.passed() && !ValidationSignals.QC_FAIL.equals(row.getQcStatus())) {
+                row.setQcStatus(ValidationSignals.QC_PASS);
+            }
+        }
     }
 
     /**
@@ -1256,21 +1291,38 @@ public class ResultsValidationUtility {
 
     /**
      * OGC-1030 (FR-A4) — the sample's analyses that were released at result entry
-     * without a validator: Finalized, with no release date and no validator
-     * e-signature on record. Every validator release (row, bulk "Release all
-     * clear", legacy validation pages) stamps {@code released_date}, and the bulk
-     * release signs once for the whole set, so a missing signature alone does not
-     * mean no validator (OGC-1361). Served read-only behind the queue's "Include
+     * without a validator, served read-only behind the queue's "Include
      * auto-validated" toggle; never part of the queue itself, never releasable.
+     *
+     * <p>
+     * OGC-1017: an automatic release is recorded when it happens, with who saved
+     * the result and the rule that released it. A recorded analysis is shown while
+     * no validator released it after that record. An analysis released before the
+     * records existed falls back to OGC-1030's reading: Finalized with no release
+     * date and no validator e-signature. Every validator release stamps
+     * {@code released_date}, and the bulk release signs once for the whole set, so
+     * a missing signature alone does not mean no validator (OGC-1361).
      */
     public List<AnalysisItem> getAutoValidatedAnalysisBySample(Sample sample) {
         String finalizedId = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
-        List<Analysis> finalized = new ArrayList<>(
-                analysisService.getAnalysesBySampleIdAndStatusId(sample.getId(), Set.of(finalizedId)));
+        List<Analysis> finalized = excludeQcAnalyses(
+                new ArrayList<>(analysisService.getAnalysesBySampleIdAndStatusId(sample.getId(), Set.of(finalizedId))));
+        AnalysisAutoReleaseService autoReleases = SpringContext.getBean(AnalysisAutoReleaseService.class);
+        Map<String, AnalysisAutoRelease> recorded = autoReleases
+                .latestOf(finalized.stream().map(Analysis::getId).toList());
         org.openelisglobal.esig.service.ElectronicSignatureService signatures = SpringContext
                 .getBean(org.openelisglobal.esig.service.ElectronicSignatureService.class);
         List<Analysis> autoValidated = new ArrayList<>();
-        for (Analysis analysis : excludeQcAnalyses(finalized)) {
+        Map<String, AnalysisAutoRelease> current = new HashMap<>();
+        for (Analysis analysis : finalized) {
+            AnalysisAutoRelease release = recorded.get(analysis.getId());
+            if (release != null) {
+                if (autoReleases.isCurrent(release, analysis)) {
+                    autoValidated.add(analysis);
+                    current.put(analysis.getId(), release);
+                }
+                continue;
+            }
             if (analysis.getReleasedDate() != null) {
                 continue;
             }
@@ -1287,10 +1339,20 @@ public class ResultsValidationUtility {
         }
         List<AnalysisItem> rows = testResultListToAnalysisItemList(
                 getGroupedTestsForAnalysisList(autoValidated, !StatusRules.useRecordStatusForValidation()));
+        SystemUserService systemUsers = SpringContext.getBean(SystemUserService.class);
         for (AnalysisItem row : rows) {
             row.setAutoValidated(true);
             row.setReadOnly(true);
             row.setClear(false);
+            AnalysisAutoRelease release = current.get(row.getAnalysisId());
+            if (release != null) {
+                row.setAutoReleasedAt(DateUtil
+                        .convertTimestampToStringDateAndTime(Timestamp.from(release.getReleasedAt().toInstant())));
+                SystemUser releasedBy = release.getReleasedBy() == null ? null
+                        : systemUsers.get(String.valueOf(release.getReleasedBy()));
+                row.setAutoReleasedBy(releasedBy == null ? "" : StringUtils.trim(releasedBy.getNameForDisplay()));
+                row.setAutoReleaseRule(autoReleases.describe(release));
+            }
         }
         sortByAccessionNumberAndOrder(rows);
         return rows;

@@ -781,7 +781,7 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
                     .andExpect(jsonPath("$.testResult[0].analysisNotes[0].text").value("panel note"))
                     .andExpect(jsonPath("$.testResult[0].analysisNotes[0].noteType").value("I"))
                     .andExpect(jsonPath("$.testResult[0].analysisNotes[0].subject").value("Result Note"))
-                    .andExpect(jsonPath("$.testResult[0].analysisNotes[0].author").value("Doe,John"));
+                    .andExpect(jsonPath("$.testResult[0].analysisNotes[0].author").value("John Doe"));
         } finally {
             reset(displayList);
         }

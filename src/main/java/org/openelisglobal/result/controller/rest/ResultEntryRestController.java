@@ -357,16 +357,17 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         Optional<WaitingRun> waiting = resultRunService.waitingFor(analysis, item.getTestResultComponentId());
         Long acceptedRun = runValue.map(AnalyzerResults::getRunId).orElse(null);
         if (waiting.isPresent() && !waiting.get().runId().equals(acceptedRun)) {
-            body.put("error", MessageUtil.getMessage(waiting.get().held() ? "run.refusal.held" : "run.refusal.waiting",
-                    new String[] { waiting.get().label() }));
+            body.put("error",
+                    MessageUtil.getMessage(waiting.get().refusalKey(), new String[] { waiting.get().label() }));
             body.put("waitingRun", waiting.get());
             return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
         }
 
         Optional<Long> holdingRun = holdingRun(acceptedRun, analysis);
         if (holdingRun.isPresent()) {
-            WaitingRun held = resultRunService.heldRun(holdingRun.get());
-            body.put("error", MessageUtil.getMessage("run.refusal.held", new String[] { held.label() }));
+            WaitingRun held = resultRunService.heldRun(holdingRun.get(),
+                    analysis.getTest() == null ? null : analysis.getTest().getId());
+            body.put("error", MessageUtil.getMessage(held.refusalKey(), new String[] { held.label() }));
             body.put("waitingRun", held);
             return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
         }
@@ -876,7 +877,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         try {
             SystemUser user = systemUserService.getUserById(sysUserId);
             if (user != null) {
-                return user.getDisplayName();
+                return StringUtils.trim(user.getNameForDisplay());
             }
         } catch (RuntimeException e) {
             LogEvent.logError(e);

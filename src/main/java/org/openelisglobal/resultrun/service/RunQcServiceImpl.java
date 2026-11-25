@@ -32,11 +32,17 @@ import org.openelisglobal.qc.valueholder.RunVerdictSource;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultrun.dao.ResultRunDAO;
 import org.openelisglobal.resultrun.dao.ResultRunEventDAO;
+import org.openelisglobal.resultrun.dao.ResultRunRetestDAO;
+import org.openelisglobal.resultrun.dao.ResultRunRetestDAO.RetestedSample;
 import org.openelisglobal.resultrun.dao.ResultRunTestDispositionDAO;
+import org.openelisglobal.resultrun.form.RunHoldCause;
+import org.openelisglobal.resultrun.form.RunLink;
 import org.openelisglobal.resultrun.form.RunQcBlock;
+import org.openelisglobal.resultrun.form.RunQcFact;
 import org.openelisglobal.resultrun.form.RunTestVerdict;
 import org.openelisglobal.resultrun.valueholder.ResultRun;
 import org.openelisglobal.resultrun.valueholder.ResultRunEvent;
+import org.openelisglobal.resultrun.valueholder.ResultRunRetest;
 import org.openelisglobal.resultrun.valueholder.ResultRunState;
 import org.openelisglobal.resultrun.valueholder.ResultRunTestDisposition;
 import org.openelisglobal.resultrun.valueholder.RunTestAction;
@@ -45,7 +51,9 @@ import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.testcatalog.service.TestQcPolicyService;
 import org.openelisglobal.testcatalog.service.TestQcTargetService;
+import org.openelisglobal.testcatalog.valueholder.TestQcPolicy;
 import org.openelisglobal.testcatalog.valueholder.TestQcTarget;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -89,6 +97,11 @@ public class RunQcServiceImpl implements RunQcService {
     @Lazy
     @Autowired
     private NCEventService ncEventService;
+    @Autowired
+    private ResultRunRetestDAO retestDAO;
+    @Lazy
+    @Autowired
+    private TestQcPolicyService testQcPolicyService;
 
     @Override
     @Transactional(readOnly = true)
@@ -100,16 +113,26 @@ public class RunQcServiceImpl implements RunQcService {
                 .map(AnalyzerResults::getTestId).forEach(tests::add);
         resultRunDAO.getTestIdsOfResults(runId).stream().filter(Objects::nonNull).forEach(tests::add);
         controls.stream().map(QCResult::getTestId).filter(Objects::nonNull).forEach(tests::add);
+        dispositionDAO.getDispositions(runId).stream().map(ResultRunTestDisposition::getTestId).filter(Objects::nonNull)
+                .forEach(tests::add);
+        Map<String, TestQcPolicy> policies = testQcPolicyService.policiesOf(tests);
         Map<String, RunTestVerdict> verdicts = new LinkedHashMap<>();
         for (String testId : tests) {
-            verdicts.put(testId, verdictOf(controls.stream().filter(c -> testId.equals(c.getTestId())).toList()));
+            verdicts.put(testId, verdictOf(controls.stream().filter(c -> testId.equals(c.getTestId())).toList(),
+                    policies.get(testId)));
         }
         return verdicts;
     }
 
-    static RunTestVerdict verdictOf(List<QCResult> covering) {
+    /**
+     * FR-C3, FR-H1, FR-H2: Fail if a covering control failed, Pass if every one
+     * passed (a control the analyzer sent counts as one recorded), and with none
+     * recorded, No control when the test requires one per run, else Not required.
+     */
+    static RunTestVerdict verdictOf(List<QCResult> covering, TestQcPolicy policy) {
         if (covering.isEmpty()) {
-            return RunTestVerdict.NOT_REQUIRED;
+            return policy != null && policy.isControlRequired() ? RunTestVerdict.NO_CONTROL
+                    : RunTestVerdict.NOT_REQUIRED;
         }
         return covering.stream().anyMatch(control -> control.getRunVerdict() == RunControlVerdict.FAIL)
                 ? RunTestVerdict.FAIL
@@ -119,9 +142,45 @@ public class RunQcServiceImpl implements RunQcService {
     @Override
     @Transactional(readOnly = true)
     public Set<String> heldTestIds(Long runId) {
-        Set<String> held = failedTestIds(runId);
-        dispositionDAO.getDispositions(runId).forEach(decision -> held.remove(decision.getTestId()));
-        return held;
+        return new LinkedHashSet<>(holdCauses(runId).keySet());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, RunHoldCause> holdCauses(Long runId) {
+        Map<String, RunHoldCause> causes = holdCausesOf(runId);
+        dispositionDAO.getDispositions(runId).forEach(decision -> causes.remove(decision.getTestId()));
+        return causes;
+    }
+
+    /**
+     * Every test the run holds or held, decided or not: a failed control holds its
+     * test (FR-C4), and so does a required control that is missing under a Hold
+     * policy, while the run is open or held (FR-A3, FR-C7). A run that is complete
+     * is never held by a policy changed after it.
+     */
+    private Map<String, RunHoldCause> holdCausesOf(Long runId) {
+        Map<String, RunHoldCause> causes = new LinkedHashMap<>();
+        failedTestIds(runId).forEach(testId -> causes.put(testId, RunHoldCause.QC_FAILED));
+        missingHeldTestIds(runId).forEach(testId -> causes.putIfAbsent(testId, RunHoldCause.QC_MISSING));
+        return causes;
+    }
+
+    private Set<String> missingHeldTestIds(Long runId) {
+        ResultRun run = resultRunDAO.get(runId).orElse(null);
+        if (run == null || run.getState() == null || !run.getState().isActive()) {
+            return Set.of();
+        }
+        Set<String> missing = testVerdicts(runId).entrySet().stream()
+                .filter(entry -> entry.getValue() == RunTestVerdict.NO_CONTROL).map(Map.Entry::getKey)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (missing.isEmpty()) {
+            return Set.of();
+        }
+        Map<String, TestQcPolicy> policies = testQcPolicyService.policiesOf(missing);
+        return missing.stream()
+                .filter(testId -> policies.get(testId) != null && policies.get(testId).holdsWhenControlMissing())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     private Set<String> failedTestIds(Long runId) {
@@ -135,7 +194,7 @@ public class RunQcServiceImpl implements RunQcService {
      * but one accepted despite the failure.
      */
     private Set<String> blockingTestIds(Long runId) {
-        Set<String> blocking = failedTestIds(runId);
+        Set<String> blocking = new LinkedHashSet<>(holdCausesOf(runId).keySet());
         dispositionDAO.getDispositions(runId).stream()
                 .filter(decision -> decision.getAction() == RunTestAction.ACCEPT_DESPITE)
                 .forEach(decision -> blocking.remove(decision.getTestId()));
@@ -146,6 +205,54 @@ public class RunQcServiceImpl implements RunQcService {
     @Transactional(readOnly = true)
     public Map<String, Long> holdingRuns(Collection<String> analysisIds) {
         return runsHolding(analysisIds, this::blockingTestIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, RunQcFact> qcOfAnalyses(Collection<String> analysisIds) {
+        List<String> ids = analysisIds == null ? List.of()
+                : analysisIds.stream().filter(StringUtils::isNumeric).distinct().toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, Object[]> latestRunOfAnalysis = new HashMap<>();
+        for (Object[] row : resultRunDAO.getRunsOfAnalyses(ids)) {
+            String analysisId = String.valueOf(row[0]);
+            Object[] known = latestRunOfAnalysis.get(analysisId);
+            if (known == null || ((Number) row[1]).longValue() > ((Number) known[1]).longValue()) {
+                latestRunOfAnalysis.put(analysisId, row);
+            }
+        }
+        Map<Long, Map<String, RunQcFact>> factsByRun = new HashMap<>();
+        Map<String, RunQcFact> facts = new HashMap<>();
+        latestRunOfAnalysis.forEach((analysisId, row) -> {
+            Long runId = ((Number) row[1]).longValue();
+            RunQcFact fact = factsByRun.computeIfAbsent(runId, this::factsOfRun).get(String.valueOf(row[2]));
+            if (fact != null) {
+                facts.put(analysisId, fact);
+            }
+        });
+        return facts;
+    }
+
+    private Map<String, RunQcFact> factsOfRun(Long runId) {
+        Map<String, RunTestVerdict> verdicts = testVerdicts(runId);
+        List<QCResult> controls = controlsOf(runId);
+        Map<String, QCControlLot> lots = new HashMap<>();
+        Map<String, ResultRunTestDisposition> decisions = new HashMap<>();
+        dispositionDAO.getDispositions(runId).forEach(decision -> decisions.put(decision.getTestId(), decision));
+        Map<String, RunQcFact> facts = new HashMap<>();
+        verdicts.forEach((testId, verdict) -> {
+            ResultRunTestDisposition decision = decisions.get(testId);
+            facts.put(testId,
+                    new RunQcFact(runId, ResultRun.labelOf(runId), verdict.name(),
+                            decision == null ? null : decision.getAction().name(),
+                            decision == null ? null : decision.getReason(),
+                            decision == null || decision.getNceId() == null ? null : nceNumberOf(decision.getNceId()),
+                            controls.stream().filter(control -> testId.equals(control.getTestId()))
+                                    .map(control -> controlLine(control, lots)).toList()));
+        });
+        return facts;
     }
 
     @Override
@@ -273,7 +380,8 @@ public class RunQcServiceImpl implements RunQcService {
         if (run == null) {
             return;
         }
-        Set<String> held = heldTestIds(runId);
+        Map<String, RunHoldCause> causes = holdCauses(runId);
+        Set<String> held = causes.keySet();
         Set<String> wasHeld = new HashSet<>();
         for (ResultRunEvent event : resultRunEventDAO.getEvents(runId)) {
             if (ResultRunEvent.TEST_HELD.equals(event.getEvent())) {
@@ -282,8 +390,8 @@ public class RunQcServiceImpl implements RunQcService {
                 wasHeld.remove(event.getTestId());
             }
         }
-        held.stream().filter(testId -> !wasHeld.contains(testId))
-                .forEach(testId -> log(runId, ResultRunEvent.TEST_HELD, testId, "qcFailed", sysUserId));
+        held.stream().filter(testId -> !wasHeld.contains(testId)).forEach(testId -> log(runId, ResultRunEvent.TEST_HELD,
+                testId, causes.get(testId) == RunHoldCause.QC_MISSING ? "qcMissing" : "qcFailed", sysUserId));
         wasHeld.stream().filter(testId -> !held.contains(testId))
                 .forEach(testId -> log(runId, ResultRunEvent.TEST_RELEASED, testId, null, sysUserId));
         if (run.getState() == null || !run.getState().isActive()) {
@@ -294,6 +402,19 @@ public class RunQcServiceImpl implements RunQcService {
             run.setState(state);
             run.setSysUserId(sysUserId);
             resultRunDAO.update(run);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void refreshActiveRunsOfTest(String testId, String sysUserId) {
+        if (StringUtils.isBlank(testId)) {
+            return;
+        }
+        for (ResultRun run : resultRunDAO.getActiveRuns()) {
+            if (testVerdicts(run.getId()).containsKey(testId)) {
+                refreshState(run.getId(), sysUserId);
+            }
         }
     }
 
@@ -323,6 +444,14 @@ public class RunQcServiceImpl implements RunQcService {
         Map<String, QCControlLot> lots = new HashMap<>();
         Map<String, ResultRunTestDisposition> decisions = new HashMap<>();
         dispositionDAO.getDispositions(runId).forEach(decision -> decisions.put(decision.getTestId(), decision));
+        Map<String, RunHoldCause> everHeld = holdCausesOf(runId);
+        decisions.keySet().forEach(testId -> everHeld.putIfAbsent(testId,
+                verdicts.get(testId) == RunTestVerdict.FAIL ? RunHoldCause.QC_FAILED : RunHoldCause.QC_MISSING));
+        Map<String, RunHoldCause> held = new LinkedHashMap<>(everHeld);
+        decisions.keySet().forEach(held::remove);
+        Map<String, TestQcPolicy> policies = testQcPolicyService.policiesOf(verdicts.keySet());
+        Map<String, List<RunLink>> retestOf = retestOf(runId);
+        Map<String, List<RunLink>> supersededBy = supersededBy(runId);
         List<RunQcBlock.TestLine> lines = verdicts.entrySet().stream().map(entry -> {
             ResultRunTestDisposition decision = decisions.get(entry.getKey());
             return new RunQcBlock.TestLine(entry.getKey(), TestServiceImpl.getUserLocalizedTestName(entry.getKey()),
@@ -330,9 +459,19 @@ public class RunQcServiceImpl implements RunQcService {
                     controls.stream().filter(control -> entry.getKey().equals(control.getTestId()))
                             .map(control -> controlLine(control, lots)).toList(),
                     decision == null ? null : decision.getAction().name(),
-                    decision == null || decision.getNceId() == null ? null : nceNumberOf(decision.getNceId()));
+                    decision == null || decision.getNceId() == null ? null : nceNumberOf(decision.getNceId()),
+                    retestOf.getOrDefault(entry.getKey(), List.of()),
+                    offersRetestLinks(entry.getKey(), held.keySet(), decision)
+                            ? retestSuggestions(runId, entry.getKey())
+                            : List.of(),
+                    supersededBy.getOrDefault(entry.getKey(), List.of()), held.get(entry.getKey()),
+                    whenMissingOf(policies.get(entry.getKey())));
         }).toList();
-        return new RunQcBlock(overallOf(verdicts.values(), decisions.keySet()), lines);
+        return new RunQcBlock(overallOf(verdicts.values(), held.keySet(), everHeld), lines);
+    }
+
+    private static String whenMissingOf(TestQcPolicy policy) {
+        return policy == null || !policy.isControlRequired() ? null : policy.getControlWhenMissing().name();
     }
 
     private String nceNumberOf(Integer nceId) {
@@ -340,21 +479,23 @@ public class RunQcServiceImpl implements RunQcService {
         return nce == null ? null : nce.getNceNumber();
     }
 
-    static String overallOf(Collection<RunTestVerdict> verdicts) {
-        return overallOf(verdicts, Set.of());
-    }
-
     /**
-     * Held while a failed test is undecided; Decided once every failed test has a
-     * decision, so a failure stays visible after it is dealt with.
+     * Held while a held test is undecided; Decided once every held test has a
+     * decision, so a failure, or a missing control, stays visible after it is dealt
+     * with; No control when a test lacks a required control and its policy only
+     * warns (FR-E2).
      */
-    static String overallOf(Collection<RunTestVerdict> verdicts, Set<String> decidedTests) {
-        long failed = verdicts.stream().filter(verdict -> verdict == RunTestVerdict.FAIL).count();
-        if (failed > decidedTests.size()) {
+    static String overallOf(Collection<RunTestVerdict> verdicts, Set<String> heldUndecided,
+            Map<String, RunHoldCause> everHeld) {
+        if (!heldUndecided.isEmpty()) {
             return "HELD";
         }
-        if (failed > 0) {
-            return "DECIDED";
+        if (!everHeld.isEmpty()) {
+            return everHeld.values().stream().allMatch(cause -> cause == RunHoldCause.QC_MISSING) ? "DECIDED_MISSING"
+                    : "DECIDED";
+        }
+        if (verdicts.contains(RunTestVerdict.NO_CONTROL)) {
+            return RunTestVerdict.NO_CONTROL.name();
         }
         if (verdicts.contains(RunTestVerdict.PASS)) {
             return RunTestVerdict.PASS.name();
@@ -386,7 +527,7 @@ public class RunQcServiceImpl implements RunQcService {
             return null;
         }
         SystemUser user = systemUserService.getUserById(String.valueOf(userId));
-        return user == null ? null : user.getDisplayName();
+        return user == null ? null : StringUtils.trim(user.getNameForDisplay());
     }
 
     @Override
@@ -448,15 +589,153 @@ public class RunQcServiceImpl implements RunQcService {
             decision.setNceId(fileNce(run, testId, action, decision, analysisIds, sysUserId).getId());
             dispositionDAO.update(decision);
         }
+        if (action == RunTestAction.RETEST) {
+            rememberSetAside(decision, analysisIds, sysUserId);
+        }
         if (action != RunTestAction.ACCEPT_DESPITE) {
             resultRunDAO.getStagedRows(List.of(runId)).stream()
-                    .filter(row -> !row.getIsControl() && testId.equals(row.getTestId()))
-                    .forEach(analyzerResultsService::delete);
+                    .filter(row -> !row.getIsControl() && testId.equals(row.getTestId())).forEach(row -> {
+                        releaseLaterReadingsOf(row, sysUserId);
+                        analyzerResultsService.delete(row);
+                    });
         }
         log(runId, eventOf(action), testId, decision.getNceId() == null ? null : "nce " + decision.getNceId(),
                 sysUserId);
         refreshState(runId, sysUserId);
         return decision;
+    }
+
+    /**
+     * A reading of the same sample and test that arrived after this one was flagged
+     * as its duplicate; with this one set aside it is a reading of its own again,
+     * open to review and acceptance.
+     */
+    private void releaseLaterReadingsOf(AnalyzerResults row, String sysUserId) {
+        for (AnalyzerResults later : analyzerResultsService.getAllMatching("duplicateAnalyzerResultId", row.getId())) {
+            if (later.getId().equals(row.getId())) {
+                continue;
+            }
+            later.setDuplicateAnalyzerResultId(null);
+            later.setReadOnly(false);
+            later.setSysUserId(sysUserId);
+            analyzerResultsService.update(later);
+        }
+    }
+
+    private void rememberSetAside(ResultRunTestDisposition decision, List<String> analysisIds, String sysUserId) {
+        for (String analysisId : analysisIds) {
+            ResultRunRetest retest = new ResultRunRetest();
+            retest.setDispositionId(decision.getId());
+            retest.setAnalysisId(analysisId);
+            retest.setSysUserId(sysUserId);
+            retestDAO.insert(retest);
+        }
+    }
+
+    /**
+     * A run may be the retest of an earlier run's test unless its own control holds
+     * that test undecided or it set the test aside itself.
+     */
+    private static boolean offersRetestLinks(String testId, Set<String> held, ResultRunTestDisposition decision) {
+        return !held.contains(testId) && (decision == null || decision.getAction() == RunTestAction.ACCEPT_DESPITE);
+    }
+
+    private List<RunLink> retestSuggestions(Long runId, String testId) {
+        Map<Long, Long> unlinkedByRun = retestDAO
+                .findUnlinked(testId, resultRunDAO.getAnalysisIdsOfRunTest(runId, testId), runId).stream()
+                .collect(Collectors.groupingBy(RetestedSample::runId, java.util.TreeMap::new, Collectors.counting()));
+        return unlinkedByRun.entrySet().stream().map(entry -> new RunLink(entry.getKey(),
+                ResultRun.labelOf(entry.getKey()), entry.getValue().intValue(), setAsideCount(entry.getKey(), testId)))
+                .toList();
+    }
+
+    private int setAsideCount(Long runId, String testId) {
+        return (int) retestDAO.findSetAsideBy(runId).stream().filter(sample -> testId.equals(sample.testId())).count();
+    }
+
+    private Map<String, List<RunLink>> retestOf(Long runId) {
+        Map<String, Map<Long, Long>> byTest = retestDAO.findRetestedIn(runId).stream()
+                .collect(Collectors.groupingBy(RetestedSample::testId,
+                        Collectors.groupingBy(RetestedSample::runId, java.util.TreeMap::new, Collectors.counting())));
+        Map<String, List<RunLink>> links = new HashMap<>();
+        byTest.forEach(
+                (testId, counts) -> links
+                        .put(testId,
+                                counts.entrySet().stream()
+                                        .map(entry -> new RunLink(entry.getKey(), ResultRun.labelOf(entry.getKey()),
+                                                entry.getValue().intValue(), setAsideCount(entry.getKey(), testId)))
+                                        .toList()));
+        return links;
+    }
+
+    private Map<String, List<RunLink>> supersededBy(Long runId) {
+        Map<String, List<RetestedSample>> byTest = retestDAO.findSetAsideBy(runId).stream()
+                .collect(Collectors.groupingBy(RetestedSample::testId));
+        Map<String, List<RunLink>> links = new HashMap<>();
+        byTest.forEach((testId, samples) -> {
+            Map<Long, Long> byRetestRun = samples.stream().filter(sample -> sample.retestedInRunId() != null)
+                    .collect(Collectors.groupingBy(RetestedSample::retestedInRunId, java.util.TreeMap::new,
+                            Collectors.counting()));
+            if (!byRetestRun.isEmpty()) {
+                links.put(testId,
+                        byRetestRun
+                                .entrySet().stream().map(entry -> new RunLink(entry.getKey(),
+                                        ResultRun.labelOf(entry.getKey()), entry.getValue().intValue(), samples.size()))
+                                .toList());
+            }
+        });
+        return links;
+    }
+
+    @Override
+    @Transactional
+    public void confirmRetest(Long runId, String testId, Long retestOfRunId, String sysUserId) {
+        ResultRunTestDisposition decision = testId == null ? null
+                : dispositionDAO.getDispositions(runId).stream().filter(d -> testId.equals(d.getTestId())).findFirst()
+                        .orElse(null);
+        List<RetestedSample> unlinked = testId == null || retestOfRunId == null
+                || !offersRetestLinks(testId, heldTestIds(runId), decision) ? List.of()
+                        : retestDAO.findUnlinked(testId, resultRunDAO.getAnalysisIdsOfRunTest(runId, testId), runId)
+                                .stream().filter(sample -> retestOfRunId.equals(sample.runId())).toList();
+        int linked = unlinked.isEmpty() ? 0
+                : retestDAO.link(unlinked.get(0).dispositionId(),
+                        unlinked.stream().map(RetestedSample::analysisId).toList(), runId, sysUserId,
+                        new Timestamp(System.currentTimeMillis()));
+        if (linked == 0) {
+            throw new IllegalArgumentException(MessageUtil.getMessage("run.refusal.noRetestToLink"));
+        }
+        log(retestOfRunId, ResultRunEvent.SUPERSEDED, testId,
+                "by " + ResultRun.labelOf(runId) + ": " + linked + " of " + setAsideCount(retestOfRunId, testId),
+                sysUserId);
+        supersedeIfRetested(retestOfRunId, sysUserId);
+    }
+
+    @Override
+    @Transactional
+    public void supersedeIfRetested(Long runId, String sysUserId) {
+        ResultRun run = runId == null ? null : resultRunDAO.get(runId).orElse(null);
+        if (run == null || run.getState() == ResultRunState.SUPERSEDED
+                || (run.getState() == ResultRunState.OPEN && resultRunDAO.countStagedRows(runId) > 0)) {
+            return;
+        }
+        Map<String, List<RetestedSample>> setAside = retestDAO.findSetAsideBy(runId).stream()
+                .collect(Collectors.groupingBy(RetestedSample::testId));
+        if (setAside.isEmpty()) {
+            return;
+        }
+        Set<String> covered = testVerdicts(runId).keySet();
+        boolean replaced = !covered.isEmpty() && covered.stream().allMatch(testId -> setAside.containsKey(testId)
+                && setAside.get(testId).stream().allMatch(sample -> sample.retestedInRunId() != null));
+        if (!replaced) {
+            return;
+        }
+        run.setState(ResultRunState.SUPERSEDED);
+        run.setSysUserId(sysUserId);
+        resultRunDAO.update(run);
+        log(runId, ResultRunEvent.SUPERSEDED, null,
+                setAside.values().stream().flatMap(List::stream).map(RetestedSample::retestedInRunId).distinct()
+                        .sorted().map(ResultRun::labelOf).collect(Collectors.joining(", ", "by ", "")),
+                sysUserId);
     }
 
     /**
@@ -492,12 +771,19 @@ public class RunQcServiceImpl implements RunQcService {
                             + (line.observed() == null ? "" : line.observed())
                             + (line.expected() == null ? "" : " against " + line.expected());
                 }).collect(Collectors.joining("; "));
-        String verb = action == RunTestAction.ACCEPT_DESPITE ? "accepted despite the QC failure" : "rejected on QC";
-        String title = "QC failure on " + testName + " in " + run.getLabel() + ": " + verb;
+        boolean missing = holdCausesOf(run.getId()).get(testId) == RunHoldCause.QC_MISSING;
+        String verb = missing
+                ? action == RunTestAction.ACCEPT_DESPITE ? "accepted without its required control"
+                        : "rejected for a missing control"
+                : action == RunTestAction.ACCEPT_DESPITE ? "accepted despite the QC failure" : "rejected on QC";
+        String title = (missing ? "Missing control on " : "QC failure on ") + testName + " in " + run.getLabel() + ": "
+                + verb;
+        String cause = missing ? "The test requires a control on every run, and none was recorded on this one."
+                : "Failing control: " + (failing.isBlank() ? "not recorded" : failing) + ".";
         String description = testName + " in " + run.getLabel()
-                + (run.getAnalyzerId() == null ? "" : " (analyzer " + run.getAnalyzerId() + ")") + " was " + verb
-                + ". Failing control: " + (failing.isBlank() ? "not recorded" : failing) + ". " + analysisIds.size()
-                + " affected result(s)." + (decision.getReason() == null ? "" : " Reason: " + decision.getReason());
+                + (run.getAnalyzerId() == null ? "" : " (analyzer " + run.getAnalyzerId() + ")") + " was " + verb + ". "
+                + cause + " " + analysisIds.size() + " affected result(s)."
+                + (decision.getReason() == null ? "" : " Reason: " + decision.getReason());
         return qcViolationNceService.createNceForRunDecision(String.valueOf(decision.getId()), title, description,
                 analysisIds, sysUserId);
     }

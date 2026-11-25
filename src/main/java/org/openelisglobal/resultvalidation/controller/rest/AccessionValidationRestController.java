@@ -1519,8 +1519,8 @@ public class AccessionValidationRestController extends BaseResultValidationContr
     }
 
     /**
-     * Who last touched the analysis, from the audit history; a generic label when
-     * unknown.
+     * Who last touched the analysis, from the audit history, named first name first
+     * as the sign-offs name a user; a generic label when unknown.
      */
     private String resolveLastModifier(Analysis analysis) {
         try {
@@ -1535,7 +1535,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
             if (latest != null && !isBlankOrNull(latest.getSysUserId())) {
                 SystemUser user = systemUserService.getUserById(latest.getSysUserId());
                 if (user != null) {
-                    return user.getDisplayName();
+                    return StringUtils.trim(user.getNameForDisplay());
                 }
             }
         } catch (RuntimeException e) {
@@ -1860,9 +1860,11 @@ public class AccessionValidationRestController extends BaseResultValidationContr
     }
 
     /**
-     * Annotate the rows covered by an open QC failure (OGC-1147). One batched query
-     * for the whole list. A failure here must not blank the validation page — the
-     * rows are still correct, they just lose the QC annotation for this load.
+     * Annotate the rows covered by an open QC failure (OGC-1147), and whether that
+     * hold keeps each from release, so the panel never offers a release the server
+     * refuses. One batched query for the whole list. A failure here must not blank
+     * the validation page — the rows are still correct, they just lose the QC
+     * annotation for this load.
      */
     private void markQcHolds(List<AnalysisItem> items) {
         if (items == null || items.isEmpty()) {
@@ -1870,9 +1872,11 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         }
         try {
             Set<String> held = qcHoldService.heldAnalysisIds(analysisIdsOf(items));
+            Set<String> blocked = qcHoldService.analysisIdsBlockedFromRelease(held);
             for (AnalysisItem item : items) {
                 boolean isHeld = item.getAnalysisId() != null && held.contains(item.getAnalysisId());
                 item.setQcHold(isHeld);
+                item.setQcHoldBlocksRelease(isHeld && blocked.contains(item.getAnalysisId()));
                 if (isHeld) {
                     item.setQcStatus(org.openelisglobal.resultvalidation.util.ValidationSignals.QC_FAIL);
                     item.setClear(false);

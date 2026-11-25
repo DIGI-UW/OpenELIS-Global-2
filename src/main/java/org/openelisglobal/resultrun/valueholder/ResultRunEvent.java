@@ -30,6 +30,13 @@ public class ResultRunEvent extends BaseObject<Long> {
     public static final String RETEST_REQUESTED = "retestRequested";
     public static final String REJECTED_QC = "rejectedQc";
     public static final String ACCEPTED_DESPITE_QC = "acceptedDespiteQc";
+    public static final String SUPERSEDED = "superseded";
+    /** FR-E4: an exception's values placed on the order the technician found. */
+    public static final String EXCEPTION_MATCHED = "exceptionMatched";
+    /** FR-E4: an exception's values kept blocked, with the reason. */
+    public static final String EXCEPTION_HELD = "exceptionHeld";
+    /** FR-E4: an exception's values taken off the run, with the reason. */
+    public static final String EXCEPTION_IGNORED = "exceptionIgnored";
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "result_run_event_generator")
@@ -50,12 +57,40 @@ public class ResultRunEvent extends BaseObject<Long> {
     @Column(name = "detail", length = 255)
     private String detail;
 
+    /** The run value an exception decision was taken on (FR-E4). */
+    @Column(name = "row_id", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String rowId;
+
+    /**
+     * The exception record a decision was taken on (FR-E4), so a hold stays with
+     * that record and not with the value once its cause changes.
+     */
+    @Column(name = "record_key", columnDefinition = "text")
+    private String recordKey;
+
     @Column(name = "sys_user_id", precision = 10, scale = 0)
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String actorId;
 
     @Column(name = "occurred_at", nullable = false)
     private Timestamp occurredAt;
+
+    public String getRowId() {
+        return rowId;
+    }
+
+    public void setRowId(String rowId) {
+        this.rowId = rowId;
+    }
+
+    public String getRecordKey() {
+        return recordKey;
+    }
+
+    public void setRecordKey(String recordKey) {
+        this.recordKey = recordKey;
+    }
 
     @Override
     public Long getId() {

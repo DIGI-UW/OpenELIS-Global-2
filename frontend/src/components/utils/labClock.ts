@@ -157,6 +157,15 @@ export const daysFromLabToday = (value: string, today = labNow()): number => {
   );
 };
 
+/**
+ * A stored instant on the lab's wall clock, for display: its local fields read
+ * the lab's date and time, whatever the browser's zone.
+ */
+export const labWallClock = (value: string | number | Date): Date => {
+  const instant = new Date(value).getTime();
+  return labFields ? wallClockAt(instant) : new Date(instant);
+};
+
 /** Zone used to label persisted instants in laboratory workflows. */
 export const labTimeZone = (): string =>
   labFields?.resolvedOptions().timeZone ||
