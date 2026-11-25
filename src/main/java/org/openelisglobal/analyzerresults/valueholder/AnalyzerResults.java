@@ -109,6 +109,12 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
      * value is held there (OGC-1200 FR-C4).
      */
     public static final String IMPORT_ISSUE_RUN_QC_FAILED = "run_qc_failed";
+    /**
+     * Shown, never stored: the row's test requires a control on every run and its
+     * run has none, under a Hold policy, so the value is held there (OGC-1200
+     * FR-H1, FR-C7).
+     */
+    public static final String IMPORT_ISSUE_RUN_QC_MISSING = "run_qc_missing";
     public static final String IMPORT_ISSUE_QC_VALUE_UNSUPPORTED = "qc_value_unsupported";
     public static final String IMPORT_ISSUE_QC_TARGET_MISSING = "qc_target_missing";
     /**

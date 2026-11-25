@@ -24,6 +24,22 @@ public interface RunQcService {
     Set<String> heldTestIds(Long runId);
 
     /**
+     * Why each test the run holds now is held: a failed control, or a required
+     * control missing under a Hold policy (FR-A3, FR-D4); a decided test is not
+     * held.
+     */
+    Map<String, org.openelisglobal.resultrun.form.RunHoldCause> holdCauses(Long runId);
+
+    /**
+     * Re-evaluates the open and held runs that cover the test, after its QC policy
+     * changed (FR-H1): their holds and state follow the new policy at once.
+     */
+    void refreshActiveRunsOfTest(String testId, String sysUserId);
+
+    /** Whether any test of the run was decided (FR-C5), closing its QC there. */
+    boolean hasDecisions(Long runId);
+
+    /**
      * Of these analyses, those whose result was stored from a run that now holds
      * the analysis's test (FR-C4: not released from any surface).
      */
@@ -33,6 +49,13 @@ public interface RunQcService {
 
     /** As above, each held analysis with the run that holds it. */
     Map<String, Long> holdingRuns(Collection<String> analysisIds);
+
+    /**
+     * Of these analyses, those whose stored result came from a run, each with what
+     * that run says about the QC of the analysis's test (FR-G3). An analysis with
+     * results from several runs reads the latest run.
+     */
+    Map<String, org.openelisglobal.resultrun.form.RunQcFact> qcOfAnalyses(Collection<String> analysisIds);
 
     /**
      * Of these analyses, those whose stored result came from a run that holds the
@@ -93,4 +116,21 @@ public interface RunQcService {
     org.openelisglobal.resultrun.valueholder.ResultRunTestDisposition decide(Long runId, String testId,
             org.openelisglobal.resultrun.valueholder.RunTestAction action, String reason, boolean fileNce,
             String sysUserId);
+
+    /**
+     * Confirms this run as the retest of an earlier run's test (FR-C5): the earlier
+     * run's samples it set aside for that test and this run covers are linked, the
+     * earlier test reads superseded, and the earlier run is superseded once every
+     * test it covered was retested and linked (FR-A3). Nothing is accepted or
+     * released by the link. Refused when nothing is left to link.
+     */
+    void confirmRetest(Long runId, String testId, Long retestOfRunId, String sysUserId);
+
+    /**
+     * Supersedes the run when nothing is left in it to review and every test it
+     * covers was retested and all its retested samples linked (FR-A3). Called on a
+     * confirmed link, and when a run's last row leaves review after its retests
+     * were confirmed.
+     */
+    void supersedeIfRetested(Long runId, String sysUserId);
 }

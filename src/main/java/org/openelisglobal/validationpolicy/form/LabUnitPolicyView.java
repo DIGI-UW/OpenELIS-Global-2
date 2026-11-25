@@ -5,10 +5,12 @@ import java.util.List;
 /**
  * A lab unit override as the configuration page lists it.
  *
- * @param domain the lab unit's domain: CLINICAL, ENVIRONMENTAL or VECTOR
- * @param active whether the override decides for the unit; a deactivated one
- *               hands the unit back to the lab-wide default
+ * @param domain      the lab unit's domain: CLINICAL, ENVIRONMENTAL or VECTOR
+ * @param active      whether the override decides for the unit; a deactivated
+ *                    one hands the unit back to the lab-wide default
+ * @param lastupdated the stored version, which a save or a toggle sends back
+ *                    (OGC-1017)
  */
 public record LabUnitPolicyView(Long id, String testSectionId, String labUnitName, String domain, String trigger,
-        int levels, List<ValidationPolicyView.Level> levelRoles, boolean active) {
+        int levels, List<ValidationPolicyView.Level> levelRoles, boolean active, String lastupdated) {
 }

@@ -147,11 +147,12 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
                 ruleDAO.evict(existingHash.get());
                 continue;
             }
-            Optional<MicroBreakpointRule> existingRule = row.clinicalContext == null
+            Optional<MicroBreakpointRule> existingRule = row.clinicalContext == null && row.diskContent == null
                     ? ruleDAO.findByNaturalKey(standard.getId(), row.organismId, row.organismGroup, row.antibioticId,
                             row.method, row.specimenTypeId, row.breakpointType)
                     : ruleDAO.findByContextualNaturalKey(standard.getId(), row.organismId, row.organismGroup,
-                            row.antibioticId, row.method, row.specimenTypeId, row.breakpointType, row.clinicalContext);
+                            row.antibioticId, row.method, row.specimenTypeId, row.breakpointType, row.clinicalContext,
+                            row.diskContent);
             if (existingRule.isPresent() && existingRule.get().isLocallyCustomized()) {
                 preview.errors.add(error(row.rowNumber,
                         "A locally customized breakpoint exists for this organism, antibiotic, and method",
@@ -188,10 +189,8 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
             Map<List<String>, Optional<MicroOrganism>> organisms = new java.util.HashMap<>();
             Map<List<String>, Optional<MicroAntibiotic>> antibiotics = new java.util.HashMap<>();
             Map<String, String> groups = new java.util.HashMap<>();
-            for (MicroOrganism organism : organismDAO.getAll()) {
-                String group = organism.getOrganismGroup();
-                if (group != null)
-                    groups.putIfAbsent(group.toLowerCase(Locale.ROOT), group);
+            for (String group : organismDAO.getLabGroupNames()) {
+                groups.putIfAbsent(group.toLowerCase(Locale.ROOT), group);
             }
             for (CSVRecord record : parser) {
                 preview.totalRows++;
@@ -320,6 +319,9 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         if (!values.isEmpty() && (row.susceptibleValue == null || row.resistantValue == null)) {
             throw new IllegalArgumentException(
                     "Both susceptible and resistant thresholds are required for a nonempty rule");
+        }
+        if (!values.isEmpty() && row.diskContent == null && "ZONE".equals(row.method)) {
+            throw new IllegalArgumentException("Disk content is required for zone breakpoints");
         }
         for (BigDecimal value : values) {
             if (value.signum() <= 0 || value.stripTrailingZeros().scale() > 4
@@ -461,7 +463,8 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
     private String naturalKey(ImportRow row) {
         return String.join("|", row.authority, row.version, nullToEmpty(row.organismId), nullToEmpty(row.organismGroup),
                 row.antibioticId, row.method, nullToEmpty(row.specimenTypeId), row.breakpointType)
-                + (row.clinicalContext == null ? "" : "|context=" + row.clinicalContext);
+                + (row.clinicalContext == null ? "" : "|context=" + row.clinicalContext)
+                + (row.diskContent == null ? "" : "|disk=" + row.diskContent);
     }
 
     private String hash(String value) {

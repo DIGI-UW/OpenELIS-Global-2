@@ -213,6 +213,35 @@ describe("Validation policy on Result Configuration (OGC-1364 v1)", () => {
     ).toBeInTheDocument();
   });
 
+  it("sends the version it loaded and says who changed the policy when the save is stale (OGC-1017)", async () => {
+    vi.mocked(putToOpenElisServerFullResponse).mockImplementation(
+      (url, body, callback) =>
+        callback({
+          ok: false,
+          status: 409,
+          json: async () => ({
+            conflict: "stale",
+            modifiedBy: "Ada Admin",
+            modifiedAt: "23/11/2026 10:15",
+          }),
+        }),
+    );
+    renderSection(policy({ lastupdated: "1763892000000" }));
+
+    fireEvent.click(await screen.findByLabelText("No review"));
+    fireEvent.click(screen.getByRole("button", { name: "Save policy" }));
+
+    expect(
+      await screen.findByTestId("validation-policy-stale"),
+    ).toHaveTextContent(
+      "This policy was changed by Ada Admin at 23/11/2026 10:15, after this page loaded it. Nothing was saved.",
+    );
+    expect(screen.getByRole("button", { name: "Refresh" })).toBeInTheDocument();
+    expect(screen.queryByText("Validation policy saved.")).toBeNull();
+    const [, body] = vi.mocked(putToOpenElisServerFullResponse).mock.calls[0];
+    expect(JSON.parse(body).lastupdated).toBe("1763892000000");
+  });
+
   it("asks for a role per level, warns when nobody can sign one, and saves the roles", async () => {
     vi.mocked(putToOpenElisServerFullResponse).mockImplementation(
       (url, body, callback) =>

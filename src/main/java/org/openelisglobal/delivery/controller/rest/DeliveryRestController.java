@@ -138,8 +138,8 @@ public class DeliveryRestController {
             @RequestParam(required = false) String status, @RequestParam(required = false) String channel,
             @RequestParam(required = false) String eventCode, @RequestParam(required = false) String from,
             @RequestParam(required = false) String to, @RequestParam(required = false) String labNo,
-            @RequestParam(required = false) String recipient, @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int pageSize) {
+            @RequestParam(required = false) String recipient, @RequestParam(required = false) Long message,
+            @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int pageSize) {
         DeliveryQueueSearch search = new DeliveryQueueSearch();
         search.setProduct(parseEnum(Product.class, product));
         search.setStatus(parseEnum(OverallStatus.class, status));
@@ -149,6 +149,7 @@ public class DeliveryRestController {
         search.setTo(parseDate(to, true));
         search.setLabNumber(labNo);
         search.setRecipient(recipient);
+        search.setMessageId(message);
         return outbox.list(search, page, pageSize);
     }
 

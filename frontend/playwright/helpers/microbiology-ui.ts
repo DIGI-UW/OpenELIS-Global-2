@@ -5,6 +5,57 @@ import {
   type SeededMicrobiologyCase,
 } from "./seed-microbiology-data";
 
+const caseScopeHeading = (page: Page, scope: string) =>
+  page.locator(
+    scope === "HISTORY"
+      ? "#case-history .cds--accordion__heading"
+      : `#case-scope-${scope} > .cds--accordion__heading`,
+  );
+
+const expandAccordion = async (heading: Locator) => {
+  await expect(heading).toBeVisible({ timeout: LONG_TIMEOUT });
+  if ((await heading.getAttribute("aria-expanded")) !== "true")
+    await heading.click();
+  await expect(heading).toHaveAttribute("aria-expanded", "true");
+};
+
+export const openMicrobiologyCaseScope = (page: Page, scope: string) =>
+  expandAccordion(caseScopeHeading(page, scope));
+
+export const expectMicrobiologyCaseScopeOpen = async (
+  page: Page,
+  scope: string,
+) =>
+  expect(caseScopeHeading(page, scope)).toHaveAttribute(
+    "aria-expanded",
+    "true",
+    {
+      timeout: LONG_TIMEOUT,
+    },
+  );
+
+export const caseBarButton = (page: Page, name: string | RegExp) =>
+  page
+    .getByLabel("Case summary", { exact: true })
+    .getByRole(
+      "button",
+      typeof name === "string" ? { name, exact: true } : { name },
+    );
+
+export const releaseFinalReport = async (page: Page) => {
+  const release = caseBarButton(page, "Release final report");
+  await expect(release).toBeEnabled({ timeout: LONG_TIMEOUT });
+  await release.click();
+  const confirm = page.getByRole("dialog", { name: "Release final report?" });
+  await confirm
+    .getByRole("button", { name: "Release final", exact: true })
+    .click();
+  await expect(confirm).toHaveCount(0, { timeout: LONG_TIMEOUT });
+};
+
+export const openMicrobiologyCaseInfo = (page: Page) =>
+  expandAccordion(page.getByRole("button", { name: "Case info", exact: true }));
+
 export const openMicrobiologyCaseSection = async (
   page: Page,
   sectionName: string,
@@ -20,9 +71,7 @@ export const openMicrobiologyCaseSection = async (
   };
   if (!values[sectionName])
     throw new Error(`Unknown case section ${sectionName}`);
-  await page
-    .getByLabel("Testing section", { exact: true })
-    .selectOption(values[sectionName]);
+  await openMicrobiologyCaseScope(page, values[sectionName]);
 };
 
 export const selectCarbonRadio = async (page: Page, radio: Locator) => {
@@ -66,21 +115,20 @@ export const identifyMicrobiologyIsolate = async (
     .getByRole("button", { name: "Identify organism", exact: true })
     .click();
   const dialog = page.getByRole("dialog");
-  const caseId = new URL(page.url()).pathname.split("/").pop();
-  const options = await (
+  const [organism] = await (
     await page.request.get(
-      `/api/OpenELIS-Global/rest/microbiology/cases/${caseId}/isolates/options`,
+      `/api/OpenELIS-Global/rest/microbiology/reference/organisms?id=${organismId}`,
     )
   ).json();
-  const organism = options.organisms.find(
-    (o: { id: string }) => o.id === organismId,
-  );
   if (!organism)
     throw new Error("Fixture organism not offered for identification");
   const combo = dialog.getByRole("combobox", { name: "Organism", exact: true });
-  await combo.fill(organism.value);
-  await combo.press("ArrowDown");
-  await combo.press("Enter");
+  await combo.fill(organism.label);
+  await dialog
+    .getByRole("option")
+    .filter({ hasText: organism.label })
+    .first()
+    .click();
   await dialog
     .getByLabel("ID method", { exact: true })
     .selectOption({ label: "UAT micro culture" });

@@ -11,6 +11,7 @@ import java.io.StringWriter;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.apache.commons.csv.CSVFormat;
 import org.junit.Before;
@@ -42,6 +43,7 @@ import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -231,7 +233,7 @@ public class SampleTestingMappingIntegrationTest extends BaseWebContextSensitive
                 List.of("FINALIZED"));
         var catalog = source.catalog();
         var pivot = catalog.stream().filter(v -> v.id().equals("component:" + componentId)).findFirst().orElseThrow();
-        assertEquals("Blood Test — Systolic", pivot.label());
+        assertEquals("Test Localization 1 — Systolic", pivot.label());
         for (String layout : definition.layouts()) {
             var fields = catalog.stream().filter(v -> v.id().equals("accessionNumber") || v.id().equals("receivedDate")
                     || v.id().equals(layout.equals("SPREADSHEET") ? pivot.id() : "resultValue")).toList();
@@ -244,6 +246,49 @@ public class SampleTestingMappingIntegrationTest extends BaseWebContextSensitive
             assertEquals(accession + ",2026-08-20,120.125", lines[1]);
             assertEquals(lines[1], lines[2]);
         }
+    }
+
+    /**
+     * OGC-1652: a result row names where its sample came from: the requesting
+     * facility, its code, the ward and the areas above the facility.
+     */
+    @Test
+    public void aResultCarriesWhereItsSampleCameFrom() throws Exception {
+        Analysis analysis = analyses.get("1");
+        String status = statuses.getStatusID(AnalysisStatus.Finalized);
+        analysis.setStatusId(status);
+        analyses.update(analysis);
+        SampleItem specimen = analysis.getSampleItem();
+        specimen.setCollectionDate(Timestamp.valueOf("2026-08-20 10:00:00"));
+        specimens.update(specimen);
+        Result result = new Result();
+        result.setAnalysis(analysis);
+        result.setResultType("N");
+        result.setValue("120");
+        result.setIsReportable("Y");
+        entityManager.persist(result);
+        ExportLocationFixture.attach(entityManager, specimen.getSample().getId());
+        entityManager.flush();
+        String accession = specimen.getSample().getAccessionNumber();
+        ReportSourceConfig definition = new ReportSourceConfig("SAMPLE_TESTING", 1, "Sample & Testing",
+                "SAMPLE_TESTING", "collectionDate", List.of("RESULT_LIST"), List.of("accessionNumber", "resultValue"),
+                List.of("location"), List.of("testIds"), Map.of("RESULT_LIST", List.of("accessionNumber")));
+        List<String> ids = List.of("accessionNumber", "referringSite", "referringSiteCode", "wardDept",
+                "area:" + ExportLocationFixture.DISTRICT_TYPE, "area:" + ExportLocationFixture.REGION_TYPE);
+        var fields = ids.stream()
+                .map(id -> source.catalog().stream().filter(v -> v.id().equals(id)).findFirst().orElseThrow()).toList();
+        StringWriter csv = new StringWriter();
+
+        source.write(csv,
+                new ExportSnapshot(definition, "RESULT_LIST", fields,
+                        new ExportFilter("2026-08-01", "2026-08-31", List.of(analysis.getTestSection().getId()),
+                                List.of("1"), List.of("FINALIZED")),
+                        java.time.ZoneId.systemDefault().getId(), List.of(status)));
+
+        String[] lines = csv.toString().split("\r\n");
+        assertEquals("﻿Accession Number,Requesting Facility,Requesting Facility Code,Ward / Dept,"
+                + "Health District,Health Region", lines[0]);
+        assertEquals(accession + ",Alotau Hospital,ALT-01,Maternity Ward,Milne Bay District,Southern Region", lines[1]);
     }
 
     @Test
@@ -265,7 +310,7 @@ public class SampleTestingMappingIntegrationTest extends BaseWebContextSensitive
 
         String fieldId = "component:" + color.getId();
         var field = source.catalog().stream().filter(v -> v.id().equals(fieldId)).findFirst().orElseThrow();
-        assertEquals("Urine Test — Color", field.label());
+        assertEquals("Test Localization 2 — Color", field.label());
         ExportFilter filter = new ExportFilter("2026-08-21", "2026-08-21", List.of(analysis.getTestSection().getId()),
                 List.of("2"), List.of("FINALIZED"));
         ReportSourceConfig definition = new ReportSourceConfig("SAMPLE_TESTING", 1, "Sample & Testing",
@@ -275,7 +320,7 @@ public class SampleTestingMappingIntegrationTest extends BaseWebContextSensitive
 
         assertEquals(1, source.write(csv, new ExportSnapshot(definition, "SPREADSHEET", List.of(field), filter,
                 java.time.ZoneId.systemDefault().getId(), List.of(analysis.getStatusId()))));
-        assertEquals("Urine Test — Color\r\n2.75\r\n", csv.toString().substring(1));
+        assertEquals("Test Localization 2 — Color\r\n2.75\r\n", csv.toString().substring(1));
     }
 
     @Test
@@ -345,6 +390,269 @@ public class SampleTestingMappingIntegrationTest extends BaseWebContextSensitive
                         + MessageUtil.getMessage("status.sample.entered")
                         + ",STAT,1,Ada Q Public,1980-02-03,F,WA-1001,555-0100,\"42 Lab Road, Seattle, WA, USA\"\r\n",
                 csv.toString().substring(1));
+    }
+
+    /**
+     * OGC-1680: tests and sample types read as the screens show them, in the
+     * language of the user who asked for the export, not as the catalog description
+     * ("Blood Test"). The field list is built in the user's language; the rows use
+     * the language the job carries. A test taken on two sample types names the
+     * first and counts the rest, as the test catalog does.
+     */
+    @Test
+    public void testAndSampleTypeNamesReadInTheLanguageOfTheUser() throws Exception {
+        entityManager.createNativeQuery("INSERT INTO clinlims.sampletype_test (id, sample_type_id, test_id)"
+                + " VALUES (99801, 1, 1), (99802, 2, 1)").executeUpdate();
+        Locale previous = LocaleContextHolder.getLocale();
+        try {
+            LocaleContextHolder.setLocale(Locale.FRENCH);
+            assertEquals("TB(TB +1)", label("test:1"));
+            LocaleContextHolder.setLocale(Locale.ENGLISH);
+            assertEquals("Test Localization 1(Test Localization 1 +1)", label("test:1"));
+        } finally {
+            LocaleContextHolder.setLocale(previous);
+        }
+        Analysis analysis = analyses.get("1");
+        analysis.setStatusId(statuses.getStatusID(AnalysisStatus.Finalized));
+        analyses.update(analysis);
+        reading(analysis, options.get("1"), "85.0");
+        entityManager.flush();
+        List<String> fieldIds = List.of("testName", "sampleType", "labSection");
+        var fields = fieldIds.stream()
+                .map(id -> source.catalog().stream().filter(field -> field.id().equals(id)).findFirst().orElseThrow())
+                .toList();
+        ExportFilter filter = new ExportFilter("2023-11-15", "2023-11-15", List.of(analysis.getTestSection().getId()),
+                List.of("1"), List.of("FINALIZED"));
+        ReportSourceConfig definition = new ReportSourceConfig("SAMPLE_TESTING", 1, "Sample & Testing",
+                "SAMPLE_TESTING", "collectionDate", List.of("RESULT_LIST"), fieldIds, List.of(), List.of("testIds"),
+                Map.of("RESULT_LIST", fieldIds));
+
+        for (String[] expected : new String[][] { { "fr-FR", "TB,TB,TB" },
+                { "en", "Test Localization 1,Test Localization 1,Test Localization 1" } }) {
+            StringWriter csv = new StringWriter();
+            assertEquals(1, source.write(csv, new ExportSnapshot(definition, "RESULT_LIST", fields, filter,
+                    java.time.ZoneId.systemDefault().getId(), List.of(analysis.getStatusId()), expected[0])));
+            assertEquals(expected[0], "Test Name,Sample Type,Lab Section\r\n" + expected[1] + "\r\n",
+                    csv.toString().substring(1));
+        }
+    }
+
+    /**
+     * OGC-1680 review: a result component's translated label (OGC-1610) names its
+     * field and fills the Component column in the user's language.
+     */
+    @Test
+    public void componentLabelsReadInTheLanguageOfTheUser() throws Exception {
+        List<TestResultComponent> configured = components.saveSampleResults("1",
+                List.of(component("PRIMARY", "Systolic", 0), component("DIA", "Diastolic", 1)), null, null,
+                TEST_SYS_USER_ID);
+        TestResultComponent primary = configured.stream().filter(c -> "PRIMARY".equals(c.getCode())).findFirst()
+                .orElseThrow();
+        Number localization = (Number) entityManager.createNativeQuery("SELECT nextval('clinlims.localization_seq')")
+                .getSingleResult();
+        entityManager.createNativeQuery("INSERT INTO clinlims.localization (id, description) VALUES (?1, 'Systolic')")
+                .setParameter(1, localization.longValue()).executeUpdate();
+        entityManager.createNativeQuery("INSERT INTO clinlims.localization_value (id, localization_id, locale, value,"
+                + " origin) VALUES (nextval('clinlims.localization_value_seq'), ?1, 'fr', 'Systolique', 'SITE')")
+                .setParameter(1, localization.longValue()).executeUpdate();
+        entityManager.createNativeQuery(
+                "UPDATE clinlims.test_result_component SET label_localization_id = ?1 WHERE CAST(id AS varchar) = ?2")
+                .setParameter(1, localization.longValue()).setParameter(2, primary.getId()).executeUpdate();
+        TestResult option = options.getAllMatching("componentId", primary.getId()).get(0);
+        Analysis analysis = analyses.get("1");
+        analysis.setStatusId(statuses.getStatusID(AnalysisStatus.Finalized));
+        analyses.update(analysis);
+        reading(analysis, option, "120");
+        entityManager.flush();
+        entityManager.clear();
+
+        Locale previous = LocaleContextHolder.getLocale();
+        try {
+            LocaleContextHolder.setLocale(Locale.FRENCH);
+            assertEquals("TB — Systolique", label("component:" + primary.getId()));
+            LocaleContextHolder.setLocale(Locale.ENGLISH);
+            assertEquals("Test Localization 1 — Systolic", label("component:" + primary.getId()));
+        } finally {
+            LocaleContextHolder.setLocale(previous);
+        }
+        List<String> fieldIds = List.of("component");
+        var fields = fieldIds.stream()
+                .map(id -> source.catalog().stream().filter(field -> field.id().equals(id)).findFirst().orElseThrow())
+                .toList();
+        ExportFilter filter = new ExportFilter("2023-11-15", "2023-11-15", List.of(analysis.getTestSection().getId()),
+                List.of("1"), List.of("FINALIZED"));
+        ReportSourceConfig definition = new ReportSourceConfig("SAMPLE_TESTING", 1, "Sample & Testing",
+                "SAMPLE_TESTING", "collectionDate", List.of("RESULT_LIST"), fieldIds, List.of(), List.of("testIds"),
+                Map.of("RESULT_LIST", fieldIds));
+        for (String[] expected : new String[][] { { "fr-FR", "Systolique" }, { "en", "Systolic" } }) {
+            StringWriter csv = new StringWriter();
+            assertEquals(1,
+                    source.write(csv,
+                            new ExportSnapshot(definition, "RESULT_LIST", fields, filter,
+                                    java.time.ZoneId.systemDefault().getId(),
+                                    List.of(statuses.getStatusID(AnalysisStatus.Finalized)), expected[0])));
+            assertEquals(expected[0], "Component\r\n" + expected[1] + "\r\n", csv.toString().substring(1));
+        }
+    }
+
+    private String label(String id) {
+        return source.catalog().stream().filter(field -> field.id().equals(id)).findFirst().orElseThrow().label();
+    }
+
+    /**
+     * OGC-1655: the Routine sample fields. Date Entered is when the order was
+     * entered, with its time; Program is the order's program answer; Lab Unit names
+     * the lab units of the specimen's tests; the age is the patient's age when the
+     * specimen was collected, in whole years, months and weeks.
+     */
+    @Test
+    public void theRoutineFieldsDescribeTheOrderAndThePatientsAgeAtCollection() throws Exception {
+        String programType = entityManager
+                .createQuery("select t.id from ObservationHistoryType t where t.typeName = 'program'", String.class)
+                .getResultStream().findFirst().orElseGet(() -> {
+                    ObservationHistoryType type = new ObservationHistoryType();
+                    type.setTypeName("program");
+                    type.setDescription("Program");
+                    observationTypes.insert(type);
+                    return type.getId();
+                });
+        observation(programType, "Early Infant Diagnosis", ObservationHistory.ValueType.LITERAL, "1", null, null);
+        Analysis analysis = analyses.get("1");
+        analysis.setStatusId(statuses.getStatusID(AnalysisStatus.Finalized));
+        analyses.update(analysis);
+        reading(analysis, options.get("1"), "85.0");
+        entityManager.flush();
+        List<String> fieldIds = List.of("accessionNumber", "enteredDate", "program", "labUnit", "ageYears", "ageMonths",
+                "ageWeeks", "orderStatus");
+        var catalog = source.catalog();
+        var fields = fieldIds.stream()
+                .map(id -> catalog.stream().filter(field -> field.id().equals(id)).findFirst().orElseThrow()).toList();
+        ExportFilter filter = new ExportFilter("2023-11-15", "2023-11-15", List.of(analysis.getTestSection().getId()),
+                List.of("1"), List.of("FINALIZED"));
+        ReportSourceConfig definition = new ReportSourceConfig("SAMPLE_TESTING", 1, "Sample & Testing",
+                "SAMPLE_TESTING", "collectionDate", List.of("SPREADSHEET"), fieldIds, List.of(), List.of("testIds"),
+                Map.of("SPREADSHEET", fieldIds));
+        java.time.ZoneId zone = java.time.ZoneId.systemDefault();
+        StringWriter csv = new StringWriter();
+
+        assertEquals(1, source.write(csv, new ExportSnapshot(definition, "SPREADSHEET", fields, filter, zone.getId(),
+                List.of(analysis.getStatusId()))));
+
+        String entered = Timestamp.valueOf("2024-06-03 00:00:00").toInstant().atZone(zone).toOffsetDateTime()
+                .toString();
+        String orderStatus = statuses.getStatusNameFromId(analysis.getSampleItem().getSample().getStatusId());
+        assertNotEquals("the order's status, not the specimen's",
+                statuses.getStatusNameFromId(analysis.getSampleItem().getStatusId()), orderStatus);
+        assertEquals(
+                "Accession Number,Date Entered,Program,Lab Unit,Age at collection (years),"
+                        + "Age at collection (months),Age at collection (weeks),Order Status\r\n" + "12345," + entered
+                        + ",Early Infant Diagnosis,Test Localization 1,43,525,2284," + orderStatus + "\r\n",
+                csv.toString().substring(1));
+    }
+
+    /**
+     * OGC-1655 review: Date Entered is the time order entry first saved the order
+     * (the day alone holds midnight), and the Entered date period files it under
+     * the same day it prints in the reporting zone, whatever the server's zone.
+     */
+    @Test
+    public void dateEnteredIsTheRecordedEntryTimeAndItsPeriodFollowsTheReportingZone() throws Exception {
+        entityManager
+                .createNativeQuery(
+                        "UPDATE clinlims.sample SET order_entered_at = TIMESTAMP '2024-06-03 00:30:00' WHERE id = 1")
+                .executeUpdate();
+        Analysis analysis = analyses.get("1");
+        analysis.setStatusId(statuses.getStatusID(AnalysisStatus.Finalized));
+        analyses.update(analysis);
+        reading(analysis, options.get("1"), "85.0");
+        entityManager.flush();
+        entityManager.clear();
+        List<String> fieldIds = List.of("enteredDate");
+        var fields = fieldIds.stream()
+                .map(id -> source.catalog().stream().filter(field -> field.id().equals(id)).findFirst().orElseThrow())
+                .toList();
+        ReportSourceConfig definition = new ReportSourceConfig("SAMPLE_TESTING", 1, "Sample & Testing",
+                "SAMPLE_TESTING", "collectionDate", List.of("SPREADSHEET"), fieldIds, List.of(), List.of("testIds"),
+                Map.of("SPREADSHEET", fieldIds));
+        String section = analysis.getTestSection().getId();
+        java.time.Instant entered = Timestamp.valueOf("2024-06-03 00:30:00").toInstant();
+
+        for (java.time.ZoneId zone : List.of(java.time.ZoneId.systemDefault(),
+                java.time.ZoneId.of("Pacific/Honolulu"))) {
+            java.time.LocalDate day = entered.atZone(zone).toLocalDate();
+            StringWriter csv = new StringWriter();
+            ExportFilter onTheDay = new ExportFilter(day.toString(), day.toString(), List.of(section), List.of("1"),
+                    List.of("FINALIZED"), "orderEnteredDate");
+            assertEquals(zone + " " + day, 1, source.write(csv, new ExportSnapshot(definition, "SPREADSHEET", fields,
+                    onTheDay, zone.getId(), List.of(analysis.getStatusId()))));
+            assertEquals("Date Entered\r\n" + entered.atZone(zone).toOffsetDateTime() + "\r\n",
+                    csv.toString().substring(1));
+            java.time.LocalDate other = day.plusDays(1);
+            ExportFilter dayAfter = new ExportFilter(other.toString(), other.toString(), List.of(section), List.of("1"),
+                    List.of("FINALIZED"), "orderEnteredDate");
+            assertEquals(zone + " " + other, 0, source.write(new StringWriter(), new ExportSnapshot(definition,
+                    "SPREADSHEET", fields, dayAfter, zone.getId(), List.of(analysis.getStatusId()))));
+        }
+    }
+
+    /**
+     * OGC-1655: the period applies to the date the user chose: the specimen's
+     * collection (the default), its receipt, or the order's entry.
+     */
+    @Test
+    public void thePeriodAppliesToTheChosenDate() throws Exception {
+        Analysis analysis = analyses.get("1");
+        analysis.setStatusId(statuses.getStatusID(AnalysisStatus.Finalized));
+        analyses.update(analysis);
+        reading(analysis, options.get("1"), "85.0");
+        entityManager.flush();
+        var fields = source.catalog().stream().filter(field -> field.id().equals("accessionNumber")).toList();
+        ReportSourceConfig definition = new ReportSourceConfig("SAMPLE_TESTING", 1, "Sample & Testing",
+                "SAMPLE_TESTING", "collectionDate", List.of("SPREADSHEET"), List.of("accessionNumber"), List.of(),
+                List.of("testIds"), Map.of("SPREADSHEET", List.of("accessionNumber")));
+        String section = analysis.getTestSection().getId();
+
+        for (Object[] expected : new Object[][] { { "2023-11-15", null, 1L }, { "2023-11-15", "receivedDate", 1L },
+                { "2023-11-15", "orderEnteredDate", 0L }, { "2024-06-03", null, 0L },
+                { "2024-06-03", "orderEnteredDate", 1L } }) {
+            ExportFilter filter = new ExportFilter((String) expected[0], (String) expected[0], List.of(section),
+                    List.of("1"), List.of("FINALIZED"), (String) expected[1]);
+            StringWriter csv = new StringWriter();
+            assertEquals(expected[0] + " " + expected[1], expected[2],
+                    source.write(csv, new ExportSnapshot(definition, "SPREADSHEET", fields, filter,
+                            java.time.ZoneId.systemDefault().getId(), List.of(analysis.getStatusId()))));
+        }
+    }
+
+    /**
+     * OGC-1655: a specimen that was not received on its own was received with its
+     * order, as order entry records it; the Received Date column and the Received
+     * date period use the order's receipt rather than leaving it blank.
+     */
+    @Test
+    public void aSpecimenWithoutItsOwnReceiptTakesItsOrdersReceivedDate() throws Exception {
+        Analysis analysis = analyses.get("1");
+        analysis.setStatusId(statuses.getStatusID(AnalysisStatus.Finalized));
+        analyses.update(analysis);
+        SampleItem specimen = analysis.getSampleItem();
+        specimen.setReceivedDate(null);
+        specimens.update(specimen);
+        reading(analysis, options.get("1"), "85.0");
+        entityManager.flush();
+        List<String> fieldIds = List.of("accessionNumber", "receivedDate");
+        var fields = fieldIds.stream()
+                .map(id -> source.catalog().stream().filter(field -> field.id().equals(id)).findFirst().orElseThrow())
+                .toList();
+        ReportSourceConfig definition = new ReportSourceConfig("SAMPLE_TESTING", 1, "Sample & Testing",
+                "SAMPLE_TESTING", "collectionDate", List.of("SPREADSHEET"), fieldIds, List.of(), List.of("testIds"),
+                Map.of("SPREADSHEET", fieldIds));
+        ExportFilter filter = new ExportFilter("2024-06-03", "2024-06-03", List.of(analysis.getTestSection().getId()),
+                List.of("1"), List.of("FINALIZED"), "receivedDate");
+        StringWriter csv = new StringWriter();
+
+        assertEquals(1, source.write(csv, new ExportSnapshot(definition, "SPREADSHEET", fields, filter,
+                java.time.ZoneId.systemDefault().getId(), List.of(analysis.getStatusId()))));
+        assertEquals("Accession Number,Received Date\r\n12345,2024-06-03\r\n", csv.toString().substring(1));
     }
 
     @Test
@@ -519,7 +827,8 @@ public class SampleTestingMappingIntegrationTest extends BaseWebContextSensitive
             try (var parsed = CSVFormat.RFC4180.parse(new StringReader(csv.toString().substring(1)))) {
                 var records = parsed.getRecords();
                 assertEquals(layout, 5, records.size());
-                assertEquals(layout.equals("SPREADSHEET") ? "Blood Test" : "Result Value", records.get(0).get(0));
+                assertEquals(layout.equals("SPREADSHEET") ? "Test Localization 1" : "Result Value",
+                        records.get(0).get(0));
                 assertTrue(records.stream().allMatch(record -> record.size() == 1));
                 assertEquals(layout, expected.stream().sorted().toList(),
                         records.subList(1, records.size()).stream().map(record -> record.get(0)).sorted().toList());
