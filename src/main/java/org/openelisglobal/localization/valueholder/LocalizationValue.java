@@ -17,6 +17,7 @@
 package org.openelisglobal.localization.valueholder;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -35,7 +36,12 @@ import org.openelisglobal.common.valueholder.BaseObject;
  * Represents a single translation value for a specific locale. Each
  * Localization entry can have multiple LocalizationValue entries, one per
  * supported language.
+ * <p>
+ * {@code siteLabel} and {@code shippedValue} are derived and only written out:
+ * a screen that posts back the record it was served is read without them
+ * (OGC-1609).
  */
+@JsonIgnoreProperties(value = { "siteLabel", "shippedValue" }, allowGetters = true)
 @Entity
 @Table(name = "localization_value")
 @DynamicUpdate

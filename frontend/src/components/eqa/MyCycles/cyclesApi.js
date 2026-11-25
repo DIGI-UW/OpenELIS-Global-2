@@ -85,11 +85,8 @@ export const submitCycleManually = (cycleId, reference, callback) => {
   );
 };
 
-// Programmes this lab has enrolled in (My Programs); the "New cycle" form
-// offers exactly these, by name, because the participant-created cycle is
-// matched to a local programme of the same name on the server.
-export const fetchMyPrograms = (callback) => {
-  getFromOpenElisServer("/rest/eqa/my-programs", (data) =>
+export const fetchEnrollmentsOpenForCycles = (callback) => {
+  getFromOpenElisServer("/rest/eqa/cycles/mine/enrollments", (data) =>
     callback(Array.isArray(data) ? data : []),
   );
 };

@@ -193,8 +193,12 @@ const InventoryItemsBoard = () => {
   const countableLots = (row) =>
     (lotsByItem.get(row.itemId) || []).filter(
       (lot) =>
-        !locationFilter || lot.location?.hierarchicalPath === locationFilter,
+        lot.status !== "DISPOSED" &&
+        (!locationFilter || lot.location?.hierarchicalPath === locationFilter),
     );
+
+  const liveLots = (row) =>
+    countableLots(row).filter((lot) => lot.status !== "CONSUMED");
 
   // Includes the expired and QC-failed lots that row.onHand leaves out.
   const expectedFor = (row) =>
@@ -360,17 +364,22 @@ const InventoryItemsBoard = () => {
     return [...names].sort((a, b) => a.localeCompare(b));
   }, [rows, activeTags]);
 
+  // Tags also scope the banner and suggestions; the other filters narrow only the table.
+  const taggedRows = useMemo(
+    () =>
+      tagFilter.length === 0
+        ? rows
+        : rows.filter((row) =>
+            tagFilter.some((tag) => row.tags?.includes(tag)),
+          ),
+    [rows, tagFilter],
+  );
+
   const visibleRows = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const matched = rows.filter((row) => {
+    const matched = taggedRows.filter((row) => {
       const itemLots = lotsByItem.get(row.itemId) || [];
       if (statusFilter && row.status !== statusFilter) return false;
-      if (
-        tagFilter.length > 0 &&
-        !tagFilter.some((tag) => row.tags?.includes(tag))
-      ) {
-        return false;
-      }
       if (
         locationFilter &&
         !itemLots.some(
@@ -400,7 +409,7 @@ const InventoryItemsBoard = () => {
       if (left == null || right == null) return compare(left, right);
       return sort.ascending ? compare(left, right) : compare(right, left);
     });
-  }, [rows, lotsByItem, search, statusFilter, locationFilter, tagFilter, sort]);
+  }, [taggedRows, lotsByItem, search, statusFilter, locationFilter, sort]);
 
   useEffect(() => {
     setPage(1);
@@ -414,11 +423,12 @@ const InventoryItemsBoard = () => {
     : visibleRows;
 
   const toggleSort = (key) =>
-    setSort((current) =>
-      current.key === key
-        ? { key, ascending: !current.ascending }
-        : { key, ascending: true },
-    );
+    setSort((current) => {
+      if (current.key !== key) return { key, ascending: true };
+      return current.ascending
+        ? { key, ascending: false }
+        : { key: null, ascending: true };
+    });
 
   const sortableHeader = (key, labelId, extraProps = {}) => (
     <TableHeader
@@ -767,10 +777,10 @@ const InventoryItemsBoard = () => {
   };
 
   // Items have no criticality flag: "critical" means REORDER_NOW and not yet marked ordered.
-  const unaddressedCritical = rows.filter(
+  const unaddressedCritical = taggedRows.filter(
     (row) => row.status === "REORDER_NOW" && !row.orderedOn,
   );
-  const suggestionCount = rows.filter(isSuggested).length;
+  const suggestionCount = taggedRows.filter(isSuggested).length;
 
   if (loading) {
     return (
@@ -925,7 +935,7 @@ const InventoryItemsBoard = () => {
           className="board-log-usage"
           onClick={() => setAction({ kind: "quickLog" })}
         >
-          <FormattedMessage id="inventory.logUsage.button" />
+          <FormattedMessage id="usage.record.button" />
         </Button>
         <Button
           kind="tertiary"
@@ -1066,11 +1076,11 @@ const InventoryItemsBoard = () => {
                     </TableCell>
                     <TableCell>
                       {countMode ? (
-                        countableLots(row).length === 1 ? (
+                        liveLots(row).length === 1 ? (
                           renderCountEntry(
                             `count-item-${row.itemId}`,
-                            countableLots(row)[0].id,
-                            countableLots(row)[0].currentQuantity || 0,
+                            liveLots(row)[0].id,
+                            liveLots(row)[0].currentQuantity || 0,
                             row.units,
                             intl.formatMessage(
                               { id: "inventory.count.countOf" },
@@ -1081,7 +1091,7 @@ const InventoryItemsBoard = () => {
                           <span className="board-muted">
                             <FormattedMessage
                               id={
-                                countableLots(row).length === 0
+                                liveLots(row).length === 0
                                   ? "inventory.count.nothingHere"
                                   : "inventory.count.perLot"
                               }
@@ -1365,7 +1375,7 @@ const InventoryItemsBoard = () => {
       {action?.kind === "suggestions" && (
         <ReorderSuggestionsModal
           open
-          rows={rows}
+          rows={taggedRows}
           onClose={closeAction}
           onMarked={(count, outcome) => {
             setAction(null);

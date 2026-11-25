@@ -11,17 +11,14 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { fetchDevices, updateDeviceThresholds } from "../api";
-import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/CustomNotification";
+import { NotificationKinds } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import { hasRole, Roles } from "../../utils/Utils";
 
 function TemperatureThresholds() {
   const intl = useIntl();
-  const { notificationVisible, setNotificationVisible, addNotification } =
+  const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   // PUT /devices/{id}/thresholds requires ADMIN, so a non-admin who clicks
@@ -139,8 +136,6 @@ function TemperatureThresholds() {
 
   return (
     <div style={{ padding: "1rem 0" }}>
-      {notificationVisible === true ? <AlertDialog /> : ""}
-
       <Section>
         <div
           style={{

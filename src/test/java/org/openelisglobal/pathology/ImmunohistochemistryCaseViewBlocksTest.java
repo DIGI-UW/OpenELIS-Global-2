@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Map;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -15,6 +16,7 @@ import org.openelisglobal.program.valueholder.immunohistochemistry.Immunohistoch
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
+import org.openelisglobal.systemuser.service.SystemUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -29,6 +31,15 @@ public class ImmunohistochemistryCaseViewBlocksTest extends BaseWebContextSensit
     private static final int LEGACY_SLIDE_ID = 201;
     private static final int IHC_SAMPLE_ID = 9701;
 
+    /**
+     * This class's own stain category id and entry, which tests seed themselves.
+     */
+    private static final int STAIN_CATEGORY_ID = 9710;
+    private static final int STAIN = 9711;
+    private static final String STAIN_NAME = "Masson trichrome";
+
+    private boolean insertedTheStainCategory;
+
     @Autowired
     private ImmunohistochemistryDisplayService immunohistochemistryDisplayService;
 
@@ -37,6 +48,9 @@ public class ImmunohistochemistryCaseViewBlocksTest extends BaseWebContextSensit
 
     @Autowired
     private ReferenceTablesService referenceTablesService;
+
+    @Autowired
+    private SystemUserService systemUserService;
 
     /**
      * The immunohistochemistry row and the audit entries survive the fixture
@@ -62,6 +76,13 @@ public class ImmunohistochemistryCaseViewBlocksTest extends BaseWebContextSensit
 
     private void clearOwnRows() {
         jdbcTemplate.update("DELETE FROM clinlims.immunohistochemistry_sample WHERE id = ?", IHC_SAMPLE_ID);
+        PathologyCaseRows.clearLabelStamp(jdbcTemplate, LEGACY_SLIDE_ID);
+        jdbcTemplate.update("UPDATE clinlims.pathology_slide SET stain_id = NULL WHERE stain_id = ?", STAIN);
+        DictionaryRows.removeEntries(jdbcTemplate, STAIN);
+        if (insertedTheStainCategory) {
+            DictionaryRows.removeCategory(jdbcTemplate, STAIN_CATEGORY_ID);
+            insertedTheStainCategory = false;
+        }
         jdbcTemplate.update("DELETE FROM clinlims.history WHERE reference_table = ?",
                 Integer.parseInt(referenceTablesService.getReferenceTableByName("PATHOLOGY_BLOCK").getId()));
     }
@@ -92,5 +113,41 @@ public class ImmunohistochemistryCaseViewBlocksTest extends BaseWebContextSensit
         assertFalse("but it is marked retired, the same as the pathology case view sees it", block.isActive());
         PathologySlide slide = displayItem.getSlides().get(0);
         assertTrue("deactivating the block leaves its slide untouched", slide.isActive());
+    }
+
+    /**
+     * The referred view names each slide's stain as the pathology case view does.
+     */
+    @Test
+    public void caseView_namesTheStainsOfTheReferredSlides() {
+        insertedTheStainCategory = DictionaryRows.insertCategory(jdbcTemplate, STAIN_CATEGORY_ID,
+                PathologySampleService.STAIN_CATEGORY, PathologySampleService.STAIN_CATEGORY, "PathStain");
+        int categoryId = DictionaryRows.idOfCategory(jdbcTemplate, PathologySampleService.STAIN_CATEGORY);
+        DictionaryRows.insertEntry(jdbcTemplate, STAIN, categoryId, STAIN_NAME, "PSMas", true);
+        jdbcTemplate.update("UPDATE clinlims.pathology_slide SET stain_id = ? WHERE id = ?", STAIN, LEGACY_SLIDE_ID);
+
+        ImmunohistochemistryCaseViewDisplayItem displayItem = immunohistochemistryDisplayService
+                .convertToCaseDisplayItem(IHC_SAMPLE_ID);
+
+        assertEquals("the referred slide's stain is named, not left as a dictionary id",
+                Map.of(String.valueOf(STAIN), STAIN_NAME), displayItem.getStainNames());
+    }
+
+    /**
+     * The referred view shows whether each slide's label was checked against its
+     * block, read from the same map the pathology case view reads.
+     */
+    @Test
+    public void caseView_namesWhoVerifiedTheReferredSlidesLabels() {
+        ImmunohistochemistryCaseViewDisplayItem unverified = immunohistochemistryDisplayService
+                .convertToCaseDisplayItem(IHC_SAMPLE_ID);
+        assertTrue("a slide never checked is absent", unverified.getLabelVerifications().isEmpty());
+
+        PathologyCaseRows.stampLabel(jdbcTemplate, LEGACY_SLIDE_ID, "1001");
+        ImmunohistochemistryCaseViewDisplayItem verified = immunohistochemistryDisplayService
+                .convertToCaseDisplayItem(IHC_SAMPLE_ID);
+
+        assertEquals("the verified slide is named by its verifier", systemUserService.get("1001").getDisplayName(),
+                verified.getLabelVerifications().get(LEGACY_SLIDE_ID).verifiedBy());
     }
 }

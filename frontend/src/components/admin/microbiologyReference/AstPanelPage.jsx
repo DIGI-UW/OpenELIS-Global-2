@@ -5,6 +5,7 @@ import {
   ComboBox,
   ComposedModal,
   DataTable,
+  FilterableMultiSelect,
   InlineNotification,
   Loading,
   ModalBody,
@@ -32,12 +33,17 @@ import { Add, ArrowDown, ArrowUp, TrashCan } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import {
   getAstPanel,
+  getPanelOrganismCoverage,
   getReferenceOptions,
   getReferencePage,
   publishAstPanel,
 } from "./api";
+import { filterByTypedLabel } from "../../order/comboFilter";
 import { buildReferenceRequestQuery } from "./queryState";
 import useModalFocusReturn from "./useModalFocusReturn";
+
+const antibioticLabel = (item) =>
+  item ? `${item.displayName} (${item.whonetCode})` : "";
 
 const emptyPanel = {
   name: "",
@@ -58,6 +64,8 @@ const AstPanelPage = ({ query, setQuery }) => {
   const [saving, setSaving] = useState(false);
   const [confirmingPublish, setConfirmingPublish] = useState(false);
   const [error, setError] = useState("");
+  const [coverage, setCoverage] = useState([]);
+  const [showAllOrganisms, setShowAllOrganisms] = useState(false);
   const { rememberReturnFocus, restoreReturnFocus } = useModalFocusReturn();
   const requestQuery = buildReferenceRequestQuery(query);
   const draft = query.edit
@@ -109,6 +117,27 @@ const AstPanelPage = ({ query, setQuery }) => {
       .catch((requestError) => setError(requestError.message));
     return () => controller.abort();
   }, [query.edit]);
+
+  const coverageKey = draft
+    ? [
+        draft.susceptibilityProtocol || "GENERAL",
+        ...draft.antibiotics.map((row) => row.antibioticId),
+      ].join("|")
+    : "";
+
+  useEffect(() => {
+    if (!coverageKey) {
+      return undefined;
+    }
+    const [protocol, ...antibioticIds] = coverageKey.split("|");
+    const controller = new AbortController();
+    getPanelOrganismCoverage(antibioticIds, protocol, controller.signal)
+      .then((rows) => setCoverage(rows || []))
+      .catch((requestError) => {
+        if (requestError.name !== "AbortError") setError(requestError.message);
+      });
+    return () => controller.abort();
+  }, [coverageKey]);
 
   const headers = useMemo(
     () => [
@@ -173,8 +202,6 @@ const AstPanelPage = ({ query, setQuery }) => {
           antibioticId: selectedAntibiotic.id,
           antibioticName: selectedAntibiotic.displayName,
           whonetCode: selectedAntibiotic.whonetCode,
-          tier: 1,
-          reportBehavior: "ALWAYS",
         },
       ],
     });
@@ -206,6 +233,30 @@ const AstPanelPage = ({ query, setQuery }) => {
   };
 
   const readOnly = !!draft?.id && draft.current === false;
+  const defaultFor = draft?.defaultFor || [];
+  const coveredValues = new Set(coverage.map((row) => row.value));
+  const defaultForItems = [
+    ...coverage.filter(
+      (row) =>
+        showAllOrganisms || row.covered > 0 || defaultFor.includes(row.value),
+    ),
+    ...defaultFor
+      .filter((value) => !coveredValues.has(value))
+      .map((value) => ({ value })),
+  ];
+  const defaultForLabel = (item) =>
+    !item
+      ? ""
+      : item.total === undefined
+        ? item.value
+        : intl.formatMessage(
+            {
+              id: item.group
+                ? "microbiology.admin.astPanels.defaultFor.group"
+                : "microbiology.admin.astPanels.defaultFor.organism",
+            },
+            { name: item.value, covered: item.covered, total: item.total },
+          );
 
   if (loading && page.rows.length === 0) return <Loading withOverlay={false} />;
 
@@ -466,9 +517,10 @@ const AstPanelPage = ({ query, setQuery }) => {
                   items={antibiotics}
                   selectedItem={selectedAntibiotic}
                   disabled={readOnly}
-                  itemToString={(item) =>
-                    item ? `${item.displayName} (${item.whonetCode})` : ""
-                  }
+                  itemToString={antibioticLabel}
+                  shouldFilterItem={filterByTypedLabel(
+                    antibioticLabel(selectedAntibiotic),
+                  )}
                   onChange={({ selectedItem }) =>
                     setSelectedAntibiotic(selectedItem)
                   }
@@ -492,62 +544,13 @@ const AstPanelPage = ({ query, setQuery }) => {
                       <strong>{row.antibioticName}</strong>
                       <div>{row.whonetCode}</div>
                     </div>
-                    <Select
-                      id={`microbiology-tier-${row.antibioticId}`}
-                      labelText={intl.formatMessage({
-                        id: "microbiology.admin.astPanels.tier",
-                      })}
-                      value={row.tier}
-                      disabled={readOnly}
-                      onChange={(event) =>
-                        updateRow(index, { tier: Number(event.target.value) })
-                      }
-                    >
-                      {[1, 2, 3].map((tier) => (
-                        <SelectItem
-                          key={tier}
-                          value={tier}
-                          text={String(tier)}
-                        />
-                      ))}
-                    </Select>
-                    <Select
-                      id={`microbiology-report-${row.antibioticId}`}
-                      labelText={intl.formatMessage({
-                        id: "microbiology.admin.astPanels.reportBehavior",
-                      })}
-                      value={row.reportBehavior}
-                      disabled={readOnly}
-                      onChange={(event) =>
-                        updateRow(index, { reportBehavior: event.target.value })
-                      }
-                    >
-                      <SelectItem
-                        value="ALWAYS"
-                        text={intl.formatMessage({
-                          id: "microbiology.admin.astPanels.behavior.always",
-                        })}
-                      />
-                      <SelectItem
-                        value="CASCADE"
-                        text={intl.formatMessage({
-                          id: "microbiology.admin.astPanels.behavior.cascade",
-                        })}
-                      />
-                      <SelectItem
-                        value="SUPPRESS_UNLESS_RESISTANT"
-                        text={intl.formatMessage({
-                          id: "microbiology.admin.astPanels.behavior.resistant",
-                        })}
-                      />
-                    </Select>
                     <TextInput
                       id={`microbiology-disk-${row.antibioticId}`}
                       labelText={intl.formatMessage({
                         id: "microbiology.admin.astPanels.diskContent",
                       })}
                       helperText={intl.formatMessage({
-                        id: "microbiology.admin.astPanels.diskContent.help",
+                        id: "microbiology.admin.astPanels.diskContent.strengthHelp",
                       })}
                       value={row.diskContent || ""}
                       maxLength={40}
@@ -602,6 +605,48 @@ const AstPanelPage = ({ query, setQuery }) => {
                   </div>
                 ))}
               </div>
+              <Checkbox
+                id="microbiology-panel-show-all-organisms"
+                labelText={intl.formatMessage({
+                  id: "microbiology.admin.astPanels.defaultFor.showAll",
+                })}
+                checked={showAllOrganisms}
+                disabled={readOnly}
+                onChange={(_, detail) => setShowAllOrganisms(detail.checked)}
+              />
+              <FilterableMultiSelect
+                id="microbiology-panel-default-for"
+                titleText={intl.formatMessage({
+                  id: "microbiology.admin.astPanels.defaultFor",
+                })}
+                helperText={intl.formatMessage({
+                  id: "microbiology.admin.astPanels.defaultFor.help",
+                })}
+                placeholder={intl.formatMessage({
+                  id: "microbiology.admin.astPanels.defaultFor.placeholder",
+                })}
+                items={defaultForItems}
+                itemToString={defaultForLabel}
+                selectedItems={defaultForItems.filter((item) =>
+                  defaultFor.includes(item.value),
+                )}
+                sortItems={(items) => items}
+                disabled={readOnly}
+                onChange={({ selectedItems }) =>
+                  updateDraft({
+                    defaultFor: selectedItems.map((item) => item.value),
+                  })
+                }
+              />
+              {defaultFor.length > 0 && (
+                <div className="microbiology-admin__tag-stack">
+                  {defaultFor.map((value) => (
+                    <Tag key={value} type="cool-gray">
+                      {value}
+                    </Tag>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </ModalBody>

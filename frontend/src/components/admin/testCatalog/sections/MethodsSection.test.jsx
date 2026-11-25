@@ -393,6 +393,39 @@ describe("MethodsSection", () => {
     );
   };
 
+  it("offers only active methods to link, A to Z (OGC-1614)", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === `/rest/test/${TEST_ID}/methods`) {
+        cb(LINKS);
+      } else if (url === "/rest/displayList/METHODS") {
+        cb([
+          ...ALL_METHODS,
+          { id: "M4", value: "Antigen" },
+          { id: "M5", value: "biochemistry" },
+        ]);
+      } else if (url === "/rest/displayList/METHODS_INACTIVE") {
+        cb([{ id: "M4", value: "Antigen" }]);
+      } else if (url === "/rest/test-list") {
+        cb(ALL_TESTS);
+      }
+    });
+    const { container } = renderSection();
+    await screen.findByText("PCR");
+    fireEvent.click(
+      screen.getAllByRole("button", {
+        name: messages["admin.testCatalog.methods.btn.linkMethod"],
+      })[0],
+    );
+    fireEvent.change(container.querySelector("#link-method-select"), {
+      target: { value: "i" },
+    });
+
+    const offered = (await screen.findAllByRole("option")).map(
+      (option) => option.textContent,
+    );
+    expect(offered).toEqual(["biochemistry", "Microscopy"]);
+  });
+
   it("a refused link (409) reports the method is already linked, not success", async () => {
     postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
       cb({ error: "Request failed (HTTP 409 )", status: 409 }),

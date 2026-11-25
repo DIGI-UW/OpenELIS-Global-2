@@ -143,3 +143,30 @@
   margin: 0 0 1rem 1rem;
   list-style: disc;
 }
+
+.locationsPage .locationsThisLab {
+  margin-bottom: 1rem;
+}
+
+.locationsPage .locationsThisLab dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 2rem;
+  margin: 0.75rem 0;
+}
+
+.locationsPage .locationsThisLab dt {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.locationsPage .locationsThisLab dd {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  overflow-wrap: anywhere;
+}
+
+.locationsPage .locationsThisLabHelp {
+  max-width: 48rem;
+}

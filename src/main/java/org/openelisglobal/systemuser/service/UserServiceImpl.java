@@ -180,6 +180,7 @@ public class UserServiceImpl implements UserService {
                 selectedRoles.add(role);
             }
         }
+        selectedRoles = new ArrayList<>(new LinkedHashSet<>(selectedRoles));
 
         for (int i = 0; i < selectedRoles.size(); i++) {
             if (!currentUserRoles.contains(selectedRoles.get(i))) {

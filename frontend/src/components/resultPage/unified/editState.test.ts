@@ -176,6 +176,11 @@ describe("OGC-1200 WAITING: a pending test whose analyzer value waits in a run",
     expect(initialRowState(false, false)).toBe("EMPTY");
   });
 
+  it("starts a saved result held while the run holds its test undecided (FR-C4)", () => {
+    expect(initialRowState(true, true, true)).toBe("WAITING");
+    expect(initialRowState(true, false, false)).toBe("SAVED");
+  });
+
   it("is neither editable nor savable, and no event moves it", () => {
     expect(isRowEditable("WAITING")).toBe(false);
     expect(showSave("WAITING")).toBe(false);

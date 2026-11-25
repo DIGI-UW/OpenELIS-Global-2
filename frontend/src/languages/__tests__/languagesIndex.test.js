@@ -1,55 +1,62 @@
 import fs from "fs";
 import path from "path";
 import {
-  languageMessages,
+  availableLocales,
   languages,
   normalizeLocaleCode,
   resolveMessagesForLocale,
+  loadMessagesForLocale,
   buildLanguagesFromConfig,
   defaultLanguages,
 } from "../index";
 
 /**
- * The languages registry is derived from the directory, not hand-maintained.
+ * The languages registry is derived from the directory, not hand-maintained,
+ * and a bundle only downloads when a user runs its locale.
  *
  * Before this, every Transifex pull had to be wired into index.js by hand and
  * a dozen bundles (fr_MG, en_US, ar, de, …) sat on disk unreachable: a locale
  * configured in volume/configuration/backend/locales silently rendered
- * English. The registry now loads every *.json in src/languages and any
- * spelling of a code (fr_MG / fr-MG / FR_mg) lands on the same bundle.
+ * English. Then every bundle shipped in the first page load (about 1 MB per
+ * locale), which on a slow link was most of the wait before the login form.
  */
 
 const languagesDir = path.join(__dirname, "..");
 const bundleFilesOnDisk = fs
   .readdirSync(languagesDir)
   .filter((f) => f.endsWith(".json"));
+const readBundle = (file) =>
+  JSON.parse(fs.readFileSync(path.join(languagesDir, file), "utf8"));
+const en = readBundle("en.json");
+const fr = readBundle("fr.json");
+const frMG = readBundle("fr_MG.json");
 
-describe("dynamic bundle loading", () => {
-  it("registers every locale file in the directory", () => {
+describe("dynamic bundle registry", () => {
+  it("lists every locale file in the directory", () => {
     for (const file of bundleFilesOnDisk) {
       const code = normalizeLocaleCode(file.replace(/\.json$/, ""));
       expect(
-        languageMessages[code],
-        `${file} is on disk but missing from languageMessages — the registry must not need manual wiring`,
-      ).toBeTruthy();
+        availableLocales.includes(code),
+        `${file} is on disk but missing from availableLocales — the registry must not need manual wiring`,
+      ).toBe(true);
     }
   });
 
-  it("registers nothing that is not a file (no phantom locales)", () => {
+  it("lists nothing that is not a file (no phantom locales)", () => {
     const codesFromDisk = new Set(
       bundleFilesOnDisk.map((f) =>
         normalizeLocaleCode(f.replace(/\.json$/, "")),
       ),
     );
-    for (const code of Object.keys(languageMessages)) {
+    for (const code of availableLocales) {
       expect(codesFromDisk.has(code), `${code} has no backing file`).toBe(true);
     }
   });
 
   it("keeps the legacy languages export usable for every bundle", () => {
-    for (const [code, entry] of Object.entries(languages)) {
+    expect(Object.keys(languages)).toEqual([...availableLocales]);
+    for (const entry of Object.values(languages)) {
       expect(entry.label && typeof entry.label === "string").toBe(true);
-      expect(entry.messages).toBe(languageMessages[code]);
     }
   });
 });
@@ -70,33 +77,63 @@ describe("normalizeLocaleCode", () => {
   });
 });
 
-describe("resolveMessagesForLocale", () => {
-  const en = JSON.parse(
-    fs.readFileSync(path.join(languagesDir, "en.json"), "utf8"),
-  );
-  const fr = JSON.parse(
-    fs.readFileSync(path.join(languagesDir, "fr.json"), "utf8"),
-  );
-  const frMG = JSON.parse(
-    fs.readFileSync(path.join(languagesDir, "fr_MG.json"), "utf8"),
-  );
+describe("resolveMessagesForLocale before a bundle is loaded", () => {
+  it("answers English at once for English and for garbage", () => {
+    expect(resolveMessagesForLocale("en")).toEqual({
+      code: "en",
+      messages: en,
+      ready: true,
+    });
+    expect(resolveMessagesForLocale("").code).toBe("en");
+    expect(resolveMessagesForLocale(undefined).ready).toBe(true);
+  });
 
-  it("matches a config-file code to its Transifex bundle whatever the spelling", () => {
+  it("answers English for an unknown language, and is ready", () => {
+    const { code, messages, ready } = resolveMessagesForLocale("xx");
+    expect(code).toBe("xx");
+    expect(messages).toEqual(en);
+    expect(ready).toBe(true);
+  });
+
+  it("resolves a stored value that is not a language tag to English itself", () => {
+    // IntlProvider throws on such a tag, so it must never be handed over.
+    for (const garbage of ["zz-??", "fr-", "en_US_", "a-b-c-d-e-f-g-h-i"]) {
+      expect(resolveMessagesForLocale(garbage), garbage).toEqual({
+        code: "en",
+        messages: en,
+        ready: true,
+      });
+    }
+    expect(resolveMessagesForLocale("fr-HT").code).toBe("fr-HT");
+  });
+
+  it("answers English for a shipped locale not yet loaded, and is not ready", () => {
+    // de ships but nothing in this file loads it, so this stays the cold case.
+    const { code, messages, ready } = resolveMessagesForLocale("de");
+    expect(code).toBe("de");
+    expect(messages).toEqual(en);
+    expect(ready).toBe(false);
+  });
+});
+
+describe("loadMessagesForLocale", () => {
+  it("matches a config-file code to its Transifex bundle whatever the spelling", async () => {
     const translatedKey = Object.keys(frMG).find((k) => frMG[k]);
     expect(translatedKey, "fr_MG.json should not be empty").toBeTruthy();
     for (const spelling of ["fr_MG", "fr-MG", "FR_mg"]) {
-      const { code, messages } = resolveMessagesForLocale(spelling);
+      const { code, messages, ready } = await loadMessagesForLocale(spelling);
       expect(code).toBe("fr-MG");
+      expect(ready).toBe(true);
       expect(messages[translatedKey]).toBe(frMG[translatedKey]);
     }
   });
 
-  it("layers a regional variant over its base language before English", () => {
+  it("layers a regional variant over its base language before English", async () => {
     // Precedence contract for every key: the variant's own value wins, a key
     // it lacks takes the base language's, and only then English. Asserted
     // across all fr keys so it holds whether Transifex pulls fr_MG sparse or
     // complete.
-    const { messages } = resolveMessagesForLocale("fr_MG");
+    const { messages } = await loadMessagesForLocale("fr_MG");
     for (const key of Object.keys(fr)) {
       const expected = key in frMG ? frMG[key] : fr[key];
       expect(messages[key], key).toBe(expected);
@@ -109,26 +146,34 @@ describe("resolveMessagesForLocale", () => {
     }
   });
 
-  it("covers every English key so no locale renders raw message ids", () => {
-    const { messages } = resolveMessagesForLocale("fr_MG");
+  it("covers every English key so no locale renders raw message ids", async () => {
+    const { messages } = await loadMessagesForLocale("fr_MG");
     for (const key of Object.keys(en)) {
       expect(key in messages, `missing ${key}`).toBe(true);
     }
   });
 
-  it("falls back to the base language for an unbundled regional code", () => {
-    const { code, messages } = resolveMessagesForLocale("fr_XX");
+  it("falls back to the base language for an unbundled regional code", async () => {
+    const { code, messages, ready } = await loadMessagesForLocale("fr_XX");
     expect(code).toBe("fr-XX");
+    expect(ready).toBe(true);
     const frKey = Object.keys(fr).find((k) => fr[k] && fr[k] !== en[k]);
     expect(messages[frKey]).toBe(fr[frKey]);
   });
 
-  it("falls back to English for an unknown language and for garbage", () => {
-    expect(resolveMessagesForLocale("xx").messages).toBe(languageMessages.en);
-    expect(resolveMessagesForLocale("").code).toBe("en");
-    expect(resolveMessagesForLocale(undefined).messages).toBe(
-      languageMessages.en,
-    );
+  it("falls back to English for an unknown language and for garbage", async () => {
+    expect((await loadMessagesForLocale("xx")).messages).toEqual(en);
+    expect((await loadMessagesForLocale("")).code).toBe("en");
+    expect((await loadMessagesForLocale(undefined)).messages).toEqual(en);
+  });
+
+  it("makes the synchronous lookup ready once the bundles are in memory", async () => {
+    await loadMessagesForLocale("fr-MG");
+    const { messages, ready } = resolveMessagesForLocale("fr_MG");
+    expect(ready).toBe(true);
+    const translatedKey = Object.keys(frMG).find((k) => frMG[k]);
+    expect(messages[translatedKey]).toBe(frMG[translatedKey]);
+    expect(resolveMessagesForLocale("fr").ready).toBe(true);
   });
 });
 
@@ -140,16 +185,16 @@ describe("buildLanguagesFromConfig", () => {
     ]);
     expect(Object.keys(built)).toEqual(["fr-MG", "en"]);
     expect(built["fr-MG"].label).toBe("French Madagascar");
-    expect(built["fr-MG"].messages).toBe(languageMessages["fr-MG"]);
     expect(built["en"].fallback).toBe(true);
   });
 
   it("keeps a configured locale selectable even without a bundle", () => {
+    // "xx" is not a real language, so Transifex will never add a bundle for it.
+    expect(availableLocales.includes("xx")).toBe(false);
     const built = buildLanguagesFromConfig([
-      { localeCode: "pt", displayName: "Português" },
+      { localeCode: "xx", displayName: "Unbundled" },
     ]);
-    expect(built["pt"].label).toBe("Português");
-    expect(built["pt"].messages).toBe(languageMessages.en);
+    expect(built["xx"].label).toBe("Unbundled");
   });
 
   it("skips rows without a code and falls back to defaults when empty", () => {

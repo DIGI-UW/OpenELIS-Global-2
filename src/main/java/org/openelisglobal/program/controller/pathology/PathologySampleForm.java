@@ -14,6 +14,11 @@ import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 
 public class PathologySampleForm {
 
+    /**
+     * Nothing reads this any more: the case moves between stages only through the
+     * advance and return transitions, which record who moved it. It still binds so
+     * an older client's post is accepted and has no effect on the stage.
+     */
     private PathologyStatus status;
 
     private List<PathologyBlock> blocks;
@@ -38,6 +43,12 @@ public class PathologySampleForm {
 
     /** Null when the client did not post it, so the stored flag stands. */
     private Boolean decalcificationRequired;
+
+    /**
+     * The processor run, written once on the case's Processing entry. Null when the
+     * client did not post it; ignored whenever no entry would take it.
+     */
+    private String runReference;
 
     private List<String> conclusions;
 
@@ -150,6 +161,14 @@ public class PathologySampleForm {
 
     public void setDecalcificationRequired(Boolean decalcificationRequired) {
         this.decalcificationRequired = decalcificationRequired;
+    }
+
+    public String getRunReference() {
+        return runReference;
+    }
+
+    public void setRunReference(String runReference) {
+        this.runReference = runReference;
     }
 
     public String getConclusionText() {

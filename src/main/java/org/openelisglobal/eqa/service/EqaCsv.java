@@ -26,8 +26,17 @@ final class EqaCsv {
         return -1;
     }
 
+    /**
+     * The cell as it was meant: a writer's spreadsheet formula guard (an apostrophe
+     * before = + - or @, see StringUtil.csvFormulaGuard) is removed, so a
+     * qualitative "+" written as "'+" reads as "+".
+     */
     static String cell(List<String> cells, int index) {
-        return index >= 0 && index < cells.size() ? cells.get(index).trim() : "";
+        String value = index >= 0 && index < cells.size() ? cells.get(index).trim() : "";
+        if (value.length() > 1 && value.charAt(0) == '\'' && "=+-@".indexOf(value.charAt(1)) >= 0) {
+            return value.substring(1);
+        }
+        return value;
     }
 
     static List<String> split(String line) {

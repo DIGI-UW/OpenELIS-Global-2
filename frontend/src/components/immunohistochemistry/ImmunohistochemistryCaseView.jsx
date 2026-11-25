@@ -40,6 +40,7 @@ import QuestionnaireResponse from "../common/QuestionnaireResponse";
 import "./../pathology/PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
+import LabelVerificationTag from "../pathology/LabelVerificationTag";
 import {
   activeRows,
   blockIdentifier,
@@ -1482,6 +1483,14 @@ function ImmunohistochemistryCaseView() {
                                 immunohistochemistrySampleInfo.blocks,
                               )}
                             />
+                            {/* Whether the slide's label was checked against
+                                its block at microtomy, read only here. */}
+                            <LabelVerificationTag
+                              slide={slide}
+                              labelVerifications={
+                                immunohistochemistrySampleInfo.labelVerifications
+                              }
+                            />
                           </Column>
                           <Column lg={2} md={2} sm={1}>
                             <TextInput
@@ -1497,6 +1506,38 @@ function ImmunohistochemistryCaseView() {
                               disabled={true}
                             />
                           </Column>
+                          <Column lg={2} md={1} sm={1}>
+                            <TextInput
+                              id={"slideLevel_" + index}
+                              labelText={intl.formatMessage({
+                                id: "pathology.label.level",
+                              })}
+                              hideLabel={true}
+                              placeholder={intl.formatMessage({
+                                id: "pathology.label.level",
+                              })}
+                              value={slide.level ?? ""}
+                              disabled={true}
+                            />
+                          </Column>
+                          <Column lg={2} md={1} sm={1}>
+                            <TextInput
+                              id={"slideStain_" + index}
+                              labelText={intl.formatMessage({
+                                id: "pathology.label.stain",
+                              })}
+                              hideLabel={true}
+                              placeholder={intl.formatMessage({
+                                id: "pathology.label.stain",
+                              })}
+                              value={
+                                immunohistochemistrySampleInfo.stainNames?.[
+                                  slide.stainId
+                                ] ?? ""
+                              }
+                              disabled={true}
+                            />
+                          </Column>
                           <Column lg={2} md={1} sm={2}>
                             {slide.image && (
                               <>
@@ -1504,7 +1545,7 @@ function ImmunohistochemistryCaseView() {
                               </>
                             )}
                           </Column>
-                          <Column lg={10} md={3} sm={2} />
+                          <Column lg={6} md={1} sm={2} />
                           <Column lg={16} md={8} sm={4}>
                             <div>
                               {" "}

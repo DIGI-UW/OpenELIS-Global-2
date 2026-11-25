@@ -3,20 +3,28 @@ import { test, expect } from "../../../helpers/test-base";
 import {
   createPathologyCase,
   discoverPathologyOrderTarget,
+  ensureStain,
+  moveCaseToStage,
   SeededPathologyCase,
+  Stain,
 } from "../../../helpers/seed-pathology-data";
 import {
+  addSlideButton,
+  addSlideTo,
+  advanceCase,
+  blockGroup,
   cassetteRows,
   expandSection,
+  expectStageSwitchesOn,
   openCase,
   overlaps,
   rowNamed,
   saveDraft,
   sectionHeader,
-  setStage,
-  slideRows,
   summaryRow,
 } from "../../../helpers/pathology-case-view";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
+import { expectPdf, printLabels } from "../../../helpers/pathology-labels";
 import { UI_TIMEOUT } from "../../../helpers/timeouts";
 
 /**
@@ -31,8 +39,9 @@ import { UI_TIMEOUT } from "../../../helpers/timeouts";
  * print failed on every click. Now the server names a row when it is first
  * saved (A1, A2 for cassettes, 1, 2 under a block for slides) and gives it a
  * barcode built from the lab number; a saved row is retired through its own
- * endpoint and kept; a slide names the saved block it was cut from; and each
- * list prints the case's labels in one go from the lab number.
+ * endpoint and kept; a slide is added under the block it was cut from, with
+ * its level and stain; and each list prints the case's labels in one go from
+ * the lab number.
  *
  * What only a deployed stack proves here:
  *   - the server, not the browser, names a new row, and the name and barcode
@@ -40,15 +49,20 @@ import { UI_TIMEOUT } from "../../../helpers/timeouts";
  *   - a second save keeps the row's identity and the location it was given,
  *   - the retire endpoint and the read-back that follows it, with the row
  *     still there behind the switch,
- *   - the slide picker offers only blocks the server already holds, and
+ *   - a slide added under a block is saved as cut from that block, and comes
+ *     back under it with the level and the stain it was given, and
  *   - the label servlet answers a PDF for the case's lab number.
  *
  * Serial, and on one seeded case, because the walk is the point: the second
  * cassette's name depends on the first, the slide on a saved block, and the
  * printed labels on both.
+ *
+ * The slide is cut at Microtomy, so that stage must be tracked on the stack
+ * (its stage switch on, the shipped default); the spec checks that first.
  */
 
 let seeded: SeededPathologyCase;
+let stain: Stain;
 
 /** A barcode as the row renders it, behind its visually hidden label. */
 function barcodeText(barcode: string) {
@@ -65,51 +79,33 @@ function showDeactivated(page: Page, sectionId: string) {
 }
 
 /**
- * Turn a list's switch on through its label, as a person clicks it: Carbon
- * draws the switch's track over its own button, so the button itself never
- * takes the pointer.
+ * Turn a list's switch on or off through its label, as a person clicks it:
+ * Carbon draws the switch's track over its own button, so the button itself
+ * never takes the pointer.
  */
-async function turnOnShowDeactivated(page: Page, sectionId: string) {
+async function setShowDeactivated(page: Page, sectionId: string, on: boolean) {
   const toggle = showDeactivated(page, sectionId);
   await expect(toggle).toBeVisible();
-  await page.locator(`#${sectionId} label.cds--toggle__label`).click();
-  await expect(toggle).toHaveAttribute("aria-checked", "true");
+  if ((await toggle.getAttribute("aria-checked")) !== String(on)) {
+    await page.locator(`#${sectionId} label.cds--toggle__label`).click();
+  }
+  await expect(toggle).toHaveAttribute("aria-checked", String(on));
 }
 
-/**
- * Click a print button and return the label servlet's answer. The labels open
- * in a new window, but a headless browser hands a PDF off as a download and
- * the window never commits a URL, so the request and its answer are read from
- * the browser context, which sees the window's traffic either way.
- */
-async function printLabels(page: Page, buttonName: string) {
-  const answer = page.context().waitForEvent("response", {
-    predicate: (r) => r.url().includes("/LabelMakerServlet"),
-    timeout: UI_TIMEOUT,
-  });
-  const popupOpened = page.waitForEvent("popup");
-  await page.getByRole("button", { name: buttonName, exact: true }).click();
-  const popup = await popupOpened;
-  const response = await answer;
-  return { popup, response };
+async function turnOnShowDeactivated(page: Page, sectionId: string) {
+  await setShowDeactivated(page, sectionId, true);
 }
 
-/**
- * Fail with the servlet's own words when it answers anything but a PDF: an
- * HTML page from it means no label was produced, which is a defect.
- */
-async function expectPdf(
-  response: Awaited<ReturnType<typeof printLabels>>["response"],
-) {
-  const contentType = response.headers()["content-type"] ?? "";
-  const preview = contentType.startsWith("application/pdf")
-    ? ""
-    : (await response.text()).slice(0, 200);
-  expect(response.status(), `label servlet answered: ${preview}`).toBe(200);
-  expect(
-    contentType,
-    `label servlet answered ${contentType} instead of a PDF: ${preview}`,
-  ).toMatch(/^application\/pdf/);
+/** The slide rows listed under one block. */
+function slidesUnder(page: Page, designation: string) {
+  return blockGroup(page, designation).locator(".pathology-case-view__row");
+}
+
+/** The count a block's group header carries, "1 slide", "2 slides". */
+function groupCount(page: Page, designation: string) {
+  return blockGroup(page, designation)
+    .locator(".pathology-case-view__group-header .cds--tag")
+    .filter({ hasText: /^\d+ slides?$/ });
 }
 
 test.describe
@@ -125,8 +121,10 @@ test.describe
     });
     const page = await context.newPage();
     await page.goto("/", { waitUntil: "domcontentloaded" });
+    await expectStageSwitchesOn(page, ["MICROTOMY"]);
     const target = await discoverPathologyOrderTarget(page);
     seeded = await createPathologyCase(page, target);
+    stain = await ensureStain(page);
     await context.close();
   });
 
@@ -134,7 +132,7 @@ test.describe
     page,
   }, testInfo) => {
     await openCase(page, seeded);
-    await setStage(page, "Grossing");
+    await advanceCase(page, { label: "Begin grossing" });
     await expandSection(page, "pathology-section-grossing");
 
     await test.step("no count input is offered anywhere", async () => {
@@ -336,75 +334,97 @@ test.describe
     });
   });
 
-  test("a slide is cut from a named block, and only an active saved block is offered", async ({
+  test("a slide is added under the block it is cut from, with its level and stain", async ({
     page,
   }, testInfo) => {
+    // The stages between are not what this spec is about, so the case is
+    // taken there through the move endpoints, which describe the specimen and
+    // embed its cassette on the way as the bench would, and opened again.
     await openCase(page, seeded);
-    await setStage(page, "Microtomy");
+    await moveCaseToStage(page, seeded, "MICROTOMY");
+    await openCase(page, seeded);
     await expandSection(page, "pathology-section-microtomy");
 
-    const addSlide = page.getByRole("button", { name: "Add slide" });
-    await expect(addSlide).toBeEnabled();
-    await addSlide.click();
-
-    const newRow = slideRows(page).first();
-    // The picker's name carries the row's name after its visible title.
-    const parent = newRow.getByRole("combobox", { name: /^Cut from block/ });
-
-    await test.step("a slide naming no block is refused before anything is posted", async () => {
-      const casePosts: string[] = [];
-      const recordPost = (request: { method(): string; url(): string }) => {
-        if (
-          request.method() === "POST" &&
-          request.url().includes("/rest/pathology/caseView/")
-        ) {
-          casePosts.push(request.url());
-        }
-      };
-      page.on("request", recordPost);
-      await page.getByRole("button", { name: "Save draft" }).click();
-
-      const refusal = "Pick the block this slide was cut from";
+    await test.step("the block is listed with nothing cut from it, and the retired one offers nothing", async () => {
+      await expect(blockGroup(page, "A1")).toHaveCount(1);
       await expect(
-        page
-          .locator(".cds--toast-notification--error")
-          .filter({ hasText: refusal }),
-      ).not.toHaveCount(0, { timeout: UI_TIMEOUT });
-      // Carbon's ComboBox sets no aria-invalid; it ties the invalid text to
-      // the input as its description, which is what a screen reader reads.
-      await expect(parent).toHaveAccessibleDescription(refusal);
-      await expect(newRow.getByText(refusal, { exact: true })).toBeVisible();
-      await expect(page.getByText("Unsaved changes")).toBeVisible();
-      page.off("request", recordPost);
-      expect(casePosts, "the refused save posted nothing").toEqual([]);
+        blockGroup(page, "A1").locator(".pathology-case-view__group-header"),
+      ).toContainText("No slides in use under this block");
+      await expect(slidesUnder(page, "A1")).toHaveCount(0);
+      // A2 was retired at grossing with no slide, so it is listed only
+      // behind the switch, and even there takes no new slide.
+      await expect(blockGroup(page, "A2")).toHaveCount(0);
+      await setShowDeactivated(page, "pathology-section-microtomy", true);
+      await expect(blockGroup(page, "A2")).toHaveCount(1);
+      await expect(
+        blockGroup(page, "A2").locator(".cds--tag", {
+          hasText: /^Deactivated$/,
+        }),
+      ).toBeVisible();
+      await expect(addSlideButton(page, "A2")).toHaveCount(0);
+      await setShowDeactivated(page, "pathology-section-microtomy", false);
     });
 
-    await parent.click();
-    // A2 is retired, so the one block a slide may still be cut from is A1.
-    await expect(newRow.getByRole("option")).toHaveText(["A1"]);
-    await newRow.getByRole("option", { name: "A1", exact: true }).click();
-    await expect(parent).toHaveValue("A1");
+    await test.step("Add slide under A1 adds an unsaved slide there, with no block to pick", async () => {
+      await addSlideTo(page, "A1");
+      const newRow = slidesUnder(page, "A1");
+      await expect(newRow).toHaveCount(1);
+      await expect(
+        newRow.locator(".pathology-case-view__row-designation"),
+      ).toHaveText("Assigned on save");
+      await expect(
+        newRow.getByLabel("Level New slide 1", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        newRow.getByRole("combobox", {
+          name: "Stain New slide 1",
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        newRow.getByLabel("Location New slide 1", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        newRow.getByRole("button", { name: "Remove New slide 1", exact: true }),
+      ).toBeVisible();
+      await expect(page.getByText(/Cut from block/)).toHaveCount(0);
+    });
 
+    await slidesUnder(page, "A1")
+      .getByLabel("Level New slide 1", { exact: true })
+      .fill("1");
+    await chooseCarbonOption(
+      slidesUnder(page, "A1").getByRole("combobox", {
+        name: "Stain New slide 1",
+        exact: true,
+      }),
+      stain.name,
+    );
     await saveDraft(page, seeded.pathologySampleId);
 
-    const row = rowNamed(slideRows(page), "1");
+    const barcode = `${seeded.accessionNumber}.A1.1`;
+    const row = rowNamed(slidesUnder(page, "A1"), "1");
     await expect(row).toHaveCount(1);
     await expect(row.locator(".pathology-case-view__row-barcode")).toHaveText(
-      barcodeText(`${seeded.accessionNumber}.A1.1`),
+      barcodeText(barcode),
     );
-    await expect(row.locator(".pathology-case-view__row-meta")).toHaveText(
-      /^Cut from block\s*A1$/,
-    );
+    await expect(
+      row.getByLabel(`Level ${barcode}`, { exact: true }),
+    ).toHaveValue("1");
+    await expect(
+      row.getByRole("combobox", { name: `Stain ${barcode}`, exact: true }),
+    ).toHaveValue(stain.name);
     await expect(summaryRow(page, "Slides")).toHaveText(/^Slides\s*1$/);
     await expect(
       sectionHeader(page, "pathology-section-microtomy").locator(".cds--tag"),
     ).toHaveText("1 slide");
+    await expect(groupCount(page, "A1")).toHaveText("1 slide");
     await expect(
       row.getByRole("button", { name: "Upload file" }).first(),
     ).toBeVisible();
     await expect(
       row.getByRole("button", {
-        name: `Deactivate slide ${seeded.accessionNumber}.A1.1`,
+        name: `Deactivate slide ${barcode}`,
         exact: true,
       }),
     ).toBeVisible();
@@ -454,8 +474,9 @@ test.describe
     await openCase(page, seeded);
     await expandSection(page, "pathology-section-grossing");
 
+    // A1 was embedded on the way to Microtomy, so it is a block now.
     const deactivate = page.getByRole("button", {
-      name: "Deactivate cassette A1",
+      name: "Deactivate block A1",
       exact: true,
     });
     await expect(deactivate).toBeEnabled();
@@ -497,20 +518,37 @@ test.describe
 
       await expect(rowNamed(cassetteRows(page), "A1")).toBeVisible();
       await expect(rowNamed(cassetteRows(page), "A2")).toBeVisible();
-      const slide = rowNamed(slideRows(page), "1");
+      const barcode = `${seeded.accessionNumber}.A1.1`;
+      const slide = rowNamed(slidesUnder(page, "A1"), "1");
       await expect(slide).toBeVisible();
 
-      // Every action on the slide row that a person can see sits clear of
-      // the others at this width.
-      const actions = slide.locator(
-        ".pathology-case-view__row-actions button:visible",
-      );
-      // Upload file and the slide's Deactivate; Carbon's second, hidden uploader
-      // trigger is not something a person can see or hit.
-      await expect(actions).toHaveCount(2);
+      // Verify label, Upload file and the slide's Deactivate are the actions
+      // a person can see; Carbon's second, hidden uploader trigger is not one
+      // they can hit.
+      await expect(
+        slide.locator(".pathology-case-view__row-actions button:visible"),
+      ).toHaveCount(3);
+
+      // Every control on the slide row sits clear of the others at this
+      // width.
+      const controls = [
+        slide.locator(".pathology-case-view__row-identity"),
+        slide.getByLabel(`Level ${barcode}`, { exact: true }),
+        slide.getByRole("combobox", { name: `Stain ${barcode}`, exact: true }),
+        slide.getByRole("button", {
+          name: "Verify label of A1.1",
+          exact: true,
+        }),
+        slide.getByRole("button", { name: "Upload file" }).first(),
+        slide.getByRole("button", {
+          name: `Deactivate slide ${barcode}`,
+          exact: true,
+        }),
+      ];
       const boxes = [];
-      for (const action of await actions.all()) {
-        const box = await action.boundingBox();
+      for (const control of controls) {
+        await expect(control).toBeVisible();
+        const box = await control.boundingBox();
         expect(box).not.toBeNull();
         boxes.push(box!);
       }
@@ -518,7 +556,7 @@ test.describe
         for (let second = first + 1; second < boxes.length; second += 1) {
           expect(
             overlaps(boxes[first], boxes[second]),
-            `slide row actions ${first} and ${second} overlap at ${width}px`,
+            `slide row controls ${first} and ${second} overlap at ${width}px`,
           ).toBe(false);
         }
       }

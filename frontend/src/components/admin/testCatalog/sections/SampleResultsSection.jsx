@@ -464,6 +464,7 @@ const SampleResultsSection = ({ testId }) => {
           allowMultipleReadings: false,
           isPrimary: prev.length === 0,
           showOnReport: true,
+          isRequired: prev.length === 0,
           options: [],
           interpretations: [],
         },
@@ -576,6 +577,7 @@ const SampleResultsSection = ({ testId }) => {
                   resultType: c.resultType,
                   sortOrder: c.options.length + 1,
                   normal: false,
+                  critical: false,
                   qualifiable: false,
                 },
               ],
@@ -606,6 +608,7 @@ const SampleResultsSection = ({ testId }) => {
                   resultType: c.resultType,
                   sortOrder: c.options.length + 1,
                   normal: false,
+                  critical: false,
                   qualifiable: false,
                 },
               ],
@@ -985,6 +988,18 @@ const SampleResultsSection = ({ testId }) => {
                   disabled={!!c.isPrimary}
                   onToggle={(checked) =>
                     patchComponent(ci, { showOnReport: checked })
+                  }
+                />
+                <Toggle
+                  id={`comp-required-${ci}`}
+                  labelText={intl.formatMessage({
+                    id: "label.testCatalog.sampleResults.isRequired",
+                  })}
+                  labelA={intl.formatMessage({ id: "label.no" })}
+                  labelB={intl.formatMessage({ id: "label.yes" })}
+                  toggled={c.isRequired === true}
+                  onToggle={(checked) =>
+                    patchComponent(ci, { isRequired: checked })
                   }
                 />
                 <TextInput
@@ -1376,6 +1391,9 @@ const SampleResultsSection = ({ testId }) => {
                               <FormattedMessage id="label.testCatalog.sampleResults.option.normal" />
                             </TableHeader>
                             <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.option.critical" />
+                            </TableHeader>
+                            <TableHeader>
                               <FormattedMessage id="label.testCatalog.sampleResults.option.qualifiable" />
                             </TableHeader>
                             <TableHeader>
@@ -1425,6 +1443,18 @@ const SampleResultsSection = ({ testId }) => {
                                   checked={!!o.normal}
                                   onChange={(_e, { checked }) =>
                                     markNormal(ci, oi, checked)
+                                  }
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Checkbox
+                                  id={`opt-critical-${ci}-${oi}`}
+                                  labelText=""
+                                  checked={!!o.critical}
+                                  onChange={(_e, { checked }) =>
+                                    patchChild(ci, "options", oi, {
+                                      critical: checked,
+                                    })
                                   }
                                 />
                               </TableCell>

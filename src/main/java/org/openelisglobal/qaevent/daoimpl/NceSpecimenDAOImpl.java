@@ -22,7 +22,7 @@ public class NceSpecimenDAOImpl extends BaseDAOImpl<NceSpecimen, Integer> implem
             QcViolationNceServiceImpl.TRIGGER_SOURCE_BENCH_CONTROL);
 
     /** Statuses that end a hold. Anything else still counts as open. */
-    private static final List<String> CLOSED_STATUSES = List.of("Closed", "Completed");
+    public static final List<String> CLOSED_STATUSES = List.of("Closed", "Completed");
 
     public NceSpecimenDAOImpl() {
         super(NceSpecimen.class);

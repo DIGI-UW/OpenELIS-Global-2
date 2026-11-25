@@ -114,6 +114,11 @@ interface PolymorphicResultCellProps {
   ) => void;
   /** OGC-1417: the numeric field was left, so its value can be judged */
   onValueBlur?: (nextFocus: EventTarget | null) => void;
+  /**
+   * The expanded panel repeats the row's field; "panel" gives its copy ids of
+   * its own so the row field's id stays unique on the page.
+   */
+  scope?: "row" | "panel";
 }
 
 function readOnlyDisplay(row: ResultCellRow): string {
@@ -145,9 +150,12 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
   editable,
   onValueChange,
   onValueBlur,
+  scope = "row",
 }) => {
   const intl = useIntl();
   const rowKey = worklistRowKey(row);
+  const fieldId = (kind: string) =>
+    `unified${scope === "panel" ? "Panel" : ""}${kind}-${rowKey}`;
   // The cell is the page's primary control and carries no visible label — the
   // column header names it for a sighted reader, but a screen reader lands on
   // an unnamed control, so each variant gets a hidden one (OGC-1179).
@@ -178,8 +186,8 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
     case "D":
       return (
         <Select
-          id={`unifiedResultValue-${rowKey}`}
-          name={`unifiedResultValue-${rowKey}`}
+          id={fieldId("ResultValue")}
+          name={fieldId("ResultValue")}
           labelText={accessibleName}
           hideLabel
           onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
@@ -197,8 +205,8 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
     case "M":
       return (
         <ResultMultiSelect
-          id={`unifiedMultiResultValue-${rowKey}`}
-          name={`unifiedMultiResultValue-${rowKey}`}
+          id={fieldId("MultiResultValue")}
+          name={fieldId("MultiResultValue")}
           dictionaryValues={row.dictionaryResults || []}
           value={row.multiSelectResultValues}
           onChange={(e: { target: { value: string } }) =>
@@ -210,8 +218,8 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
     case "C":
       return (
         <CascadingMultiSelect
-          id={`unifiedCascadingResultValue-${rowKey}`}
-          name={`unifiedCascadingResultValue-${rowKey}`}
+          id={fieldId("CascadingResultValue")}
+          name={fieldId("CascadingResultValue")}
           dictionaryValues={row.dictionaryResults || []}
           value={row.multiSelectResultValues}
           onChange={(e: { target: { value: string } }) =>
@@ -224,7 +232,7 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
       const formatWillChange = warnsOnReportingFormat(row);
       return (
         <TextInput
-          id={`unifiedResultValue-${rowKey}`}
+          id={fieldId("ResultValue")}
           labelText={accessibleName}
           hideLabel
           type="text"
@@ -248,7 +256,7 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
     case "T":
       return (
         <TextInput
-          id={`unifiedResultValue-${rowKey}`}
+          id={fieldId("ResultValue")}
           labelText={accessibleName}
           hideLabel
           type="text"
@@ -266,7 +274,7 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
     case "A":
       return (
         <TextArea
-          id={`unifiedResultValue-${rowKey}`}
+          id={fieldId("ResultValue")}
           rows={1}
           labelText={accessibleName}
           hideLabel
