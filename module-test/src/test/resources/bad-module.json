@@ -49,7 +49,14 @@
     "routes": [
       {
         "path": "/m/kitfixture/things",
-        "expose": "./Things",
+        "expose": "./Missing",
+        "permission": "view"
+      }
+    ],
+    "slots": [
+      {
+        "slot": "home.dashboard.cards",
+        "expose": "./Ghost",
         "permission": "view"
       }
     ]

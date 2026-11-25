@@ -23,6 +23,7 @@ import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.IsoDateNormalizer;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
@@ -398,7 +399,7 @@ public class SampleOrderService {
         createOrUpdateObservation(currentUserId, observations, patientId, ObservationType.REFERRERS_PATIENT_ID,
                 sampleOrder.getReferringPatientNumber(), ValueType.LITERAL);
         createOrUpdateObservation(currentUserId, observations, patientId, ObservationType.NEXT_VISIT_DATE,
-                sampleOrder.getNextVisitDate(), ValueType.LITERAL);
+                IsoDateNormalizer.toIso(sampleOrder.getNextVisitDate()), ValueType.LITERAL);
         createOrUpdateObservation(currentUserId, observations, patientId, ObservationType.TEST_LOCATION_CODE,
                 sampleOrder.getTestLocationCode(), ValueType.DICTIONARY);
         createOrUpdateObservation(currentUserId, observations, patientId, ObservationType.TEST_LOCATION_CODE_OTHER,
@@ -406,7 +407,7 @@ public class SampleOrderService {
         createOrUpdateObservation(currentUserId, observations, patientId, ObservationType.PAYMENT_STATUS,
                 sampleOrder.getPaymentOptionSelection(), ValueType.DICTIONARY);
         createOrUpdateObservation(currentUserId, observations, patientId, ObservationType.REQUEST_DATE,
-                sampleOrder.getRequestDate(), ValueType.LITERAL);
+                IsoDateNormalizer.toIso(sampleOrder.getRequestDate()), ValueType.LITERAL);
         createOrUpdateObservation(currentUserId, observations, patientId, ObservationType.PROGRAM,
                 sampleOrder.getProgram(), ValueType.DICTIONARY);
         createOrUpdateObservation(currentUserId, observations, patientId, ObservationType.BILLING_REFERENCE_NUMBER,

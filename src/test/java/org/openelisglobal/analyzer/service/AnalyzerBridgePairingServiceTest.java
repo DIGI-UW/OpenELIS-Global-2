@@ -82,7 +82,8 @@ public class AnalyzerBridgePairingServiceTest {
 
         String storedKey = stored.get().getClientPrivateKey();
 
-        assertFalse(storedKey.startsWith("MI"));
+        assertThrows(java.security.GeneralSecurityException.class,
+                () -> BridgeTls.privateKey(java.util.Base64.getDecoder().decode(storedKey)));
         BridgeTls.privateKey(java.util.Base64.getDecoder().decode(encryptor.decrypt(storedKey)));
     }
 

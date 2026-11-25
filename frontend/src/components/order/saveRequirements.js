@@ -1,3 +1,5 @@
+import { sampleTimesValid } from "./dateUtils";
+
 /**
  * What a lane still needs before its order can be saved.
  *
@@ -48,8 +50,9 @@ export const describeUnmetRequirements = (intl, requirements) => {
 /**
  * The save gate of an environmental or vector order: a lab number, the lane's
  * site, a requesting organisation or requestor, a sample type, and a test or
- * panel on every sample that has a type. The vector lane lacked the last one,
- * so an order saved with a sample and no test (OGC-1060).
+ * panel on every sample that has a type (the vector lane lacked it, so an order
+ * saved with a sample and no test, OGC-1060), and sample times that read as
+ * times (OGC-1657).
  */
 export const fieldOrderRequirements = ({
   labNumber,
@@ -73,6 +76,10 @@ export const fieldOrderRequirements = ({
     {
       met: typed.length > 0 && everySampleHasATest,
       labelId: "order.save.requirement.testsPerSample",
+    },
+    {
+      met: samples.every(sampleTimesValid),
+      labelId: "order.save.requirement.sampleTimes",
     },
   ];
 };

@@ -92,6 +92,7 @@ public class DeliveryOutboxServiceImpl implements DeliveryOutboxService {
             } else if (!channelReady(senders, channel)) {
                 row.setStatus(ChannelStatus.FAILED);
                 row.setErrorMessage(MessageUtil.getMessage("delivery.error.notSetUp", channelName(channel)));
+                row.setAttempts(1);
             } else {
                 row.setNextAttemptAt(now);
             }
@@ -100,6 +101,11 @@ public class DeliveryOutboxServiceImpl implements DeliveryOutboxService {
         log.setChannels(rows);
         log.setOverallStatus(overall(rows));
         notificationLogService.save(log);
+        for (NotificationLogChannel row : rows) {
+            if (row.getStatus() == ChannelStatus.FAILED) {
+                recordAttemptRow(log.getId(), row.getChannel(), false, row.getErrorMessage());
+            }
+        }
         return log;
     }
 
@@ -296,6 +302,10 @@ public class DeliveryOutboxServiceImpl implements DeliveryOutboxService {
         dto.setWorkflow(log.getReferenceWorkflow());
         dto.setStatus(log.getOverallStatus() == null ? null : log.getOverallStatus().name());
         dto.setResentFromId(log.getResentFromId());
+        if (withContent && log.getResentFromId() != null) {
+            dto.setResentFromFiredAt(
+                    notificationLogDAO.get(log.getResentFromId()).map(source -> iso(source.getFiredAt())).orElse(null));
+        }
         dto.setReportVersionId(log.getReportVersionId());
         dto.setReportFormat(log.getReportFormat());
         List<SentMessageDTO.ChannelDTO> channels = new ArrayList<>();

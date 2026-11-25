@@ -179,6 +179,47 @@ describe("OGC-1200 runs on the unified worklist", () => {
     expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
   });
 
+  it("tags a pending test batched in a workplan run and keeps it open for entry", () => {
+    const onOpenRun = renderPage([
+      row({
+        waitingRun: {
+          ...WAITING,
+          runId: 9,
+          label: "RUN-9",
+          source: "WORKPLAN",
+        },
+      }),
+    ]);
+
+    const tag = screen.getByTestId("waiting-run-9");
+    expect(tag).toHaveTextContent("Batched in RUN-9");
+    expect(tag.parentElement).toHaveTextContent("Workplan batch");
+    expect(resultField()).not.toBeNull();
+
+    fireEvent.click(tag);
+    expect(onOpenRun).toHaveBeenCalledWith(9);
+  });
+
+  it("holds a batched test its run holds, with no entry", () => {
+    renderPage([
+      row({
+        waitingRun: {
+          ...WAITING,
+          runId: 9,
+          label: "RUN-9",
+          source: "WORKPLAN",
+          held: true,
+          heldCause: "QC_MISSING",
+        },
+      }),
+    ]);
+
+    expect(screen.getByTestId("held-run-9")).toHaveTextContent(
+      "Held: QC missing in RUN-9",
+    );
+    expect(resultField()).toBeNull();
+  });
+
   it("leaves a pending test with no waiting value open for entry", () => {
     renderPage([row()]);
 

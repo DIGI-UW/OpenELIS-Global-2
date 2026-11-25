@@ -39,11 +39,12 @@ const expectActiveReference = async (
   resource: "organisms" | "antibiotics",
   id: string,
   active: boolean,
+  search = "",
 ) => {
   await expect
     .poll(async () => {
       const response = await page.request.get(
-        `${API_BASE}/reference/${resource}`,
+        `${API_BASE}/reference/${resource}?q=${encodeURIComponent(search)}`,
       );
       expect(response.ok()).toBeTruthy();
       const options = (await response.json()) as Array<{ id: string }>;
@@ -136,10 +137,22 @@ test.describe("OGC-782 M3 microbiology reference administration", () => {
         "prevents new selection but preserves those historical references",
       );
       await impactDialog.getByRole("button", { name: /Deactivate$/ }).click();
-      await expectActiveReference(page, "organisms", seeded.organismId, false);
+      await expectActiveReference(
+        page,
+        "organisms",
+        seeded.organismId,
+        false,
+        "Reference organism (UAT)",
+      );
 
       await openRowAction(page, "Reference organism (UAT)", "Reactivate");
-      await expectActiveReference(page, "organisms", seeded.organismId, true);
+      await expectActiveReference(
+        page,
+        "organisms",
+        seeded.organismId,
+        true,
+        "Reference organism (UAT)",
+      );
     });
 
     await test.step("Repeat the guarded workflow for an antibiotic", async () => {
@@ -211,7 +224,6 @@ test.describe("OGC-782 M3 microbiology reference administration", () => {
     await expect(
       editor.getByText(/Saving creates a new panel version/),
     ).toBeVisible();
-    await editor.getByLabel("Tier").first().selectOption("2");
     await editor.getByRole("button", { name: "Publish new version" }).click();
     const confirmation = page.getByRole("dialog");
     await expect(

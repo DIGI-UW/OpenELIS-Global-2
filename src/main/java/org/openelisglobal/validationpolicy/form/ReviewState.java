@@ -24,7 +24,12 @@ public record ReviewState(int levels, int nextLevel, Integer nextRoleId, String 
         return nextLevel >= levels;
     }
 
+    /**
+     * @param signedWhen     signedAt in the site date format and the server's time
+     *                       zone, as History shows it
+     * @param supersededWhen supersededAt the same way
+     */
     public record SignOff(int level, int levels, String signerName, String roleName, String signedAt,
-            String supersededReason, String supersededAt) {
+            String supersededReason, String supersededAt, String signedWhen, String supersededWhen) {
     }
 }

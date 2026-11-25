@@ -42,6 +42,7 @@ import ResultAlertModal, {
 import { FlagChip } from "../resultPage/unified/flags";
 import { normalizeScientificNotation } from "../resultPage/scientificNotation";
 import { getFromOpenElisServer } from "../utils/Utils";
+import { routedScope } from "./MicrobiologyRoutes";
 
 function valid(row) {
   if (!row.resultValue) return true;
@@ -347,51 +348,52 @@ export default function CaseTestingWorkspace({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [cultureId, setCultureId] = useState("");
+  const [cultureLabel, setCultureLabel] = useState("");
   const [pickCultureId, setPickCultureId] = useState("");
   const [cultureSource, setCultureSource] = useState(null);
   const scanParams = new URLSearchParams(scanSearch);
-  const scanScope = scanParams.get("scope");
   const scanRow = scanParams.get("row") || scanParams.get("astRunId");
-  const sectionScopes = {
-    setup: "CULTURE",
-    timeline: "HISTORY",
-    isolates: "ISOLATES",
-    ast: "AST",
-    reports: "REPORT",
-    amendment: "AMENDMENT",
-    "critical-communication": "CRITICAL",
-    nonconformance: "NONCONFORMANCE",
-  };
-  const routedScope =
-    scanScope ||
-    sectionScopes[scanParams.get("section")] ||
-    { cultures: "CULTURE", ast: "AST" }[scanParams.get("grain")] ||
-    "INITIAL";
+  const routed = routedScope(scanSearch);
   const scanTarget = scanRow
-    ? `${routedScope === "CULTURE" ? "culture-row" : routedScope === "ISOLATES" ? "isolate" : "ast-run"}-${scanRow}`
-    : routedScope === "AST" && scanParams.get("astIsolateId")
+    ? `${routed === "CULTURE" ? "culture-row" : routed === "ISOLATES" ? "isolate" : "ast-run"}-${scanRow}`
+    : routed === "AST" && scanParams.get("astIsolateId")
       ? `ast-isolate-${scanParams.get("astIsolateId")}`
       : null;
-  const [placement, setPlacement] = useState(routedScope);
+  const [placement, setPlacement] = useState(routed);
   useEffect(() => {
-    setPlacement(routedScope);
-    if (routedScope === "HISTORY")
-      document.getElementById("case-history")?.focus();
+    setPlacement(routed);
+    if (routed === "HISTORY") document.getElementById("case-history")?.focus();
     if (["case-info", "order-detail"].includes(scanParams.get("section"))) {
       document.getElementById("case-information")?.focus();
     }
-  }, [routedScope, scanRow, scanSearch]);
+  }, [routed, scanRow, scanSearch]);
+  const landingJump = useRef(
+    !scanTarget &&
+      (scanParams.has("scope") ||
+        scanParams.has("grain") ||
+        routed !== "INITIAL")
+      ? { scope: routed }
+      : null,
+  );
   const handledJump = useRef(null);
   useEffect(() => {
-    if (!jump || handledJump.current === jump || placement !== jump.scope)
+    const target = jump || landingJump.current;
+    if (!target || handledJump.current === target) return;
+    if (placement !== target.scope) {
+      setPlacement(target.scope);
       return;
-    handledJump.current = jump;
-    const heading = document.querySelector(`#case-scope-${jump.scope} button`);
+    }
+    handledJump.current = target;
+    const heading = document.querySelector(
+      target.scope === "HISTORY"
+        ? "#case-history button"
+        : `#case-scope-${target.scope} button`,
+    );
     heading?.scrollIntoView?.({ block: "center" });
     heading?.focus({ preventScroll: true });
   }, [jump, placement]);
   useEffect(() => {
-    if (!scanTarget || placement !== routedScope) return undefined;
+    if (!scanTarget || placement !== routed) return undefined;
     const scroll = () => {
       const target = document.querySelector(
         `[data-testid="${CSS.escape(scanTarget)}"]`,
@@ -407,7 +409,7 @@ export default function CaseTestingWorkspace({
     });
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
-  }, [scanTarget, routedScope, placement]);
+  }, [scanTarget, routed, placement]);
   const [auxiliaryIsolates, setAuxiliaryIsolates] = useState([]);
   useEffect(() => {
     if (
@@ -725,40 +727,6 @@ export default function CaseTestingWorkspace({
   return (
     <Stack gap={5}>
       <h2>{t("microbiology.testing.title")}</h2>
-      <Select
-        id="case-testing-scope"
-        labelText={t("microbiology.testing.scope")}
-        value={placement}
-        onChange={(e) => {
-          setPlacement(e.target.value);
-          onScopeChange?.(e.target.value);
-          setEditor(null);
-        }}
-      >
-        <SelectItem value="" text={t("microbiology.culture.choose")} />
-        <SelectItem value="INITIAL" text={t("microbiology.testing.initial")} />
-        <SelectItem value="CULTURE" text={t("microbiology.culture.title")} />
-        <SelectItem value="ISOLATES" text={t("microbiology.case.isolates")} />
-        <SelectItem value="AST" text={t("microbiology.m6.ast")} />
-        <SelectItem value="INCOMING" text={t("microbiology.incoming.title")} />
-        <SelectItem value="HISTORY" text={t("microbiology.case.timeline")} />
-        <SelectItem value="REPORT" text={t("microbiology.m6.report")} />
-        <SelectItem
-          value="AMENDMENT"
-          text={t("microbiology.amendment.title")}
-        />
-        <SelectItem value="CRITICAL" text={t("microbiology.critical.title")} />
-        {detail.canWrite && (
-          <SelectItem
-            value="NONCONFORMANCE"
-            text={t("microbiology.nce.sectionTitle")}
-          />
-        )}
-        <SelectItem
-          value="ADDITIONAL"
-          text={t("microbiology.testing.additional")}
-        />
-      </Select>
       {loading && <InlineLoading description={t("common.loading")} />}
       {error && (
         <InlineNotification
@@ -805,7 +773,7 @@ export default function CaseTestingWorkspace({
                     finalReleaseState={detail.finalReleaseState}
                     service={service}
                     canAmend={detail.canAmend}
-                    onCaseUpdated={onCaseChanged}
+                    onCaseUpdated={refreshTesting}
                   />
                 )}
                 {placement === "CRITICAL" && (
@@ -831,7 +799,7 @@ export default function CaseTestingWorkspace({
                         : ""
                     }
                     service={service}
-                    isReadOnly={!detail.canWrite}
+                    isReadOnly={!detail.canLogCritical}
                     onCaseUpdated={onCaseChanged}
                   />
                 )}
@@ -888,7 +856,7 @@ export default function CaseTestingWorkspace({
                   <CaseReportWorkspace
                     detail={detail}
                     service={service}
-                    onChanged={onCaseChanged}
+                    onChanged={refreshTesting}
                   />
                 )}
                 {placement === "CULTURE" && (
@@ -899,9 +867,7 @@ export default function CaseTestingWorkspace({
                     renderNotes={renderNotes}
                     detail={detail}
                     service={service}
-                    selectedId={
-                      (routedScope === "CULTURE" && scanRow) || cultureId
-                    }
+                    selectedId={(routed === "CULTURE" && scanRow) || cultureId}
                     renderTests={renderTests}
                     onPickIsolate={(row) => {
                       setPickCultureId(row.id);
@@ -910,6 +876,7 @@ export default function CaseTestingWorkspace({
                     }}
                     onSelect={(row) => {
                       setCultureId(row.id);
+                      setCultureLabel(row.containerIdentifier);
                       setCultureSource({
                         ...row.source,
                         sampleTypeName: row.source?.specimenType,
@@ -920,6 +887,7 @@ export default function CaseTestingWorkspace({
                     }}
                     onChooseTests={(row, gramTest) => {
                       setCultureId(row.id);
+                      setCultureLabel(row.containerIdentifier);
                       if (gramTest) {
                         addGramStain(row, gramTest);
                         return;
@@ -952,13 +920,7 @@ export default function CaseTestingWorkspace({
                     service={service}
                     initialCultureId={pickCultureId}
                     onClosePick={() => setPickCultureId("")}
-                    onChanged={() => {
-                      service
-                        .getTests(detail.id)
-                        .then(setTests)
-                        .catch(() => setError(true));
-                      onCaseChanged?.();
-                    }}
+                    onChanged={refreshTesting}
                   />
                 )}
                 {["INITIAL", "ADDITIONAL"].includes(placement) &&
@@ -995,7 +957,12 @@ export default function CaseTestingWorkspace({
                               : setSelection
                           }
                           isReadOnly={adding}
-                          titleId="microbiology.testing.addTests"
+                          titleId={
+                            placement === "CULTURE"
+                              ? "microbiology.testing.addTestsToCulture"
+                              : "microbiology.testing.addTests"
+                          }
+                          titleValues={{ culture: cultureLabel }}
                           helperId="microbiology.testing.chooserHelp"
                           cataloguePath={`/rest/microbiology/cases/${detail.id}/analyses/catalog`}
                           excludedTestIdsBySample={tests

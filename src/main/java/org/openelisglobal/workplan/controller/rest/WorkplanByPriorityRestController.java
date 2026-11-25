@@ -46,7 +46,7 @@ public class WorkplanByPriorityRestController extends WorkplanRestController {
             @RequestParam(name = "priority", defaultValue = "") OrderPriority priority)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
-        WorkplanPaging paging = new WorkplanPaging();
+        WorkplanPaging paging = new WorkplanPaging("priority:" + priority);
         WorkplanForm form = new WorkplanForm();
         List<TestResultItem> workplanTests = new ArrayList<TestResultItem>();
         List<TestResultItem> filteredTests = new ArrayList<TestResultItem>();
@@ -83,6 +83,7 @@ public class WorkplanByPriorityRestController extends WorkplanRestController {
                     analysisService.getAnalysesByPriorityAndStatusId(priority, statusList));
             for (Analysis analysis : analysisList) {
                 TestResultItem testResultItem = new TestResultItem();
+                testResultItem.setAnalysisId(analysis.getId());
                 testResultItem.setTestId(analysis.getTest().getId());
                 Sample sample = analysis.getSampleItem().getSample();
                 testResultItem.setAccessionNumber(sample.getAccessionNumber());

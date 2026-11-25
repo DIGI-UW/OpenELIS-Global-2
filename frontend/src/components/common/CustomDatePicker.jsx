@@ -2,7 +2,7 @@ import React, { useContext, useState } from "react";
 import { DatePicker, DatePickerInput } from "@carbon/react";
 import { format } from "date-fns";
 import { useIntl } from "react-intl";
-import { ConfigurationContext } from "../layout/Layout";
+import { ConfigurationContext } from "../layout/contexts";
 import { labNow } from "../utils/labClock";
 import useSiteDateFormat from "./useSiteDateFormat";
 import useTypedDateCommit from "./useTypedDateCommit";
@@ -126,6 +126,7 @@ const CustomDatePicker = (props) => {
           placeholder={siteDate.placeholder}
           type="text"
           labelText={props.labelText}
+          hideLabel={props.hideLabel}
           helperText={props.helperText}
           invalid={invalid}
           invalidText={invalidText}

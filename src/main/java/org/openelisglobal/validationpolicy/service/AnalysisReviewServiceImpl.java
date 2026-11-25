@@ -1,5 +1,6 @@
 package org.openelisglobal.validationpolicy.service;
 
+import java.sql.Timestamp;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -17,6 +18,7 @@ import org.openelisglobal.common.services.IResultSaveService;
 import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.esig.service.ElectronicSignatureService;
 import org.openelisglobal.esig.valueholder.ElectronicSignature;
 import org.openelisglobal.esig.valueholder.SignatureMeaning;
@@ -329,7 +331,12 @@ public class AnalysisReviewServiceImpl implements AnalysisReviewService {
                 lookups.userName(signOff.getSignerId()), roleName(lookups.role(signOff.getRoleId())),
                 signOff.getSignedAt() == null ? null : signOff.getSignedAt().toString(),
                 signOff.getSupersededReason() == null ? null : signOff.getSupersededReason().name(),
-                signOff.getSupersededAt() == null ? null : signOff.getSupersededAt().toString());
+                signOff.getSupersededAt() == null ? null : signOff.getSupersededAt().toString(),
+                siteDateTime(signOff.getSignedAt()), siteDateTime(signOff.getSupersededAt()));
+    }
+
+    private static String siteDateTime(OffsetDateTime when) {
+        return when == null ? null : DateUtil.convertTimestampToStringDateAndTime(Timestamp.from(when.toInstant()));
     }
 
     private Integer validationRoleId(Lookups lookups) {

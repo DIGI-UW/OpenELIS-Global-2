@@ -23,6 +23,7 @@ const HELD: RunQc = {
       testId: "11",
       testName: "Glucose",
       verdict: "FAIL",
+      holdCause: "QC_FAILED",
       controls: [
         {
           id: "c1",
@@ -46,6 +47,7 @@ const HELD: RunQc = {
       testId: "13",
       testName: "Malaria RDT",
       verdict: "FAIL",
+      holdCause: "QC_FAILED",
       controls: [
         {
           id: "c2",
@@ -283,6 +285,295 @@ describe("Deciding a held test (OGC-1200 FR-C5)", () => {
   });
 });
 
+describe("RunQcBlock control times", () => {
+  it("shows when a control was recorded in the site date format", () => {
+    utilsMock.getFromOpenElisServer.mockImplementation(
+      (url: string, callback: (body: unknown) => void) => callback([]),
+    );
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <RunQcBlock
+          runId={7}
+          qc={{
+            overall: "HELD",
+            tests: [
+              {
+                testId: "11",
+                testName: "Glucose",
+                verdict: "FAIL",
+                holdCause: "QC_FAILED",
+                controls: [
+                  {
+                    id: "c9",
+                    level: "KIT-1",
+                    observed: "INVALID",
+                    verdict: "FAIL",
+                    verdictSource: "DECLARED",
+                    operator: "Ana Lab",
+                    recordedAt: "2026-11-24T09:00:00Z",
+                  },
+                ],
+              },
+            ],
+          }}
+          onRecorded={vi.fn()}
+        />
+      </IntlProvider>,
+    );
+
+    expect(screen.getByTestId("run-qc-control-c9")).toHaveTextContent(
+      "11/24/2026",
+    );
+  });
+});
+
+describe("RunQcBlock retest links (OGC-1200 slice 5b)", () => {
+  const LATER: RunQc = {
+    overall: "PASS",
+    tests: [
+      {
+        testId: "11",
+        testName: "Glucose",
+        verdict: "NOT_REQUIRED",
+        controls: [],
+        retestSuggestions: [{ runId: 5, label: "RUN-5", count: 1, total: 2 }],
+      },
+    ],
+  };
+  const renderLinks = (qc: RunQc, onRecorded = vi.fn(), onOpenRun = vi.fn()) =>
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <RunQcBlock
+          runId={9}
+          qc={qc}
+          onRecorded={onRecorded}
+          onOpenRun={onOpenRun}
+        />
+      </IntlProvider>,
+    );
+
+  beforeEach(() => {
+    utilsMock.getFromOpenElisServer.mockReset();
+    utilsMock.postToOpenElisServerJsonResponse.mockReset();
+    utilsMock.getFromOpenElisServer.mockImplementation(
+      (url: string, callback: (body: unknown) => void) => callback([]),
+    );
+  });
+
+  it("suggests the earlier run and confirms it as the retest", () => {
+    const confirmed: RunQc = {
+      overall: "PASS",
+      tests: [
+        {
+          ...LATER.tests[0],
+          retestSuggestions: [],
+          retestOf: [{ runId: 5, label: "RUN-5", count: 1, total: 2 }],
+        },
+      ],
+    };
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+      (url: string, body: string, callback: (body: unknown) => void) =>
+        callback(confirmed),
+    );
+    const onRecorded = vi.fn();
+    renderLinks(LATER, onRecorded);
+
+    expect(
+      screen.getByTestId("run-qc-retest-suggestion-11-5"),
+    ).toHaveTextContent("Suggested: retest of RUN-5 (1 of 2 samples)");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Confirm retest of RUN-5" }),
+    );
+
+    expect(utilsMock.postToOpenElisServerJsonResponse).toHaveBeenCalledWith(
+      "/rest/result-runs/9/tests/11/retest-of",
+      JSON.stringify({ runId: 5 }),
+      expect.any(Function),
+    );
+    expect(onRecorded).toHaveBeenCalledWith(confirmed);
+  });
+
+  it("says why the link was refused", () => {
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+      (url: string, body: string, callback: (body: unknown) => void) =>
+        callback({ message: "Already linked" }),
+    );
+    const onRecorded = vi.fn();
+    renderLinks(LATER, onRecorded);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Confirm retest of RUN-5" }),
+    );
+
+    expect(screen.getByText("Already linked")).toBeInTheDocument();
+    expect(onRecorded).not.toHaveBeenCalled();
+  });
+
+  it("opens the run a confirmed link names", () => {
+    const onOpenRun = vi.fn();
+    renderLinks(
+      {
+        overall: "PASS",
+        tests: [
+          {
+            testId: "11",
+            testName: "Glucose",
+            verdict: "FAIL",
+            decision: "RETEST",
+            controls: [],
+            supersededBy: [{ runId: 9, label: "RUN-9", count: 2, total: 2 }],
+          },
+        ],
+      },
+      vi.fn(),
+      onOpenRun,
+    );
+
+    expect(screen.getByTestId("run-qc-superseded-by-11-9")).toHaveTextContent(
+      "Superseded by RUN-9 Samples: 2 of 2",
+    );
+    fireEvent.click(screen.getByText("Superseded by RUN-9"));
+    expect(onOpenRun).toHaveBeenCalledWith(9);
+    expect(screen.queryByRole("button", { name: /Confirm retest/ })).toBeNull();
+  });
+});
+
+describe("RunQcBlock under the test's QC policy (OGC-1200 slice 8)", () => {
+  const renderQc = (qc: RunQc) =>
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <RunQcBlock runId={7} qc={qc} onRecorded={vi.fn()} />
+      </IntlProvider>,
+    );
+
+  it("holds a test whose required control is missing, says why and offers the decisions", () => {
+    renderQc({
+      overall: "HELD",
+      tests: [
+        {
+          testId: "11",
+          testName: "Glucose",
+          verdict: "NO_CONTROL",
+          controls: [],
+          holdCause: "QC_MISSING",
+          whenMissing: "HOLD",
+        },
+      ],
+    });
+
+    expect(screen.getByTestId("run-qc-overall")).toHaveTextContent("Held");
+    expect(screen.getByTestId("run-qc-missing-11")).toHaveTextContent(
+      "requires a control on every run, and none is recorded on this one, so its rows are held",
+    );
+    expect(screen.getByRole("button", { name: "Retest" })).toBeInTheDocument();
+    expect(screen.getByTestId("run-qc-record")).toBeEnabled();
+  });
+
+  it("explains an Accept despite a missing control as accepting without it, and asks for that reason", () => {
+    renderQc({
+      overall: "HELD",
+      tests: [
+        {
+          testId: "11",
+          testName: "Glucose",
+          verdict: "NO_CONTROL",
+          controls: [],
+          holdCause: "QC_MISSING",
+          whenMissing: "HOLD",
+        },
+      ],
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /Accept despite QC failure/ }),
+    );
+    expect(
+      screen.getByText(/without the control the test requires/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/failing control/)).toBeNull();
+    fireEvent.click(screen.getByTestId("run-qc-decide-confirm-11"));
+    expect(
+      screen.getByText(
+        "Give the reason the results are accepted without the required control.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("names a decided missing control in the run's overall verdict", () => {
+    renderQc({
+      overall: "DECIDED_MISSING",
+      tests: [
+        {
+          testId: "11",
+          testName: "Glucose",
+          verdict: "NO_CONTROL",
+          controls: [],
+          decision: "REJECT",
+          whenMissing: "HOLD",
+        },
+      ],
+    });
+    expect(screen.getByTestId("run-qc-overall")).toHaveTextContent(
+      "QC missing: decided",
+    );
+  });
+
+  it("only names a missing control under a Warn policy, with no decision to take", () => {
+    renderQc({
+      overall: "NO_CONTROL",
+      tests: [
+        {
+          testId: "11",
+          testName: "Glucose",
+          verdict: "NO_CONTROL",
+          controls: [],
+          holdCause: null,
+          whenMissing: "WARN",
+        },
+      ],
+    });
+
+    expect(screen.getByTestId("run-qc-overall")).toHaveTextContent(
+      "No control",
+    );
+    expect(screen.getByTestId("run-qc-missing-11")).toHaveTextContent(
+      "Its rows can still be accepted.",
+    );
+    expect(screen.queryByRole("button", { name: "Retest" })).toBeNull();
+  });
+
+  it("does not offer acceptance on a run that is no longer open", () => {
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <RunQcBlock
+          runId={7}
+          active={false}
+          onRecorded={vi.fn()}
+          qc={{
+            overall: "NO_CONTROL",
+            tests: [
+              {
+                testId: "11",
+                testName: "Glucose",
+                verdict: "NO_CONTROL",
+                controls: [],
+                holdCause: null,
+                whenMissing: "WARN",
+              },
+            ],
+          }}
+        />
+      </IntlProvider>,
+    );
+    expect(screen.getByTestId("run-qc-missing-11")).toHaveTextContent(
+      "none was recorded on this one.",
+    );
+    expect(screen.getByTestId("run-qc-missing-11")).not.toHaveTextContent(
+      "can still be accepted",
+    );
+  });
+});
+
 describe("WaitingTag on a held row (FR-D4)", () => {
   it("says the row is held because QC failed in the run", () => {
     render(
@@ -294,6 +585,25 @@ describe("WaitingTag on a held row (FR-D4)", () => {
     );
     expect(screen.getByTestId("held-run-7")).toHaveTextContent(
       "Held: QC failed in RUN-7",
+    );
+  });
+
+  it("says the row is held because a required control is missing in the run", () => {
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <WaitingTag
+          run={{
+            runId: 7,
+            label: "RUN-7",
+            source: "ANALYZER",
+            held: true,
+            heldCause: "QC_MISSING",
+          }}
+        />
+      </IntlProvider>,
+    );
+    expect(screen.getByTestId("held-run-7")).toHaveTextContent(
+      "Held: QC missing in RUN-7",
     );
   });
 });

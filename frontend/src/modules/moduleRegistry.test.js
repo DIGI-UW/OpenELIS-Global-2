@@ -15,7 +15,8 @@ const started = (overrides = {}) => ({
   state: "STARTED",
   requires: { openelis: ">=3.4.0", frontendContract: "^1.0" },
   remoteName: "specimen_followup",
-  assetBase: "/modules/specimen-followup/",
+  // The registry names the files under the running JAR's digest (OGC-1638)
+  assetBase: "/modules/specimen-followup/0123456789abcdef/",
   frontend: {
     entry: "remoteEntry.js",
     messages: "messages/{locale}.json",
@@ -109,7 +110,8 @@ describe("planModules", () => {
     expect(plan.remotes).toEqual([
       {
         name: "specimen_followup",
-        entry: "/api/OpenELIS-Global/modules/specimen-followup/remoteEntry.js",
+        entry:
+          "/api/OpenELIS-Global/modules/specimen-followup/0123456789abcdef/remoteEntry.js",
         type: "module",
       },
     ]);
@@ -208,6 +210,26 @@ describe("pickModuleMessages", () => {
     );
     expect(pickModuleMessages({}, "en-US")).toEqual({});
     expect(pickModuleMessages(undefined, "en")).toEqual({});
+  });
+
+  it("fills the keys a partial translation lacks from the base language, then English", () => {
+    const partial = {
+      en: {
+        "mod.alpha.menu": "Alpha",
+        "mod.alpha.card.title": "Open items",
+        "mod.alpha.card.subtitle": "Waiting on the bench",
+      },
+      fr: { "mod.alpha.menu": "Alpha (fr)", "mod.alpha.card.title": "Ouverts" },
+      fr_CA: { "mod.alpha.menu": "Alpha (CA)" },
+    };
+    expect(pickModuleMessages(partial, "fr-CA")).toEqual({
+      "mod.alpha.menu": "Alpha (CA)",
+      "mod.alpha.card.title": "Ouverts",
+      "mod.alpha.card.subtitle": "Waiting on the bench",
+    });
+    expect(pickModuleMessages(partial, "fr")["mod.alpha.card.subtitle"]).toBe(
+      "Waiting on the bench",
+    );
   });
 
   it("planModules carries the registry's bundles through", () => {

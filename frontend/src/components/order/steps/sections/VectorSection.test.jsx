@@ -1,5 +1,7 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { addDays, format } from "date-fns";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -338,7 +340,7 @@ describe("VectorSection — reopening a saved order (OGC-1192)", () => {
   test("shows the saved collection date once the order's samples load", () => {
     const view = renderSection();
     expect(document.getElementById("vec-collection-date").value).not.toBe(
-      "2026-09-27",
+      "09/27/2026",
     );
 
     orderContextMock.samples = [{ collectionDate: "2026-09-27" }];
@@ -356,7 +358,7 @@ describe("VectorSection — reopening a saved order (OGC-1192)", () => {
     );
 
     expect(document.getElementById("vec-collection-date").value).toBe(
-      "2026-09-27",
+      "09/27/2026",
     );
   });
 
@@ -378,5 +380,104 @@ describe("VectorSection — reopening a saved order (OGC-1192)", () => {
 
     expect(orderContextMock.hydrateSamples).toHaveBeenCalled();
     expect(orderContextMock.setSamples).not.toHaveBeenCalled();
+  });
+});
+
+// OGC-1657 — the lot Collection Date hard-coded YYYY-MM-DD while every other
+// date followed the site date format.
+// ---------------------------------------------------------------------------
+describe("VectorSection — Collection Date follows the site date format (OGC-1657)", () => {
+  const dayFirst = { DEFAULT_DATE_LOCALE: "fr-FR" };
+  const monthFirst = { DEFAULT_DATE_LOCALE: "en-US" };
+  const savedOrder = (workflowType) => ({
+    sampleOrderItems: {
+      environmentalFields: {
+        [workflowType === "vector" ? "vecCollectionDate" : "envCollectionDate"]:
+          "2026-03-05",
+      },
+    },
+  });
+  const field = () => document.getElementById("vec-collection-date");
+  const stored = (setOrderData) =>
+    setOrderData.mock.calls
+      .map(([update]) =>
+        update({ sampleOrderItems: { environmentalFields: {} } }),
+      )
+      .map((next) => next.sampleOrderItems.environmentalFields)
+      .pop();
+
+  beforeEach(() => {
+    getFromOpenElisServerMock.mockReset();
+    getFromOpenElisServerMock.mockImplementation((url, callback) => {
+      if (url.startsWith("/rest/vector/dictionary/sampling-site-types")) {
+        callback([]);
+      }
+    });
+    orderContextMock.samples = [{}];
+    orderContextMock.setSamples = vi.fn();
+    orderContextMock.hydrateOrderData = vi.fn();
+    orderContextMock.hydrateSamples = vi.fn();
+  });
+
+  test.each(["environmental", "vector"])(
+    "%s: a dd/MM/yyyy site shows the saved date and placeholder day first",
+    (workflowType) => {
+      renderSection({
+        workflowType,
+        orderData: savedOrder(workflowType),
+        configurationProperties: dayFirst,
+      });
+
+      expect(field()).toHaveAttribute("placeholder", "dd/mm/yyyy");
+      expect(field().value).toBe("05/03/2026");
+    },
+  );
+
+  test("a MM/dd/yyyy site shows the saved date and placeholder month first", () => {
+    renderSection({
+      orderData: savedOrder("environmental"),
+      configurationProperties: monthFirst,
+    });
+
+    expect(field()).toHaveAttribute("placeholder", "mm/dd/yyyy");
+    expect(field().value).toBe("03/05/2026");
+  });
+
+  test.each([
+    ["environmental", dayFirst, "05/03/2026", "envCollectionDate"],
+    ["vector", dayFirst, "05/03/2026", "vecCollectionDate"],
+    ["environmental", monthFirst, "03/05/2026", "envCollectionDate"],
+  ])(
+    "%s: a date typed in the site format is stored as that day",
+    async (workflowType, configurationProperties, typed, key) => {
+      const setOrderData = vi.fn();
+      renderSection({ workflowType, setOrderData, configurationProperties });
+      const user = userEvent.setup();
+
+      await user.clear(field());
+      await user.type(field(), `${typed}{Enter}`);
+
+      await waitFor(() =>
+        expect(stored(setOrderData)?.[key]).toBe("2026-03-05"),
+      );
+      expect(orderContextMock.setSamples).toHaveBeenLastCalledWith([
+        expect.objectContaining({ collectionDate: "2026-03-05" }),
+      ]);
+    },
+  );
+
+  test("a future date is refused on a dd/MM/yyyy site", async () => {
+    const setOrderData = vi.fn();
+    renderSection({ setOrderData, configurationProperties: dayFirst });
+    const user = userEvent.setup();
+
+    await user.clear(field());
+    await user.type(
+      field(),
+      `${format(addDays(new Date(), 2), "dd/MM/yyyy")}{Enter}`,
+    );
+    await user.click(document.body);
+
+    expect(setOrderData).not.toHaveBeenCalled();
   });
 });
