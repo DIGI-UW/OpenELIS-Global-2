@@ -16,6 +16,20 @@ public class SingleResultEntryForm {
     @NotNull
     private TestResultItem testResult;
 
+    /**
+     * OGC-1200 FR-E10: set when the value is accepted from an analyzer run, naming
+     * the staged run row it came from.
+     */
+    private String runRowId;
+
+    public String getRunRowId() {
+        return runRowId;
+    }
+
+    public void setRunRowId(String runRowId) {
+        this.runRowId = runRowId;
+    }
+
     public TestResultItem getTestResult() {
         return testResult;
     }

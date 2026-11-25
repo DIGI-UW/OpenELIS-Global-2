@@ -30,35 +30,22 @@ const ReportByDate = (props) => {
   });
 
   const handleDatePickerChangeDate = (datePicker, date) => {
-    let updatedDate = encodeDate(date);
-    let obj = null;
-    switch (datePicker) {
-      case "startDate":
-        obj = {
-          ...reportFormValues,
-          startDate: updatedDate,
-        };
-        break;
-      case "endDate":
-        obj = {
-          ...reportFormValues,
-          endDate: updatedDate,
-        };
-        break;
-      default:
-    }
-    setReportFormValues(obj);
+    const updatedDate = encodeDate(date);
+    setReportFormValues((current) => ({
+      ...current,
+      [datePicker]: updatedDate,
+    }));
   };
 
   const handleSubmit = () => {
     if (!reportFormValues.startDate || !reportFormValues.endDate) {
-      setReportFormValues({
-        ...reportFormValues,
+      setReportFormValues((current) => ({
+        ...current,
         error: intl.formatMessage({
           id: "error.dateRange.start",
           defaultMessage: "Please select Start and end date.",
         }),
-      });
+      }));
       return;
     }
 
@@ -68,20 +55,20 @@ const ReportByDate = (props) => {
         props.report === "activityReportByTestSection") &&
       !reportFormValues.value
     ) {
-      setReportFormValues({
-        ...reportFormValues,
+      setReportFormValues((current) => ({
+        ...current,
         error: intl.formatMessage({
           id: "error.value",
           defaultMessage: "Please select a value.",
         }),
-      });
+      }));
       return;
     }
 
-    setReportFormValues({
-      ...reportFormValues,
+    setReportFormValues((current) => ({
+      ...current,
       error: "",
-    });
+    }));
 
     setLoading(true);
     let baseParams = "";
@@ -236,10 +223,10 @@ const ReportByDate = (props) => {
                     options={list}
                     value={reportFormValues.value}
                     onChange={(value) =>
-                      setReportFormValues({
-                        ...reportFormValues,
+                      setReportFormValues((current) => ({
+                        ...current,
                         value,
-                      })
+                      }))
                     }
                   />
                 )}

@@ -29,22 +29,29 @@ const SETTING_MENU: Record<string, SettingsMenu> = {
   electronicSignatureEnabled: "SiteInformationMenu",
 };
 
+/** The name each setting is shown under on its admin menu (OGC-1364 v3). */
+const SETTING_LABEL: Record<string, string> = {
+  alertWhenInvalidResult: "Alert when a result is outside the valid range",
+  customCriticalMessage: "Critical result message",
+  electronicSignatureEnabled: "electronicSignatureEnabled",
+};
+
 async function settingValue(page: Page, setting: string): Promise<string> {
   const menu = new SiteInformationPage(page, SETTING_MENU[setting]);
   await menu.goto();
-  return (await menu.getSettingValue(setting)).trim();
+  return (await menu.getSettingValue(SETTING_LABEL[setting])).trim();
 }
 
 async function setBoolean(page: Page, setting: string, on: boolean) {
   const menu = new SiteInformationPage(page, SETTING_MENU[setting]);
   await menu.goto();
-  await menu.setBooleanSetting(setting, on);
+  await menu.setBooleanSetting(SETTING_LABEL[setting], on);
 }
 
 async function setText(page: Page, setting: string, value: string) {
   const menu = new SiteInformationPage(page, SETTING_MENU[setting]);
   await menu.goto();
-  await menu.setTextSetting(setting, value);
+  await menu.setTextSetting(SETTING_LABEL[setting], value);
 }
 
 async function createUricAcidTest(page: Page): Promise<{

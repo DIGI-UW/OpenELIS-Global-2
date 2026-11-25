@@ -173,7 +173,7 @@ public class ReflexCalcViewServiceImpl implements ReflexCalcViewService {
             return null;
         }
         return testResultComponentService.getActiveComponentsByTestId(test.getId()).stream()
-                .filter(component -> componentId.equals(component.getId())).map(TestResultComponent::getLabel)
+                .filter(component -> componentId.equals(component.getId())).map(TestResultComponent::getLocalizedLabel)
                 .findFirst().orElse(null);
     }
 
@@ -250,6 +250,9 @@ public class ReflexCalcViewServiceImpl implements ReflexCalcViewService {
         if (Operation.OperationType.TEST_RESULT.equals(op.getType())) {
             String label = measurementLabel(op.getValue(), op.getScopedSampleTypeId(), op.getComponentId());
             return label == null ? op.getValue() : "[" + label + "]";
+        }
+        if (Operation.OperationType.ANSWER.equals(op.getType())) {
+            return "'" + dictionaryValue(op.getValue()) + "'";
         }
         if (op.getValue() != null && !op.getValue().isBlank()) {
             return op.getValue();

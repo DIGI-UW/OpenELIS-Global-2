@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-1669: an order's request date and next visit date were kept in the site's
+    date format of the day they were saved. Rewrite the values that read in the
+    site's current format as ISO dates; others are left and named in the log.
+    -->
+    <changeSet author="openelis" id="042-observation-dates-to-iso">
+        <comment>Store order request and next visit dates as ISO dates.</comment>
+        <customChange class="org.openelisglobal.observationhistory.upgrade.ObservationDatesToIso"/>
+    </changeSet>
+</databaseChangeLog>

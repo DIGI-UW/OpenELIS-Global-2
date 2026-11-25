@@ -62,7 +62,10 @@ public class BridgeOutboxClient {
     }
 
     public void retry(String outboxEntryId) {
-        send("POST", entryUrl(outboxEntryId) + "/retry");
+        JsonNode queued = send("POST", entryUrl(outboxEntryId) + "/retry");
+        if (!outboxEntryId.equals(queued.path("id").asText()) || !"PENDING".equals(queued.path("state").asText())) {
+            throw new BridgeAnalyzerConnectionException("analyzer.deliveryIssues.error.bridgeInvalidResponse");
+        }
     }
 
     public void dismiss(String outboxEntryId) {

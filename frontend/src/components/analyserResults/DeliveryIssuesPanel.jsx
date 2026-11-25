@@ -5,6 +5,7 @@ import {
   Heading,
   InlineLoading,
   InlineNotification,
+  Link,
   Section,
   Table,
   TableBody,
@@ -55,6 +56,7 @@ const DeliveryIssuesPanel = () => {
   const [bridgeState, setBridgeState] = useState(null);
   const [pendingId, setPendingId] = useState(null);
   const [actionError, setActionError] = useState(null);
+  const [retryReceiptId, setRetryReceiptId] = useState(null);
 
   const load = useCallback(() => {
     getFromOpenElisServer(ENDPOINT, (response) => {
@@ -62,6 +64,11 @@ const DeliveryIssuesPanel = () => {
       const valid =
         Array.isArray(data?.rows) && data.count === data.rows.length;
       setRows(valid ? data.rows : []);
+      if (valid) {
+        setRetryReceiptId((id) =>
+          data.rows.some((row) => row.id === id) ? id : null,
+        );
+      }
       setLoadFailed(!valid);
       setBridgeState(
         !valid
@@ -88,15 +95,25 @@ const DeliveryIssuesPanel = () => {
   const act = (row, action) => {
     setPendingId(row.id);
     setActionError(null);
+    setRetryReceiptId(null);
     postToOpenElisServerJsonResponse(
       `${ENDPOINT}/${encodeURIComponent(row.id)}/${action}`,
       "{}",
       (response) => {
         setPendingId(null);
-        if (response?.status !== "success") {
+        const queued =
+          action === "retry" &&
+          response?.status === "accepted" &&
+          response?.state === "QUEUED";
+        if (
+          !queued &&
+          !(action === "dismiss" && response?.status === "success")
+        ) {
           setActionError(formatActionError(intl, response));
           return;
         }
+        setRetryReceiptId(queued ? row.id : null);
+        setLoading(true);
         load();
       },
     );
@@ -109,6 +126,7 @@ const DeliveryIssuesPanel = () => {
         "sender",
         "received",
         "status",
+        "attempts",
         "reason",
         "detail",
         "actions",
@@ -142,12 +160,24 @@ const DeliveryIssuesPanel = () => {
           id:
             row.state === "DMQ"
               ? "analyzer.deliveryIssues.state.deadLettered"
-              : "analyzer.deliveryIssues.state.retrying",
+              : row.state === "RETRYING"
+                ? "analyzer.deliveryIssues.state.retrying"
+                : "analyzer.deliveryIssues.state.queued",
         })}
       </Tag>
     ),
-    reason: formatReason(intl, row.failureReason),
-    detail: row.lastError || "-",
+    attempts: row.attempts,
+    reason: ["RECEIVED", "PENDING"].includes(row.state)
+      ? intl.formatMessage({ id: "analyzer.deliveryIssues.queuedReason" })
+      : formatReason(intl, row.failureReason),
+    detail: row.lastError
+      ? row.state === "DMQ"
+        ? row.lastError
+        : intl.formatMessage(
+            { id: "analyzer.deliveryIssues.previousError" },
+            { detail: row.lastError },
+          )
+      : "-",
     actions: row.actionable ? (
       <>
         <Button
@@ -182,6 +212,34 @@ const DeliveryIssuesPanel = () => {
         {intl.formatMessage({ id: "analyzer.deliveryIssues.title" })}
       </Heading>
       <p>{intl.formatMessage({ id: "analyzer.deliveryIssues.description" })}</p>
+      <p>
+        {intl.formatMessage({ id: "analyzer.deliveryIssues.retryGuidance" })}{" "}
+        <Link href="/analyzers">
+          {intl.formatMessage({ id: "analyzer.deliveryIssues.reviewSetup" })}
+        </Link>
+      </p>
+      <Button
+        kind="tertiary"
+        size="sm"
+        disabled={loading || pendingId !== null}
+        onClick={() => {
+          setRetryReceiptId(null);
+          setLoading(true);
+          load();
+        }}
+      >
+        {intl.formatMessage({ id: "analyzer.deliveryIssues.refresh" })}
+      </Button>
+      {retryReceiptId && (
+        <InlineNotification
+          kind="info"
+          lowContrast
+          onCloseButtonClick={() => setRetryReceiptId(null)}
+          title={intl.formatMessage({
+            id: "analyzer.deliveryIssues.retryRequested",
+          })}
+        />
+      )}
       {actionError && (
         <InlineNotification
           kind="error"

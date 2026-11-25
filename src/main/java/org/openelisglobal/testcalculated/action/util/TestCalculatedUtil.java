@@ -1,7 +1,6 @@
 package org.openelisglobal.testcalculated.action.util;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -10,13 +9,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
-import javax.script.ScriptException;
 import org.apache.commons.lang3.StringUtils;
-import org.jfree.util.Log;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
@@ -35,6 +31,7 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.testcalculated.service.CalculationExpression;
 import org.openelisglobal.testcalculated.service.ResultCalculationService;
 import org.openelisglobal.testcalculated.service.TestCalculationService;
 import org.openelisglobal.testcalculated.valueholder.Calculation;
@@ -83,6 +80,19 @@ public class TestCalculatedUtil {
         calculatedResults.clear();
         releaseResultsSavedByHand(resultSetList);
         List<Analysis> analyses = new ArrayList<>();
+        Map<Integer, CalculationExpression> expressions = new HashMap<>();
+        List<Calculation> calculations = new ArrayList<>();
+        for (Calculation calculation : calculationService.getAll()) {
+            if (!isActive(calculation))
+                continue;
+            try {
+                expressions.put(calculation.getId(), CalculationExpression.compile(calculation.getOperations()));
+                calculations.add(calculation);
+            } catch (IllegalArgumentException e) {
+                LogEvent.logError("TestCalculatedUtil", "addNewTestsToDBForCalculatedTests",
+                        "Invalid Calculation Rule: " + calculation.getId() + ": " + e.getMessage());
+            }
+        }
         for (ResultSet resultSet : resultSetList) {
             if (resultSet.result == null) {
                 continue;
@@ -90,7 +100,6 @@ public class TestCalculatedUtil {
             if (resultSet.result.getTestResult() == null) {
                 continue;
             }
-            List<Calculation> calculations = calculationService.getAll();
             for (Calculation calculation : calculations) {
                 if (!isActive(calculation)) {
                     continue;
@@ -164,7 +173,8 @@ public class TestCalculatedUtil {
                 resultCalculations = resultcalculationService
                         .getResultCalculationByPatientAndTest(resultSet.patient,
                                 resultSet.result.getTestResult().getTest())
-                        .stream().filter(calc -> runsFor(ruleResultScope, calc.getCalculation(), resultSet.result))
+                        .stream().filter(calc -> expressions.containsKey(calc.getCalculation().getId()))
+                        .filter(calc -> runsFor(ruleResultScope, calc.getCalculation(), resultSet.result))
                         .filter(calc -> sameOrder(calc, resultSet.result)).collect(Collectors.toList());
             }
 
@@ -192,60 +202,19 @@ public class TestCalculatedUtil {
                     }
                     String value = null;
                     if (!isMissingParams) {
-                        StringBuffer function = new StringBuffer();
-                        calculation.getOperations().forEach(operation -> {
-                            switch (operation.getType()) {
-                            case TEST_RESULT:
-                                addNumericOperation(operation, resultCalculation, function,
-                                        Operation.OperationType.TEST_RESULT.toString());
-                                break;
-                            case INTEGER:
-                                try {
-                                    if (operation.getValue().contains(".")) {
-                                        double val = Double.parseDouble(operation.getValue());
-                                        function.append(val).append(" ");
-                                    } else {
-                                        int number = Integer.parseInt(operation.getValue());
-                                        function.append(number).append(" ");
-                                    }
-                                } catch (NumberFormatException e) {
-
-                                }
-                                break;
-                            case MATH_FUNCTION:
-                                if (operation.getValue().equals(Operation.IN_NORMAL_RANGE)) {
-                                    int order = operation.getOrder();
-                                    Operation prevOperation = calculation.getOperations().get(order - 1);
-                                    addNumericOperation(prevOperation, resultCalculation, function,
-                                            Operation.IN_NORMAL_RANGE);
-
-                                } else if (operation.getValue().equals(Operation.OUTSIDE_NORMAL_RANGE)) {
-                                    int order = operation.getOrder();
-                                    Operation prevOperation = calculation.getOperations().get(order - 1);
-                                    addNumericOperation(prevOperation, resultCalculation, function,
-                                            Operation.OUTSIDE_NORMAL_RANGE);
-                                } else {
-                                    function.append(operation.getValue()).append(" ");
-                                }
-                                break;
-                            case PATIENT_ATTRIBUTE:
-                                if (operation.getValue().equals(Operation.PatientAttribute.AGE.toString())) {
-                                    int age = DateUtil.getAgeInYears(
-                                            new Date(resultSet.patient.getBirthDate().getTime()), new Date());
-                                    function.append(age);
-                                }
-                                break;
-                            }
-                        });
-                        ScriptEngineManager scriptEngineManager = new ScriptEngineManager();
-                        ScriptEngine scriptEngine = scriptEngineManager.getEngineByName("JavaScript");
                         try {
-                            Log.debug("Calculation Rule: " + calculation.getName() + " Function : "
-                                    + function.toString());
-                            value = scriptEngine.eval(function.toString()).toString();
-                            Log.debug("Calculation Rule: " + calculation.getName() + " Value  : " + value);
-                        } catch (ScriptException e) {
-                            Log.error("Invalid Calculation Rule: " + calculation.getName(), e);
+                            value = expressions.get(calculation.getId()).evaluate(operation -> {
+                                if (operation.getType() == Operation.OperationType.PATIENT_ATTRIBUTE) {
+                                    return new CalculationExpression.Operand(DateUtil.getAgeInYears(
+                                            new Date(resultSet.patient.getBirthDate().getTime()), new Date()));
+                                }
+                                return calculationOperand(operation, resultCalculation);
+                            });
+                        } catch (IllegalArgumentException e) {
+                            // A rejected rule must not clear or overwrite a recorded clinical result.
+                            LogEvent.logError("TestCalculatedUtil", "addNewTestsToDBForCalculatedTests",
+                                    "Invalid Calculation Rule: " + calculation.getId() + ": " + e.getMessage());
+                            continue;
                         }
                     }
                     Result entered = enteredAtDestination(resultCalculation, resultSet, calculation);
@@ -306,7 +275,8 @@ public class TestCalculatedUtil {
         String component = StringUtils.isNotBlank(calculation.getComponentId()) ? calculation.getComponentId()
                 : ruleResultScope.primaryComponentId(testId);
         for (Result recorded : resultService.getResultsByAnalysis(destination)) {
-            if (StringUtils.isNotBlank(recorded.getValue()) && ruleResultScope.matchesComponent(recorded, component)) {
+            if (StringUtils.isNotBlank(recorded.getValue()) && ruleResultScope.matchesComponent(recorded, component)
+                    && resultcalculationService.getResultCalculationsByResultId(recorded.getId()).isEmpty()) {
                 return recorded;
             }
         }
@@ -344,19 +314,13 @@ public class TestCalculatedUtil {
         if (value == null || entered.getAnalysis() == null || !BoundedDecimal.isBoundedDecimal(value)) {
             return;
         }
-        String calculated = value;
-        if (entered.getTestResult() != null && entered.getTestResult().getSignificantDigits() != null) {
-            calculated = new BigDecimal(value)
-                    .setScale(Integer.parseInt(entered.getTestResult().getSignificantDigits()), RoundingMode.HALF_UP)
-                    .toPlainString();
-        }
         if (BoundedDecimal.isBoundedDecimal(entered.getValue())
-                && new BigDecimal(calculated).compareTo(new BigDecimal(entered.getValue())) == 0) {
+                && new BigDecimal(value).compareTo(new BigDecimal(entered.getValue())) == 0) {
             return;
         }
         Note note = noteService.createSavableNote(
-                entered.getAnalysis(), NoteType.INTERNAL, "Calculation rule " + calculation.getName() + " gave "
-                        + calculated + "; the entered result " + entered.getValue() + " was kept.",
+                entered.getAnalysis(), NoteType.INTERNAL, "Calculation rule " + calculation.getName() + " gave " + value
+                        + "; the entered result " + entered.getValue() + " was kept.",
                 CALCULATION_SUBJECT, systemUserId);
         if (!noteService.duplicateNoteExists(note)) {
             noteService.save(note);
@@ -407,16 +371,18 @@ public class TestCalculatedUtil {
                 }
                 return analysis;
             }
+            if (isAnswerType(resultType) && !"true".equals(value)
+                    && !holdsOwnAnswer(resultCalculation, resultSet, calculation)) {
+                return null;
+            }
             TestResult testResult = getTestResultForCalculation(calculation);
-            Result result = null;
-            if (resultCalculation.getResult() != null) {
-                result = resultCalculation.getResult();
-            } else {
+            Result result = storedResult(resultCalculation);
+            if (result == null) {
                 result = new Result();
             }
             result.setTestResult(testResult);
-            if (testResult.getSignificantDigits() != null) {
-                result.setSignificantDigits(Integer.valueOf(testResult.getSignificantDigits()));
+            if (testResult.getReportingDecimalPlaces() != null) {
+                result.setReportingDecimalPlaces(Integer.valueOf(testResult.getReportingDecimalPlaces()));
             }
             result.setResultType(resultType);
             result.setSysUserId(systemUserId);
@@ -437,19 +403,14 @@ public class TestCalculatedUtil {
                         result.setValue("");
                     }
                 } else if ("N".equals(resultType)) {
-                    if (testResult.getSignificantDigits() != null) {
-                        double factor = Math.pow(10, Double.valueOf(testResult.getSignificantDigits()));
-                        value = String.valueOf(Math.round(Double.valueOf(value) * factor) / factor);
-                    }
                     result.setValue(value);
                     resultCalculated = true;
                 }
             } else {
                 result.setValue("");
             }
-            analysis = createCalculatedAnalysis(
-                    resultCalculation.getResult() == null ? null : resultCalculation.getResult().getAnalysis(), test,
-                    resultSet.result, value, calculation.getName(), systemUserId, resultCalculated,
+            analysis = createCalculatedAnalysis(resultCalculation.getResult() == null ? null : result.getAnalysis(),
+                    test, resultSet.result, value, calculation.getName(), systemUserId, resultCalculated,
                     calculation.getNote(),
                     calculation.getSampleId() == null ? null : calculation.getSampleId().toString());
             if (analysis == null) {
@@ -463,7 +424,7 @@ public class TestCalculatedUtil {
                 }
                 if (recorded != null) {
                     recorded.setTestResult(result.getTestResult());
-                    recorded.setSignificantDigits(result.getSignificantDigits());
+                    recorded.setReportingDecimalPlaces(result.getReportingDecimalPlaces());
                     recorded.setResultType(result.getResultType());
                     recorded.setSysUserId(systemUserId);
                     recorded.setValue(result.getValue());
@@ -484,6 +445,29 @@ public class TestCalculatedUtil {
             }
         }
         return analysis;
+    }
+
+    // Another rule may have written the same row earlier in this save; the audit
+    // trail detaches the copy it updated, so read the row as it now stands.
+    private Result storedResult(ResultCalculation resultCalculation) {
+        return resultCalculation.getResult() == null ? null : resultService.get(resultCalculation.getResult().getId());
+    }
+
+    private static boolean isAnswerType(String resultType) {
+        return "D".equals(resultType) || "R".equals(resultType) || "A".equals(resultType);
+    }
+
+    // Rules share a coded result; one whose condition fails clears only its own
+    // answer.
+    private boolean holdsOwnAnswer(ResultCalculation resultCalculation, ResultSet resultSet, Calculation calculation) {
+        Result current = storedResult(resultCalculation);
+        if (current == null) {
+            Analysis destination = orderedDestination(resultSet.result, calculation);
+            current = destination == null || destination.getId() == null ? null
+                    : recordedResultFor(destination, getTestResultForCalculation(calculation));
+        }
+        return current != null && StringUtils.isNotBlank(current.getValue())
+                && current.getValue().equals(calculation.getResult());
     }
 
     private void createInternalNote(Analysis newAnalysis, Analysis currentAnalysis, String calculatioName,
@@ -548,10 +532,8 @@ public class TestCalculatedUtil {
         String resultType = ruleResultScope.resultTypeForComponent(test.getId(), destinationComponentId,
                 testService.getResultType(test));
         if ("D".equals(resultType)) {
-            TestResult testResult;
-            testResult = testResultService.getTestResultsByTestAndDictonaryResult(test.getId(),
-                    calculation.getResult());
-            return testResult;
+            return testResultService.getTestResultsByTestAndDictonaryResult(test.getId(), calculation.getResult(),
+                    destinationComponentId);
         } else {
             List<TestResult> testResultList = testResultService.getActiveTestResultsByTest(test.getId());
             if (destinationComponentId != null) {
@@ -642,8 +624,8 @@ public class TestCalculatedUtil {
     }
 
     /**
-     * Whether a stored result can stand for a parameter. Its value is written into
-     * the script the calculation evaluates, so only a number qualifies.
+     * Whether a stored result can stand for a parameter: a number, or the id of the
+     * answer a coded result recorded.
      */
     static boolean isUsableOperandValue(String value) {
         return BoundedDecimal.isBoundedDecimal(value);
@@ -662,49 +644,21 @@ public class TestCalculatedUtil {
                         && Operation.PatientAttribute.AGE.toString().equals(oper.getValue()));
     }
 
-    private void addNumericOperation(Operation operation, ResultCalculation resultCalculation, StringBuffer function,
-            String inputType) {
-        Test test = testService.getActiveTestById(Integer.valueOf(operation.getValue()));
-        if (test != null) {
-            Integer resultId = resultCalculation.getOperandResultMap().get(operation.getId());
-            Result result = null;
-            if (resultId != null) {
-                result = resultService.get(resultId.toString());
-            }
-
-            if (result != null) {
-                // The component owns the result type; a multi-component test
-                // has none of its own, and asking it would reject a numeric
-                // component sitting under a coded primary.
-                if (ruleResultScope.resultTypeForComponent(result.getTestResult().getTest().getId(),
+    private CalculationExpression.Operand calculationOperand(Operation operation, ResultCalculation calculation) {
+        Integer resultId = calculation.getOperandResultMap().get(operation.getId());
+        Result result = resultId == null ? null : resultService.get(resultId.toString());
+        String resultType = result == null ? null
+                : ruleResultScope.resultTypeForComponent(result.getTestResult().getTest().getId(),
                         ruleResultScope.componentIdOf(result),
-                        testService.getResultType(result.getTestResult().getTest())).equals("N")) {
-                    switch (inputType) {
-                    case Operation.TEST_RESULT:
-                        function.append(result.getValue()).append(" ");
-                        break;
-                    case Operation.IN_NORMAL_RANGE:
-                        function.append(" >= ")
-                                .append(result.getMinNormal() != null ? result.getMinNormal()
-                                        : Double.NEGATIVE_INFINITY)
-                                .append(" && ").append(result.getValue()).append(" <= ")
-                                .append(result.getMaxNormal() != null ? result.getMaxNormal()
-                                        : Double.POSITIVE_INFINITY)
-                                .append(" ");
-                        break;
-                    case Operation.OUTSIDE_NORMAL_RANGE:
-                        function.append(" <= ")
-                                .append(result.getMinNormal() != null ? result.getMinNormal()
-                                        : Double.NEGATIVE_INFINITY)
-                                .append(" || ").append(result.getValue()).append(" >= ")
-                                .append(result.getMaxNormal() != null ? result.getMaxNormal()
-                                        : Double.POSITIVE_INFINITY)
-                                .append(" ");
-                        break;
-                    }
-                }
-            }
+                        testService.getResultType(result.getTestResult().getTest()));
+        if ("D".equals(resultType)) {
+            return CalculationExpression.Operand.answer(CalculationExpression.number(result.getValue()));
         }
+        if (!"N".equals(resultType)) {
+            throw new IllegalArgumentException("A numeric or coded calculation operand is missing");
+        }
+        return new CalculationExpression.Operand(CalculationExpression.number(result.getValue()), result.getMinNormal(),
+                result.getMaxNormal());
     }
 
     /**

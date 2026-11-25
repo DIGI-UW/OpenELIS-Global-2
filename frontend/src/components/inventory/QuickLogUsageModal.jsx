@@ -67,7 +67,7 @@ const QuickLogUsageModal = ({
       open={open}
       onRequestClose={onClose}
       onRequestSubmit={submit}
-      modalHeading={intl.formatMessage({ id: "inventory.logUsage.title" })}
+      modalHeading={intl.formatMessage({ id: "usage.record.title" })}
       primaryButtonText={intl.formatMessage({ id: "usage.record.button" })}
       secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
       primaryButtonDisabled={saving}
@@ -92,7 +92,7 @@ const QuickLogUsageModal = ({
           id="quick-log-usage-item"
           titleText={<FormattedMessage id="catalog.item.name" />}
           placeholder={intl.formatMessage({
-            id: "inventory.search.placeholder",
+            id: "catalog.search.placeholder",
           })}
           items={options}
           selectedItem={selected}

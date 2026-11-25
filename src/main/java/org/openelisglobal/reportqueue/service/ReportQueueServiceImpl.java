@@ -38,6 +38,11 @@ import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroReportVersionDAO;
+import org.openelisglobal.microbiology.valueholder.MicroCase;
+import org.openelisglobal.microbiology.valueholder.MicroReportVersion;
+import org.openelisglobal.microbiology.valueholder.MicroReportVersionType;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.note.valueholder.Note;
@@ -110,6 +115,10 @@ public class ReportQueueServiceImpl implements ReportQueueService {
     @Autowired
     private SampleDAO sampleDAO;
     @Autowired
+    private MicroCaseDAO microCaseDAO;
+    @Autowired
+    private MicroReportVersionDAO microReportVersionDAO;
+    @Autowired
     private HistoryService historyService;
     @Autowired
     private SampleHumanService sampleHumanService;
@@ -150,6 +159,7 @@ public class ReportQueueServiceImpl implements ReportQueueService {
         String testName;
         String rawValue;
         String display;
+        String clinicalValue;
         String flag;
         String unitId;
         String unitName;
@@ -165,6 +175,7 @@ public class ReportQueueServiceImpl implements ReportQueueService {
      */
     static final class Snapshot {
         final List<SnapshotItem> items = new ArrayList<>();
+        final List<MicroReportVersion> microVersions = new ArrayList<>();
         boolean anyCorrected;
         Timestamp latestRelease;
 
@@ -190,13 +201,16 @@ public class ReportQueueServiceImpl implements ReportQueueService {
         final Map<ReportVersionItem, SnapshotItem> changed = new LinkedHashMap<>();
         final List<ReportVersionItem> awaitingValidation = new ArrayList<>();
         boolean legacyNewer;
+        boolean microNewer;
+        boolean microAmended;
 
         boolean changedOrRemoved() {
-            return awaitingValidation.isEmpty() && (!changed.isEmpty() || !removed.isEmpty());
+            return awaitingValidation.isEmpty() && (!changed.isEmpty() || !removed.isEmpty() || microAmended);
         }
 
         boolean contentDiffers() {
-            return legacyNewer || (awaitingValidation.isEmpty() && (!added.isEmpty() || changedOrRemoved()));
+            return legacyNewer
+                    || (awaitingValidation.isEmpty() && (!added.isEmpty() || microNewer || changedOrRemoved()));
         }
     }
 
@@ -464,8 +478,8 @@ public class ReportQueueServiceImpl implements ReportQueueService {
                                         result.getSampleTypeId())
                                 : resultLimitService.getResultLimitForComponentAndPatient(scope, patient,
                                         result.getSampleTypeId()));
-                String letter = ResultAlertFlags.criticalLetter(limit, StringUtil.getActualNumericValue(
-                        StringUtil.roundToPlaces(result.getValue(), result.getSignificantDigits())));
+                String letter = ResultAlertFlags.criticalLetter(limit,
+                        StringUtil.getActualNumericValue(result.getValue()));
                 if (!GenericValidator.isBlankOrNull(letter)) {
                     critical.add(result.getSampleId());
                 }
@@ -539,6 +553,8 @@ public class ReportQueueServiceImpl implements ReportQueueService {
             test.setTestName(item.testName);
             test.setReleased(item.released);
             test.setResult(item.released ? withUnit(item.display, item.unitName) : null);
+            test.setClinicalValue(
+                    item.released && item.clinicalValue != null ? withUnit(item.clinicalValue, item.unitName) : null);
             test.setFlag(item.released ? item.flag : null);
             test.setStatus(statusName(item.statusId));
             test.setReleasedAt(iso(item.releasedAt));
@@ -789,6 +805,13 @@ public class ReportQueueServiceImpl implements ReportQueueService {
 
     Snapshot snapshot(Sample sample) {
         Snapshot snapshot = new Snapshot();
+        for (MicroCase microCase : microCaseDAO.getByOrder(sample.getId())) {
+            for (MicroReportVersion version : microReportVersionDAO.getByCaseId(microCase.getId())) {
+                if (version.getStructuredContent() != null) {
+                    snapshot.microVersions.add(version);
+                }
+            }
+        }
         String finalized = statusService.getStatusID(AnalysisStatus.Finalized);
         List<String> excluded = excludedStatusIds();
         Patient patient = sampleHumanService.getPatientForSample(sample);
@@ -832,6 +855,9 @@ public class ReportQueueServiceImpl implements ReportQueueService {
                 }
                 item.rawValue = String.join("|", raw);
                 item.display = String.join(", ", display);
+                if (results.stream().allMatch(r -> "N".equals(r.getResultType()))) {
+                    item.clinicalValue = String.join(", ", raw);
+                }
                 item.flag = results.isEmpty() ? "" : flag(analysis, results.get(0), patient);
             }
             snapshot.items.add(item);
@@ -860,9 +886,7 @@ public class ReportQueueServiceImpl implements ReportQueueService {
             }
             return String.join(", ", names);
         }
-        return ResultType.NUMERIC.matches(result.getResultType())
-                ? StringUtil.getActualNumericValue(result.getReportedValue())
-                : value;
+        return ResultType.NUMERIC.matches(result.getResultType()) ? result.getDisplayValue() : value;
     }
 
     /**
@@ -876,7 +900,7 @@ public class ReportQueueServiceImpl implements ReportQueueService {
                 String flag = "";
                 if (result.getMinNormal() != null && result.getMaxNormal() != null
                         && (result.getMinNormal() != 0.0 || result.getMaxNormal() != 0.0)) {
-                    double value = Double.parseDouble(StringUtil.getActualNumericValue(result.getReportedValue()));
+                    double value = Double.parseDouble(StringUtil.getActualNumericValue(result.getValue()));
                     if (value < result.getMinNormal()) {
                         flag = ResultAlertFlags.BELOW;
                     } else if (value > result.getMaxNormal()) {
@@ -885,7 +909,7 @@ public class ReportQueueServiceImpl implements ReportQueueService {
                 }
                 ResultLimit limit = resultLimitService.getResultLimitForResult(analysis, result, patient);
                 String critical = ResultAlertFlags.criticalLetter(limit,
-                        StringUtil.getActualNumericValue(result.getReportedValue()));
+                        StringUtil.getActualNumericValue(result.getValue()));
                 return GenericValidator.isBlankOrNull(critical) ? flag : critical;
             }
             if (ResultType.isDictionaryVariant(result.getResultType())
@@ -903,6 +927,13 @@ public class ReportQueueServiceImpl implements ReportQueueService {
         Comparison comparison = new Comparison();
         if (last == null) {
             return comparison;
+        }
+        for (MicroReportVersion version : current.microVersions) {
+            if (last.getIssuedAt() != null
+                    && version.getReleasedAt().toInstant().isAfter(last.getIssuedAt().toInstant())) {
+                comparison.microNewer = true;
+                comparison.microAmended |= MicroReportVersionType.AMENDED.name().equals(version.getReleaseType());
+            }
         }
         if (last.isLegacy()) {
             comparison.legacyNewer = current.latestRelease != null && last.getIssuedAt() != null

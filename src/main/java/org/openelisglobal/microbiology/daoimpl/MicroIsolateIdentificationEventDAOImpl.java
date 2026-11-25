@@ -22,7 +22,7 @@ public class MicroIsolateIdentificationEventDAOImpl extends BaseDAOImpl<MicroIso
     @Transactional(readOnly = true)
     public List<MicroIsolateIdentificationEvent> getByIsolateId(String isolateId) {
         Query<MicroIsolateIdentificationEvent> query = entityManager.unwrap(Session.class).createQuery(
-                "from MicroIsolateIdentificationEvent e where e.isolateId = :isolateId order by e.changedAt, e.id",
+                "from MicroIsolateIdentificationEvent e where e.isolateId = :isolateId order by e.eventSequence, e.changedAt, e.id",
                 MicroIsolateIdentificationEvent.class);
         query.setParameter("isolateId", isolateId);
         return query.list();
@@ -32,7 +32,7 @@ public class MicroIsolateIdentificationEventDAOImpl extends BaseDAOImpl<MicroIso
     @Transactional(readOnly = true)
     public List<MicroIsolateIdentificationEvent> getByAmendmentId(String amendmentId) {
         Query<MicroIsolateIdentificationEvent> query = entityManager.unwrap(Session.class).createQuery(
-                "from MicroIsolateIdentificationEvent e where e.amendmentId = :amendmentId order by e.changedAt, e.id",
+                "from MicroIsolateIdentificationEvent e where e.amendmentId = :amendmentId order by e.eventSequence, e.changedAt, e.id",
                 MicroIsolateIdentificationEvent.class);
         query.setParameter("amendmentId", amendmentId);
         return query.list();

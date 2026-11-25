@@ -8,6 +8,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,7 +35,6 @@ import org.openelisglobal.common.paging.PagingBean.Paging;
 import org.openelisglobal.common.services.QAService;
 import org.openelisglobal.common.services.QAService.QAObservationType;
 import org.openelisglobal.common.util.IdValuePair;
-import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.note.service.NoteService;
@@ -43,6 +43,7 @@ import org.openelisglobal.result.form.AnalyzerResultsForm;
 import org.openelisglobal.result.service.ResultEntryAcknowledgementService;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.resultrun.form.RunHoldCause;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
@@ -52,6 +53,7 @@ import org.openelisglobal.sampleqaevent.service.SampleQaEventService;
 import org.openelisglobal.sampleqaevent.valueholder.SampleQaEvent;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.testalertrule.service.TestAlertEvaluationService;
 import org.openelisglobal.testreflex.action.util.TestReflexUtil;
 import org.openelisglobal.testreflex.service.TestReflexService;
 import org.openelisglobal.testreflex.valueholder.TestReflex;
@@ -101,6 +103,9 @@ public class AnalyzerResultsController extends BaseController {
         binder.setAllowedFields(ALLOWED_FIELDS);
     }
 
+    @org.springframework.context.annotation.Lazy
+    @Autowired
+    private org.openelisglobal.resultrun.service.RunQcService runQcService;
     @Autowired
     private SampleHumanService sampleHumanService;
     @Autowired
@@ -117,6 +122,8 @@ public class AnalyzerResultsController extends BaseController {
     private AnalyzerDeliveryBundleService deliveryBundleService;
     @Autowired
     private AnalyzerResultsAcceptService acceptService;
+    @Autowired
+    private TestAlertEvaluationService testAlertEvaluationService;
     @Autowired
     private ResultEntryAcknowledgementService acknowledgementService;
     @Autowired
@@ -380,13 +387,13 @@ public class AnalyzerResultsController extends BaseController {
         resultItem.setComponentId(result.getComponentId());
         if (!GenericValidator.isBlankOrNull(result.getComponentId())) {
             resultItem.setComponentLabel(testResultComponentService.getMatch("id", result.getComponentId())
-                    .map(TestResultComponent::getLabel).orElse(null));
+                    .map(TestResultComponent::getLocalizedLabel).orElse(null));
         }
         resultItem.setCompleteDate(result.getCompleteDateForDisplay());
         resultItem.setLastUpdated(result.getLastupdated());
         resultItem.setReadOnly((held && !awaitingReview) || result.isReadOnly() || result.getTestId() == null);
         resultItem.setResult(held && !awaitingReview ? result.getRawResultValue() : getResultForItem(result));
-        resultItem.setSignificantDigits(acceptService.significantDigitsFor(result));
+        resultItem.setReportingDecimalPlaces(acceptService.reportingDecimalPlacesFor(result));
         resultItem.setTestResultType(result.getResultType());
         resultItem
                 .setDictionaryResultList(held && !awaitingReview ? new ArrayList<>() : getDictionaryResultList(result));
@@ -395,6 +402,16 @@ public class AnalyzerResultsController extends BaseController {
         resultItem.setUserChoiceReflex(giveUserChoice(result));
         resultItem.setUserChoicePending(false);
         resultItem.setImportIssueReason(result.getImportIssueReason());
+        RunHoldCause hold = GenericValidator.isBlankOrNull(result.getImportIssueReason()) && result.getRunId() != null
+                && result.getTestId() != null ? runQcService.holdCauses(result.getRunId()).get(result.getTestId())
+                        : null;
+        if (hold != null) {
+            resultItem
+                    .setImportIssueReason(hold == RunHoldCause.QC_MISSING ? AnalyzerResults.IMPORT_ISSUE_RUN_QC_MISSING
+                            : AnalyzerResults.IMPORT_ISSUE_RUN_QC_FAILED);
+            resultItem.setReadOnly(true);
+            resultItem.setHeldRunId(result.getRunId());
+        }
         resultItem.setSourceProfileId(result.getSourceProfileId());
         resultItem.setSourceProfileRevision(result.getSourceProfileRevision());
         resultItem.setSourceProtocol(result.getSourceProtocol());
@@ -654,7 +671,9 @@ public class AnalyzerResultsController extends BaseController {
 
     private String getResultForItem(AnalyzerResults result) {
         if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(result.getResultType())) {
-            return getRoundedToSignificantDigits(result);
+            // The review value is submitted for persistence; reporting precision must
+            // never change the measurement a reviewer accepts or edits.
+            return result.getResult();
         }
 
         if (TypeOfTestResultServiceImpl.ResultType.isTextOnlyVariant(result.getResultType())
@@ -668,35 +687,6 @@ public class AnalyzerResultsController extends BaseController {
         // otherwise we want the id so the correct selection will be choosen
         if (result.isReadOnly() || result.getTestId() == null || result.getIsControl()) {
             return dictionaryService.get(result.getResult()).getDictEntry();
-        } else {
-            return result.getResult();
-        }
-    }
-
-    private String getRoundedToSignificantDigits(AnalyzerResults result) {
-        if (result.getTestId() != null) {
-
-            Double results;
-            try {
-                results = Double.valueOf(result.getResult());
-            } catch (NumberFormatException e) {
-                return result.getResult();
-            }
-
-            String significantDigitsAsString = acceptService.significantDigitsFor(result);
-            if (GenericValidator.isBlankOrNull(significantDigitsAsString) || "-1".equals(significantDigitsAsString)) {
-                return result.getResult();
-            }
-
-            Integer significantDigits;
-            try {
-                significantDigits = Integer.parseInt(significantDigitsAsString);
-            } catch (NumberFormatException e) {
-                return result.getResult();
-            }
-
-            // not truly significant digits, just decimal places
-            return StringUtil.doubleWithSignificantDigits(results, significantDigits);
         } else {
             return result.getResult();
         }
@@ -730,6 +720,32 @@ public class AnalyzerResultsController extends BaseController {
     protected String getAnalyzerIdFromRequest() {
         String idParam = request.getParameter("id");
         return idParam == null || idParam.isBlank() ? null : idParam;
+    }
+
+    /**
+     * A save answers 200 when it took some rows and kept others in review, so it
+     * names each row the reviewer acted on that is still staged, with the reason it
+     * is held, rather than letting the page report every row saved.
+     */
+    private void writeLeftInReview(HttpServletResponse response, List<AnalyzerResultItem> resultItemList,
+            Map<String, String> reasons) throws java.io.IOException {
+        if (reasons.isEmpty()) {
+            return;
+        }
+        List<Map<String, String>> leftInReview = new ArrayList<>();
+        for (AnalyzerResultItem item : resultItemList) {
+            if (reasons.containsKey(item.getId())) {
+                Map<String, String> row = new LinkedHashMap<>();
+                row.put("id", item.getId());
+                row.put("accessionNumber", item.getAccessionNumber());
+                row.put("testName", item.getTestName());
+                row.put("reason", reasons.get(item.getId()));
+                leftInReview.add(row);
+            }
+        }
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        new ObjectMapper().writeValue(response.getWriter(), Map.of("leftInReview", leftInReview));
     }
 
     private void writeErrorResponse(HttpServletResponse response, String safeMessage) {
@@ -793,7 +809,9 @@ public class AnalyzerResultsController extends BaseController {
                 new ObjectMapper().writeValue(response.getWriter(), acknowledgementService.refusalBody(owed));
                 return;
             }
-            acceptService.acceptAndPersist(resultItemList, getSysUserId(request), alerts);
+            evaluateAlerts(acceptService.acceptAndPersist(resultItemList, getSysUserId(request), alerts),
+                    getSysUserId(request));
+            writeLeftInReview(response, resultItemList, acceptService.stillInReview(resultItemList));
 
         } catch (LIMSRuntimeException e) {
             LogEvent.logError(e.getMessage(), e);
@@ -822,7 +840,8 @@ public class AnalyzerResultsController extends BaseController {
         List<AnalyzerResultItem> resultItemList = paging.getResults(request);
 
         try {
-            acceptService.acceptAndPersist(resultItemList, getSysUserId(request));
+            evaluateAlerts(acceptService.acceptAndPersist(resultItemList, getSysUserId(request)),
+                    getSysUserId(request));
         } catch (LIMSRuntimeException e) {
             LogEvent.logError(e.getMessage(), e);
             String errorMsg = "errors.UpdateException";
@@ -844,6 +863,18 @@ public class AnalyzerResultsController extends BaseController {
         // return getForwardWithParameters(findForward(FWD_SUCCESS_INSERT, form),
         // params);
         // }
+    }
+
+    // After the accept commits, as Results Entry does: an alert never fails the
+    // accept.
+    private void evaluateAlerts(List<Result> recorded, String sysUserId) {
+        for (Result result : recorded) {
+            try {
+                testAlertEvaluationService.evaluateAndDispatch(result, sysUserId);
+            } catch (RuntimeException e) {
+                LogEvent.logError(e);
+            }
+        }
     }
 
     // ── Accept business logic extracted to AnalyzerResultsAcceptServiceImpl

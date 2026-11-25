@@ -46,6 +46,37 @@ public class LabelPreset extends BaseObject<Integer> {
     @Column(name = "barcode_type", nullable = false, length = 20)
     private BarcodeType barcodeType;
 
+    @Column(name = "prints_per_container", nullable = false)
+    private Boolean printsPerContainer = false;
+    @Column(name = "default_per_container", nullable = false)
+    private Integer defaultPerContainer = 0;
+    @Column(name = "max_per_container", nullable = false)
+    private Integer maxPerContainer = 10;
+
+    public Boolean getPrintsPerContainer() {
+        return printsPerContainer;
+    }
+
+    public void setPrintsPerContainer(Boolean value) {
+        printsPerContainer = value;
+    }
+
+    public Integer getDefaultPerContainer() {
+        return defaultPerContainer;
+    }
+
+    public void setDefaultPerContainer(Integer value) {
+        defaultPerContainer = value;
+    }
+
+    public Integer getMaxPerContainer() {
+        return maxPerContainer;
+    }
+
+    public void setMaxPerContainer(Integer value) {
+        maxPerContainer = value;
+    }
+
     @Column(name = "prints_per_order", nullable = false)
     private Boolean printsPerOrder = false;
 

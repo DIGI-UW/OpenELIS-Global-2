@@ -17,7 +17,7 @@ export const isoDaysFromToday = (days) =>
 
 /** The {fromDate, toDate} window a QA filter opens on: the last `days` days. */
 export const lastDays = (days) => ({
-  fromDate: isoDaysFromToday(-days),
+  fromDate: isoDaysFromToday(-(days - 1)),
   toDate: toLocalIsoDate(labNow()),
 });
 

@@ -457,16 +457,20 @@ async function exerciseForm(page: Page, form: ReportForm): Promise<URL> {
       await button.click();
       await expect(page.getByText("Please select study type.")).toBeVisible();
       expect(popups).toHaveLength(0);
-      const studyType = page.locator("select#studyType");
-      const study = await studyType
-        .locator("option")
-        .evaluateAll(
-          (options) =>
-            options.map((o) => (o as HTMLOptionElement).value).find(Boolean) ??
-            "",
-        );
-      expect(study, "the study type list has no entries").not.toBe("");
-      await studyType.selectOption(study);
+      const studies: Array<{ id: string; value: string }> = await (
+        await page.request.get(
+          `/api/OpenELIS-Global/rest/${
+            form.report === "CIStudyExport" ? "studyprojects" : "trendsprojects"
+          }`,
+        )
+      ).json();
+      const first = studies.find((entry) => entry.id && entry.value);
+      expect(first, "the study type list has no entries").toBeTruthy();
+      const study = String(first?.id);
+      await chooseCarbonOption(
+        page.getByRole("combobox", { name: "Select Study Type" }),
+        first?.value ?? "",
+      );
       if (form.report === "CIStudyExport") {
         await button.click();
         await expect(page.getByText("Please select date type.")).toBeVisible();

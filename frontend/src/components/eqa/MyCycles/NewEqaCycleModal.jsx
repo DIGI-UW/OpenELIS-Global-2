@@ -1,13 +1,11 @@
-import React, { useEffect, useState } from "react";
-import {
-  InlineNotification,
-  Modal,
-  Select,
-  SelectItem,
-  TextInput,
-} from "@carbon/react";
+import React, { useContext, useEffect, useState } from "react";
+import { InlineNotification, Modal, Stack, TextInput } from "@carbon/react";
 import { useIntl } from "react-intl";
-import { createMyCycle, fetchMyPrograms } from "./cyclesApi";
+import CustomDatePicker from "../../common/CustomDatePicker";
+import { ConfigurationContext } from "../../layout/Layout";
+import { displayDateToIso } from "../../utils/Utils";
+import { createMyCycle, fetchEnrollmentsOpenForCycles } from "./cyclesApi";
+import SearchableSelect from "../../common/SearchableSelect";
 
 const EMPTY_NEW_CYCLE = {
   schemeName: "",
@@ -34,10 +32,21 @@ const NewEqaCycleModal = ({ schemeName = "", onClose, onCreated }) => {
   const [myPrograms, setMyPrograms] = useState([]);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const { configurationProperties = {} } =
+    useContext(ConfigurationContext) || {};
+
+  const setNewCycleDate = (field) => (date) =>
+    setNewCycle((prev) => ({
+      ...prev,
+      [field]: displayDateToIso(
+        date,
+        configurationProperties.DEFAULT_DATE_LOCALE,
+      ),
+    }));
 
   useEffect(() => {
     let mounted = true;
-    fetchMyPrograms((programs) => {
+    fetchEnrollmentsOpenForCycles((programs) => {
       if (mounted) setMyPrograms(programs);
     });
     return () => {
@@ -93,65 +102,53 @@ const NewEqaCycleModal = ({ schemeName = "", onClose, onCreated }) => {
           style={{ marginBottom: "1rem" }}
         />
       )}
-      <Select
-        id="new-cycle-scheme"
-        labelText={t("eqa.cycle.new.scheme", "Scheme (from My EQA Schemes)")}
-        helperText={
-          myPrograms.length === 0
-            ? t(
-                "eqa.cycle.new.noPrograms",
-                "Enroll in a scheme under My EQA Schemes first.",
-              )
-            : undefined
-        }
-        value={newCycle.schemeName}
-        disabled={Boolean(schemeName)}
-        onChange={(e) =>
-          setNewCycle({ ...newCycle, schemeName: e.target.value })
-        }
-      >
-        <SelectItem value="" text="" />
-        {schemeName &&
-          !myPrograms.some((prog) => prog.programName === schemeName) && (
-            <SelectItem value={schemeName} text={schemeName} />
-          )}
-        {myPrograms.map((prog) => (
-          <SelectItem
-            key={prog.id}
-            value={prog.programName}
-            text={prog.programName}
-          />
-        ))}
-      </Select>
-      <TextInput
-        id="new-cycle-name"
-        labelText={t("eqa.cycle.new.name", "Cycle name")}
-        value={newCycle.cycleName}
-        onChange={(e) =>
-          setNewCycle({ ...newCycle, cycleName: e.target.value })
-        }
-        style={{ marginTop: "1rem" }}
-      />
-      <TextInput
-        id="new-cycle-distribution"
-        type="date"
-        labelText={t("eqa.cycle.new.distributionDate", "Distribution date")}
-        value={newCycle.distributionDate}
-        onChange={(e) =>
-          setNewCycle({ ...newCycle, distributionDate: e.target.value })
-        }
-        style={{ marginTop: "1rem" }}
-      />
-      <TextInput
-        id="new-cycle-deadline"
-        type="date"
-        labelText={t("eqa.cycle.new.deadline", "Submission deadline")}
-        value={newCycle.submissionDeadline}
-        onChange={(e) =>
-          setNewCycle({ ...newCycle, submissionDeadline: e.target.value })
-        }
-        style={{ marginTop: "1rem" }}
-      />
+      <Stack gap={5}>
+        <SearchableSelect
+          id="new-cycle-scheme"
+          labelText={t("eqa.cycle.new.scheme", "Scheme (from My EQA Schemes)")}
+          helperText={
+            myPrograms.length === 0
+              ? t(
+                  "eqa.cycle.new.noUsableEnrollments",
+                  "No active enrollment here matches a scheme on this instance. Enrollments are managed under My EQA Schemes, schemes under EQA Management, Schemes.",
+                )
+              : undefined
+          }
+          options={[
+            ...(schemeName &&
+            !myPrograms.some((prog) => prog.programName === schemeName)
+              ? [{ id: schemeName, value: schemeName }]
+              : []),
+            ...myPrograms.map((prog) => ({
+              id: prog.programName,
+              value: prog.programName,
+            })),
+          ]}
+          value={newCycle.schemeName}
+          disabled={Boolean(schemeName)}
+          onChange={(name) =>
+            setNewCycle((current) => ({ ...current, schemeName: name }))
+          }
+        />
+        <TextInput
+          id="new-cycle-name"
+          labelText={t("eqa.cycle.new.name", "Cycle name")}
+          value={newCycle.cycleName}
+          onChange={(e) =>
+            setNewCycle({ ...newCycle, cycleName: e.target.value })
+          }
+        />
+        <CustomDatePicker
+          id="new-cycle-distribution"
+          labelText={t("eqa.cycle.new.distributionDate", "Distribution date")}
+          onChange={setNewCycleDate("distributionDate")}
+        />
+        <CustomDatePicker
+          id="new-cycle-deadline"
+          labelText={t("eqa.cycle.new.deadline", "Submission deadline")}
+          onChange={setNewCycleDate("submissionDeadline")}
+        />
+      </Stack>
     </Modal>
   );
 };

@@ -241,7 +241,7 @@ public class AccessionValidationRangeController extends BaseResultValidationCont
         if (checkResults.size() == 0) {
             LogEvent.logDebug(this.getClass().getSimpleName(), "ResultValidation()", "Attempted save of stale page.");
             // Errors errors = new BaseErrors();
-            // errors.reject("alert.error", "An error occured while saving");
+            // errors.reject("alert.error", "An error occurred while saving");
             // saveErrors(errors);
             redirectAttributes.addFlashAttribute(FWD_FAIL_INSERT, true);
             return findForward(FWD_SUCCESS_INSERT, form);
@@ -405,7 +405,6 @@ public class AccessionValidationRangeController extends BaseResultValidationCont
                 createNeededNotes(analysisItem, analysis, noteUpdateList);
 
                 if (areResults(analysisItem)) {
-                    ResultsValidationUtility.keepStoredValueWhenUnchanged(analysisItem, analysis);
                     List<Result> results = createResultFromAnalysisItem(analysisItem, analysis, analysis,
                             noteUpdateList, deletableList);
                     for (Result result : results) {

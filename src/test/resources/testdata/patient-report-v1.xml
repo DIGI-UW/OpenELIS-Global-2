@@ -256,12 +256,12 @@
         released_date="2026-10-01 11:40:00" lastupdated="2026-10-01 11:40:00" />
 
     <result id="9301" analysis_id="9301" value="6.3" result_type="N"
-        significant_digits="1" min_normal="3.9" max_normal="5.8"
+        reporting_decimal_places="1" min_normal="3.9" max_normal="5.8"
         is_reportable="Y" lastupdated="2026-10-01 10:00:00" />
     <result id="9302" analysis_id="9302" value="5.1" result_type="N"
-        significant_digits="1" min_normal="2.5" max_normal="7.1"
+        reporting_decimal_places="1" min_normal="2.5" max_normal="7.1"
         is_reportable="Y" lastupdated="2026-10-01 10:00:00" />
     <result id="9305" analysis_id="9305" value="80" result_type="N"
-        significant_digits="0" min_normal="60" max_normal="110"
+        reporting_decimal_places="0" min_normal="60" max_normal="110"
         is_reportable="Y" lastupdated="2026-10-01 11:30:00" />
 </dataset>

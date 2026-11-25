@@ -21,26 +21,12 @@ const IntermediateByService = (props) => {
   });
 
   const handleDatePickerChangeDate = (datePicker, date) => {
-    let updatedDate = encodeDate(date);
-    let obj = null;
-    switch (datePicker) {
-      case "startDate":
-        obj = {
-          ...reportFormValues,
-          startDate: updatedDate,
-          error: null,
-        };
-        break;
-      case "endDate":
-        obj = {
-          ...reportFormValues,
-          endDate: updatedDate,
-          error: null,
-        };
-        break;
-      default:
-    }
-    setReportFormValues(obj);
+    const updatedDate = encodeDate(date);
+    setReportFormValues((current) => ({
+      ...current,
+      [datePicker]: updatedDate,
+      error: null,
+    }));
   };
 
   function handleSiteName(e) {
@@ -59,7 +45,10 @@ const IntermediateByService = (props) => {
 
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer("/rest/displayList/SAMPLE_PATIENT_REFERRING_CLINIC", getSiteList);
+    getFromOpenElisServer(
+      "/rest/displayList/SAMPLE_PATIENT_REFERRING_CLINIC",
+      getSiteList,
+    );
     return () => {
       componentMounted.current = false;
     };
@@ -68,13 +57,13 @@ const IntermediateByService = (props) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!reportFormValues.startDate || !reportFormValues.endDate) {
-      setReportFormValues({
-        ...reportFormValues,
+      setReportFormValues((current) => ({
+        ...current,
         error: intl.formatMessage({
           id: "error.dateRange.start",
           defaultMessage: "Please select Start and end date.",
         }),
-      });
+      }));
       return;
     }
     const baseParams = `report=${props.report}&type=patient`;

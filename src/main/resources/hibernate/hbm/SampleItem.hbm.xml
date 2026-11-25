@@ -78,6 +78,8 @@
             type="java.lang.String" />
         <property name="container" column="container"
             type="java.lang.String" />
+        <property name="containerTypeId" column="container_type_id"
+            type="java.lang.Long" />
         <property name="locationDetails" column="location_details"
             type="java.lang.String" />
         <property name="gpsLatitude" column="gps_latitude"

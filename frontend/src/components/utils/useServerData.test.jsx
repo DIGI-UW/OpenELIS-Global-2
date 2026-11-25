@@ -2,11 +2,11 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, onlineManager } from "@tanstack/react-query";
 import { IntlProvider } from "react-intl";
 import messages from "../../languages/en.json";
 import { NotificationContext } from "../layout/contexts";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fetchFromOpenElisServer } from "./Utils";
 import { createQueryClient } from "./queryClient";
 import { useServerData, useInvalidateServerData } from "./useServerData";
@@ -48,6 +48,35 @@ const renderWithCache = (props, notificationContext) =>
 describe("useServerData", () => {
   beforeEach(() => {
     fetchFromOpenElisServer.mockReset();
+  });
+
+  afterEach(() => {
+    onlineManager.setOnline(undefined);
+  });
+
+  it("reads a reachable lab server even when the browser reports no internet", async () => {
+    onlineManager.setOnline(false);
+    fetchFromOpenElisServer.mockResolvedValue({ name: "local lab data" });
+
+    renderWithCache({});
+
+    expect(await screen.findByText("local lab data")).toBeInTheDocument();
+    expect(fetchFromOpenElisServer).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports an unreachable server even when the browser reports no internet", async () => {
+    onlineManager.setOnline(false);
+    fetchFromOpenElisServer.mockRejectedValue(new Error("server unreachable"));
+    const addNotification = vi.fn();
+
+    renderWithCache({}, { addNotification });
+
+    await waitFor(() => expect(addNotification).toHaveBeenCalledTimes(1));
+    expect(addNotification.mock.calls[0][0]).toMatchObject({
+      kind: "error",
+      message: messages["server.error.msg"],
+    });
+    expect(fetchFromOpenElisServer).toHaveBeenCalledTimes(1);
   });
 
   it("reads the endpoint and shows what the server returned", async () => {

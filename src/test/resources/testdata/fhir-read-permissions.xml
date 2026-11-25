@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <system_role id="9101" name="FHIR Results Reader"
+        description="Results integration" active="true"
+        is_grouping_role="false" editable="true" />
+    <system_role id="9102" name="FHIR Patient Reader"
+        description="Patient integration" active="true"
+        is_grouping_role="false" editable="true" />
+    <system_role id="9103" name="FHIR No Grants"
+        description="No integration grants" active="true"
+        is_grouping_role="false" editable="true" />
+    <system_module id="9201" name="fhir.read.results"
+        description="All results" has_select_flag="Y" has_add_flag="N"
+        has_update_flag="N" has_delete_flag="N" />
+    <system_module id="9202" name="fhir.read.patients"
+        description="All patients" has_select_flag="Y" has_add_flag="N"
+        has_update_flag="N" has_delete_flag="N" />
+    <system_module id="9203" name="fhir.read.reference"
+        description="Reference records" has_select_flag="Y" has_add_flag="N"
+        has_update_flag="N" has_delete_flag="N" />
+    <system_role_module id="9301" system_role_id="9101"
+        system_module_id="9201" has_select="Y" has_add="N" has_update="N"
+        has_delete="N" />
+    <system_role_module id="9302" system_role_id="9101"
+        system_module_id="9202" has_select="N" has_add="N" has_update="N"
+        has_delete="N" />
+    <system_role_module id="9303" system_role_id="9102"
+        system_module_id="9202" has_select="Y" has_add="N" has_update="N"
+        has_delete="N" />
+</dataset>

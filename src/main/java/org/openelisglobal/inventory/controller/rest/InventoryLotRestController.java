@@ -76,6 +76,10 @@ public class InventoryLotRestController extends BaseRestController {
             // Empty (not null) when unassigned; null is what Include.NON_NULL omits.
             lot.setLocation(location.isEmpty() ? null : location);
             return ResponseEntity.ok(lot);
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

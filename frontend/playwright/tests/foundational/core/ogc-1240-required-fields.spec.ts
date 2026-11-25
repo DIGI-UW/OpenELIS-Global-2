@@ -1,5 +1,6 @@
 import { test, expect } from "../../../helpers/test-base";
 import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 
 /**
  * OGC-1240 — required fields on Enter Order:
@@ -73,7 +74,7 @@ test.describe("OGC-1240 required fields on Enter Order", () => {
       .filter({ hasText: "Female" })
       .click();
     const samples = page.getByTestId("order-sample-test-section");
-    await samples.locator("#sampleType-0").selectOption({ label: "Serum" });
+    await chooseCarbonOption(samples.locator("#sampleType-0"), "Serum");
     await samples.locator('label[for^="test-0-"]').first().click();
 
     const checklist = page.getByTestId("to-continue-checklist");

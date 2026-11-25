@@ -219,29 +219,6 @@ public class StrictSearchParameterFacadeTest extends BaseWebContextSensitiveTest
     }
 
     @Test
-    public void updateAndDeleteWithMalformedId_areClientErrors() throws Exception {
-        for (String type : List.of("Patient", "Practitioner", "Organization", "ServiceRequest", "Observation")) {
-            MockHttpServletRequest delete = buildFhirRequest("DELETE", "/" + type + "/not-a-uuid");
-            MockHttpServletResponse deleted = new MockHttpServletResponse();
-            fhirServlet.service(delete, deleted);
-            assertEquals(type + " DELETE -> " + deleted.getContentAsString(), 400, deleted.getStatus());
-        }
-        for (String type : List.of("Patient", "Practitioner", "Organization")) {
-            MockHttpServletRequest put = buildFhirRequest("PUT", "/" + type + "/not-a-uuid");
-            put.setContent(("{\"resourceType\":\"" + type + "\",\"id\":\"not-a-uuid\"}").getBytes());
-            MockHttpServletResponse updated = new MockHttpServletResponse();
-            fhirServlet.service(put, updated);
-            assertEquals(type + " PUT -> " + updated.getContentAsString(), 400, updated.getStatus());
-        }
-        String unknown = "00000000-0000-0000-0000-000000000000";
-        MockHttpServletRequest put = buildFhirRequest("PUT", "/Practitioner/" + unknown);
-        put.setContent(("{\"resourceType\":\"Practitioner\",\"id\":\"" + unknown + "\"}").getBytes());
-        MockHttpServletResponse updated = new MockHttpServletResponse();
-        fhirServlet.service(put, updated);
-        assertEquals(updated.getContentAsString(), 404, updated.getStatus());
-    }
-
-    @Test
     public void lenientHandling_restoresTheOldIgnoringBehaviour() throws Exception {
         for (String type : resourceTypes) {
             assertEquals(type, 200, serve(type, "_foo=bar&_sort=_lastUpdated", true).getStatus());

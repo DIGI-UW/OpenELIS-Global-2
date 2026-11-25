@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "site-reports",
+  "kind": "provider",
+  "name": "Site reports",
+  "version": "1.0.0",
+  "requires": { "openelis": ">=3.4.0", "coreApi": "^1.0", "spi": "^1.0" },
+  "backend": {
+    "basePackages": ["org.openelisglobal.module.sitereports"],
+    "activator": "org.openelisglobal.module.sitereports.SiteReportsModule",
+    "extensions": [{ "spi": "report", "class": "org.openelisglobal.module.sitereports.SiteReportProvider" }]
+  },
+  "configuration": {
+    "properties": [
+      { "key": "logo.path", "type": "string", "default": "/var/lib/openelis-global/branding/logo.png", "exposeToFrontend": false }
+    ]
+  }
+}

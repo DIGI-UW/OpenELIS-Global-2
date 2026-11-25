@@ -14,6 +14,7 @@ import { Link as RouterLink, useHistory, useLocation } from "react-router-dom";
 
 import {
   createAnalyzer,
+  activateAnalyzer,
   getAnalyzer,
   getAnalyzerLabUnits,
   applyAnalyzerMapping,
@@ -30,7 +31,7 @@ import AnalyzerConnectionSetup, {
 
 import "./AnalyzerSetup.scss";
 
-const SETUP_STEPS = ["instrument", "assays", "verify", "connect"];
+const SETUP_STEPS = ["instrument", "connect", "assays", "verify"];
 
 const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
   const intl = useIntl();
@@ -257,11 +258,11 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
         search: instrumentParams.toString(),
       });
 
-      const assaysParams = new URLSearchParams(instrumentParams);
-      assaysParams.set("setup", "assays");
+      const connectParams = new URLSearchParams(instrumentParams);
+      connectParams.set("setup", "connect");
       history.push({
         pathname: location.pathname,
-        search: assaysParams.toString(),
+        search: connectParams.toString(),
       });
     };
 
@@ -280,7 +281,7 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
     returnTo,
   )}`;
 
-  const continueToConnect = () => {
+  const finishSetup = () => {
     if (!verification.complete || selectingBinding) {
       return;
     }
@@ -304,11 +305,25 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
           return;
         }
         setCandidate(response);
-        const params = new URLSearchParams(location.search);
-        params.set("setup", "connect");
-        history.push({
-          pathname: location.pathname,
-          search: params.toString(),
+        if (
+          response.status === "ACTIVE" &&
+          response.connection?.actualRuntimeState === "ACTIVE"
+        ) {
+          onClose?.();
+          return;
+        }
+        setSelectingBinding(true);
+        activateAnalyzer(candidate.id, (result) => {
+          setSelectingBinding(false);
+          if (
+            result?.activated &&
+            result.status === "ACTIVE" &&
+            String(result.analyzerId) === String(candidate.id)
+          ) {
+            onClose?.();
+          } else {
+            setBindingSelectionError(result || true);
+          }
         });
       },
     );
@@ -489,7 +504,7 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                       {intl.formatMessage({
                         id: submitting
                           ? "analyzer.setup.instrument.saving"
-                          : "analyzer.setup.instrument.continue",
+                          : "analyzer.setup.instrument.continueToConnect",
                       })}
                     </Button>
                   </div>
@@ -594,12 +609,12 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                       type="button"
                       renderIcon={ArrowRight}
                       disabled={!verification.complete || selectingBinding}
-                      onClick={continueToConnect}
+                      onClick={finishSetup}
                     >
                       {intl.formatMessage({
                         id: selectingBinding
-                          ? "analyzer.setup.verify.selecting"
-                          : "analyzer.setup.verify.continue",
+                          ? "analyzer.setup.verify.finishingActivation"
+                          : "analyzer.setup.verify.finishAndActivate",
                       })}
                     </Button>
                   </div>
@@ -618,6 +633,7 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                 step === "connect" &&
                 (candidate ? (
                   <AnalyzerConnectionSetup
+                    protocol={selectedType?.protocol}
                     key={`${candidate.id}:${candidate.profileId}:${candidate.profileRevision}`}
                     candidate={candidate}
                     onCandidateChange={setCandidate}
@@ -625,6 +641,14 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                     onVerifyMappings={() => editStep("verify")}
                     onProfileReset={reloadAfterReset}
                     onReadinessChange={setConnectReadiness}
+                    onContinue={
+                      candidate.status === "ACTIVE"
+                        ? undefined
+                        : (saved) => {
+                            setCandidate(saved);
+                            editStep("assays");
+                          }
+                    }
                   />
                 ) : (
                   <Loading

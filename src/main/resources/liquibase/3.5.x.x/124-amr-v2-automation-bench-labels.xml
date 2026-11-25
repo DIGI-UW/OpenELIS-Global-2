@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+  <changeSet id="amr-v2-m7-automation-bench-labels" author="openelis">
+    <createTable schemaName="clinlims" tableName="micro_incoming_item">
+      <column name="id" type="varchar(36)">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="case_id" type="varchar(36)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="original_case_id" type="varchar(36)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="source" type="varchar(20)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="test_id" type="numeric(10)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="sample_item_id" type="varchar(36)">
+        <constraints/>
+      </column>
+      <column name="structured_result" type="text">
+        <constraints nullable="false"/>
+      </column>
+      <column name="raw_result_value" type="text">
+        <constraints/>
+      </column>
+      <column name="run_source_key" type="varchar(500)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="received_at" type="timestamp">
+        <constraints nullable="false"/>
+      </column>
+      <column name="state" type="varchar(30)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="placed_by" type="varchar(36)">
+        <constraints/>
+      </column>
+      <column name="placed_at" type="timestamp">
+        <constraints/>
+      </column>
+      <column name="placement_target" type="varchar(36)">
+        <constraints/>
+      </column>
+      <column name="failure_reason" type="text">
+        <constraints/>
+      </column>
+      <column name="last_updated" type="timestamp">
+        <constraints/>
+      </column>
+    </createTable>
+    <addUniqueConstraint schemaName="clinlims" tableName="micro_incoming_item" columnNames="original_case_id,test_id,run_source_key" constraintName="uq_micro_incoming_delivery"/>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_incoming_item" baseColumnNames="case_id" referencedTableSchemaName="clinlims" referencedTableName="micro_case" referencedColumnNames="id" constraintName="fk_incoming_case_id"/>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_incoming_item" baseColumnNames="original_case_id" referencedTableSchemaName="clinlims" referencedTableName="micro_case" referencedColumnNames="id" constraintName="fk_incoming_original_case_id"/>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_incoming_item" baseColumnNames="test_id" referencedTableSchemaName="clinlims" referencedTableName="test" referencedColumnNames="id" constraintName="fk_incoming_test_id"/>
+    <createIndex schemaName="clinlims" tableName="micro_incoming_item" indexName="idx_micro_incoming_case_state">
+      <column name="case_id"/>
+      <column name="state"/>
+    </createIndex>
+    <createIndex schemaName="clinlims" tableName="micro_incoming_item" indexName="idx_micro_incoming_test">
+      <column name="test_id"/>
+    </createIndex>
+    <createIndex schemaName="clinlims" tableName="micro_incoming_item" indexName="idx_micro_incoming_source_key">
+      <column name="run_source_key"/>
+    </createIndex>
+    <sql>ALTER TABLE clinlims.micro_incoming_item ADD CONSTRAINT micro_incoming_source CHECK(source IN ('ANALYZER','REFERRAL'));
+ALTER TABLE clinlims.micro_incoming_item ADD CONSTRAINT micro_incoming_state CHECK(state IN ('WAITING','PLACED','FAILED','NEEDS_AMENDMENT'));</sql>
+    <createTable schemaName="clinlims" tableName="workplan_print_record">
+      <column name="id" type="varchar(36)">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="layout" type="varchar(50)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="lab_unit_id" type="varchar(36)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="printed_by" type="varchar(36)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="printed_at" type="timestamp">
+        <constraints nullable="false"/>
+      </column>
+      <column name="snapshot" type="text">
+        <constraints nullable="false"/>
+      </column>
+      <column name="last_updated" type="timestamp">
+        <constraints/>
+      </column>
+    </createTable>
+    <createTable schemaName="clinlims" tableName="micro_bench_action">
+      <column name="id" type="varchar(36)">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="case_id" type="varchar(36)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="action" type="varchar(30)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="before_state" type="text">
+        <constraints nullable="false"/>
+      </column>
+      <column name="after_state" type="text">
+        <constraints nullable="false"/>
+      </column>
+      <column name="performed_by" type="varchar(36)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="performed_at" type="timestamp">
+        <constraints nullable="false"/>
+      </column>
+      <column name="undone_by" type="varchar(36)">
+        <constraints/>
+      </column>
+      <column name="undone_at" type="timestamp">
+        <constraints/>
+      </column>
+      <column name="last_updated" type="timestamp">
+        <constraints/>
+      </column>
+    </createTable>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_bench_action" baseColumnNames="case_id" referencedTableSchemaName="clinlims" referencedTableName="micro_case" referencedColumnNames="id" constraintName="fk_micro_bench_case"/>
+    <createTable schemaName="clinlims" tableName="micro_container_preset_seed">
+      <column name="preset_id" type="integer">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+    </createTable>
+    <addColumn schemaName="clinlims" tableName="label_preset">
+      <column name="prints_per_container" type="boolean" defaultValueBoolean="false">
+        <constraints nullable="false"/>
+      </column>
+      <column name="default_per_container" type="integer" defaultValueNumeric="0">
+        <constraints nullable="false"/>
+      </column>
+      <column name="max_per_container" type="integer" defaultValueNumeric="10">
+        <constraints nullable="false"/>
+      </column>
+    </addColumn>
+    <sql>ALTER TABLE clinlims.label_preset DROP CONSTRAINT label_preset_scope_required;
+ALTER TABLE clinlims.label_preset ADD CONSTRAINT label_preset_scope_required CHECK(prints_per_order OR prints_per_sample OR prints_per_container);
+ALTER TABLE clinlims.label_preset ADD CONSTRAINT label_preset_container_counts CHECK(default_per_container &gt;= 0 AND max_per_container &gt;= default_per_container);</sql>
+    <addColumn schemaName="clinlims" tableName="micro_case_inoculation">
+      <column name="cancelled_at" type="timestamp"/>
+    </addColumn>
+    <addColumn schemaName="clinlims" tableName="micro_culture_extension">
+      <column name="undone_at" type="timestamp"/>
+    </addColumn>
+    <rollback>
+      <sql splitStatements="false">DO $$ BEGIN
+IF EXISTS(SELECT 1 FROM clinlims.micro_incoming_item) OR EXISTS(SELECT 1 FROM clinlims.workplan_print_record) OR EXISTS(SELECT 1 FROM clinlims.micro_bench_action) OR EXISTS(SELECT 1 FROM clinlims.label_preset WHERE prints_per_container) THEN RAISE EXCEPTION 'M7 rollback would discard history or container configuration; retain it before rollback'; END IF;
+END $$;</sql>
+      <sql>ALTER TABLE clinlims.label_preset DROP CONSTRAINT label_preset_scope_required;
+ALTER TABLE clinlims.label_preset DROP CONSTRAINT label_preset_container_counts;
+ALTER TABLE clinlims.label_preset ADD CONSTRAINT label_preset_scope_required CHECK(prints_per_order OR prints_per_sample);</sql>
+      <dropTable schemaName="clinlims" tableName="micro_container_preset_seed"/>
+      <dropColumn schemaName="clinlims" tableName="label_preset" columnName="prints_per_container"/>
+      <dropColumn schemaName="clinlims" tableName="label_preset" columnName="default_per_container"/>
+      <dropColumn schemaName="clinlims" tableName="label_preset" columnName="max_per_container"/>
+      <dropColumn schemaName="clinlims" tableName="micro_case_inoculation" columnName="cancelled_at"/>
+      <dropColumn schemaName="clinlims" tableName="micro_culture_extension" columnName="undone_at"/>
+      <dropTable schemaName="clinlims" tableName="micro_bench_action"/>
+      <dropTable schemaName="clinlims" tableName="workplan_print_record"/>
+      <dropTable schemaName="clinlims" tableName="micro_incoming_item"/>
+    </rollback>
+  </changeSet>
+</databaseChangeLog>

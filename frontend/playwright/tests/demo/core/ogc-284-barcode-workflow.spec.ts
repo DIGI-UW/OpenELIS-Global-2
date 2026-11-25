@@ -1,6 +1,7 @@
 import { expect, test, Page, Locator } from "../../../helpers/test-base";
 import { showSceneLabel, showTitleCard } from "../../../helpers/title-card";
 import { videoPause } from "../../../helpers/video-pause";
+import { chooseFirstCarbonOption } from "../../../helpers/carbon-select";
 import {
   SHORT_TIMEOUT,
   UI_TIMEOUT,
@@ -340,7 +341,7 @@ async function fillOrderDetails(page: Page, pause: PauseFn) {
   if (await samplingPoint.isVisible()) {
     const current = await samplingPoint.inputValue();
     if (!current) {
-      await samplingPoint.selectOption({ index: 1 });
+      await chooseFirstCarbonOption(samplingPoint);
     }
   }
 }

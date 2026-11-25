@@ -23,6 +23,19 @@ export const todayLocalIso = (now = labNow()) => format(now, "yyyy-MM-dd");
 /** The current wall-clock time at the site as `HH:mm`. */
 export const currentLocalTime = (now = labNow()) => format(now, "HH:mm");
 
+/**
+ * Whether a sample time reads as the server takes it: H:mm or HH:mm on a
+ * 24-hour clock. A blank time is allowed (it is optional). Free text such as
+ * "1430" or "25:99" was saved as a dropped date or the next day.
+ */
+export const isClockTime = (text) =>
+  !String(text ?? "").trim() ||
+  /^([01]?\d|2[0-3]):[0-5]\d$/.test(String(text).trim());
+
+/** Whether a sample's collection and received times both read as times. */
+export const sampleTimesValid = (sample) =>
+  isClockTime(sample?.collectionTime) && isClockTime(sample?.receivedTime);
+
 export const formatIsoDateForBackend = (isoDate, dateLocale) => {
   if (!isoDate) {
     return "";

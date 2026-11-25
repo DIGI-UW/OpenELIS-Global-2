@@ -108,9 +108,10 @@ public class AnalyzerResultsDAOImpl extends BaseDAOImpl<AnalyzerResults, String>
         try {
             String hql = "SELECT a.analyzerId, COUNT(a.id) FROM AnalyzerResults a "
                     + "WHERE a.analyzerId IN (:analyzerIds) AND a.importIssueReason IS NOT NULL "
-                    + "GROUP BY a.analyzerId";
+                    + "AND a.importIssueReason <> :setupCapture " + "GROUP BY a.analyzerId";
             Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(hql, Object[].class);
             query.setParameterList("analyzerIds", analyzerIds);
+            query.setParameter("setupCapture", AnalyzerResults.IMPORT_ISSUE_SETUP_CAPTURE);
             Map<String, Long> counts = new LinkedHashMap<>();
             for (Object[] row : query.list()) {
                 counts.put((String) row[0], ((Number) row[1]).longValue());

@@ -1,0 +1,95 @@
+@use "@carbon/styles/scss/breakpoint";
+@use "@carbon/styles/scss/spacing";
+@use "@carbon/styles/scss/type";
+
+.microbiology-case-workspace {
+  min-width: 0;
+
+  #case-information,
+  #case-history,
+  [id^="case-scope-"] {
+    scroll-margin-top: 12rem;
+
+    @include breakpoint.breakpoint-down(md) {
+      scroll-margin-top: 0;
+    }
+  }
+
+  .cds--css-grid-column {
+    min-width: 0;
+  }
+
+  .cds--stack-vertical {
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  h1 {
+    @include type.type-style("heading-04");
+    overflow-wrap: anywhere;
+  }
+
+  h3 {
+    @include type.type-style("heading-compact-01");
+  }
+
+  .microbiology-case-workspace__case-bar {
+    position: sticky;
+    top: 3rem;
+    z-index: 10;
+    display: flex;
+    flex-wrap: wrap;
+    gap: spacing.$spacing-03;
+    align-items: center;
+    padding: spacing.$spacing-03 spacing.$spacing-05;
+    background: var(--cds-background);
+
+    &-identity,
+    &-jump {
+      display: flex;
+      flex-wrap: wrap;
+      gap: spacing.$spacing-03;
+      align-items: center;
+    }
+
+    > .cds--overflow-menu__wrapper {
+      margin-inline-start: auto;
+    }
+
+    &-jump [aria-current="true"] {
+      box-shadow: inset 0 -2px 0 var(--cds-border-interactive);
+    }
+
+    @include breakpoint.breakpoint-down(md) {
+      position: static;
+    }
+  }
+
+  .microbiology-case-workspace__views {
+    display: flex;
+    flex-wrap: wrap;
+    gap: spacing.$spacing-03;
+  }
+
+  .microbiology-case-workspace__run-qc > .cds--inline-notification {
+    margin-block: spacing.$spacing-03;
+  }
+
+  .cds--accordion__content {
+    padding-inline-end: 0;
+  }
+
+  .cds--data-table-container {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
+
+.microbiology-case-actions {
+  inline-size: max-content;
+
+  .cds--overflow-menu-options__btn {
+    max-inline-size: none;
+  }
+}

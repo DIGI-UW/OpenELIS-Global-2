@@ -308,17 +308,17 @@ public class PatientResultTreeService {
 
         TestDisplay testDisplay = new TestDisplay();
         testDisplay.setTestName(test.getLocalizedName());
-        testDisplay.setComponent(component == null ? null : component.getLabel());
+        testDisplay.setComponent(component == null ? null : component.getLocalizedLabel());
         testDisplay.setComponentId(componentId);
         testDisplay.setSampleType(group.sampleType.getLocalizedName());
         testDisplay.setSampleTypeId(group.sampleType.getId());
-        testDisplay.setDisplay(
-                component == null || GenericValidator.isBlankOrNull(component.getLabel()) ? test.getLocalizedName()
-                        : test.getLocalizedName() + COMPONENT_SEPARATOR + component.getLabel());
+        testDisplay.setDisplay(component == null || GenericValidator.isBlankOrNull(component.getLocalizedLabel())
+                ? test.getLocalizedName()
+                : test.getLocalizedName() + COMPONENT_SEPARATOR + component.getLocalizedLabel());
         testDisplay.setConceptUuid(test.getId());
         testDisplay.setDatatype(configuredType);
         testDisplay.setUnits(unitOfMeasure(test, component));
-        applyResultLimit(testDisplay, resultLimit, significantDigits(test, component));
+        applyResultLimit(testDisplay, resultLimit, reportingDecimalPlaces(test, component));
         testDisplay.setObs(resultDisplays);
         return testDisplay;
     }
@@ -328,7 +328,7 @@ public class PatientResultTreeService {
      * An unset bound is left null rather than folded onto a neighbouring one — a
      * missing critical limit must not make every out-of-range value critical.
      */
-    private void applyResultLimit(TestDisplay testDisplay, ResultLimit resultLimit, String significantDigits) {
+    private void applyResultLimit(TestDisplay testDisplay, ResultLimit resultLimit, String reportingDecimalPlaces) {
         if (resultLimit == null) {
             return;
         }
@@ -338,8 +338,8 @@ public class PatientResultTreeService {
         testDisplay.setHiCritical(finiteOrNull(resultLimit.getHighCritical()));
         testDisplay.setLowAbsolute(finiteOrNull(resultLimit.getLowValid()));
         testDisplay.setHiAbsolute(finiteOrNull(resultLimit.getHighValid()));
-        testDisplay
-                .setRange(resultLimitService.getDisplayReferenceRange(resultLimit, significantDigits, RANGE_SEPARATOR));
+        testDisplay.setRange(
+                resultLimitService.getDisplayReferenceRange(resultLimit, reportingDecimalPlaces, RANGE_SEPARATOR));
     }
 
     private Double finiteOrNull(double value) {
@@ -370,7 +370,7 @@ public class PatientResultTreeService {
             Dictionary dictionary = dictionaryService.getDataForId(result.getValue());
             return dictionary == null ? "" : dictionary.getLocalizedName();
         }
-        return resultService.getSimpleResultValue(result);
+        return resultService.formatSimpleResultForDisplay(result);
     }
 
     private String configuredResultType(Test test, TestResultComponent component) {
@@ -392,15 +392,15 @@ public class PatientResultTreeService {
     }
 
     /** The precision the component's own result options are configured with. */
-    private String significantDigits(Test test, TestResultComponent component) {
+    private String reportingDecimalPlaces(Test test, TestResultComponent component) {
         for (TestResult testResult : testService.getPossibleTestResults(test)) {
             if (component == null || component.getId().equals(testResult.getComponentId())
                     || (component.getIsPrimary() && testResult.getComponentId() == null)) {
-                return GenericValidator.isBlankOrNull(testResult.getSignificantDigits()) ? "0"
-                        : testResult.getSignificantDigits();
+                return GenericValidator.isBlankOrNull(testResult.getReportingDecimalPlaces()) ? null
+                        : testResult.getReportingDecimalPlaces();
             }
         }
-        return "0";
+        return null;
     }
 
     private static final class SectionNode {

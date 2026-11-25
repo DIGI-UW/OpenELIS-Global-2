@@ -71,6 +71,20 @@ public class UnassignedSampleRestController extends BaseRestController {
     }
 
     /**
+     * Get the unassigned sample items referred to one destination facility, for the
+     * dashboard's facility filter.
+     */
+    @GetMapping("/items/by-facility/{facilityId}")
+    public ResponseEntity<List<SampleItemDTO>> getUnassignedSampleItemsByFacility(@PathVariable String facilityId) {
+        try {
+            return ResponseEntity.ok(unassignedSampleItemService.getUnassignedByDestinationFacility(facilityId));
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
      * Get all unassigned referral samples for dashboard Returns samples that are
      * not yet assigned to a box and not lost/canceled
      *

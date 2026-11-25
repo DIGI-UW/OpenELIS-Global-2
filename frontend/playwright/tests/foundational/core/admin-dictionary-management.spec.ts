@@ -166,7 +166,7 @@ test.describe("Dictionary management", () => {
       await expect(edit.locator("#dictEntry")).toHaveValue(item.entry);
       await expect(
         edit.getByRole("combobox", { name: "Dictionary Category" }),
-      ).toContainText(CATEGORY);
+      ).toHaveValue(CATEGORY);
     });
   });
 

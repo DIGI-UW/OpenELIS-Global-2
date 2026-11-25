@@ -129,6 +129,19 @@ public class CalculationRuleValidationIntegrationTest extends BaseWebContextSens
                 TestCalculationServiceImpl.SELF_REFERENCE, refusal(selfReading, false));
     }
 
+    /**
+     * An operation that is not a bounded arithmetic or range step is refused
+     * whether or not the rule is switched on.
+     */
+    @Test
+    public void scriptTextInAnOperationIsRefusedActiveOrNot() {
+        Calculation scripted = rule("scripted", AST, null, SERUM, ALT, null, null);
+        scripted.getOperations().get(1).setValue("java.lang.System.exit(0)");
+
+        assertEquals(TestCalculationServiceImpl.INVALID_LOGIC, refusal(scripted, true));
+        assertEquals(TestCalculationServiceImpl.INVALID_LOGIC, refusal(scripted, false));
+    }
+
     /** No component on one side means the primary, so the two spellings match. */
     @Test
     public void namingThePrimaryOnOneSideOnlyIsStillSelfReference() {

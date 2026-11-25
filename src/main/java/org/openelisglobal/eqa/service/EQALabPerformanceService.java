@@ -28,4 +28,7 @@ public interface EQALabPerformanceService {
      * the two dates inclusive. Null when none were scored.
      */
     Integer getAcceptanceRate(LocalDate from, LocalDate to);
+
+    /** Open EQA-triggered non-conformities, however long ago they were raised. */
+    int countOpenEqaNces();
 }

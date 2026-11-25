@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+
+    <!-- OGC-768: two active standards that share pH (different ranges) and
+        Turbidity (the same limit), and one test, Lead, only the first standard covers.
+        Water runs pH and Lead; Wastewater runs Turbidity. An inactive threshold
+        on Nitrate must not suggest it. -->
+    <type_of_test_result id="801" description="Numeric"
+        test_result_type="N" hl7_value="NM" lastupdated="2024-01-01 00:00:00" />
+
+    <localization id="9771" description="pH" />
+    <localization_value id="9771" localization_id="9771"
+        locale="en" value="pH" />
+    <localization id="9772" description="Lead (Pb)" />
+    <localization_value id="9772" localization_id="9772"
+        locale="en" value="Lead (Pb)" />
+    <localization id="9773" description="Turbidity" />
+    <localization_value id="9773" localization_id="9773"
+        locale="en" value="Turbidity" />
+    <localization id="9774" description="Nitrate" />
+    <localization_value id="9774" localization_id="9774"
+        locale="en" value="Nitrate" />
+
+    <test id="9761" name_localization_id="9771" description="pH"
+        loinc="11558-4" reporting_description="pH" sticker_req_flag="N"
+        is_active="Y" active_begin="2024-01-01 00:00:00"
+        active_end="2030-12-31 00:00:00" is_reportable="Y" time_holding="0"
+        time_wait="0" time_ta_average="0" time_ta_warning="0" time_ta_max="0"
+        label_qty="1" lastupdated="2024-01-01 00:00:00" local_code="PH768"
+        sort_order="1" name="pH" orderable="true"
+        guid="76800000-0000-0000-0000-000000000001"
+        antimicrobial_resistance="false" />
+    <test id="9762" name_localization_id="9772"
+        description="Lead (Pb)" loinc="5671-0"
+        reporting_description="Lead (Pb)" sticker_req_flag="N" is_active="Y"
+        active_begin="2024-01-01 00:00:00" active_end="2030-12-31 00:00:00"
+        is_reportable="Y" time_holding="0" time_wait="0" time_ta_average="0"
+        time_ta_warning="0" time_ta_max="0" label_qty="1"
+        lastupdated="2024-01-01 00:00:00" local_code="PB768" sort_order="2"
+        name="Lead (Pb)" orderable="true"
+        guid="76800000-0000-0000-0000-000000000002"
+        antimicrobial_resistance="false" />
+    <test id="9763" name_localization_id="9773"
+        description="Turbidity" loinc="6704-8"
+        reporting_description="Turbidity" sticker_req_flag="N" is_active="Y"
+        active_begin="2024-01-01 00:00:00" active_end="2030-12-31 00:00:00"
+        is_reportable="Y" time_holding="0" time_wait="0" time_ta_average="0"
+        time_ta_warning="0" time_ta_max="0" label_qty="1"
+        lastupdated="2024-01-01 00:00:00" local_code="TU768" sort_order="3"
+        name="Turbidity" orderable="true"
+        guid="76800000-0000-0000-0000-000000000003"
+        antimicrobial_resistance="false" />
+    <test id="9764" name_localization_id="9774" description="Nitrate"
+        loinc="14937-4" reporting_description="Nitrate" sticker_req_flag="N"
+        is_active="Y" active_begin="2024-01-01 00:00:00"
+        active_end="2030-12-31 00:00:00" is_reportable="Y" time_holding="0"
+        time_wait="0" time_ta_average="0" time_ta_warning="0" time_ta_max="0"
+        label_qty="1" lastupdated="2024-01-01 00:00:00" local_code="NO768"
+        sort_order="4" name="Nitrate" orderable="true"
+        guid="76800000-0000-0000-0000-000000000004"
+        antimicrobial_resistance="false" />
+
+    <localization id="9761" description="Water" />
+    <localization id="9762" description="Wastewater" />
+    <type_of_sample id="9761" description="Water" domain="E"
+        name_localization_id="9761" lastupdated="2024-01-01 00:00:00" />
+    <type_of_sample id="9762" description="Wastewater"
+        domain="E" name_localization_id="9762"
+        lastupdated="2024-01-01 00:00:00" />
+    <sampletype_test id="9761" sample_type_id="9761"
+        test_id="9761" />
+    <sampletype_test id="9762" sample_type_id="9761"
+        test_id="9762" />
+    <sampletype_test id="9763" sample_type_id="9762"
+        test_id="9763" />
+
+    <compliance_standard id="9761"
+        fhir_uuid="76800000-0000-0000-0000-000000000011"
+        name="Drinking Water Quality" version="2021"
+        description="National drinking water regulation"
+        issuing_body="Ministry of Health" regulation_number="PP 22/2021"
+        country_region="Indonesia" status="ACTIVE" effective_date="2021-02-01"
+        sys_user_id="1" last_updated="2024-01-01 00:00:00" />
+    <compliance_standard id="9762"
+        fhir_uuid="76800000-0000-0000-0000-000000000012"
+        name="Guidelines for Drinking-water Quality" version="4"
+        description="WHO drinking water guidelines" issuing_body="WHO"
+        regulation_number="WHO-DWG-4" country_region="Global" status="ACTIVE"
+        effective_date="2022-03-21" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+
+    <parameter_group id="9761"
+        fhir_uuid="76800000-0000-0000-0000-000000000021" standard_id="9761"
+        name="Physical" description="Physical parameters" sort_order="1"
+        is_mandatory="true" sys_user_id="1" last_updated="2024-01-01 00:00:00" />
+    <parameter_group id="9762"
+        fhir_uuid="76800000-0000-0000-0000-000000000022" standard_id="9762"
+        name="Physical" description="WHO physical parameters" sort_order="1"
+        is_mandatory="true" sys_user_id="1" last_updated="2024-01-01 00:00:00" />
+
+    <compliance_threshold id="9761"
+        fhir_uuid="76800000-0000-0000-0000-000000000031" group_id="9761"
+        test_id="9761" parameter_code="pH" display_name="pH"
+        threshold_type="RANGE" min_value="6.0" max_value="9.0"
+        is_mandatory="true" is_active="true" sort_order="1" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+    <compliance_threshold id="9762"
+        fhir_uuid="76800000-0000-0000-0000-000000000032" group_id="9761"
+        test_id="9762" parameter_code="Pb" display_name="Lead"
+        threshold_type="MAXIMUM" max_value="0.01" units="mg/L"
+        is_mandatory="true" is_active="true" sort_order="2" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+    <compliance_threshold id="9763"
+        fhir_uuid="76800000-0000-0000-0000-000000000033" group_id="9761"
+        test_id="9763" parameter_code="TURB" display_name="Turbidity"
+        threshold_type="MAXIMUM" max_value="5.0" units="NTU"
+        is_mandatory="true" is_active="true" sort_order="3" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+    <compliance_threshold id="9764"
+        fhir_uuid="76800000-0000-0000-0000-000000000034" group_id="9762"
+        test_id="9761" parameter_code="pH" display_name="pH"
+        threshold_type="RANGE" min_value="6.5" max_value="8.5"
+        is_mandatory="true" is_active="true" sort_order="1" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+    <compliance_threshold id="9765"
+        fhir_uuid="76800000-0000-0000-0000-000000000035" group_id="9762"
+        test_id="9763" parameter_code="TURB" display_name="Turbidity"
+        threshold_type="MAXIMUM" max_value="5.0" units="NTU"
+        is_mandatory="true" is_active="true" sort_order="2" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+    <compliance_threshold id="9766"
+        fhir_uuid="76800000-0000-0000-0000-000000000036" group_id="9762"
+        test_id="9764" parameter_code="NO3" display_name="Nitrate"
+        threshold_type="MAXIMUM" max_value="50" units="mg/L"
+        is_mandatory="true" is_active="false" sort_order="3" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+
+</dataset>

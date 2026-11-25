@@ -21,7 +21,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.commons.validator.GenericValidator;
-import org.jfree.util.Log;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.QAService;
 import org.openelisglobal.common.services.QAService.QAObservationType;
 import org.openelisglobal.common.util.DateUtil;
@@ -81,7 +81,7 @@ public class RetroCIFollowupRequiredByLocation extends RetroCIReport implements 
             form.setUseLowerDateRange(Boolean.TRUE);
             form.setUseUpperDateRange(Boolean.TRUE);
         } catch (RuntimeException e) {
-            Log.error("Error in FollowupRequired_ByLocation.setRequestParemeters: ", e);
+            LogEvent.logError("Error in FollowupRequired_ByLocation.setRequestParemeters: ", e);
             // throw e;
         }
     }

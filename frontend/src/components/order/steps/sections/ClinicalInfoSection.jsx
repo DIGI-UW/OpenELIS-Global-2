@@ -12,6 +12,7 @@ import { getFromOpenElisServer } from "../../../utils/Utils";
 import CustomDatePicker from "../../../common/CustomDatePicker";
 import { ConfigurationContext } from "../../../layout/Layout";
 import { formatIsoDateForBackend } from "../../dateUtils";
+import SearchableSelect from "../../../common/SearchableSelect";
 
 /**
  * ClinicalInfoSection - Clinical diagnosis and payment status
@@ -91,11 +92,14 @@ const ClinicalInfoSection = ({ orderData, setOrderData, isReadOnly }) => {
   const testLocationCodes =
     orderData?.sampleOrderItems?.testLocationCodeList || [];
   const testLocationCode = orderData?.sampleOrderItems?.testLocationCode || "";
+  const otherTestLocationCodeId =
+    orderData?.sampleOrderItems?.otherTestLocationCodeId || "";
   const isOtherLocation =
-    testLocationCode &&
-    !testLocationCodes.some(
-      (code) => String(code.id) === String(testLocationCode),
-    );
+    Boolean(testLocationCode) &&
+    (String(testLocationCode) === String(otherTestLocationCodeId) ||
+      !testLocationCodes.some(
+        (code) => String(code.id) === String(testLocationCode),
+      ));
 
   // Handle payment status change
   const handlePaymentStatusChange = (e) => {
@@ -232,34 +236,22 @@ const ClinicalInfoSection = ({ orderData, setOrderData, isReadOnly }) => {
 
         {testLocationCodes.length > 0 && (
           <Column lg={8} md={4} sm={4}>
-            <Select
+            <SearchableSelect
               id="testLocationCode"
               labelText={intl.formatMessage({
                 id: "order.testLocationCode",
                 defaultMessage: "Sampling Performed At",
               })}
-              value={isOtherLocation ? "other" : testLocationCode}
-              onChange={(e) =>
-                updateOrderField(
-                  "testLocationCode",
-                  e.target.value === "other" ? "" : e.target.value,
-                )
-              }
+              options={testLocationCodes}
+              value={testLocationCode}
+              onChange={(id) => {
+                updateOrderField("testLocationCode", id);
+                if (id !== String(otherTestLocationCodeId)) {
+                  updateOrderField("otherLocationCode", "");
+                }
+              }}
               disabled={isReadOnly}
-            >
-              <SelectItem key="" value="" text="" />
-              {testLocationCodes.map((code) => (
-                <SelectItem key={code.id} value={code.id} text={code.value} />
-              ))}
-              <SelectItem
-                key="other"
-                value="other"
-                text={intl.formatMessage({
-                  id: "order.testLocationCode.other",
-                  defaultMessage: "Other",
-                })}
-              />
-            </Select>
+            />
           </Column>
         )}
 

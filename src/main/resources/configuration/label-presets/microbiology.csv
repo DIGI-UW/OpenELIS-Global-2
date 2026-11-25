@@ -1,0 +1,4 @@
+name,heightMm,widthMm,barcodeType,printsPerOrder,printsPerSample,printsPerContainer,defaultPerContainer,maxPerContainer,createOnly
+Culture Plate Label,25,50,QR,false,false,true,0,10,true
+Isolate Label,25,50,QR,false,false,true,0,10,true
+AST Panel Label,25,50,QR,false,false,true,0,10,true
