@@ -5,6 +5,7 @@ import static org.junit.Assert.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.hibernate.ObjectNotFoundException;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -140,14 +141,14 @@ public class AlertServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testAcknowledgeAlert_WithNonExistentUser_ThrowsIllegalArgumentException() {
+    public void testAcknowledgeAlert_WithNonExistentUser_ThrowsObjectNotFoundException() {
         Alert alert = alertService.createAlert(AlertType.FREEZER_TEMPERATURE, "Freezer", 100L, AlertSeverity.CRITICAL,
                 "Temperature threshold violated", "{\"temperature\": -15.5}");
 
         try {
             alertService.acknowledgeAlert(alert.getId(), 999999);
-            fail("Expected IllegalArgumentException for non-existent user ID");
-        } catch (IllegalArgumentException e) {
+            fail("Expected ObjectNotFoundException for non-existent user ID");
+        } catch (ObjectNotFoundException e) {
             assertTrue("Exception message should reference the user ID", e.getMessage().contains("999999"));
         }
     }
