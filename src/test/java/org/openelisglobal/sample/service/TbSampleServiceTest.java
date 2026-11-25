@@ -208,6 +208,14 @@ public class TbSampleServiceTest extends BaseWebContextSensitiveTest {
             ownedSampleIds.clear();
         }
 
+        // Clean any transient child rows attached to fixture sample 900 during update
+        // tests
+        jdbcTemplate.update("DELETE FROM clinlims.observation_history WHERE sample_id = 900");
+        jdbcTemplate.update("DELETE FROM clinlims.analysis WHERE sampitem_id IN "
+                + "(SELECT id FROM clinlims.sample_item WHERE samp_id = 900)");
+        jdbcTemplate.update("DELETE FROM clinlims.sample_organization WHERE samp_id = 900");
+        jdbcTemplate.update("DELETE FROM clinlims.sample_human WHERE samp_id = 900");
+
         if (!ownedProviderIds.isEmpty()) {
             for (String providerIdStr : ownedProviderIds) {
                 long providerId = Long.parseLong(providerIdStr);
@@ -352,6 +360,14 @@ public class TbSampleServiceTest extends BaseWebContextSensitiveTest {
 
         boolean result = tbSampleService.persistTbData(form, null);
         assertTrue("Updating an existing sample should succeed", result);
+
+        form.setTbOrderReason("ReasonUpdated");
+        boolean updateResult = tbSampleService.persistTbData(form, null);
+        assertTrue("Subsequent update of existing sample should succeed", updateResult);
+
+        List<ObservationHistory> obs = observationHistoryService
+                .getObservationHistoriesBySampleId(existingSample.getId());
+        assertEquals("Should maintain exactly 7 observation history records without duplication", 7, obs.size());
     }
 
     @Test

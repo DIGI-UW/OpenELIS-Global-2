@@ -6,8 +6,10 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -34,7 +36,12 @@ import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DefaultConfigurationProperties;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.observationhistory.service.ObservationHistoryService;
+import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
+import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeService;
+import org.openelisglobal.observationhistorytype.valueholder.ObservationHistoryType;
 import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.provider.service.ProviderService;
@@ -47,6 +54,7 @@ import org.openelisglobal.samplehuman.valueholder.SampleHuman;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.sampleorganization.service.SampleOrganizationService;
+import org.openelisglobal.sampleorganization.valueholder.SampleOrganization;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
@@ -87,6 +95,10 @@ public class TbSampleServicePersistSampleDataTest {
     @Mock
     private SampleOrganizationService sampleOrganizationService;
     @Mock
+    private ObservationHistoryService observationHistoryService;
+    @Mock
+    private ObservationHistoryTypeService observationHistoryTypeService;
+    @Mock
     private PersonService personService;
     @Mock
     private ProviderService providerService;
@@ -104,6 +116,8 @@ public class TbSampleServicePersistSampleDataTest {
     private ArgumentCaptor<SampleHuman> sampleHumanCaptor;
     @Captor
     private ArgumentCaptor<SampleItem> sampleItemCaptor;
+    @Captor
+    private ArgumentCaptor<SampleOrganization> sampleOrganizationCaptor;
     @Captor
     private ArgumentCaptor<List<Analysis>> analysisListCaptor;
 
@@ -145,7 +159,7 @@ public class TbSampleServicePersistSampleDataTest {
         when(personService.insert(any(Person.class))).thenReturn("person-1");
         when(providerService.insert(any(Provider.class))).thenReturn("provider-1");
 
-        tbSampleService.statusService = statusService;
+        ReflectionTestUtils.setField(tbSampleService, "statusService", statusService);
     }
 
     @After
@@ -237,8 +251,8 @@ public class TbSampleServicePersistSampleDataTest {
         form.setSampleId("202");
         form.setSysUserId("1");
 
-        tbSampleService.sampleId = "202";
-        tbSampleService.patientId = "500";
+        ReflectionTestUtils.setField(tbSampleService, "sampleId", "202");
+        ReflectionTestUtils.setField(tbSampleService, "patientId", "500");
 
         SampleHuman existingSh = new SampleHuman();
         existingSh.setId("sh-1");
@@ -262,8 +276,8 @@ public class TbSampleServicePersistSampleDataTest {
         SampleTbEntryForm form = new SampleTbEntryForm();
         form.setSysUserId("1");
 
-        tbSampleService.sampleId = "101";
-        tbSampleService.patientId = "500";
+        ReflectionTestUtils.setField(tbSampleService, "sampleId", "101");
+        ReflectionTestUtils.setField(tbSampleService, "patientId", "500");
 
         when(sampleHumanService.insert(any(SampleHuman.class))).thenReturn("sh-new");
 
@@ -284,7 +298,7 @@ public class TbSampleServicePersistSampleDataTest {
         form.setTbSpecimenNature("spec-1");
         form.setSysUserId("1");
 
-        tbSampleService.sampleId = "202";
+        ReflectionTestUtils.setField(tbSampleService, "sampleId", "202");
 
         SampleItem existingItem = new SampleItem();
         existingItem.setId("si-1");
@@ -310,7 +324,7 @@ public class TbSampleServicePersistSampleDataTest {
         form.setTbSpecimenNature("spec-1");
         form.setSysUserId("1");
 
-        tbSampleService.sampleId = "101";
+        ReflectionTestUtils.setField(tbSampleService, "sampleId", "101");
 
         TypeOfSample mockTypeOfSample = new TypeOfSample();
         mockTypeOfSample.setId("spec-1");
@@ -353,7 +367,7 @@ public class TbSampleServicePersistSampleDataTest {
         form.setTbSpecimenNature("spec-1");
         form.setSysUserId("1");
 
-        tbSampleService.sampleItemId = "si-1";
+        ReflectionTestUtils.setField(tbSampleService, "sampleItemId", "si-1");
 
         org.openelisglobal.test.valueholder.Test mockTest = mock(org.openelisglobal.test.valueholder.Test.class);
         when(mockTest.getIsReportable()).thenReturn("Y");
@@ -392,5 +406,164 @@ public class TbSampleServicePersistSampleDataTest {
         assertEquals("1", analysis.getSysUserId());
         assertEquals("Sputum", analysis.getSampleTypeName());
         assertNotNull(analysis.getFhirUuid());
+    }
+
+    @Test
+    public void persistSampleOrganizationData_ExistingSampleWithOrganization_UpdatesSampleOrganization() {
+        SampleTbEntryForm form = new SampleTbEntryForm();
+        form.setSampleId("202");
+        form.setReferringSiteCode("org-1");
+        form.setSysUserId("1");
+
+        ReflectionTestUtils.setField(tbSampleService, "sampleId", "202");
+
+        Sample mockSample = new Sample();
+        mockSample.setId("202");
+
+        SampleOrganization existingSo = new SampleOrganization();
+        existingSo.setId("so-1");
+
+        Organization mockOrg = new Organization();
+        mockOrg.setId("org-1");
+
+        when(sampleService.get("202")).thenReturn(mockSample);
+        when(sampleOrganizationService.getDataBySample(mockSample)).thenReturn(existingSo);
+        when(organizationService.get("org-1")).thenReturn(mockOrg);
+        when(sampleOrganizationService.update(any(SampleOrganization.class))).thenReturn(existingSo);
+
+        String resultId = tbSampleService.persistSampleOrganizationData(form);
+
+        assertEquals("so-1", resultId);
+        verify(sampleOrganizationService).update(existingSo);
+        verify(sampleOrganizationService, never()).insert(any(SampleOrganization.class));
+        assertEquals(mockSample, existingSo.getSample());
+        assertEquals(mockOrg, existingSo.getOrganization());
+        assertEquals("1", existingSo.getSysUserId());
+    }
+
+    @Test
+    public void persistSampleOrganizationData_ExistingSampleWithoutOrganization_InsertsSampleOrganization() {
+        SampleTbEntryForm form = new SampleTbEntryForm();
+        form.setSampleId("202");
+        form.setReferringSiteCode("org-1");
+        form.setSysUserId("1");
+
+        ReflectionTestUtils.setField(tbSampleService, "sampleId", "202");
+
+        Sample mockSample = new Sample();
+        mockSample.setId("202");
+
+        Organization mockOrg = new Organization();
+        mockOrg.setId("org-1");
+
+        when(sampleService.get("202")).thenReturn(mockSample);
+        when(sampleOrganizationService.getDataBySample(mockSample)).thenReturn(null);
+        when(organizationService.get("org-1")).thenReturn(mockOrg);
+        when(sampleOrganizationService.insert(any(SampleOrganization.class))).thenReturn("so-new");
+
+        String resultId = tbSampleService.persistSampleOrganizationData(form);
+
+        assertEquals("so-new", resultId);
+        verify(sampleOrganizationService).insert(sampleOrganizationCaptor.capture());
+        verify(sampleOrganizationService, never()).update(any(SampleOrganization.class));
+        SampleOrganization inserted = sampleOrganizationCaptor.getValue();
+        assertEquals(mockSample, inserted.getSample());
+        assertEquals(mockOrg, inserted.getOrganization());
+        assertEquals("1", inserted.getSysUserId());
+        assertNotNull(inserted.getLastupdated());
+    }
+
+    @Test
+    public void persistSampleOrganizationData_NewSample_InsertsSampleOrganization() {
+        SampleTbEntryForm form = new SampleTbEntryForm();
+        form.setSampleId(null);
+        form.setReferringSiteCode("org-1");
+        form.setSysUserId("1");
+
+        ReflectionTestUtils.setField(tbSampleService, "sampleId", "101");
+
+        Sample mockSample = new Sample();
+        mockSample.setId("101");
+
+        Organization mockOrg = new Organization();
+        mockOrg.setId("org-1");
+
+        when(sampleService.get("101")).thenReturn(mockSample);
+        when(organizationService.get("org-1")).thenReturn(mockOrg);
+        when(sampleOrganizationService.insert(any(SampleOrganization.class))).thenReturn("so-new");
+
+        String resultId = tbSampleService.persistSampleOrganizationData(form);
+
+        assertEquals("so-new", resultId);
+        verify(sampleOrganizationService).insert(sampleOrganizationCaptor.capture());
+        verify(sampleOrganizationService, never()).update(any(SampleOrganization.class));
+        SampleOrganization inserted = sampleOrganizationCaptor.getValue();
+        assertEquals(mockSample, inserted.getSample());
+        assertEquals(mockOrg, inserted.getOrganization());
+        assertEquals("1", inserted.getSysUserId());
+    }
+
+    @Test
+    public void persistObservations_ExistingObservations_UpdatesObservations() {
+        SampleTbEntryForm form = new SampleTbEntryForm();
+        form.setTbOrderReason("Reason1");
+        form.setTbDiagnosticReason("Diag1");
+        form.setTbFollowupReason("Follow1");
+        form.setTbAspect("Aspect1");
+        form.setTbFollowupPeriodLine1("P1");
+        form.setTbFollowupPeriodLine2("P2");
+        form.setSelectedTbMethod("M1");
+        form.setSysUserId("1");
+
+        ReflectionTestUtils.setField(tbSampleService, "sampleId", "101");
+        ReflectionTestUtils.setField(tbSampleService, "patientId", "500");
+
+        ObservationHistoryType oht = new ObservationHistoryType();
+        oht.setId("oht-1");
+        when(observationHistoryTypeService.getByName(anyString())).thenReturn(oht);
+
+        ObservationHistory existingObs = new ObservationHistory();
+        existingObs.setId("obs-1");
+        existingObs.setObservationHistoryTypeId("oht-1");
+
+        when(observationHistoryService.getObservationHistoriesBySampleId("101"))
+                .thenReturn(Collections.singletonList(existingObs));
+        when(observationHistoryService.update(any(ObservationHistory.class))).thenAnswer(i -> i.getArgument(0));
+
+        List<String> result = tbSampleService.persistObservations(form);
+
+        assertEquals(7, result.size());
+        verify(observationHistoryService, atLeastOnce()).update(existingObs);
+        assertEquals("500", existingObs.getPatientId());
+        assertEquals("1", existingObs.getSysUserId());
+    }
+
+    @Test
+    public void persistObservations_NewObservations_InsertsObservations() {
+        SampleTbEntryForm form = new SampleTbEntryForm();
+        form.setTbOrderReason("Reason1");
+        form.setTbDiagnosticReason("Diag1");
+        form.setTbFollowupReason("Follow1");
+        form.setTbAspect("Aspect1");
+        form.setTbFollowupPeriodLine1("P1");
+        form.setTbFollowupPeriodLine2("P2");
+        form.setSelectedTbMethod("M1");
+        form.setSysUserId("1");
+
+        ReflectionTestUtils.setField(tbSampleService, "sampleId", "101");
+        ReflectionTestUtils.setField(tbSampleService, "patientId", "500");
+
+        ObservationHistoryType oht = new ObservationHistoryType();
+        oht.setId("oht-1");
+        when(observationHistoryTypeService.getByName(anyString())).thenReturn(oht);
+
+        when(observationHistoryService.getObservationHistoriesBySampleId("101")).thenReturn(Collections.emptyList());
+        when(observationHistoryService.insert(any(ObservationHistory.class))).thenReturn("obs-new");
+
+        List<String> result = tbSampleService.persistObservations(form);
+
+        assertEquals(7, result.size());
+        verify(observationHistoryService, times(7)).insert(any(ObservationHistory.class));
+        verify(observationHistoryService, never()).update(any(ObservationHistory.class));
     }
 }
