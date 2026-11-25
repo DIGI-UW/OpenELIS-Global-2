@@ -202,6 +202,7 @@ does not replace the native build tools or the deployable WAR:
 
 ```bash
 scripts/run-java21 mvn -f dataexport/pom.xml install -DskipTests -Dmaven.test.skip=true
+scripts/run-java21 mvn -f module-contracts/pom.xml install -DskipTests -Dmaven.test.skip=true
 scripts/run-java21 mvn package -DskipTests -Dmaven.test.skip=true
 cd frontend
 npm ci --legacy-peer-deps
