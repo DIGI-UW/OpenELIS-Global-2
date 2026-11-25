@@ -17,7 +17,9 @@ import org.openelisglobal.qc.service.QCControlLotService;
 import org.openelisglobal.qc.valueholder.QCControlLot;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.testcatalog.service.TestQcPolicyService;
 import org.openelisglobal.testcatalog.service.TestQcTargetService;
+import org.openelisglobal.testcatalog.valueholder.TestQcPolicy;
 import org.openelisglobal.testcatalog.valueholder.TestQcTarget;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
@@ -43,6 +45,8 @@ import org.springframework.web.bind.annotation.RestController;
  * control level (Low / Normal / High) for the primary component, each with
  * optional per-lot overrides, plus the target-resolution read Results Entry
  * control capture prefills from (lot override, else level default, else blank).
+ * OGC-1200 FR-H1: the section also holds the test's QC policy, whether each run
+ * must carry a control and what a missing one does, saved with the targets.
  * Same /rest/test-catalog base and ROLE_ADMIN gate as the other sections.
  */
 @RestController
@@ -60,11 +64,12 @@ public class TestCatalogQcTargetsRestController {
     private final QCControlLotService controlLotService;
     private final DictionaryService dictionaryService;
     private final UnitOfMeasureService unitOfMeasureService;
+    private final TestQcPolicyService policyService;
 
     public TestCatalogQcTargetsRestController(TestService testService, TestResultComponentService componentService,
             TestResultService testResultService, TestQcTargetService targetService,
             QCControlLotService controlLotService, DictionaryService dictionaryService,
-            UnitOfMeasureService unitOfMeasureService) {
+            UnitOfMeasureService unitOfMeasureService, TestQcPolicyService policyService) {
         this.testService = testService;
         this.componentService = componentService;
         this.testResultService = testResultService;
@@ -72,6 +77,7 @@ public class TestCatalogQcTargetsRestController {
         this.controlLotService = controlLotService;
         this.dictionaryService = dictionaryService;
         this.unitOfMeasureService = unitOfMeasureService;
+        this.policyService = policyService;
     }
 
     public static class QcTargetDto {
@@ -107,8 +113,19 @@ public class TestCatalogQcTargetsRestController {
         public String name;
     }
 
+    /**
+     * FR-H1: whether every run of the test must carry a control, and whether a
+     * missing one warns (WARN) or holds the test's rows (HOLD). A failed control
+     * always holds.
+     */
+    public static class QcPolicyDto {
+        public boolean controlRequired;
+        public String controlWhenMissing = TestQcPolicy.WhenMissing.WARN.name();
+    }
+
     public static class QcTargets {
         public String testId;
+        public QcPolicyDto policy;
         public boolean quantitative;
         public String unit;
         public List<String> levels = LEVELS;
@@ -186,7 +203,15 @@ public class TestCatalogQcTargetsRestController {
                         .body("An active target already exists for that control level and lot");
             }
         }
-        targetService.saveTargetsForTest(testId, desired, ControllerUtills.getSysUserId(request));
+        TestQcPolicy policy = null;
+        if (body.policy != null) {
+            policy = toPolicy(testId, body.policy);
+            if (policy == null) {
+                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                        .body("controlWhenMissing must be WARN or HOLD");
+            }
+        }
+        policyService.saveSection(testId, desired, policy, ControllerUtills.getSysUserId(request));
         return ResponseEntity.ok(toQcTargets(testId));
     }
 
@@ -271,6 +296,25 @@ public class TestCatalogQcTargetsRestController {
                 + (GenericValidator.isBlankOrNull(lotId) ? "" : lotId);
     }
 
+    /**
+     * The policy asked for, or null when its "when missing" is neither WARN nor
+     * HOLD.
+     */
+    private static TestQcPolicy toPolicy(String testId, QcPolicyDto dto) {
+        TestQcPolicy.WhenMissing whenMissing;
+        try {
+            whenMissing = TestQcPolicy.WhenMissing.valueOf(
+                    GenericValidator.isBlankOrNull(dto.controlWhenMissing) ? TestQcPolicy.WhenMissing.WARN.name()
+                            : dto.controlWhenMissing.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+        TestQcPolicy policy = TestQcPolicy.none(testId);
+        policy.setControlRequired(dto.controlRequired);
+        policy.setControlWhenMissing(whenMissing);
+        return policy;
+    }
+
     private TestQcTarget toEntity(QcTargetDto dto) {
         TestQcTarget target = new TestQcTarget();
         target.setId(GenericValidator.isBlankOrNull(dto.id) ? null : dto.id);
@@ -287,6 +331,10 @@ public class TestCatalogQcTargetsRestController {
     private QcTargets toQcTargets(String testId) {
         QcTargets out = new QcTargets();
         out.testId = testId;
+        TestQcPolicy policy = policyService.policyOf(testId);
+        out.policy = new QcPolicyDto();
+        out.policy.controlRequired = policy.isControlRequired();
+        out.policy.controlWhenMissing = policy.getControlWhenMissing().name();
         TestResultComponent primary = primaryComponent(testId);
         out.quantitative = isQuantitative(primary);
         out.unit = unitName(primary);

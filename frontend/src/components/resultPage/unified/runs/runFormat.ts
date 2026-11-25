@@ -65,6 +65,7 @@ export const runVerdictTagType = (
     case "HELD":
       return "red";
     case "DECIDED":
+    case "DECIDED_MISSING":
       return "purple";
     case "PASS":
       return "green";
