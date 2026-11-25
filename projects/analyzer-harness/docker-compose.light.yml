@@ -1,0 +1,15 @@
+# scripts/dev-stack up --setup light: the webapp without the FHIR server, the
+# Analyzer Bridge and the analyzer simulator. Every lab workflow runs from the
+# database alone; questionnaires are kept in the database without a FHIR store.
+services:
+  oe.openelis.org:
+    depends_on: !override
+      certs:
+        condition: service_completed_successfully
+      db.openelis.org:
+        condition: service_healthy
+      harness-catalog-init:
+        condition: service_completed_successfully
+    environment:
+      ORG_OPENELISGLOBAL_FHIRSTORE_URI: ""
+      ANALYZER_BRIDGE_URL: ""

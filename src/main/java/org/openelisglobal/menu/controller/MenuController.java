@@ -1,5 +1,6 @@
 package org.openelisglobal.menu.controller;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -14,8 +15,10 @@ import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.menu.service.MenuService;
+import org.openelisglobal.menu.util.MenuConfigurationExport;
 import org.openelisglobal.menu.util.MenuItem;
 import org.openelisglobal.menu.util.MenuUtil;
+import org.openelisglobal.menu.valueholder.Menu;
 import org.openelisglobal.systemuser.controller.UnifiedSystemUserController;
 import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.test.service.TestSectionService;
@@ -23,13 +26,17 @@ import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 public class MenuController {
@@ -75,9 +82,17 @@ public class MenuController {
         return MenuUtil.getUnfilteredMenuTree();
     }
 
+    @GetMapping(value = "/rest/admin/menu/configuration", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ObjectNode> exportMenuConfiguration() {
+        return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"menu_config.json\"")
+                .body(MenuConfigurationExport.of(MenuUtil.getUnfilteredMenuTree()));
+    }
+
     @PostMapping("/rest/admin/menu")
     @PreAuthorize("hasRole('ADMIN')")
     public List<MenuItem> saveEditableMenus(@RequestBody List<MenuItem> menuItems) {
+        refuseModuleEntries(menuItems);
         menuService.save(menuItems);
         return MenuUtil.getUnfilteredMenuTree();
     }
@@ -93,13 +108,39 @@ public class MenuController {
     @PostMapping("/rest/menu")
     @PreAuthorize("hasRole('ADMIN')")
     public List<MenuItem> postMenuTree(@RequestBody List<MenuItem> menuItems) {
+        refuseModuleEntries(menuItems);
         return menuService.save(menuItems);
     }
 
     @PostMapping("/rest/menu/{elementId}")
     @PreAuthorize("hasRole('ADMIN')")
     public MenuItem postMenuTree(@PathVariable String elementId, @RequestBody MenuItem menuItem) {
+        refuseModuleEntries(List.of(menuItem));
         return menuService.save(menuItem);
+    }
+
+    /**
+     * A module's menu entries live only in memory (see ModuleMenuContributor): an
+     * edit would answer 200 and vanish at the next restart, so the editor refuses
+     * them. A module entry is shown to the roles that hold its permission; those
+     * roles are assigned in User Management.
+     */
+    static void refuseModuleEntries(List<MenuItem> menuItems) {
+        if (menuItems == null) {
+            return;
+        }
+        for (MenuItem item : menuItems) {
+            if (item == null) {
+                continue;
+            }
+            Menu menu = item.getMenu();
+            if (menu != null && MenuUtil.isModuleEntry(menu.getElementId())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "menu entry " + menu.getElementId()
+                        + " belongs to a module and cannot be edited here; who sees it follows from the roles that hold its"
+                        + " permission, assigned in User Management");
+            }
+            refuseModuleEntries(item.getChildMenus());
+        }
     }
 
     /**

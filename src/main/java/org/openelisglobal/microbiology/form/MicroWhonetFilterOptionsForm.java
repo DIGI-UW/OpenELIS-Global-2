@@ -5,6 +5,7 @@ import java.util.List;
 
 public class MicroWhonetFilterOptionsForm {
 
+    public List<MicroWhonetFilterOptionForm> surveyPrograms = new ArrayList<>();
     public List<MicroWhonetFilterOptionForm> specimenTypes = new ArrayList<>();
     public List<MicroWhonetFilterOptionForm> organisms = new ArrayList<>();
     public List<MicroWhonetFilterOptionForm> patientOrigins = new ArrayList<>();

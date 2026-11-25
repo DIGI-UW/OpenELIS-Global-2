@@ -22,7 +22,7 @@ public class AnalyzerActivationRecordServiceImpl implements AnalyzerActivationRe
 
     private static final String AUDIT_TABLE = "analyzer_activation_record";
     private static final Pattern FINGERPRINT = Pattern.compile("^sha256:[0-9a-f]{64}$");
-    private static final Set<String> INTENTS = Set.of("ACTIVE", "INACTIVE");
+    private static final Set<String> INTENTS = Set.of("ACTIVE", "INACTIVE", "SETUP");
 
     private final AnalyzerActivationRecordDAO recordDAO;
     private final AuditTrailService auditTrailService;
@@ -92,15 +92,20 @@ public class AnalyzerActivationRecordServiceImpl implements AnalyzerActivationRe
     }
 
     private static boolean matchesProfile(AnalyzerProfilePin profile, JsonNode profileRef) {
-        return profile.getProfileId().equals(profileRef.path("profileId").asText(null))
-                && profile.getProfileRevision() == profileRef.path("revision").asInt(0)
-                && profile.getProfileFingerprint().equals(profileRef.path("fingerprint").asText(null));
+        return profile.names(profileRef.path("profileId").asText(null), profileRef.path("revision").asInt(0));
     }
 
     private static boolean matchesIntent(String intent, JsonNode acknowledgement) {
-        String action = "ACTIVE".equals(intent) ? "ACTIVATE" : "DEACTIVATE";
+        boolean receiving = "ACTIVE".equals(intent) || "SETUP".equals(intent);
+        String action = "SETUP".equals(intent) ? "START_SETUP" : receiving ? "ACTIVATE" : "DEACTIVATE";
+        if ("SETUP".equals(intent) && !"SETUP".equals(acknowledgement.path("receptionPurpose").asText())) {
+            return false;
+        }
+        if ("ACTIVE".equals(intent) && !"ROUTINE".equals(acknowledgement.path("receptionPurpose").asText())) {
+            return false;
+        }
         return action.equals(acknowledgement.path("action").asText())
-                && intent.equals(acknowledgement.path("actualRuntimeState").asText());
+                && (receiving ? "ACTIVE" : "INACTIVE").equals(acknowledgement.path("actualRuntimeState").asText());
     }
 
     private static boolean successful(JsonNode acknowledgement) {

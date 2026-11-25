@@ -68,10 +68,10 @@ function PatientStatusReport(props) {
   const getSelectedPatient = (patient) => {
     setSelectedPatient(patient);
     setShowPatientSearch(false);
-    setReportFormValues({
-      ...reportFormValues,
+    setReportFormValues((current) => ({
+      ...current,
       selectedPatientId: patient.patientPK,
-    });
+    }));
   };
 
   const selectAnotherPatient = () => {
@@ -83,10 +83,10 @@ function PatientStatusReport(props) {
     setSelectedPatient(null);
     setSearchInstance((instance) => instance + 1);
     setShowPatientSearch(true);
-    setReportFormValues({
-      ...reportFormValues,
+    setReportFormValues((current) => ({
+      ...current,
       selectedPatientId: "",
-    });
+    }));
   };
 
   const handleReportPrint = () => {
@@ -97,39 +97,39 @@ function PatientStatusReport(props) {
   };
 
   function handleLabNoFrom(value) {
-    setReportFormValues({
-      ...reportFormValues,
+    setReportFormValues((current) => ({
+      ...current,
       from: value,
-    });
+    }));
   }
 
   function handleLabNoTo(value) {
-    setReportFormValues({
-      ...reportFormValues,
+    setReportFormValues((current) => ({
+      ...current,
       to: value,
-    });
+    }));
   }
 
   function handleSiteName(e) {
-    setReportFormValues({
-      ...reportFormValues,
+    setReportFormValues((current) => ({
+      ...current,
       referringSiteName: e.target.value,
-    });
+    }));
   }
 
   function handleRequesterDept(e) {
-    setReportFormValues({
-      ...reportFormValues,
+    setReportFormValues((current) => ({
+      ...current,
       referringSiteDepartmentId: e.target.value,
-    });
+    }));
   }
 
   function handleAutoCompleteSiteName(siteId) {
-    setReportFormValues({
-      ...reportFormValues,
+    setReportFormValues((current) => ({
+      ...current,
       referringSiteId: siteId,
       referringSiteName: "",
-    });
+    }));
   }
   const loadDepartments = (data) => {
     setDepartments(data);
@@ -137,18 +137,18 @@ function PatientStatusReport(props) {
 
   const handleStartDatePickerChangeDate = (date) => {
     let startDate = encodeDate(date);
-    setReportFormValues({
-      ...reportFormValues,
+    setReportFormValues((current) => ({
+      ...current,
       startDate: startDate,
-    });
+    }));
   };
 
   const handleEndDatePickerChangeDate = (date) => {
     let endDate = encodeDate(date);
-    setReportFormValues({
-      ...reportFormValues,
+    setReportFormValues((current) => ({
+      ...current,
       endDate: endDate,
-    });
+    }));
   };
 
   const getSiteList = (response) => {
@@ -167,7 +167,10 @@ function PatientStatusReport(props) {
 
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer("/rest/displayList/SAMPLE_PATIENT_REFERRING_CLINIC", getSiteList);
+    getFromOpenElisServer(
+      "/rest/displayList/SAMPLE_PATIENT_REFERRING_CLINIC",
+      getSiteList,
+    );
     window.scrollTo(0, 0);
     return () => {
       componentMounted.current = false;

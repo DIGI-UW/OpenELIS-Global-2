@@ -27,6 +27,7 @@ import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.validator.BatchTestReassignmentFormValidator;
 import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -69,15 +70,13 @@ public class BatchTestReassignmentRestController extends BaseController {
     }
 
     @PostMapping(value = "/BatchTestReassignment")
-    public BatchTestReassignmentForm showBatchTestReassignmentUpdate(HttpServletRequest request,
+    public ResponseEntity<?> showBatchTestReassignmentUpdate(HttpServletRequest request,
             @RequestBody @Valid BatchTestReassignmentForm form, BindingResult result)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
         formValidator.validate(form, result);
         if (result.hasErrors()) {
-            // saveErrors(result);
-            // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return validationRefusal(result);
         }
         String jsonString = form.getJsonWad();
         // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown",
@@ -113,7 +112,7 @@ public class BatchTestReassignmentRestController extends BaseController {
         if (changeBeans.isEmpty()) {
             // redirectAttributes.addFlashAttribute(FWD_SUCCESS, true);
             // return findForward(FWD_SUCCESS_INSERT, form);
-            return form;
+            return ResponseEntity.ok(form);
         } else {
             form.setSampleList(
                     DisplayListService.getInstance().getList(DisplayListService.ListType.SAMPLE_TYPE_ACTIVE));
@@ -122,7 +121,7 @@ public class BatchTestReassignmentRestController extends BaseController {
             form.setStatusChangedCurrentTest(changedMetaInfo.currentTest);
             form.setStatusChangedNextTest(changedMetaInfo.nextTest);
             // return findForward("resubmit", form);
-            return form;
+            return ResponseEntity.ok(form);
         }
     }
 

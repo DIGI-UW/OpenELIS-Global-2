@@ -550,9 +550,9 @@ String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.
         }
 
 <%--         <%if (locale.equals("en_US") || locale.equals("en")) {%> --%>
-//         	ul.append( createLI(modId, jQuery("#testNameEnglish").val(), true) );
+//         	ul.append(createLI(modId, jQuery("#testNameEnglish").val(), true));
 <%--         <%} else { %> --%>
-//         	ul.append( createLI(modId, jQuery("#testNameFrench").val(), true) );
+//         	ul.append(createLI(modId, jQuery("#testNameFrench").val(), true));
 <%--         <% } %> --%>
 
         jQuery("#sort" + sampleTypeId).append(ul);
@@ -569,7 +569,7 @@ String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.
         li.addClass("ui-state-default_oe ui-state-default_oe-tag");
         span.addClass("ui-icon ui-icon-arrowthick-2-n-s");
         li.append(span);
-        li.append(name);
+        li.append(document.createTextNode(name));
         if (highlight) {
             li.addClass("altered");
         }
@@ -596,7 +596,7 @@ String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.
     function createNameSpan(sampleTypeName) {
         var nameSpan = jQuery(document.createElement("span"));
         nameSpan.addClass("half-tab");
-        nameSpan.append(sampleTypeName);
+        nameSpan.append(document.createTextNode(sampleTypeName));
         return nameSpan;
     }
 
@@ -1058,14 +1058,14 @@ String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.
 			jQuery("#nextButton").prop("disabled", false);	
 
         } else if (step == 'step2') {
-        	var significantDigits = null;
+            var reportingDecimalPlaces = null;
 			var dictionaryValues = null;
 			var dictionaryIds = null;
 			var referenceValue = null;
 			var referenceId = null;
 
             jQuery(".resultClass").each(function (i,elem) {
-            	significantDigits = jQuery(elem).attr("fSignificantDigits")
+                reportingDecimalPlaces = jQuery(elem).attr("fReportingDecimalPlaces")
             	dictionaryIds = jQuery(elem).attr("fDictionaryIds")
             	dictionaryValues = jQuery(elem).attr("fDictionaryValues")
             	referenceValue = jQuery(elem).attr("fReferenceValue")
@@ -1095,7 +1095,7 @@ String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.
                 createJSON(); 
             } else if (resultTypeId == '<%=TypeOfTestResultServiceImpl.ResultType.NUMERIC.getId()%>') {
             		step = "step3Numeric";
-            		jQuery("#significantDigits").val(significantDigits);
+                    jQuery("#reportingDecimalPlaces").val(reportingDecimalPlaces);
                     jQuery("#normalRangeAskDiv").show();
                     jQuery("#editResultLimitsButton").show();
                     jQuery("#sampleTypeSelectionDiv").hide();
@@ -1268,7 +1268,7 @@ String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.
             li.val(dictionaryValues[i]);
             //qualified = qualifyList.find("option[value=" + this.value + "]:selected").length == 1;
             //li.append(jQuery(this).text() + (qualified ? "-- qualified" : ""));
-            li.append(dictionaryValues[i]);
+            li.append(document.createTextNode(dictionaryValues[i]));
             verifyList.append(li);
         };
     }
@@ -1282,7 +1282,7 @@ String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.
             li = jQuery(document.createElement("li"));
             li.val(this.value);
             qualified = qualifyList.find("option[value=" + this.value + "]:selected").length == 1;
-            li.append(jQuery(this).text() + (qualified ? "-- qualified" : ""));
+            li.append(document.createTextNode(jQuery(this).text() + (qualified ? "-- qualified" : "")));
             verifyList.append(li);
         });
     }
@@ -1480,7 +1480,7 @@ String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.
         jQuery("#highNormal_0").removeClass("error");
         jQuery("#lowReportingRange").val('-Infinity');
         jQuery("#highReportingRange").val('Infinity');
-        //jQuery("#significantDigits").val('');
+        //jQuery("#reportingDecimalPlaces").val('');
         jQuery("#lowerAge_0").val('0');
         jQuery("#upperAge_0").text('');
         jQuery("#upperAgeSetter_0").val('Infinity');
@@ -1496,7 +1496,7 @@ String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.
         root.find(" option:selected").removeAttr("selected");
     }
     function setStep1ReadOnlyFields() {
-        var panelNames = "";
+        var panelNames = document.createDocumentFragment();
 
         jQuery("#testNameEnglishRO").text(jQuery("#testNameEnglish").val());
         jQuery("#testNameFrenchRO").text(jQuery("#testNameFrench").val());
@@ -1504,13 +1504,14 @@ String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.
         jQuery("#testReportNameFrenchRO").text(jQuery("#testReportNameFrench").val());
         jQuery("#testSectionRO").text(jQuery("#testUnitSelection  option:selected").text());
         jQuery("#panelSelection option:selected").each(function () {
-            panelNames += (jQuery(this).text()) + "\<br\>";
+            panelNames.appendChild(document.createTextNode(jQuery(this).text()));
+            panelNames.appendChild(document.createElement("br"));
         });
         //we use append for optional
         jQuery("#panelRO").empty();
         jQuery("#panelRO").append(panelNames);
         jQuery("#uomRO").empty();
-        jQuery("#uomRO").append(jQuery("#uomSelection  option:selected").text());
+        jQuery("#uomRO").append(document.createTextNode(jQuery("#uomSelection  option:selected").text()));
         jQuery("#loincRO").text(jQuery("#loinc").val());
         jQuery("#resultTypeRO").text(jQuery("#resultTypeSelection  option:selected").text());
         jQuery("#activeRO").text(jQuery("#active").attr("checked") ? "Y" : "N");
@@ -1562,14 +1563,14 @@ String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.
         	//dictionary from defaults if empty
         	if(JSON.stringify(jsonObj.dictionary) == "[]") {
         		console.log(JSON.stringify(jsonObj.dictionaryReference));
-        		var significantDigits = null;
+                var reportingDecimalPlaces = null;
 				var dictionaryValues = null;
 				var referenceValue = null;
 				var dictionaryIds = null;
 				var referenceId = null;
 
            	 	jQuery(".resultClass").each(function (i,elem) {
-            		significantDigits = jQuery(elem).attr("fSignificantDigits")
+                    reportingDecimalPlaces = jQuery(elem).attr("fReportingDecimalPlaces")
             		dictionaryValues = jQuery(elem).attr("fDictionaryValues")
             		referenceValue = jQuery(elem).attr("fReferenceValue")
             		dictionaryIds = jQuery(elem).attr("fDictionaryIds")
@@ -1716,7 +1717,7 @@ String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.
         jsonObj.highValid = jQuery("#highValid").val();
         jsonObj.lowReportingRange = jQuery("#lowReportingRange").val();
         jsonObj.highReportingRange = jQuery("#highReportingRange").val();
-        jsonObj.significantDigits = jQuery("#significantDigits").val();
+        jsonObj.reportingDecimalPlaces = jQuery("#reportingDecimalPlaces").val();
         jsonObj.resultLimits = [];
 
         jQuery("#normalRangeDiv .rowKey").each(function () {
@@ -1876,7 +1877,7 @@ td {
 					fResultType='<%=bean.getResultType()%>'
 					fPanel='<%=bean.getPanel()%>' 
 					fSampleType='<%=bean.getSampleType()%>'
-					fSignificantDigits='<%=bean.getSignificantDigits()%>'
+					fReportingDecimalPlaces='<%=bean.getReportingDecimalPlaces()%>'
 					fDictionaryValues='<%=bean.getDictionaryValues()%>'
 					fDictionaryIds='<%=bean.getDictionaryIds()%>'
 					fReferenceValue='<%=bean.getReferenceValue()%>'
@@ -1936,7 +1937,7 @@ td {
 				</tr>
 				<tr>
 					<td><span class="catalog-label"><spring:message code="label.uom" /></span> <b><%=bean.getUom()%></b></td>
-					<td><span class="catalog-label"><spring:message code="label.significant.digits" /></span> <b><%=bean.getSignificantDigits()%></b>
+					<td><span class="catalog-label"><spring:message code="label.reporting.decimal.places" /></span> <b><%=bean.getReportingDecimalPlaces()%></b>
 					</td>
 					<td><span class="catalog-label"><spring:message code="label.loinc" /></span> <b><%=bean.getLoinc()%></b></td>
 				</tr>
@@ -2553,8 +2554,8 @@ td {
 			</tr>        
 			<tr id="endRow"></tr>      
 		</table>
-		<label for="significantDigits"><spring:message code="label.significant.digits" /></label> <input type="number" min="0"
-			max="10" id="significantDigits">
+        <label for="reportingDecimalPlaces"><spring:message code="label.reporting.decimal.places" /></label> <input type="number" min="0"
+            max="10" id="reportingDecimalPlaces">
 	</div>
 
 	<div class="selectShow"

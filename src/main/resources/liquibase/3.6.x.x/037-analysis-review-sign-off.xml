@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+ <changeSet id="OGC-1364-analysis-review-sign-off" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <not>
+    <tableExists schemaName="clinlims" tableName="analysis_review_sign_off"/>
+   </not>
+  </preConditions>
+  <comment>OGC-1364 v2: the reviews a result needs, fixed when its first level is signed, and who signed each level. A modification or retest supersedes the signatures and review restarts at level 1.</comment>
+  <createTable schemaName="clinlims" tableName="analysis_review_plan">
+   <column name="analysis_id" type="numeric(10)">
+    <constraints primaryKey="true" nullable="false" primaryKeyName="pk_analysis_review_plan"/>
+   </column>
+   <column name="review_levels" type="INT">
+    <constraints nullable="false"/>
+   </column>
+   <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="CURRENT_TIMESTAMP">
+    <constraints nullable="false"/>
+   </column>
+   <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+  </createTable>
+  <addForeignKeyConstraint constraintName="fk_analysis_review_plan_analysis" baseTableSchemaName="clinlims"
+   baseTableName="analysis_review_plan" baseColumnNames="analysis_id" referencedTableSchemaName="clinlims"
+   referencedTableName="analysis" referencedColumnNames="id" onDelete="CASCADE"/>
+  <sql>
+   ALTER TABLE clinlims.analysis_review_plan ADD CONSTRAINT ck_analysis_review_plan_levels
+     CHECK (review_levels BETWEEN 1 AND 5);
+  </sql>
+  <createTable schemaName="clinlims" tableName="analysis_review_plan_level">
+   <column name="analysis_id" type="numeric(10)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="level" type="INT">
+    <constraints nullable="false"/>
+   </column>
+   <column name="role_id" type="numeric(10)">
+    <constraints nullable="false"/>
+   </column>
+  </createTable>
+  <addPrimaryKey schemaName="clinlims" tableName="analysis_review_plan_level" columnNames="analysis_id, level"
+   constraintName="pk_analysis_review_plan_level"/>
+  <addForeignKeyConstraint constraintName="fk_analysis_review_plan_level_plan" baseTableSchemaName="clinlims"
+   baseTableName="analysis_review_plan_level" baseColumnNames="analysis_id" referencedTableSchemaName="clinlims"
+   referencedTableName="analysis_review_plan" referencedColumnNames="analysis_id" onDelete="CASCADE"/>
+  <addForeignKeyConstraint constraintName="fk_analysis_review_plan_level_role" baseTableSchemaName="clinlims"
+   baseTableName="analysis_review_plan_level" baseColumnNames="role_id" referencedTableSchemaName="clinlims"
+   referencedTableName="system_role" referencedColumnNames="id"/>
+
+  <createSequence schemaName="clinlims" sequenceName="analysis_review_sign_off_seq" startValue="1" incrementBy="1"/>
+  <createTable schemaName="clinlims" tableName="analysis_review_sign_off">
+   <column name="id" type="BIGINT">
+    <constraints primaryKey="true" nullable="false" primaryKeyName="pk_analysis_review_sign_off"/>
+   </column>
+   <column name="analysis_id" type="numeric(10)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="level" type="INT">
+    <constraints nullable="false"/>
+   </column>
+   <column name="review_levels" type="INT">
+    <constraints nullable="false"/>
+   </column>
+   <column name="signer_id" type="numeric(10)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="role_id" type="numeric(10)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="signed_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="CURRENT_TIMESTAMP">
+    <constraints nullable="false"/>
+   </column>
+   <column name="electronic_signature_id" type="BIGINT"/>
+   <column name="superseded_at" type="TIMESTAMP WITH TIME ZONE"/>
+   <column name="superseded_by" type="numeric(10)"/>
+   <column name="superseded_reason" type="VARCHAR(20)"/>
+   <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+  </createTable>
+  <addForeignKeyConstraint constraintName="fk_analysis_review_sign_off_analysis" baseTableSchemaName="clinlims"
+   baseTableName="analysis_review_sign_off" baseColumnNames="analysis_id" referencedTableSchemaName="clinlims"
+   referencedTableName="analysis" referencedColumnNames="id" onDelete="CASCADE"/>
+  <addForeignKeyConstraint constraintName="fk_analysis_review_sign_off_signer" baseTableSchemaName="clinlims"
+   baseTableName="analysis_review_sign_off" baseColumnNames="signer_id" referencedTableSchemaName="clinlims"
+   referencedTableName="system_user" referencedColumnNames="id"/>
+  <addForeignKeyConstraint constraintName="fk_analysis_review_sign_off_role" baseTableSchemaName="clinlims"
+   baseTableName="analysis_review_sign_off" baseColumnNames="role_id" referencedTableSchemaName="clinlims"
+   referencedTableName="system_role" referencedColumnNames="id"/>
+  <sql>
+   ALTER TABLE clinlims.analysis_review_sign_off ADD CONSTRAINT ck_analysis_review_sign_off_level
+     CHECK (level BETWEEN 1 AND review_levels AND review_levels BETWEEN 1 AND 5);
+   ALTER TABLE clinlims.analysis_review_sign_off ADD CONSTRAINT ck_analysis_review_sign_off_superseded
+     CHECK ((superseded_at IS NULL) = (superseded_reason IS NULL)
+       AND (superseded_reason IS NULL OR superseded_reason IN ('MODIFIED', 'RETEST', 'REJECTED')));
+   CREATE UNIQUE INDEX uq_analysis_review_sign_off_level ON clinlims.analysis_review_sign_off (analysis_id, level)
+     WHERE superseded_at IS NULL;
+   CREATE UNIQUE INDEX uq_analysis_review_sign_off_signer ON clinlims.analysis_review_sign_off (analysis_id, signer_id)
+     WHERE superseded_at IS NULL;
+   CREATE INDEX idx_analysis_review_sign_off_analysis ON clinlims.analysis_review_sign_off (analysis_id);
+  </sql>
+ </changeSet>
+</databaseChangeLog>

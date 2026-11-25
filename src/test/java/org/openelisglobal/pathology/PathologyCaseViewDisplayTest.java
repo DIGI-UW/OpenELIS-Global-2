@@ -1,6 +1,7 @@
 package org.openelisglobal.pathology;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -8,6 +9,7 @@ import static org.junit.Assert.assertTrue;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.TimeZone;
@@ -15,8 +17,18 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.OrderStatus;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.program.controller.pathology.PathologySampleForm;
 import org.openelisglobal.program.service.PathologyDisplayService;
+import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem;
+import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.LabelVerificationView;
+import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.StageEventView;
+import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
+import org.openelisglobal.systemuser.service.SystemUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -43,8 +55,36 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
 
     private static final String TISSUE = "Tissue, biopsy";
 
+    /** The block the fixture seeds on the first case. */
+    private static final int LEGACY_BLOCK_ID = 101;
+
+    private static final int TISSUE_CATEGORY = 9403;
+    private static final int RETIRED_TISSUE = 9403;
+    private static final String RETIRED_TISSUE_NAME = "Bone, retired";
+
+    private static final int STAIN_CATEGORY_ID = 9404;
+    private static final int STAIN = 9405;
+    private static final String STAIN_NAME = "Periodic acid-Schiff";
+    private static final int RETIRED_STAIN = 9406;
+    private static final String RETIRED_STAIN_NAME = "Mucicarmine, retired";
+    private static final int LEGACY_SLIDE_ID = 201;
+    private static final int SECOND_SLIDE = 9407;
+
+    private boolean insertedTheCategory;
+
+    private boolean insertedTheStainCategory;
+
     @Autowired
     private PathologyDisplayService pathologyDisplayService;
+
+    @Autowired
+    private PathologySampleService pathologySampleService;
+
+    @Autowired
+    private IStatusService statusService;
+
+    @Autowired
+    private SystemUserService systemUserService;
 
     private TimeZone runnersTimeZone;
 
@@ -61,12 +101,16 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
         // of them.
         authenticateAs("technician1");
         removeSeededSpecimenRows();
+        removeSeededTissueRows();
+        removeSeededStainRows();
         seedSpecimenRows();
     }
 
     @After
     public void cleanUp() {
         removeSeededSpecimenRows();
+        removeSeededTissueRows();
+        removeSeededStainRows();
         TimeZone.setDefault(runnersTimeZone);
     }
 
@@ -128,6 +172,211 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
                 requester);
     }
 
+    @Test
+    public void caseDisplayItem_namesARetiredTissueTypeACassetteHolds() {
+        int categoryId = ensureTissueCategory();
+        DictionaryRows.insertEntry(jdbcTemplate, RETIRED_TISSUE, categoryId, RETIRED_TISSUE_NAME, "PTRet", false);
+        jdbcTemplate.update("UPDATE clinlims.pathology_block SET tissue_type_id = ? WHERE id = ?", RETIRED_TISSUE,
+                LEGACY_BLOCK_ID);
+
+        PathologyCaseViewDisplayItem displayItem = pathologyDisplayService
+                .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+
+        assertEquals(
+                "an entry taken out of use after a cassette recorded it is missing from the category list"
+                        + " the picker reads, so the case names it itself",
+                RETIRED_TISSUE_NAME, displayItem.getTissueTypeNames().get(String.valueOf(RETIRED_TISSUE)));
+    }
+
+    @Test
+    public void caseDisplayItem_namesTheStainsTheSlidesCarry_aRetiredOneIncluded() {
+        seedStains();
+        jdbcTemplate.update("UPDATE clinlims.pathology_slide SET stain_id = ? WHERE id = ?", STAIN, LEGACY_SLIDE_ID);
+        jdbcTemplate.update(
+                "INSERT INTO clinlims.pathology_slide (id, pathology_sample_id, last_updated, slide_number,"
+                        + " active, stain_id) VALUES (?, ?, now(), 2, true, ?)",
+                SECOND_SLIDE, CASE_WITH_TWO_SPECIMEN_ITEMS, RETIRED_STAIN);
+
+        PathologyCaseViewDisplayItem displayItem = pathologyDisplayService
+                .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+
+        assertEquals("a stain a slide carries is named for the picker", STAIN_NAME,
+                displayItem.getStainNames().get(String.valueOf(STAIN)));
+        assertEquals(
+                "and so is one taken out of use after a slide recorded it, which the category list the picker"
+                        + " reads leaves out",
+                RETIRED_STAIN_NAME, displayItem.getStainNames().get(String.valueOf(RETIRED_STAIN)));
+        assertEquals("nothing else is named", 2, displayItem.getStainNames().size());
+    }
+
+    /**
+     * The case view reads a slide's label check from a map naming who verified it
+     * and when; the raw row carries only the user's id, and a slide never checked
+     * is absent.
+     */
+    @Test
+    public void caseDisplayItem_namesWhoVerifiedEachSlideLabel() {
+        PathologyCaseRows.stampLabel(jdbcTemplate, LEGACY_SLIDE_ID, "1001");
+        jdbcTemplate.update("INSERT INTO clinlims.pathology_slide (id, pathology_sample_id, last_updated, slide_number,"
+                + " active) VALUES (?, ?, now(), 2, true)", SECOND_SLIDE, CASE_WITH_TWO_SPECIMEN_ITEMS);
+
+        PathologyCaseViewDisplayItem displayItem = pathologyDisplayService
+                .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+
+        LabelVerificationView verification = displayItem.getLabelVerifications().get(LEGACY_SLIDE_ID);
+        assertNotNull("a verified slide is in the map", verification);
+        assertEquals("named by the verifier's display name, not an id", systemUserService.get("1001").getDisplayName(),
+                verification.verifiedBy());
+        assertNotNull("with the time as text", verification.verifiedAt());
+        assertFalse("a slide never checked is absent", displayItem.getLabelVerifications().containsKey(SECOND_SLIDE));
+    }
+
+    /**
+     * The case view lists every stage the case entered, with the operator as a name
+     * and the time as text, and keeps the processor run readable once the case has
+     * left Processing (FR-5.1, AC-8).
+     */
+    @Test
+    public void caseDisplayItem_carriesTheStageEntriesAndTheProcessorRun() {
+        try (StageSwitches switches = StageSwitches.allOn()) {
+            pathologySampleService.advance(CASE_WITH_TWO_SPECIMEN_ITEMS, PathologyStatus.GROSSING, "1001");
+            pathologySampleService.updateWithFormValues(CASE_WITH_TWO_SPECIMEN_ITEMS, formWithRunReference("RUN-7"));
+
+            PathologyCaseViewDisplayItem atProcessing = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+
+            assertEquals("one move, one entry", 1, atProcessing.getStageEvents().size());
+            StageEventView entry = atProcessing.getStageEvents().get(0);
+            assertEquals("onto processing", "PROCESSING", entry.stage());
+            assertEquals("going forward", "FORWARD", entry.direction());
+            assertNotNull("timed by the server, as text", entry.enteredAt());
+            assertTrue("by the user who moved it, as a name: " + entry.enteredBy(), entry.enteredBy().contains("Doe"));
+            assertNull("still open", entry.completedAt());
+            assertEquals("the run is read from the processing entry", "RUN-7", atProcessing.getRunReference());
+            assertFalse("and, written once, it is no longer editable", atProcessing.isRunReferenceEditable());
+
+            pathologySampleService.advance(CASE_WITH_TWO_SPECIMEN_ITEMS, PathologyStatus.PROCESSING, "1001");
+
+            PathologyCaseViewDisplayItem movedOn = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+
+            assertEquals("two moves, two entries, oldest first", Arrays.asList("PROCESSING", "EMBEDDING"),
+                    movedOn.getStageEvents().stream().map(StageEventView::stage).toList());
+            assertNotNull("the processing entry is completed", movedOn.getStageEvents().get(0).completedAt());
+            assertEquals("and the run still reads from it once the case has moved on", "RUN-7",
+                    movedOn.getRunReference());
+        } finally {
+            PathologyCaseRows.clearStageHistory(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS);
+        }
+    }
+
+    /**
+     * At Processing on an entry that holds no run, the case view offers the run
+     * field; a case that reached Processing before entries were recorded has no
+     * entry to hold one, so it does not.
+     */
+    @Test
+    public void caseDisplayItem_offersTheRunOnlyWhereASaveWouldTakeIt() {
+        try (StageSwitches switches = StageSwitches.allOn()) {
+            pathologySampleService.advance(CASE_WITH_TWO_SPECIMEN_ITEMS, PathologyStatus.GROSSING, "1001");
+
+            assertTrue("an open processing entry with no run takes one", pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS).isRunReferenceEditable());
+
+            PathologyCaseRows.storeAt(jdbcTemplate, CASE_WITHOUT_SPECIMEN_ITEMS, PathologyStatus.PROCESSING);
+
+            assertFalse("a case with no entry at processing does not", pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITHOUT_SPECIMEN_ITEMS).isRunReferenceEditable());
+        } finally {
+            PathologyCaseRows.clearStageHistory(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS);
+        }
+    }
+
+    /**
+     * The case view reads where the case would be sent on or back to from the same
+     * rule the moves use, so the label on the button is the move the server makes.
+     */
+    @Test
+    public void caseDisplayItem_carriesTheNextAndPreviousStage() {
+        try (StageSwitches switches = StageSwitches.allOn()) {
+            PathologyCaseViewDisplayItem atGrossing = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+
+            assertEquals("an unflagged specimen at grossing goes on to processing", "PROCESSING",
+                    atGrossing.getNextStage());
+            assertEquals("and back to accessioning", "ACCESSIONED", atGrossing.getPreviousStage());
+
+            ConfigurationProperties.getInstance().setPropertyValue(Property.PATHOLOGY_STAGE_PROCESSING_ENABLED,
+                    "false");
+
+            assertEquals("a stage the deployment switched off is skipped", "EMBEDDING",
+                    pathologyDisplayService.convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS).getNextStage());
+
+            PathologyCaseRows.storeAt(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS, PathologyStatus.COMPLETED);
+            PathologyCaseViewDisplayItem completed = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+
+            assertNull("a signed-out case goes nowhere on", completed.getNextStage());
+            assertNull("nor back", completed.getPreviousStage());
+        }
+    }
+
+    /**
+     * The case view enables Release by the rule the release is refused on: in the
+     * pathologist's queue, or at Completed with no release on record. A new result
+     * that sets the order back to Started does not undo the release.
+     */
+    @Test
+    public void caseDisplayItem_saysWhetherAReleaseWouldBeTaken() {
+        PathologyCaseRows.clearStageHistory(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS);
+        try {
+            assertFalse("a case at a bench stage is not released",
+                    pathologyDisplayService.convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS).isReleasable());
+
+            PathologyCaseRows.storeAt(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS, PathologyStatus.READY_PATHOLOGIST);
+            assertTrue("a case in the pathologist's queue is",
+                    pathologyDisplayService.convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS).isReleasable());
+
+            PathologyCaseRows.storeAt(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS, PathologyStatus.COMPLETED);
+            assertTrue("so is a case set to Completed without a release",
+                    pathologyDisplayService.convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS).isReleasable());
+
+            PathologySampleForm release = formWithRunReference(null);
+            release.setRelease(true);
+            pathologySampleService.updateWithFormValues(CASE_WITH_TWO_SPECIMEN_ITEMS, release);
+            jdbcTemplate.update(
+                    "UPDATE clinlims.sample SET status_id = ?"
+                            + " WHERE id = (SELECT sample_id FROM clinlims.pathology_sample WHERE id = ?)",
+                    Integer.parseInt(statusService.getStatusID(OrderStatus.Started)), CASE_WITH_TWO_SPECIMEN_ITEMS);
+            assertFalse("but not once it is released, though a later result started its order again",
+                    pathologyDisplayService.convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS).isReleasable());
+        } finally {
+            PathologyCaseRows.clearStageHistory(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS);
+        }
+    }
+
+    /** A case on file before stage entries were recorded has none, and no run. */
+    @Test
+    public void caseDisplayItem_ofACaseNeverMoved_hasNoEntriesAndNoRun() {
+        PathologyCaseViewDisplayItem displayItem = pathologyDisplayService
+                .convertToCaseDisplayItem(CASE_WITHOUT_SPECIMEN_ITEMS);
+
+        assertTrue("no entries are invented", displayItem.getStageEvents().isEmpty());
+        assertNull("nor a run", displayItem.getRunReference());
+    }
+
+    /** What the screen posts at Processing: the case as it stands, plus the run. */
+    private PathologySampleForm formWithRunReference(String runReference) {
+        PathologySampleForm form = new PathologySampleForm();
+        form.setSystemUserId("1001");
+        form.setGrossExam(pathologySampleService.get(CASE_WITH_TWO_SPECIMEN_ITEMS).getGrossExam());
+        form.setBlocks(new ArrayList<>());
+        form.setSlides(new ArrayList<>());
+        form.setReports(new ArrayList<>());
+        form.setRunReference(runReference);
+        return form;
+    }
+
     private void seedSpecimenRows() {
         jdbcTemplate.update("INSERT INTO clinlims.localization (id, description, lastupdated) VALUES (?, ?, now())",
                 SPECIMEN_TYPE_NAME, "PathologyCaseViewSpecimenType");
@@ -150,6 +399,50 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
                 "INSERT INTO clinlims.sample_item (id, sort_order, samp_id, typeosamp_id, status_id,"
                         + " lastupdated) VALUES (?, 2, ?, ?, 1, now())",
                 SECOND_SPECIMEN_ITEM, CASE_WITH_TWO_SPECIMEN_ITEMS, SPECIMEN_TYPE);
+    }
+
+    /**
+     * Liquibase seeds the category, but an earlier dataset naming
+     * dictionary_category may have truncated it, so it is added only when absent.
+     */
+    private int ensureTissueCategory() {
+        insertedTheCategory = DictionaryRows.insertCategory(jdbcTemplate, TISSUE_CATEGORY,
+                PathologySampleService.TISSUE_TYPE_CATEGORY, "Pathology - Tissue Types", "PathTissue");
+        return DictionaryRows.idOfCategory(jdbcTemplate, PathologySampleService.TISSUE_TYPE_CATEGORY);
+    }
+
+    private void removeSeededTissueRows() {
+        jdbcTemplate.update("UPDATE clinlims.pathology_block SET tissue_type_id = NULL WHERE tissue_type_id = ?",
+                RETIRED_TISSUE);
+        DictionaryRows.removeEntries(jdbcTemplate, RETIRED_TISSUE);
+        if (insertedTheCategory) {
+            DictionaryRows.removeCategory(jdbcTemplate, TISSUE_CATEGORY);
+            insertedTheCategory = false;
+        }
+    }
+
+    /**
+     * The configuration loader ships the stain category and tests do not run it, so
+     * it is added only when absent.
+     */
+    private void seedStains() {
+        insertedTheStainCategory = DictionaryRows.insertCategory(jdbcTemplate, STAIN_CATEGORY_ID,
+                PathologySampleService.STAIN_CATEGORY, PathologySampleService.STAIN_CATEGORY, "PathStain");
+        int categoryId = DictionaryRows.idOfCategory(jdbcTemplate, PathologySampleService.STAIN_CATEGORY);
+        DictionaryRows.insertEntry(jdbcTemplate, STAIN, categoryId, STAIN_NAME, "PSPas", true);
+        DictionaryRows.insertEntry(jdbcTemplate, RETIRED_STAIN, categoryId, RETIRED_STAIN_NAME, "PSRet", false);
+    }
+
+    private void removeSeededStainRows() {
+        jdbcTemplate.update("DELETE FROM clinlims.pathology_slide WHERE id = ?", SECOND_SLIDE);
+        PathologyCaseRows.clearLabelStamp(jdbcTemplate, LEGACY_SLIDE_ID);
+        jdbcTemplate.update("UPDATE clinlims.pathology_slide SET stain_id = NULL WHERE stain_id IN (?, ?)", STAIN,
+                RETIRED_STAIN);
+        DictionaryRows.removeEntries(jdbcTemplate, STAIN, RETIRED_STAIN);
+        if (insertedTheStainCategory) {
+            DictionaryRows.removeCategory(jdbcTemplate, STAIN_CATEGORY_ID);
+            insertedTheStainCategory = false;
+        }
     }
 
     private void removeSeededSpecimenRows() {

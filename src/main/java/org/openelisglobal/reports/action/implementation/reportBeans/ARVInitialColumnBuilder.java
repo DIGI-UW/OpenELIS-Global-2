@@ -20,11 +20,16 @@ import static org.openelisglobal.reports.action.implementation.reportBeans.CSVCo
 import static org.openelisglobal.reports.action.implementation.reportBeans.CSVColumnBuilder.Strategy.NONE;
 
 import org.openelisglobal.reports.action.implementation.Report.DateRange;
+import org.openelisglobal.reports.form.ReportForm.DateType;
 
 public class ARVInitialColumnBuilder extends ARVColumnBuilder {
 
     public ARVInitialColumnBuilder(DateRange dateRange, String projectStr) {
         super(dateRange, projectStr);
+    }
+
+    public ARVInitialColumnBuilder(DateRange dateRange, String projectStr, DateType dateType) {
+        super(dateRange, projectStr, dateType);
     }
 
     @Override

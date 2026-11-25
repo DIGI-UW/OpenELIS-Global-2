@@ -11,6 +11,7 @@ import {
   TextInput,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
+import OrganismPicker from "../../microbiology/OrganismPicker";
 
 const EMPTY_RULE = {
   organismId: "",
@@ -19,6 +20,7 @@ const EMPTY_RULE = {
   method: "MIC",
   specimenTypeId: "",
   breakpointType: "MIC",
+  diskContent: "",
   susceptibleValue: "",
   intermediateLowerValue: "",
   intermediateUpperValue: "",
@@ -33,7 +35,6 @@ const numericOrNull = (value) =>
 
 const BreakpointRuleForm = ({
   value,
-  organisms,
   organismGroups,
   antibiotics,
   specimenTypes,
@@ -44,7 +45,6 @@ const BreakpointRuleForm = ({
   const intl = useIntl();
   const [draft, setDraft] = useState(() => ({ ...EMPTY_RULE, ...value }));
 
-  const hasContext = Boolean(draft.organismId) !== Boolean(draft.organismGroup);
   const hasThreshold = useMemo(
     () =>
       [
@@ -55,9 +55,10 @@ const BreakpointRuleForm = ({
       ].some((threshold) => threshold !== "" && threshold !== null),
     [draft],
   );
+  const zone = draft.breakpointType === "ZONE";
   const valid =
-    hasContext &&
     Boolean(draft.antibioticId) &&
+    (!zone || Boolean(draft.diskContent?.trim())) &&
     Boolean(draft.method) &&
     Boolean(draft.breakpointType) &&
     hasThreshold;
@@ -68,6 +69,7 @@ const BreakpointRuleForm = ({
   const save = () =>
     onSave({
       ...draft,
+      diskContent: zone ? draft.diskContent.trim() : null,
       susceptibleValue: numericOrNull(draft.susceptibleValue),
       intermediateLowerValue: numericOrNull(draft.intermediateLowerValue),
       intermediateUpperValue: numericOrNull(draft.intermediateUpperValue),
@@ -86,29 +88,23 @@ const BreakpointRuleForm = ({
       />
       <ModalBody>
         <div className="microbiology-admin__form-grid">
-          <Select
+          <OrganismPicker
             id="microbiology-breakpoint-rule-organism"
-            labelText={intl.formatMessage({
-              id: "microbiology.admin.breakpoints.organism",
+            titleText={intl.formatMessage({
+              id: "microbiology.isolate.organism",
+            })}
+            placeholder={intl.formatMessage({
+              id: "microbiology.admin.astRules.anyOrganism",
             })}
             value={draft.organismId}
-            onChange={(event) =>
+            onChange={(organismId) =>
               setDraft((current) => ({
                 ...current,
-                organismId: event.target.value,
-                organismGroup: event.target.value ? "" : current.organismGroup,
+                organismId,
+                organismGroup: organismId ? "" : current.organismGroup,
               }))
             }
-          >
-            <SelectItem value="" text="" />
-            {organisms.map((item) => (
-              <SelectItem
-                key={item.id}
-                value={item.id}
-                text={`${item.label}${item.code ? ` (${item.code})` : ""}`}
-              />
-            ))}
-          </Select>
+          />
           <Select
             id="microbiology-breakpoint-rule-group"
             labelText={intl.formatMessage({
@@ -195,6 +191,21 @@ const BreakpointRuleForm = ({
               })}
             />
           </Select>
+          {zone && (
+            <TextInput
+              id="microbiology-breakpoint-rule-disk"
+              labelText={intl.formatMessage({
+                id: "microbiology.admin.astPanels.diskContent",
+              })}
+              helperText={intl.formatMessage({
+                id: "microbiology.admin.astPanels.diskContent.strengthHelp",
+              })}
+              maxLength={40}
+              required
+              value={draft.diskContent || ""}
+              onChange={(event) => update("diskContent", event.target.value)}
+            />
+          )}
           {[
             ["susceptibleValue", "microbiology.admin.breakpoints.susceptible"],
             [

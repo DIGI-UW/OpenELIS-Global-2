@@ -5,6 +5,11 @@ on:
     paths:
       - "frontend/src/languages/**"
       - "scripts/ci/check-i18n-plurals.py"
+      - "scripts/ci/check-shipped-display-keys.py"
+      - "volume/configuration/backend/nce-categories/**"
+      - "volume/configuration/backend/nce-types/**"
+      - "volume/configuration/backend/dictionaries/**"
+      - "src/main/resources/configuration/dictionaries/**"
       - ".github/workflows/i18n-check.yml"
 
 jobs:
@@ -33,6 +38,11 @@ jobs:
 
       - name: Check plural values Transifex can parse
         run: python3 scripts/ci/check-i18n-plurals.py frontend/src/languages/en.json
+
+      # OGC-1507: shipped NCE and dictionary values show through their display
+      # keys, so every key a shipped configuration file names must be in en.json.
+      - name: Check shipped display keys exist in en.json
+        run: python3 scripts/ci/check-shipped-display-keys.py
 
   check-translation-source:
     name: Translation source-of-truth check

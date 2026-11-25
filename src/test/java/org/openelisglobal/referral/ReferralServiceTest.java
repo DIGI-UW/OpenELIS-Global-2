@@ -8,6 +8,7 @@ import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -18,15 +19,24 @@ import org.openelisglobal.referral.form.ReferredOutTestsForm.ReferDateType;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.valueholder.Referral;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.transaction.annotation.Transactional;
 
 public class ReferralServiceTest extends BaseWebContextSensitiveTest {
     @Autowired
     ReferralService rService;
 
+    @Autowired
+    private org.springframework.transaction.PlatformTransactionManager transactionManager;
+
     @Before
     public void init() throws Exception {
         executeDataSetWithStateManagement("testdata/referral.xml");
+    }
+
+    @After
+    public void cleanUp() throws Exception {
+        cleanRowsInCurrentConnection(new String[] { "referral", "analysis_qaevent", "qa_event", "analysis",
+                "sample_requester", "sample_organization", "sample_human", "sample_item", "sample", "person", "patient",
+                "provider", "result" });
     }
 
     @Test
@@ -101,16 +111,17 @@ public class ReferralServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    @Transactional
     public void convertToDisplayItem_shouldconvertToDisplayItem() {
-        Referral referral = rService.get("1");
-        ReferralDisplayItem item = rService.convertToDisplayItem(referral);
+        ReferralDisplayItem item = new org.springframework.transaction.support.TransactionTemplate(transactionManager)
+                .execute(status -> {
+                    Referral referral = rService.get("1");
+                    return rService.convertToDisplayItem(referral);
+                });
         Assert.assertEquals("John", item.getPatientFirstName());
         Assert.assertEquals("Doe", item.getPatientLastName());
     }
 
     @Test
-    @Transactional
     public void getReferralItems_shouldReturnReferralItems() {
 
         ReferredOutTestsForm form = new ReferredOutTestsForm();

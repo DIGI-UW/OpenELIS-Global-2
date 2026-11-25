@@ -1,7 +1,7 @@
 package org.openelisglobal.configuration.service;
 
-import java.io.BufferedReader;
 import java.io.InputStream;
+import java.io.LineNumberReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -47,6 +47,11 @@ public abstract class AbstractCatalogCsvHandler implements DomainConfigurationHa
         return "csv";
     }
 
+    /** True for a file whose values are separated by tabs and never quoted. */
+    protected boolean tabSeparated() {
+        return false;
+    }
+
     @Override
     public boolean supportsDryRun() {
         return true;
@@ -64,12 +69,12 @@ public abstract class AbstractCatalogCsvHandler implements DomainConfigurationHa
 
     @Override
     public void processConfiguration(InputStream inputStream, String fileName, boolean dryRun) throws Exception {
-        BufferedReader reader = CsvParsingUtil.openCsvReader(inputStream);
-        String headerLine = reader.readLine();
+        LineNumberReader reader = new LineNumberReader(CsvParsingUtil.openCsvReader(inputStream));
+        String headerLine = readRecord(reader);
         if (headerLine == null) {
             throw new IllegalArgumentException(getDomainName() + " configuration file " + fileName + " is empty");
         }
-        String[] headers = CsvParsingUtil.parseCsvLine(headerLine);
+        String[] headers = values(headerLine);
         Map<String, Integer> columns = indexColumns(headers);
         Map<String, String> headerText = headerText(headers);
         for (String required : requiredColumns()) {
@@ -81,13 +86,14 @@ public abstract class AbstractCatalogCsvHandler implements DomainConfigurationHa
 
         List<CsvRow> rows = new ArrayList<>();
         String line;
-        int lineNumber = 1;
-        while ((line = reader.readLine()) != null) {
-            lineNumber++;
+        int lineNumber = reader.getLineNumber() + 1;
+        while ((line = readRecord(reader)) != null) {
             if (line.trim().isEmpty() || line.trim().startsWith("#")) {
+                lineNumber = reader.getLineNumber() + 1;
                 continue;
             }
-            rows.add(new CsvRow(columns, CsvParsingUtil.parseCsvLine(line), lineNumber, headerText));
+            rows.add(new CsvRow(columns, values(line), lineNumber, headerText));
+            lineNumber = reader.getLineNumber() + 1;
         }
 
         CsvLoadSummary summary = new CsvLoadSummary(getDomainName(), fileName);
@@ -101,13 +107,26 @@ public abstract class AbstractCatalogCsvHandler implements DomainConfigurationHa
 
     /**
      * Persists the references the resolver could not satisfy while the last unit of
-     * work ran. Called after the row transaction has ended, so the records survive
-     * a rolled-back row and a dry run alike.
+     * work ran. The service writes in its own transaction, so the records survive a
+     * rolled-back file and a dry run alike.
      */
+    protected static String rowError(int lineNumber, RuntimeException failure) {
+        String reason = CsvLoadSummary.reason(failure);
+        return reason.startsWith("Line ") ? reason : "Line " + lineNumber + ": " + reason;
+    }
+
     protected void flushUnresolvedReferences(String fileName, int lineNumber) {
         if (unresolvedReferenceService != null) {
             unresolvedReferenceService.recordPending(getDomainName(), fileName, lineNumber);
         }
+    }
+
+    private String readRecord(LineNumberReader reader) throws java.io.IOException {
+        return tabSeparated() ? reader.readLine() : CsvParsingUtil.readCsvRecord(reader);
+    }
+
+    private String[] values(String line) {
+        return tabSeparated() ? line.split("\t", -1) : CsvParsingUtil.parseCsvLine(line);
     }
 
     private static Map<String, String> headerText(String[] headers) {

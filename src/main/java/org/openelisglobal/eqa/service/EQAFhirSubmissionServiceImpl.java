@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
@@ -50,6 +51,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class EQAFhirSubmissionServiceImpl implements EQAFhirSubmissionService {
 
     private static final String EQA_SYSTEM = "/eqa";
+
+    /**
+     * Without a FHIR store there is nothing to place scores in; the persistence
+     * service answers as an empty store, so the refusal has to happen here or the
+     * provider would be told the scores were placed.
+     */
+    static final String NO_SUBMISSION_CHANNEL = "This laboratory has no automatic submission channel configured;"
+            + " submit by hand instead";
 
     @Autowired
     private EQADistributionDAO distributionDAO;
@@ -100,9 +109,15 @@ public class EQAFhirSubmissionServiceImpl implements EQAFhirSubmissionService {
                     "No results found for organization " + organizationId + " in distribution " + distributionId);
         }
 
+        Map<String, Object> response = new HashMap<>();
+        if (StringUtils.isBlank(fhirConfig.getLocalFhirStorePath())) {
+            response.put("success", false);
+            response.put("error", NO_SUBMISSION_CHANNEL);
+            return response;
+        }
+
         Map<String, Resource> fhirResources = scoreResources(distribution, organizationId, results);
 
-        Map<String, Object> response = new HashMap<>();
         try {
             Bundle responseBundle = fhirPersistanceService.createFhirResourcesInFhirStore(fhirResources);
             response.put("success", true);

@@ -19,4 +19,11 @@ public interface AnalyzerMappingDAO extends BaseDAO<AnalyzerMapping, String> {
      * profile.
      */
     List<Analyzer> findAnalyzersInForceOnProfile(String profileId);
+
+    /**
+     * Deletes an analyzer with its own mapping revisions, their rows and
+     * confirmations. Anything else that refers to the analyzer makes the database
+     * refuse.
+     */
+    void deleteAnalyzerWithItsMappings(String analyzerId);
 }

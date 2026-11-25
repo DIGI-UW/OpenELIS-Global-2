@@ -45,6 +45,9 @@ import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.IsoDateNormalizer;
+import org.openelisglobal.containertype.form.ContainerTypeView;
+import org.openelisglobal.containertype.service.ContainerTypeService;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.eqa.service.SampleEQAService;
@@ -132,6 +135,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/rest/order")
 public class OrderSearchRestController extends BaseRestController {
 
+    @Lazy
+    @Autowired
+    private ContainerTypeService containerTypeService;
     @Lazy
     @Autowired
     private FhirTransformService fhirTransformService;
@@ -832,6 +838,12 @@ public class OrderSearchRestController extends BaseRestController {
                 sampleItemData.put("specimenOrigin",
                         sampleItem.getSpecimenOrigin() != null ? sampleItem.getSpecimenOrigin() : "");
                 putReceiptAndArrival(sampleItemData, sampleItem);
+                sampleItemData.put("containerTypeId",
+                        sampleItem.getContainerTypeId() != null ? sampleItem.getContainerTypeId().toString() : "");
+                sampleItemData.put("containerTypeName",
+                        sampleItem.getContainerTypeId() == null ? ""
+                                : containerTypeService.get(sampleItem.getContainerTypeId()).map(ContainerTypeView::name)
+                                        .orElse(""));
 
                 String receivedDateDisplay = "";
                 String receivedTimeDisplay = "";
@@ -885,7 +897,8 @@ public class OrderSearchRestController extends BaseRestController {
                 Map<String, List<String>> panelTestIdsMap = new LinkedHashMap<>();
                 Map<String, String> panelNameMap = new HashMap<>();
                 for (Analysis analysis : analyses) {
-                    if (analysis.getTest() == null) {
+                    if (analysis.getTest() == null
+                            || statusService.matches(analysis.getStatusId(), AnalysisStatus.Canceled)) {
                         continue;
                     }
                     testsData.add(buildSelectedTestData(analysis.getTest()));
@@ -1551,14 +1564,14 @@ public class OrderSearchRestController extends BaseRestController {
         // Request date
         String requestDate = observationHistoryService.getRawValueForSample(ObservationType.REQUEST_DATE, sampleId);
         if (requestDate != null) {
-            sampleOrderItems.put("requestDate", requestDate);
+            sampleOrderItems.put("requestDate", IsoDateNormalizer.toDisplayFormat(requestDate));
         }
 
         // Next visit date
         String nextVisitDate = observationHistoryService.getRawValueForSample(ObservationType.NEXT_VISIT_DATE,
                 sampleId);
         if (nextVisitDate != null) {
-            sampleOrderItems.put("nextVisitDate", nextVisitDate);
+            sampleOrderItems.put("nextVisitDate", IsoDateNormalizer.toDisplayFormat(nextVisitDate));
         }
 
         // Provisional clinical diagnosis
@@ -1711,6 +1724,10 @@ public class OrderSearchRestController extends BaseRestController {
                 sampleId);
         if (regulatoryRef != null) {
             envFields.put("regulatoryReference", regulatoryRef);
+        }
+        String orderBranch = observationHistoryService.getRawValueForSample(ObservationType.ENV_ORDER_BRANCH, sampleId);
+        if (orderBranch != null) {
+            envFields.put("orderBranch", orderBranch);
         }
         String collectionMethod = observationHistoryService.getRawValueForSample(ObservationType.ENV_COLLECTION_METHOD,
                 sampleId);

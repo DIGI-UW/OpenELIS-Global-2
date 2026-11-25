@@ -171,7 +171,8 @@ const PanelBasicInfoSection = ({ panel, isCreate, onSaved }) => {
             ? intl.formatMessage({ id: "placeholder.panel.name" })
             : undefined
         }
-        maxLength={20}
+        maxCount={20}
+        enableCounter
         onChange={(e) => setName(e.target.value)}
       />
       <div>

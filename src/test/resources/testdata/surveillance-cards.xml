@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <localization id="8901" description="SurveillanceCardsLoc" />
+    <test_section id="8901" name="SURV-CARDS"
+        description="Surveillance cards" is_external="N"
+        name_localization_id="8901" domain="CLINICAL"
+        lastupdated="2026-10-01 00:00:00" />
+    <test id="8901" name="HIV Rapid Test"
+        description="HIV Rapid Test(Plasma)" is_active="Y" guid="cards-8901"
+        test_section_id="8901" lastupdated="2026-10-01 00:00:00" />
+    <test id="8902" name="HIV Viral Load"
+        description="HIV Viral Load(Plasma)" is_active="Y" guid="cards-8902"
+        test_section_id="8901" lastupdated="2026-10-01 00:00:00" />
+    <test id="8903" name="HIV Viral Load"
+        description="HIV Viral Load(Serum)" is_active="Y" guid="cards-8903"
+        test_section_id="8901" lastupdated="2026-10-01 00:00:00" />
+    <test id="8904" name="Xpert RIF" description="Xpert RIF(Sputum)"
+        is_active="Y" guid="cards-8904" test_section_id="8901"
+        lastupdated="2026-10-01 00:00:00" />
+    <dictionary id="8901" is_active="Y" dict_entry="Positive"
+        lastupdated="2026-10-01 00:00:00" />
+    <dictionary id="8902" is_active="Y" dict_entry="Negative"
+        lastupdated="2026-10-01 00:00:00" />
+    <dictionary id="8903" is_active="Y" dict_entry="Invalid"
+        lastupdated="2026-10-01 00:00:00" />
+    <dictionary id="8904" is_active="Y"
+        dict_entry="RIF DETECTED" lastupdated="2026-10-01 00:00:00" />
+    <dictionary id="8905" is_active="Y"
+        dict_entry="RIF NOT DETECTED" lastupdated="2026-10-01 00:00:00" />
+    <dictionary id="8906" is_active="Y"
+        dict_entry="MTB NOT DETECTED" lastupdated="2026-10-01 00:00:00" />
+    <test_result id="8901" is_active="true" test_id="8901"
+        tst_rslt_type="D" value="8901" is_normal="false"
+        lastupdated="2026-10-01 00:00:00" />
+    <test_result id="8902" is_active="true" test_id="8901"
+        tst_rslt_type="D" value="8902" is_normal="true"
+        lastupdated="2026-10-01 00:00:00" />
+    <test_result id="8903" is_active="true" test_id="8901"
+        tst_rslt_type="D" value="8903" lastupdated="2026-10-01 00:00:00" />
+    <test_result id="8904" is_active="true" test_id="8902"
+        tst_rslt_type="N" lastupdated="2026-10-01 00:00:00" />
+    <test_result id="8905" is_active="true" test_id="8904"
+        tst_rslt_type="D" value="8904" is_normal="false"
+        lastupdated="2026-10-01 00:00:00" />
+    <test_result id="8906" is_active="true" test_id="8904"
+        tst_rslt_type="D" value="8905" is_normal="true"
+        lastupdated="2026-10-01 00:00:00" />
+    <test_result id="8907" is_active="true" test_id="8904"
+        tst_rslt_type="D" value="8906" is_normal="true"
+        lastupdated="2026-10-01 00:00:00" />
+</dataset>

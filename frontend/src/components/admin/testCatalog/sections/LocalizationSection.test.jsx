@@ -130,6 +130,33 @@ describe("LocalizationSection", () => {
     ).toHaveAttribute("id", "localization-input-reportingName");
   });
 
+  it("names a result component's field after its label and shows that label until it is translated", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.includes("supportedlocales")) {
+        cb(LOCALES);
+      } else if (url.includes("/rest/localizations/")) {
+        cb({ id: "102", translations: {} });
+      } else if (url.includes("/rest/test-catalog/")) {
+        cb({
+          testId: "42",
+          fields: [
+            {
+              field: "component:EBOV",
+              localizationId: "102",
+              label: "Ebola target",
+            },
+          ],
+        });
+      }
+    });
+    renderSection("fr");
+
+    const input = await screen.findByRole("textbox", {
+      name: "Component: Ebola target",
+    });
+    expect(input).toHaveAttribute("placeholder", "Ebola target");
+  });
+
   // The two localization records resolve independently, so the render order must
   // come from the server's field list rather than whichever request landed first.
   it("renders the fields in the order the server declared them", async () => {

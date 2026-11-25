@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import {
-  DatePicker,
   DatePickerInput,
   Dropdown,
   FilterableMultiSelect,
@@ -8,6 +7,7 @@ import {
   Modal,
   Stack,
 } from "@carbon/react";
+import { DatePicker } from "../../common/DatePicker";
 import { useIntl } from "react-intl";
 import {
   getFromOpenElisServer,

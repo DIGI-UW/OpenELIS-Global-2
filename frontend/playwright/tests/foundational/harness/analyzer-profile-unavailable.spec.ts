@@ -99,16 +99,14 @@ test.describe("An analyzer whose type the Bridge has lost", () => {
         "Setup starts again at the instrument step, with the analyzer's name kept. The operator picks the shipped GeneXpert type.",
       );
       await setup.selectProfile(GENEXPERT.displayName, GENEXPERT);
+      await setup.continueToConnect();
       await setup.continueToVerify();
       const confirm = page.getByRole("button", {
-        name: "Confirm mappings and control recognition",
+        name: "Confirm mappings",
       });
       await expect(confirm).toBeEnabled();
       await confirm.click();
-      await expect(
-        page.getByText("Mappings and control recognition confirmed"),
-      ).toBeVisible();
-      await setup.continueToConnect();
+      await expect(page.getByText("Mappings confirmed")).toBeVisible();
       await page.getByRole("button", { name: "Finish and activate" }).click();
 
       // Same analyzer, now on an available type, active again.

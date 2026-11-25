@@ -129,6 +129,34 @@ public class BlockLabelTest {
         assertEquals("the barcode still carries the lab number", "ACC-1", label.getCode());
     }
 
+    /**
+     * Every block label carried the lab number as its symbol, so a scanned block
+     * read the same as every other block of the order. The symbol is now the
+     * block's own barcode; the print count stays keyed on the lab number.
+     */
+    @Test
+    public void theSymbol_isTheBlocksOwnBarcode() {
+        PathologyBlock block = new PathologyBlock();
+        block.setDesignation("A1");
+        block.setBarcode("ACC-1.A1");
+
+        BlockLabel label = new BlockLabel(null, new Sample(), new PathologySample(), block, "ACC-1", "Biopsy");
+
+        assertEquals("the scanned symbol names this block", "ACC-1.A1", label.getCode());
+        assertEquals("the print count is still kept per order for block labels", "ACC-1-B", label.labelInfoCode());
+    }
+
+    @Test
+    public void aBlockWithNoBarcode_stillScansToItsOrder() {
+        PathologyBlock block = new PathologyBlock();
+        block.setDesignation("A1");
+
+        BlockLabel label = new BlockLabel(null, new Sample(), new PathologySample(), block, "ACC-1", "Biopsy");
+
+        assertEquals("a row with no barcode prints the lab number rather than nothing", "ACC-1", label.getCode());
+        assertEquals("and keeps the same print count", "ACC-1-B", label.labelInfoCode());
+    }
+
     private List<LabelField> collect(Iterable<LabelField> fields) {
         List<LabelField> list = new ArrayList<>();
         for (LabelField field : fields) {

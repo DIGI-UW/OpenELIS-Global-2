@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <localization id="8801"
+        description="SurveillanceSectionLoc" />
+    <test_section id="8801" name="SURV-CLIN"
+        description="Surveillance clinical" is_external="N"
+        name_localization_id="8801" domain="CLINICAL"
+        lastupdated="2026-10-01 00:00:00" />
+    <test_section id="8802" name="SURV-VEC"
+        description="Surveillance vector" is_external="N"
+        name_localization_id="8801" domain="VECTOR"
+        lastupdated="2026-10-01 00:00:00" />
+    <test id="8801" name="Xpert MTB/RIF"
+        description="Xpert MTB/RIF(Sputum)" loinc="85362-2" is_active="Y"
+        guid="surv-8801" test_section_id="8801"
+        lastupdated="2026-10-01 00:00:00" />
+    <test id="8802" name="HIVVIRALLOAD"
+        description="HIVVIRALLOAD(Plasma)" loinc="10351-5" is_active="Y"
+        guid="surv-8802" test_section_id="8801"
+        lastupdated="2026-10-01 00:00:00" />
+    <test id="8803" name="HIVVIRALLOAD"
+        description="HIVVIRALLOAD(Serum)" loinc="10351-5" is_active="Y"
+        guid="surv-8803" test_section_id="8801"
+        lastupdated="2026-10-01 00:00:00" />
+    <test id="8804" name="Malaria Parasite Detection"
+        description="Malaria Parasite Detection(Mosquito)" loinc="32700-7"
+        is_active="Y" guid="surv-8804" test_section_id="8802"
+        lastupdated="2026-10-01 00:00:00" />
+    <test id="8805" name="Malaria Rapid Test"
+        description="Malaria Rapid Test(Whole Blood)" loinc="51587-4"
+        is_active="N" guid="surv-8805" test_section_id="8801"
+        lastupdated="2026-10-01 00:00:00" />
+    <test id="8806" name="HIV Rapid Test"
+        description="HIV Rapid Test(Plasma)" loinc="68961-2" is_active="Y"
+        guid="surv-8806" test_section_id="8801"
+        lastupdated="2026-10-01 00:00:00" />
+</dataset>

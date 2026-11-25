@@ -1533,3 +1533,55 @@ describe("RequesterSection", () => {
     });
   });
 });
+
+// OGC-1657 — Required By was a native date input, shown and read in the
+// browser's format rather than the site's.
+describe("RequesterSection — Required By follows the site date format (OGC-1657)", () => {
+  const dayFirst = { DEFAULT_DATE_LOCALE: "fr-FR" };
+  const field = () => document.getElementById("requiredBy");
+
+  beforeEach(() => {
+    getFromOpenElisServerMock.mockReset();
+  });
+
+  test.each([
+    ["fr-FR", "dd/mm/yyyy", "30/11/2099"],
+    ["en-US", "mm/dd/yyyy", "11/30/2099"],
+  ])(
+    "%s: the saved date and the placeholder follow the site",
+    (dateLocale, placeholder, shown) => {
+      renderSection({
+        orderData: { sampleOrderItems: { requiredBy: "2099-11-30" } },
+        configurationProperties: { DEFAULT_DATE_LOCALE: dateLocale },
+      });
+
+      expect(field()).toHaveAttribute("placeholder", placeholder);
+      expect(field().value).toBe(shown);
+    },
+  );
+
+  test("a date typed day first is stored as that day", () => {
+    const setOrderData = vi.fn();
+    renderSection({ setOrderData, configurationProperties: dayFirst });
+
+    fireEvent.input(field(), { target: { value: "05/03/2099" } });
+
+    expect(lastOrderUpdate(setOrderData).requiredBy).toBe("2099-03-05");
+  });
+
+  test("a past date is refused with a message", () => {
+    const setOrderData = vi.fn();
+    renderSection({
+      orderData: { sampleOrderItems: { requiredBy: "2099-11-30" } },
+      setOrderData,
+      configurationProperties: dayFirst,
+    });
+
+    fireEvent.input(field(), { target: { value: "05/03/2020" } });
+
+    expect(
+      screen.getByText("The date cannot be in the past."),
+    ).toBeInTheDocument();
+    expect(lastOrderUpdate(setOrderData).requiredBy).toBe("");
+  });
+});

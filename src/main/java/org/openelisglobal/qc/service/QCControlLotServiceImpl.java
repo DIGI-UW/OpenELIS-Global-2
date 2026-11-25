@@ -25,6 +25,9 @@ public class QCControlLotServiceImpl extends AuditableBaseObjectServiceImpl<QCCo
         implements QCControlLotService {
 
     @Autowired
+    private org.openelisglobal.test.service.TestService testService;
+
+    @Autowired
     private QCControlLotDAO controlLotDAO;
 
     @Autowired
@@ -118,19 +121,32 @@ public class QCControlLotServiceImpl extends AuditableBaseObjectServiceImpl<QCCo
     @Override
     @Transactional(readOnly = true)
     public List<QCControlLot> getActiveControlLots(String testId, String instrumentId) {
-        return controlLotDAO.getActiveByTestAndInstrument(testId, instrumentId);
+        return withTestNames(controlLotDAO.getActiveByTestAndInstrument(testId, instrumentId));
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<QCControlLot> getActiveBenchControlLots(String testId) {
-        return controlLotDAO.getActiveBenchByTest(testId);
+        return withTestNames(controlLotDAO.getActiveBenchByTest(testId));
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<QCControlLot> getActiveControlLotsByInstrument(String instrumentId) {
-        return controlLotDAO.getActiveByInstrument(instrumentId);
+        return withTestNames(controlLotDAO.getActiveByInstrument(instrumentId));
+    }
+
+    private List<QCControlLot> withTestNames(List<QCControlLot> lots) {
+        java.util.Map<String, String> names = new java.util.HashMap<>();
+        for (org.openelisglobal.test.valueholder.Test test : testService
+                .getTestsByIds(lots.stream().map(QCControlLot::getTestId).distinct().toList())) {
+            names.put(test.getId(), test.getLocalizedName());
+        }
+        for (QCControlLot lot : lots) {
+            String name = names.get(lot.getTestId());
+            lot.setTestName(name == null || name.isBlank() ? lot.getTestId() : name);
+        }
+        return lots;
     }
 
     @Override

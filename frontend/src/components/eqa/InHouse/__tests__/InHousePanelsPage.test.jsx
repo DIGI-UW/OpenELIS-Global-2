@@ -89,9 +89,8 @@ describe("InHousePanelsPage", () => {
     });
     renderPage(["qa.view.eqa"]);
 
-    fireEvent.change(screen.getByLabelText("In-house scheme"), {
-      target: { value: "4" },
-    });
+    fireEvent.click(screen.getByRole("combobox", { name: "In-house scheme" }));
+    fireEvent.click(screen.getByRole("option", { name: "Scheme B" }));
     act(() => replies["4"]([{ id: 2, panelName: "Panel of B" }]));
     act(() => replies["3"]([{ id: 1, panelName: "Panel of A" }]));
 

@@ -16,13 +16,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
@@ -32,7 +35,14 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.valueholder.MicroCase;
+import org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis;
+import org.openelisglobal.microbiology.valueholder.MicroCaseRole;
 import org.openelisglobal.result.service.ResultService;
+import org.openelisglobal.resultrun.service.RunQcService;
+import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.test.service.TestSectionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -62,6 +72,12 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
     private IStatusService statusService;
     @Autowired
     private javax.sql.DataSource dataSource;
+    @Autowired
+    private RunQcService runQcService;
+    @Autowired
+    private MicroCaseDAO microCases;
+    @Autowired
+    private MicroCaseAnalysisDAO microCaseAnalyses;
 
     private JdbcTemplate jdbc;
     private MockHttpSession session;
@@ -90,11 +106,11 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
         // grant user 1 the Results role (id 5 in result.xml) on all lab units
         jdbc.update("INSERT INTO clinlims.user_lab_unit_roles (system_user_id, last_updated) VALUES (1, NOW())"
                 + " ON CONFLICT (system_user_id) DO NOTHING");
-        jdbc.update("INSERT INTO clinlims.lab_unit_role_map (lab_unit_role_map_id, lab_unit) VALUES (9301,"
+        jdbc.update("INSERT INTO clinlims.lab_unit_role_map (lab_unit_role_map_id, lab_unit) VALUES (-9301,"
                 + " 'AllLabUnits') ON CONFLICT (lab_unit_role_map_id) DO NOTHING");
-        jdbc.update("INSERT INTO clinlims.lab_unit_roles (system_user_id, lab_unit_role_map_id) VALUES (1, 9301)"
+        jdbc.update("INSERT INTO clinlims.lab_unit_roles (system_user_id, lab_unit_role_map_id) VALUES (1, -9301)"
                 + " ON CONFLICT DO NOTHING");
-        jdbc.update("INSERT INTO clinlims.lab_roles (lab_unit_role_map_id, role) VALUES (9301, '5')"
+        jdbc.update("INSERT INTO clinlims.lab_roles (lab_unit_role_map_id, role) VALUES (-9301, '5')"
                 + " ON CONFLICT DO NOTHING");
         statusService.refreshCache();
         session = buildAuthenticatedSession("admin");
@@ -252,6 +268,269 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
 
         // FR-O2: the stale editor loses — nothing was merged or overwritten.
         assertEquals(valueBefore, resultService.get("3").getValue());
+    }
+
+    /**
+     * OGC-1200 FR-D3: a test whose analyzer value is waiting in an open run is
+     * resulted from that run; entering a value around it is refused and names the
+     * run. Once the run is complete, entry is the bench's again.
+     */
+    @Test
+    public void save_ofAPendingTestWhoseValueWaitsInAnOpenRun_isRefused409_namingTheRun() throws Exception {
+        jdbc.update("UPDATE clinlims.result SET value = NULL WHERE analysis_id = 1");
+        long run = jdbc.queryForObject("SELECT nextval('clinlims.result_run_seq')", Long.class);
+        jdbc.update("INSERT INTO clinlims.result_run (id, source, state, analyzer_id, row_count, opened_at,"
+                + " last_activity_at) VALUES (?, 'ANALYZER', 'OPEN', 9201, 1, NOW(), NOW())", run);
+        jdbc.update("INSERT INTO clinlims.analyzer_results (id, analyzer_id, accession_number, test_name, result,"
+                + " iscontrol, test_id, run_id, raw_sub_identity, last_updated) VALUES (nextval('analyzer_results_seq'),"
+                + " 9201, '12345', 'Waiting', '91', false, 1, ?, '', NOW())", run);
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "90.0", currentToken("1"))).session(session))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.waitingRun.label").value("RUN-" + run))
+                .andExpect(jsonPath("$.error").exists());
+        assertEquals("nothing was entered around the run", null, resultService.get("3").getValue());
+
+        jdbc.update("UPDATE clinlims.result_run SET state = 'COMPLETE' WHERE id = ?", run);
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "90.0", currentToken("1"))).session(session))
+                .andExpect(status().isOk());
+        assertEquals("90.0", resultService.get("3").getValue());
+    }
+
+    /**
+     * OGC-1200 slice 4 (FR-C4, FR-D4): a result stored from a run that now holds
+     * its test is not edited. The refusal names the run as held, so the page shows
+     * the row held with the reason instead of reporting someone else's edit.
+     */
+    @Test
+    public void save_ofAResultWhoseRunHoldsItsTest_isRefused409_namingTheRunAsHeld() throws Exception {
+        String stored = resultService.get("3").getValue();
+        long run = jdbc.queryForObject("SELECT nextval('clinlims.result_run_seq')", Long.class);
+        jdbc.update("INSERT INTO clinlims.result_run (id, source, state, analyzer_id, row_count, opened_at,"
+                + " last_activity_at) VALUES (?, 'ANALYZER', 'HELD', 9201, 1, NOW(), NOW())", run);
+        jdbc.update("UPDATE clinlims.result SET run_id = ? WHERE id = 3", run);
+        jdbc.update("INSERT INTO clinlims.qc_result (id, test_id, source, result_value, run_date_time, result_status,"
+                + " sys_user_id, run_id, run_verdict, verdict_source) VALUES (?, 1, 'ASTM', 1, NOW(), 'PENDING', 1,"
+                + " ?, 'FAIL', 'COMPUTED')", java.util.UUID.randomUUID().toString(), run);
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "90.0", currentToken("1"))).session(session))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.waitingRun.label").value("RUN-" + run))
+                .andExpect(jsonPath("$.waitingRun.held").value(true)).andExpect(jsonPath("$.error").exists());
+        assertEquals("the held result is unchanged", stored, resultService.get("3").getValue());
+    }
+
+    /**
+     * OGC-1200 FR-C5: once a held test is decided Retest, its stored result is open
+     * to a new value. The value typed in no longer comes from the run, so the run
+     * no longer keeps it from release; the run's own value never was released.
+     */
+    @Test
+    public void save_ofAResultWhoseRunTestWasDecidedRetest_takesTheNewValue_andLeavesTheRun() throws Exception {
+        long run = jdbc.queryForObject("SELECT nextval('clinlims.result_run_seq')", Long.class);
+        jdbc.update("INSERT INTO clinlims.result_run (id, source, state, analyzer_id, row_count, opened_at,"
+                + " last_activity_at) VALUES (?, 'ANALYZER', 'COMPLETE', 9201, 1, NOW(), NOW())", run);
+        jdbc.update("UPDATE clinlims.result SET run_id = ?, analyzer_reported_value = '88' WHERE id = 3", run);
+        jdbc.update("INSERT INTO clinlims.qc_result (id, test_id, source, result_value, run_date_time, result_status,"
+                + " sys_user_id, run_id, run_verdict, verdict_source) VALUES (?, 1, 'ASTM', 1, NOW(), 'PENDING', 1,"
+                + " ?, 'FAIL', 'COMPUTED')", java.util.UUID.randomUUID().toString(), run);
+        jdbc.update("INSERT INTO clinlims.result_run_test_disposition (id, run_id, test_id, action, sys_user_id,"
+                + " decided_at) VALUES (nextval('clinlims.result_run_test_disposition_seq'), ?, 1, 'RETEST', 1,"
+                + " NOW())", run);
+        assertEquals("the run's own value is kept from release", java.util.Set.of("1"),
+                runQcService.heldAnalysisIds(List.of("1")));
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "90.0", currentToken("1"))).session(session))
+                .andExpect(status().isOk());
+
+        java.util.Map<String, Object> result = jdbc
+                .queryForMap("SELECT value, run_id, analyzer_reported_value FROM clinlims.result WHERE id = 3");
+        assertEquals("90.0", result.get("value"));
+        assertNull("the new value is not the run's", result.get("run_id"));
+        assertNull(result.get("analyzer_reported_value"));
+        assertTrue("the run no longer keeps the new value from release",
+                runQcService.heldAnalysisIds(List.of("1")).isEmpty());
+    }
+
+    /**
+     * OGC-1200 slice 3 (FR-E10, FR-E10a, FR-E13): a value waiting in a run is
+     * accepted through the Results Entry save. The technician's value is saved, the
+     * run and the analyzer's own reading are kept on the result, and the staged
+     * value leaves the run, which completes once nothing is left.
+     */
+    @Test
+    public void accept_ofTheRunsOwnRow_savesTheEnteredValue_keepsTheAnalyzerValue_andLeavesStaging() throws Exception {
+        jdbc.update("UPDATE clinlims.result SET value = NULL WHERE analysis_id = 1");
+        long run = openRun();
+        String staged = stage(run, "12345", "91");
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(runAcceptBody("92.0", currentToken("1"), staged, "")).session(session))
+                .andExpect(status().isOk());
+
+        java.util.Map<String, Object> result = jdbc
+                .queryForMap("SELECT value, run_id, analyzer_reported_value FROM clinlims.result WHERE id = 3");
+        assertEquals("the value the technician accepted", "92.0", result.get("value"));
+        assertEquals(run, ((Number) result.get("run_id")).longValue());
+        assertEquals("the analyzer's reading is kept beside it", "91", result.get("analyzer_reported_value"));
+        assertEquals(Integer.valueOf(0), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.analyzer_results WHERE id = ?::numeric", Integer.class, staged));
+        assertEquals("COMPLETE",
+                jdbc.queryForObject("SELECT state FROM clinlims.result_run WHERE id = ?", String.class, run));
+    }
+
+    @Test
+    public void accept_ofARowThatNamesAnotherOrder_isRefused409_andWritesNothing() throws Exception {
+        jdbc.update("UPDATE clinlims.result SET value = NULL WHERE analysis_id = 1");
+        long run = openRun();
+        stage(run, "12345", "91");
+        String otherOrder = stage(run, "13333", "88");
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(runAcceptBody("88", currentToken("1"), otherOrder, "")).session(session))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value(
+                        "This value is no longer waiting in an open run for this test. Reload the run to see what is"
+                                + " left to accept."));
+
+        assertEquals(null, resultService.get("3").getValue());
+        assertEquals(Integer.valueOf(2), jdbc
+                .queryForObject("SELECT count(*) FROM clinlims.analyzer_results WHERE run_id = ?", Integer.class, run));
+    }
+
+    /**
+     * FR-E7: a critical value accepted from a run owes the acknowledgement Results
+     * Entry asks for, is recorded as an analyzer review, and raises the critical
+     * alert.
+     */
+    @Test
+    public void accept_ofACriticalValue_owesTheAcknowledgement_andRecordsItAsAnAnalyzerReview() throws Exception {
+        seedNumericResultLimit();
+        jdbc.update("UPDATE clinlims.result SET value = NULL WHERE analysis_id = 1");
+        long run = openRun();
+        String staged = stage(run, "12345", "500");
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(runAcceptBody("500", currentToken("1"), staged, "")).session(session))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.acknowledgementRequired[0].kind").value("CRITICAL"));
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.analyzer_results WHERE id = ?::numeric", Integer.class, staged));
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(runAcceptBody("500", currentToken("1"), staged, ",\"criticalAcknowledged\":true"))
+                .session(session)).andExpect(status().isOk());
+
+        assertEquals("ANALYZER_REVIEW", jdbc.queryForObject(
+                "SELECT source FROM clinlims.result_entry_acknowledgement WHERE analysis_id = 1", String.class));
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.alert WHERE alert_type = 'CRITICAL_RESULT'", Integer.class));
+    }
+
+    /**
+     * FR-E9: an accept made from a stale page loses like any Results Entry save.
+     */
+    @Test
+    public void accept_fromAStalePage_isRejected409_andTheValueStaysInTheRun() throws Exception {
+        jdbc.update("UPDATE clinlims.result SET value = NULL WHERE analysis_id = 1");
+        long run = openRun();
+        String staged = stage(run, "12345", "91");
+        String staleToken = String.valueOf(analysisService.get("1").getLastupdated().getTime() - 60_000L);
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(runAcceptBody("91", staleToken, staged, "")).session(session)).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("error.results.staleSave"));
+
+        assertEquals(null, resultService.get("3").getValue());
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.analyzer_results WHERE id = ?::numeric", Integer.class, staged));
+    }
+
+    /**
+     * The import stages a test's main value without a component; the worklist shows
+     * it on the primary component's row, and it is accepted from there.
+     */
+    @Test
+    public void accept_ofAMainValueStagedWithoutAComponent_isAcceptedFromThePrimaryRow() throws Exception {
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, display_order, is_active,"
+                + " lastupdated, is_primary) VALUES ('rrun-main', 1, 'VL', 'Viral load', 0, 'Y', NOW(), true),"
+                + " ('rrun-call', 1, 'CALL', 'Call', 1, 'Y', NOW(), false)");
+        jdbc.update("UPDATE clinlims.result SET value = NULL WHERE analysis_id = 1");
+        long run = openRun();
+        String staged = stage(run, "12345", "1009.64");
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(
+                        runAcceptBody("1009.64", currentToken("1"), staged, ",\"testResultComponentId\":\"rrun-main\""))
+                .session(session)).andExpect(status().isOk());
+
+        assertEquals("1009.64", resultService.get("3").getValue());
+        assertEquals(Integer.valueOf(0), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.analyzer_results WHERE id = ?::numeric", Integer.class, staged));
+    }
+
+    /**
+     * A part still waiting in a run is resulted from the run even once another part
+     * of the same test has a value: typing over it would leave the run's value
+     * behind with nothing left to accept it into.
+     */
+    @Test
+    public void save_ofAPartWhoseValueWaitsInARun_isRefused_onceAnotherPartIsResulted() throws Exception {
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, display_order, is_active,"
+                + " lastupdated, is_primary) VALUES ('rrun-ct', 1, 'CT', 'Ct', 0, 'Y', NOW(), true),"
+                + " ('rrun-delta', 1, 'DCT', 'Delta Ct', 1, 'Y', NOW(), false)");
+        long run = openRun();
+        jdbc.update("INSERT INTO clinlims.analyzer_results (id, analyzer_id, accession_number, test_name, result,"
+                + " iscontrol, test_id, component_id, run_id, raw_sub_identity, last_updated) VALUES"
+                + " (nextval('analyzer_results_seq'), 9201, '12345', 'Waiting', '3.1', false, 1, 'rrun-delta', ?,"
+                + " '', NOW())", run);
+        Integer resultsBefore = jdbc.queryForObject("SELECT count(*) FROM clinlims.result WHERE analysis_id = 1",
+                Integer.class);
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBodyWithExtras("1", "", "1", "200", currentToken("1"),
+                        "\"note\":\"\",\"testResultComponentId\":\"rrun-delta\""))
+                .session(session)).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.waitingRun.label").value("RUN-" + run));
+
+        assertEquals(resultsBefore,
+                jdbc.queryForObject("SELECT count(*) FROM clinlims.result WHERE analysis_id = 1", Integer.class));
+    }
+
+    /**
+     * Two saves of the same row at once: the one that loses answers as a stale
+     * save, whichever layer noticed the conflict, instead of a bare server error.
+     */
+    @Test
+    public void aSaveThatLostToAnotherSave_isAStaleSave() {
+        assertTrue(ResultEntryRestController.isConcurrentWrite(
+                new org.springframework.orm.ObjectOptimisticLockingFailureException(Analysis.class, "1")));
+        assertTrue(ResultEntryRestController.isConcurrentWrite(new LIMSRuntimeException("save failed",
+                new jakarta.persistence.OptimisticLockException(new org.hibernate.StaleStateException("row count")))));
+        assertTrue(ResultEntryRestController.isConcurrentWrite(
+                new LIMSRuntimeException("save failed", new org.hibernate.StaleObjectStateException("Analysis", "1"))));
+        assertFalse(ResultEntryRestController.isConcurrentWrite(new LIMSRuntimeException("save failed")));
+    }
+
+    private long openRun() {
+        long run = jdbc.queryForObject("SELECT nextval('clinlims.result_run_seq')", Long.class);
+        jdbc.update("INSERT INTO clinlims.result_run (id, source, state, analyzer_id, row_count, opened_at,"
+                + " last_activity_at) VALUES (?, 'ANALYZER', 'OPEN', 9201, 1, NOW(), NOW())", run);
+        return run;
+    }
+
+    private String stage(long run, String accessionNumber, String value) {
+        return jdbc.queryForObject("INSERT INTO clinlims.analyzer_results (id, analyzer_id, accession_number,"
+                + " test_name, result, iscontrol, test_id, run_id, raw_sub_identity, last_updated) VALUES"
+                + " (nextval('analyzer_results_seq'), 9201, ?, 'Waiting', ?, false, 1, ?, '', NOW()) RETURNING id::text",
+                String.class, accessionNumber, value, run);
+    }
+
+    private String runAcceptBody(String value, String token, String runRowId, String extraItemFields) {
+        String body = saveBodyWithExtras("1", "3", "1", value, token, "\"note\":\"\"" + extraItemFields);
+        return body.substring(0, body.length() - 1) + ",\"runRowId\":\"" + runRowId + "\"}";
     }
 
     @Test
@@ -502,7 +781,7 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
                     .andExpect(jsonPath("$.testResult[0].analysisNotes[0].text").value("panel note"))
                     .andExpect(jsonPath("$.testResult[0].analysisNotes[0].noteType").value("I"))
                     .andExpect(jsonPath("$.testResult[0].analysisNotes[0].subject").value("Result Note"))
-                    .andExpect(jsonPath("$.testResult[0].analysisNotes[0].author").value("Doe,John"));
+                    .andExpect(jsonPath("$.testResult[0].analysisNotes[0].author").value("John Doe"));
         } finally {
             reset(displayList);
         }
@@ -588,7 +867,7 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
         try {
             loadWorklistFor12345().andExpect(status().isOk())
                     .andExpect(jsonPath("$.testResult[0].resultFlag").value("CRITICAL"))
-                    .andExpect(jsonPath("$.testResult[0].criticalRange").value("< 50.00 or > 400.00"));
+                    .andExpect(jsonPath("$.testResult[0].criticalRange").value("< 50.0 or > 400.0"));
         } finally {
             reset(webApplicationContext.getBean(DisplayListService.class));
         }
@@ -608,6 +887,38 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
         try {
             loadWorklistFor12345().andExpect(status().isOk())
                     .andExpect(jsonPath("$.testResult[0].resultFlag").value("NORMAL"));
+        } finally {
+            reset(webApplicationContext.getBean(DisplayListService.class));
+        }
+    }
+
+    /**
+     * OGC-1574 — whole-number reporting cannot hide a clinical threshold crossing.
+     * 49.6 is below 50 and requires acknowledgement even when displayed as 50.
+     */
+    @Test
+    public void save_criticalValueHiddenByReporting_requiresAcknowledgementAndPreservesValue() throws Exception {
+        seedNumericResultLimit();
+        jdbc.update("UPDATE clinlims.test_result SET reporting_decimal_places = '0' WHERE test_id = 1");
+        String storedBefore = resultService.get("3").getValue();
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "49.6", currentToken("1"))).session(session))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("ACKNOWLEDGEMENT_REQUIRED"))
+                .andExpect(jsonPath("$.acknowledgementRequired[0].kind").value("CRITICAL"))
+                .andExpect(jsonPath("$.acknowledgementRequired[0].value").value("49.6"));
+
+        assertEquals(storedBefore, resultService.get("3").getValue());
+        assertEquals(Integer.valueOf(0), acknowledgementCount());
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(acknowledgedSaveBody("49.6")).session(session)).andExpect(status().isOk());
+        assertEquals("49.6", resultService.get("3").getValue());
+        assertEquals(Integer.valueOf(1), acknowledgementCount());
+        try {
+            loadWorklistFor12345().andExpect(status().isOk())
+                    .andExpect(jsonPath("$.testResult[0].resultFlag").value("CRITICAL"));
         } finally {
             reset(webApplicationContext.getBean(DisplayListService.class));
         }
@@ -694,6 +1005,73 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
 
         assertEquals(MessageUtil.getMessage("result.critical.defaultMessage"), jdbc.queryForObject(
                 "SELECT message FROM clinlims.result_entry_acknowledgement WHERE analysis_id = 1", String.class));
+    }
+
+    @Test
+    public void save_criticalCodedAnswer_isRefusedUntilAcknowledged_thenRaisesTheCriticalAlert() throws Exception {
+        String detected = codedAnswer("OGC1610 Detected", true);
+        String notDetected = codedAnswer("OGC1610 Not detected", false);
+        storeCodedAnswer(notDetected);
+        try {
+            mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                    .content(codedSaveBody(detected, "")).session(session)).andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.acknowledgementRequired[0].kind").value("CRITICAL"))
+                    .andExpect(jsonPath("$.acknowledgementRequired[0].value").value("OGC1610 Detected"));
+            assertEquals(notDetected, resultService.get("3").getValue());
+
+            mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                    .content(codedSaveBody(detected, ",\"criticalAcknowledged\":true")).session(session))
+                    .andExpect(status().isOk());
+            assertEquals(detected, resultService.get("3").getValue());
+            assertEquals(Integer.valueOf(1), acknowledgementCount());
+            assertEquals("OGC1610 Detected",
+                    jdbc.queryForObject(
+                            "SELECT context_data->>'value' FROM clinlims.alert WHERE alert_type ="
+                                    + " 'CRITICAL_RESULT' AND alert_entity_type = 'ANALYSIS' AND alert_entity_id = 1",
+                            String.class));
+
+            mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                    .content(codedSaveBody(detected, "")).session(session)).andExpect(status().isOk());
+            assertEquals("the stored answer was acknowledged when it was saved", Integer.valueOf(1),
+                    acknowledgementCount());
+        } finally {
+            jdbc.update("DELETE FROM clinlims.dictionary WHERE dict_entry LIKE 'OGC1610 %'");
+        }
+    }
+
+    @Test
+    public void save_codedAnswerNotMarkedCritical_owesNothing() throws Exception {
+        String notDetected = codedAnswer("OGC1610 Not detected", false);
+        storeCodedAnswer(codedAnswer("OGC1610 Detected", true));
+        try {
+            mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                    .content(codedSaveBody(notDetected, "")).session(session)).andExpect(status().isOk());
+            assertEquals(notDetected, resultService.get("3").getValue());
+            assertEquals(Integer.valueOf(0), jdbc.queryForObject(
+                    "SELECT count(*) FROM clinlims.alert WHERE alert_type = 'CRITICAL_RESULT'", Integer.class));
+        } finally {
+            jdbc.update("DELETE FROM clinlims.dictionary WHERE dict_entry LIKE 'OGC1610 %'");
+        }
+    }
+
+    private String codedAnswer(String entry, boolean critical) {
+        String id = jdbc.queryForObject("SELECT nextval('clinlims.dictionary_seq')::text", String.class);
+        jdbc.update("INSERT INTO clinlims.dictionary (id, dict_entry, is_active, lastupdated) VALUES (?::numeric, ?,"
+                + " 'Y', NOW())", id, entry);
+        jdbc.update("INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, value, sort_order, is_active,"
+                + " is_critical, lastupdated) VALUES (nextval('clinlims.test_result_seq'), 1, 'D', ?, 1, true, ?,"
+                + " NOW())", id, critical);
+        return id;
+    }
+
+    private void storeCodedAnswer(String answer) {
+        jdbc.update("UPDATE clinlims.result SET result_type = 'D', value = ?, test_result_id = (SELECT id FROM"
+                + " clinlims.test_result WHERE test_id = 1 AND value = ?) WHERE id = 3", answer, answer);
+    }
+
+    private String codedSaveBody(String answer, String extras) {
+        return saveBodyWithExtras("1", "3", "1", answer, currentToken("1"), "\"note\":\"\"" + extras)
+                .replace("\"resultType\":\"N\"", "\"resultType\":\"D\"");
     }
 
     /**
@@ -1239,5 +1617,65 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
         } finally {
             reset(displayList);
         }
+    }
+
+    private static final String RELEASED_CASE_REFUSAL = "This test belongs to a microbiology case whose final report"
+            + " has been released. Amend the case to change it.";
+
+    @Test
+    public void save_onAFinallyReleasedMicrobiologyCase_isRefusedWithAMessage() throws Exception {
+        String valueBefore = resultService.get("3").getValue();
+        String caseId = releasedCaseLinkedTo("1");
+        try {
+            mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                    .content(saveBody("1", "3", "1", "90.0", currentToken("1"))).session(session))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.error").value(RELEASED_CASE_REFUSAL));
+        } finally {
+            removeCase(caseId);
+        }
+        assertEquals(valueBefore, resultService.get("3").getValue());
+    }
+
+    @Test
+    public void bulkSave_onAFinallyReleasedMicrobiologyCase_isRefusedWithAMessage() throws Exception {
+        String valueBefore = resultService.get("3").getValue();
+        String caseId = releasedCaseLinkedTo("1");
+        List<List<TestResultItem>> pages = new ArrayList<>();
+        pages.add(new ArrayList<>(List.of(new TestResultItem())));
+        session.setAttribute(IActionConstants.RESULTS_SESSION_CACHE, pages);
+        String single = saveBody("1", "3", "1", "90.0", currentToken("1"));
+        String item = single.substring("{\"testResult\":".length(), single.length() - 1);
+        try {
+            mockMvc.perform(post("/rest/LogbookResults").contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"testResult\":[" + item + "],\"paging\":{\"currentPage\":\"1\",\"totalPages\":\"1\"}}")
+                    .session(session)).andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.error").value(RELEASED_CASE_REFUSAL));
+        } finally {
+            removeCase(caseId);
+        }
+        assertEquals(valueBefore, resultService.get("3").getValue());
+    }
+
+    private String releasedCaseLinkedTo(String analysisId) {
+        MicroCase microCase = new MicroCase();
+        microCase.setSampleId("1");
+        microCase.setSampleItemId("601");
+        microCase.setLabUnitId("1");
+        microCase.setCreatedBy("1");
+        microCase.setFinalReleaseState("FINAL_RELEASED");
+        microCases.insert(microCase);
+        MicroCaseAnalysis link = new MicroCaseAnalysis();
+        link.setCaseId(microCase.getId());
+        link.setAnalysisId(analysisId);
+        link.setCaseRole(MicroCaseRole.DIRECT);
+        link.setPlacement("INITIAL");
+        microCaseAnalyses.insert(link);
+        return microCase.getId();
+    }
+
+    private void removeCase(String caseId) {
+        jdbc.update("DELETE FROM clinlims.micro_case_analysis WHERE case_id = ?", caseId);
+        jdbc.update("DELETE FROM clinlims.micro_case WHERE id = ?", caseId);
     }
 }

@@ -148,6 +148,7 @@ public class TestCatalogCreationServiceImpl implements TestCatalogCreationServic
         primary.setDisplayOrder(0);
         primary.setIsPrimary(true);
         primary.setShowOnReport(true);
+        primary.setIsRequired(true);
         primary.setIsActive("Y");
         primary.setSysUserId(sysUserId);
         componentService.insert(primary);

@@ -207,4 +207,37 @@ public class LogBookPersistServiceTest extends BaseWebContextSensitiveTest {
                 dataSet.getNewResults().stream().noneMatch(rs -> results.contains(rs.result)));
         assertEquals(results.size(), dataSet.getModifiedResults().size());
     }
+
+    /**
+     * OGC-1569: a note typed again with the same text on the same analysis was
+     * refused as a duplicate record, and that failed the whole save; the result
+     * change was lost behind "An error occurred while updating".
+     */
+    @Test
+    public void aNoteAlreadyRecordedDoesNotFailTheSave() {
+        SystemUser systemUser = systemUserService.getAll().get(0);
+        Analysis analysis = analysisService.getAll().get(0);
+        org.openelisglobal.note.service.NoteService noteService = SpringContext
+                .getBean(org.openelisglobal.note.service.NoteService.class);
+        org.openelisglobal.note.valueholder.Note first = noteService.createSavableNote(analysis,
+                org.openelisglobal.note.service.NoteServiceImpl.NoteType.INTERNAL, "Repeat sent", "Result Note",
+                systemUser.getId());
+        noteService.insert(first);
+
+        ResultsUpdateDataSet dataSet = new ResultsUpdateDataSet("");
+        dataSet.addToNoteList(noteService.createSavableNote(analysis,
+                org.openelisglobal.note.service.NoteServiceImpl.NoteType.INTERNAL, "Repeat sent", "Result Note",
+                systemUser.getId()));
+        dataSet.addToNoteList(noteService.createSavableNote(analysis,
+                org.openelisglobal.note.service.NoteServiceImpl.NoteType.INTERNAL, "Recalibrated", "Result Note",
+                systemUser.getId()));
+
+        logbookPersistService.persistDataSet(dataSet, new ArrayList<>(), systemUser.getId());
+
+        List<String> texts = noteService
+                .getNotesChronologicallyByRefIdAndRefTable(analysis.getId(), first.getReferenceTableId()).stream()
+                .map(org.openelisglobal.note.valueholder.Note::getText).collect(java.util.stream.Collectors.toList());
+        assertEquals(1, texts.stream().filter("Repeat sent"::equals).count());
+        assertTrue(texts.contains("Recalibrated"));
+    }
 }

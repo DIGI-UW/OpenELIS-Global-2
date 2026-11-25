@@ -12,6 +12,7 @@ import { getFromOpenElisServer } from "../utils/Utils";
 import CustomDatePicker from "../common/CustomDatePicker";
 import { ConfigurationContext } from "../layout/Layout";
 import { formatIsoDateForBackend } from "../order/dateUtils";
+import SearchableSelect from "../common/SearchableSelect";
 
 const OPEN_FOR_RESULTS = [
   "PLANNED",
@@ -206,28 +207,23 @@ const EQAOrderForm = ({ orderFormValues, setOrderFormValues }) => {
           <Grid>
             {/* Programme — from My Programs (self-enrollments) */}
             <Column lg={8} md={4} sm={4}>
-              <Select
+              <SearchableSelect
                 id="eqa-program"
+                required
                 labelText={intl.formatMessage({
                   id: "eqa.order.programme",
                 })}
-                aria-required="true"
+                options={myPrograms.map((prog) => ({
+                  id: String(prog.id),
+                  value: prog.programName || prog.name,
+                }))}
                 value={sampleOrder.eqaProgramId || ""}
                 invalid={eqaSchemeMissing(orderFormValues)}
                 invalidText={intl.formatMessage({
                   id: "order.eqa.schemeRequired",
                 })}
-                onChange={(e) => updateField("eqaProgramId", e.target.value)}
-              >
-                <SelectItem value="" text="" />
-                {myPrograms.map((prog) => (
-                  <SelectItem
-                    key={prog.id}
-                    value={String(prog.id)}
-                    text={prog.programName || prog.name}
-                  />
-                ))}
-              </Select>
+                onChange={(id) => updateField("eqaProgramId", id)}
+              />
             </Column>
 
             {/* Provider Sample ID */}

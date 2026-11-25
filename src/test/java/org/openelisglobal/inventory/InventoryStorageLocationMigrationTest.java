@@ -15,6 +15,7 @@ import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.Test;
+import org.openelisglobal.IsolatedDatabase;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.MountableFile;
 
@@ -25,6 +26,7 @@ import org.testcontainers.utility.MountableFile;
  * shape and checks the locations land in the storage hierarchy and each lot
  * keeps its place.
  */
+@IsolatedDatabase
 public class InventoryStorageLocationMigrationTest {
 
     private static final String SKELETON = "CREATE SEQUENCE clinlims.inventory_storage_location_seq;"

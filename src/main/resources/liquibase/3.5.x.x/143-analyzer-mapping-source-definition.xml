@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+ <changeSet id="143-analyzer-mapping-source-definition" author="oe">
+  <addColumn schemaName="clinlims" tableName="analyzer_mapping">
+   <column name="source_definition_json" type="TEXT"/>
+  </addColumn>
+  <dropNotNullConstraint schemaName="clinlims" tableName="analyzer_mapping_confirmation"
+   columnName="recognition_fingerprint" columnDataType="VARCHAR(71)"/>
+  <rollback>
+   <dropColumn schemaName="clinlims" tableName="analyzer_mapping" columnName="source_definition_json"/>
+   <!-- Rollback refuses confirmations lacking the provenance required by the old schema. -->
+   <addNotNullConstraint schemaName="clinlims" tableName="analyzer_mapping_confirmation"
+    columnName="recognition_fingerprint" columnDataType="VARCHAR(71)"/>
+  </rollback>
+ </changeSet>
+</databaseChangeLog>
