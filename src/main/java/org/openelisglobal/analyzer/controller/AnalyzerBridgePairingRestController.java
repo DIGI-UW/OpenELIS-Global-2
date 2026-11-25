@@ -26,7 +26,7 @@ public class AnalyzerBridgePairingRestController extends BaseRestController {
         this.pairing = pairing;
     }
 
-    public record PairingRequest(String code) {
+    public record PairingRequest(String code, String fingerprint) {
     }
 
     @GetMapping
@@ -37,13 +37,15 @@ public class AnalyzerBridgePairingRestController extends BaseRestController {
     @PostMapping
     public ResponseEntity<AnalyzerBridgePairingService.Status> pair(@RequestBody PairingRequest body,
             HttpServletRequest request) {
-        return ResponseEntity.ok(pairing.pair(body == null ? null : body.code(), getSysUserId(request)));
+        return ResponseEntity.ok(pairing.pair(body == null ? null : body.code(),
+                body == null ? null : body.fingerprint(), getSysUserId(request)));
     }
 
     @ExceptionHandler(BridgePairingException.class)
     public ResponseEntity<Map<String, String>> refused(BridgePairingException exception) {
         HttpStatus status = switch (exception.getMessage()) {
-        case "analyzer.bridgePairing.error.codeRequired" -> HttpStatus.BAD_REQUEST;
+        case "analyzer.bridgePairing.error.codeRequired", "analyzer.bridgePairing.error.fingerprintRequired" ->
+            HttpStatus.BAD_REQUEST;
         case "analyzer.bridgePairing.error.notConfigured" -> HttpStatus.SERVICE_UNAVAILABLE;
         case "analyzer.bridgePairing.error.unreachable" -> HttpStatus.BAD_GATEWAY;
         default -> HttpStatus.UNPROCESSABLE_ENTITY;

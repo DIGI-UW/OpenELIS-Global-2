@@ -188,6 +188,11 @@ for store in keystore client_facing_keystore; do
   chmod 640 "$STORES/$store"
 done
 chmod 644 "$STORES/truststore"
+# Publish the leaf separately from the root-only install directory for clients
+# of the development Bridge, which serves this keystore.
+cp "$CERT" "$STORES/server-public.crt.tmp"
+chmod 644 "$STORES/server-public.crt.tmp"
+mv "$STORES/server-public.crt.tmp" "$STORES/server-public.crt"
 chown 0:0 "$KEY" "$INSTALL/encryption.key"
 chmod 600 "$KEY" "$INSTALL/encryption.key"
 

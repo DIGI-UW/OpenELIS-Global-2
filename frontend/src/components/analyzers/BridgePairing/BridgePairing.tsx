@@ -16,6 +16,8 @@ import {
 const KNOWN_ERRORS = new Set([
   "analyzer.bridgePairing.error.certificateMismatch",
   "analyzer.bridgePairing.error.closed",
+  "analyzer.bridgePairing.error.fingerprintRequired",
+  "analyzer.bridgePairing.error.bundledCertificate",
   "analyzer.bridgePairing.error.codeRequired",
   "analyzer.bridgePairing.error.identity",
   "analyzer.bridgePairing.error.invalidAnswer",
@@ -33,6 +35,7 @@ const BridgePairing = () => {
   const intl = useIntl();
   const [status, setStatus] = useState<BridgePairingStatus | undefined>();
   const [pairingAgain, setPairingAgain] = useState(false);
+  const [fingerprint, setFingerprint] = useState("");
   const [code, setCode] = useState("");
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -66,12 +69,13 @@ const BridgePairing = () => {
     event.preventDefault();
     setSubmitting(true);
     setErrorKey(null);
-    pairBridge(code, (response) => {
+    pairBridge(code, fingerprint, (response) => {
       setSubmitting(false);
       if (response && response.paired && !response.errorKey) {
         setStatus(response);
         setPairingAgain(false);
         setCode("");
+        setFingerprint("");
       } else {
         setErrorKey(
           response?.errorKey && KNOWN_ERRORS.has(response.errorKey)
@@ -104,11 +108,31 @@ const BridgePairing = () => {
           setCode(event.target.value)
         }
       />
+      {!status.bundledCertificate && (
+        <TextInput
+          id="bridge-pairing-fingerprint"
+          labelText={intl.formatMessage({
+            id: "analyzer.bridgePairing.fingerprint.label",
+          })}
+          helperText={intl.formatMessage({
+            id: "analyzer.bridgePairing.fingerprint.help",
+          })}
+          value={fingerprint}
+          autoComplete="off"
+          onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+            setFingerprint(event.target.value)
+          }
+        />
+      )}
       <Button
         type="submit"
         kind="primary"
         size="md"
-        disabled={submitting || !code.trim()}
+        disabled={
+          submitting ||
+          !code.trim() ||
+          (!status.bundledCertificate && !fingerprint.trim())
+        }
         data-testid="bridge-pairing-submit"
       >
         {intl.formatMessage({ id: "analyzer.bridgePairing.pair" })}
@@ -172,9 +196,11 @@ const BridgePairing = () => {
               fingerprint: (status.bridgeCertificateSha256 || "").slice(0, 16),
             },
           )} ${intl.formatMessage({
-            id: status.pairsAutomatically
-              ? "analyzer.bridgePairing.automatic"
-              : "analyzer.bridgePairing.unpaired.subtitle",
+            id:
+              status.pairsAutomatically &&
+              status.pinCheck !== "OTHER_CERTIFICATE"
+                ? "analyzer.bridgePairing.automatic"
+                : "analyzer.bridgePairing.unpaired.subtitle",
           })}`}
         />
         {form}
