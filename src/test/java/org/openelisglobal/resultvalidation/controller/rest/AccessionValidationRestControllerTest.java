@@ -47,6 +47,7 @@ import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.testresult.service.TestResultService;
+import org.openelisglobal.validationpolicy.service.AnalysisReviewService;
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -95,6 +96,8 @@ public class AccessionValidationRestControllerTest {
     private SampleService sampleService;
     @Mock
     private HistoryDAO historyDAO;
+    @Mock
+    private AnalysisReviewService analysisReviewService;
 
     @Mock
     private DefaultConfigurationProperties configurationProperties;
@@ -136,6 +139,8 @@ public class AccessionValidationRestControllerTest {
         ReflectionTestUtils.setField(controller, "acknowledgementService", acknowledgementService);
         ReflectionTestUtils.setField(controller, "sampleService", sampleService);
         ReflectionTestUtils.setField(controller, "historyDAO", historyDAO);
+        ReflectionTestUtils.setField(controller, "analysisReviewService", analysisReviewService);
+        when(analysisReviewService.isEnabled()).thenReturn(false);
 
         session = new MockHttpSession();
         UserSessionData usd = new UserSessionData();
