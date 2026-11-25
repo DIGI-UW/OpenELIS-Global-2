@@ -1,9 +1,10 @@
 # Upgrading OpenELIS Global
 
-Choose a supported release from [the release policy](../RELEASES.md) and follow
-that release's [default distribution instructions](install.md). Online and
-offline upgrades use the same configuration and pinned image set. Offline hosts
-load the supplied image archive before starting Compose with
+Choose a supported release from
+[the release policy](https://github.com/DIGI-UW/OpenELIS-Global-2/blob/develop/RELEASES.md)
+and follow that release's [default distribution instructions](install.md).
+Online and offline upgrades use the same configuration and pinned image set.
+Offline hosts load the supplied image archive before starting Compose with
 `--pull never --no-build`.
 
 Before changing images, back up the database, configuration, installation keys,

@@ -17,8 +17,9 @@ and test inputs, not a second installation path.
 
 Lab installations use the [default distribution](install.md). Online and offline
 packages consume the same published image set; neither builds the application on
-the lab server. See [release delivery](../RELEASES.md) for publishing and
-supported maintenance branches.
+the lab server. See
+[release delivery](https://github.com/DIGI-UW/OpenELIS-Global-2/blob/develop/RELEASES.md)
+for publishing and supported maintenance branches.
 
 #
 
