@@ -10,10 +10,6 @@
   padding: 50px;
 }
 .dashboard-tile {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  height: 100%;
   position: relative;
   padding: 20px;
   border-radius: 3px;
@@ -25,6 +21,13 @@
   /* Carbon's ClickableTile clips its content with overflow: hidden, which
    * eats absolutely-positioned pseudo-elements. Allow them to render. */
   overflow: visible;
+}
+
+.home-dashboard-container .dashboard-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
 }
 
 /* Left-edge stripe painted as a pseudo-element (rather than border-left or
