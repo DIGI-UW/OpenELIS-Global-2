@@ -1,8 +1,9 @@
 # Backups and restoration
 
-Use the default distribution's
-[backup and restore procedure](https://github.com/DIGI-UW/openelis-docker/blob/main/docs/backup-restore.md),
-selecting the documentation at the same tag as the installed distribution.
+Select the installed version from the
+[default distribution tags](https://github.com/DIGI-UW/openelis-docker/tags).
+Open `docs/backup-restore.md` in that tag to find the backup and restore
+commands for your installation.
 
 Back up the database, configuration, installation encryption key, certificate
 stores and Analyzer Bridge state together. A database backup without the key

@@ -8,8 +8,8 @@ load the supplied image archive before starting Compose with
 
 Before changing images, back up the database, configuration, installation keys,
 certificate stores and Analyzer Bridge state together. Rehearse restoration on a
-separate test instance using the distribution's
-[backup and restore procedure](https://github.com/DIGI-UW/openelis-docker/blob/main/docs/backup-restore.md).
+separate test instance using the
+[backup instructions for the installed version](backups.md).
 
 Retain the original effective encryption key when adopting an existing database.
 The [credential upgrade guide](upgrades/private-install-credentials.md) covers
