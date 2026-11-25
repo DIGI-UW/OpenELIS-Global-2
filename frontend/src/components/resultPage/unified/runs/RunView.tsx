@@ -70,6 +70,8 @@ export interface RunHeader {
   chipCounts?: RunChipCounts;
   qc?: RunQc | null;
   exceptions?: RunExceptionRecord[] | null;
+  reagentLot?: string | null;
+  batchWorkplanId?: number | null;
 }
 
 interface RunRow {
@@ -273,6 +275,11 @@ const RunView: React.FC<RunViewProps> = ({
   };
 
   const pageRows = rows?.rows ?? [];
+  /**
+   * A workplan batch's rows have no analyzer value to act on in bulk; each is
+   * entered from its own Results Entry panel (FR-D5).
+   */
+  const selectable = header?.source !== "WORKPLAN";
   const pageAllSelected =
     pageRows.length > 0 && pageRows.every((row) => isSelected(selection, row));
   const togglePage = () =>
@@ -389,18 +396,37 @@ const RunView: React.FC<RunViewProps> = ({
     return (
       <div className="runRowEntry" data-testid={`run-row-entry-${row.id}`}>
         <p className="runRowProvenance" data-testid="run-row-provenance">
-          <FormattedMessage
-            id="run.entry.provenance"
-            values={{
-              run: header?.label ?? "",
-              analyzer: header?.analyzerName || "—",
-              test: `${row.testName || "—"}${row.part ? ` — ${row.part}` : ""}`,
-              value: `${row.value || "—"}${row.units ? ` ${row.units}` : ""}`,
-            }}
-          />{" "}
-          <FormattedMessage id="run.entry.noLot" />
+          {header?.source === "WORKPLAN" ? (
+            <FormattedMessage
+              id="run.entry.provenanceBatch"
+              values={{
+                run: header.label ?? "",
+                test: row.testName || "—",
+              }}
+            />
+          ) : (
+            <FormattedMessage
+              id="run.entry.provenance"
+              values={{
+                run: header?.label ?? "",
+                analyzer: header?.analyzerName || "—",
+                test: `${row.testName || "—"}${row.part ? ` — ${row.part}` : ""}`,
+                value: `${row.value || "—"}${row.units ? ` ${row.units}` : ""}`,
+              }}
+            />
+          )}{" "}
+          {header?.reagentLot ? (
+            <FormattedMessage
+              id="run.entry.lot"
+              values={{ lot: header.reagentLot }}
+            />
+          ) : (
+            <FormattedMessage id="run.entry.noLot" />
+          )}
         </p>
-        {notAccepted || !row.accessionNumber || !row.value ? (
+        {notAccepted ||
+        !row.accessionNumber ||
+        (!row.value && header?.source !== "WORKPLAN") ? (
           <InlineNotification
             kind="info"
             lowContrast
@@ -416,7 +442,7 @@ const RunView: React.FC<RunViewProps> = ({
             accessionNumber={row.accessionNumber}
             runEntry={{
               runId,
-              runRowId: row.id,
+              runRowId: header?.source === "WORKPLAN" ? null : row.id,
               testId: row.testId,
               componentId: row.componentId,
               value: row.stagedResult || row.value,
@@ -526,7 +552,17 @@ const RunView: React.FC<RunViewProps> = ({
                   intl.formatMessage({ id: runSourceKey(header.source) }),
                 )}
                 {setting("label.results.analyzer", header.analyzerName)}
-                {setting("label.results.method", header.method)}
+                {header.source !== "WORKPLAN" &&
+                  setting("label.results.method", header.method)}
+                {header.source === "WORKPLAN" &&
+                  setting("run.label.reagentLot", header.reagentLot)}
+                {header.batchWorkplanId &&
+                  setting(
+                    "run.label.batch",
+                    <Link href="/Workplan" data-testid="run-batch-link">
+                      <FormattedMessage id="run.action.openBatch" />
+                    </Link>,
+                  )}
                 {setting("label.results.labUnit", header.labUnits.join(", "))}
                 {setting("run.label.operator", header.operatorName)}
                 {setting(
@@ -574,6 +610,7 @@ const RunView: React.FC<RunViewProps> = ({
                   </Button>
                 )}
                 {header.analyzerId &&
+                  header.source !== "WORKPLAN" &&
                   ["OPEN", "HELD"].includes(header.state) && (
                     <Link
                       href={`/AnalyzerResults?id=${encodeURIComponent(header.analyzerId)}`}
@@ -715,17 +752,19 @@ const RunView: React.FC<RunViewProps> = ({
                 <TableHead>
                   <TableRow>
                     <TableHeader className="unifiedExpandHeader" />
-                    <TableHeader>
-                      <Checkbox
-                        id={`run-select-page-${runId}`}
-                        labelText={intl.formatMessage({
-                          id: "run.bulk.selectPage",
-                        })}
-                        hideLabel
-                        checked={pageAllSelected}
-                        onChange={togglePage}
-                      />
-                    </TableHeader>
+                    {selectable && (
+                      <TableHeader>
+                        <Checkbox
+                          id={`run-select-page-${runId}`}
+                          labelText={intl.formatMessage({
+                            id: "run.bulk.selectPage",
+                          })}
+                          hideLabel
+                          checked={pageAllSelected}
+                          onChange={togglePage}
+                        />
+                      </TableHeader>
+                    )}
                     <TableHeader>
                       <FormattedMessage id="run.row.labNumber" />
                     </TableHeader>
@@ -772,20 +811,24 @@ const RunView: React.FC<RunViewProps> = ({
                             {expandedId === row.id ? "▼" : "▶"}
                           </Button>
                         </TableCell>
-                        <TableCell>
-                          <Checkbox
-                            id={`run-select-${row.id}`}
-                            labelText={intl.formatMessage(
-                              { id: "run.bulk.selectRow" },
-                              { labNumber: row.accessionNumber || row.id },
-                            )}
-                            hideLabel
-                            checked={isSelected(selection, row)}
-                            onChange={() =>
-                              setSelection((current) => toggleRow(current, row))
-                            }
-                          />
-                        </TableCell>
+                        {selectable && (
+                          <TableCell>
+                            <Checkbox
+                              id={`run-select-${row.id}`}
+                              labelText={intl.formatMessage(
+                                { id: "run.bulk.selectRow" },
+                                { labNumber: row.accessionNumber || row.id },
+                              )}
+                              hideLabel
+                              checked={isSelected(selection, row)}
+                              onChange={() =>
+                                setSelection((current) =>
+                                  toggleRow(current, row),
+                                )
+                              }
+                            />
+                          </TableCell>
+                        )}
                         <TableCell>{row.accessionNumber || "—"}</TableCell>
                         <TableCell>
                           {row.testName || "—"}
