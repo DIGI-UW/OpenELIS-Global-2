@@ -212,6 +212,13 @@ public class AnalysisItem implements Serializable {
      */
     private boolean qcHold = false;
 
+    /**
+     * Whether the row's QC hold keeps it from release: a run's undecided failed
+     * control always does (OGC-1200 FR-C4), an open QC non-conformity only where
+     * the site says so.
+     */
+    private boolean qcHoldBlocksRelease = false;
+
     private String pastNotes;
 
     private String qualifiedDictionaryId;
@@ -248,6 +255,12 @@ public class AnalysisItem implements Serializable {
     private String qcStatus;
 
     /**
+     * OGC-1200 FR-G3: what the run this result came from says about its test's
+     * quality control, or null for a result that came from no run.
+     */
+    private org.openelisglobal.resultrun.form.RunQcFact runQc;
+
+    /**
      * The server's verdict on the row's lane (OGC-1226 FR-5): true when every row
      * of its analysis satisfies {@code ValidationSignals.isClear}. The page reads
      * it and never derives a lane of its own.
@@ -271,6 +284,11 @@ public class AnalysisItem implements Serializable {
 
     /** OGC-1364 v2: the e-signature the validator gave for this sign-off. */
     private Long signatureId;
+    /**
+     * OGC-1364 v2: whether sequential sign-off decorated this row; the level fields
+     * mean nothing while it is off.
+     */
+    private boolean sequentialSignOff;
     /** OGC-1364 v2: the reviews the analysis needs (1 without the policy). */
     private int reviewLevels = 1;
     /** OGC-1364 v2: the level the next signature signs. */
@@ -287,6 +305,14 @@ public class AnalysisItem implements Serializable {
 
     public void setSignatureId(Long signatureId) {
         this.signatureId = signatureId;
+    }
+
+    public boolean isSequentialSignOff() {
+        return sequentialSignOff;
+    }
+
+    public void setSequentialSignOff(boolean sequentialSignOff) {
+        this.sequentialSignOff = sequentialSignOff;
     }
 
     public int getReviewLevels() {
@@ -339,6 +365,7 @@ public class AnalysisItem implements Serializable {
     }
 
     public void applyReviewState(org.openelisglobal.validationpolicy.form.ReviewState state) {
+        sequentialSignOff = true;
         reviewLevels = state.levels();
         reviewLevel = state.nextLevel();
         reviewRoleName = state.nextRoleName();
@@ -377,6 +404,15 @@ public class AnalysisItem implements Serializable {
      * the queue.
      */
     private boolean autoValidated = false;
+
+    /**
+     * OGC-1017 — for a recorded automatic release: when it happened, who saved the
+     * result and the rule that released it. Blank for results released before
+     * automatic releases were recorded.
+     */
+    private String autoReleasedAt;
+    private String autoReleasedBy;
+    private String autoReleaseRule;
 
     /**
      * OGC-1030 (FR-D2) — the NCE number filed when rejecting, recorded in the
@@ -939,6 +975,14 @@ public class AnalysisItem implements Serializable {
         this.qcHold = qcHold;
     }
 
+    public boolean isQcHoldBlocksRelease() {
+        return qcHoldBlocksRelease;
+    }
+
+    public void setQcHoldBlocksRelease(boolean qcHoldBlocksRelease) {
+        this.qcHoldBlocksRelease = qcHoldBlocksRelease;
+    }
+
     public String getInnoliaResult() {
         return innoliaResult;
     }
@@ -1059,6 +1103,14 @@ public class AnalysisItem implements Serializable {
         this.qcStatus = qcStatus;
     }
 
+    public org.openelisglobal.resultrun.form.RunQcFact getRunQc() {
+        return runQc;
+    }
+
+    public void setRunQc(org.openelisglobal.resultrun.form.RunQcFact runQc) {
+        this.runQc = runQc;
+    }
+
     public boolean isClear() {
         return clear;
     }
@@ -1177,6 +1229,30 @@ public class AnalysisItem implements Serializable {
 
     public void setAutoValidated(boolean autoValidated) {
         this.autoValidated = autoValidated;
+    }
+
+    public String getAutoReleasedAt() {
+        return autoReleasedAt;
+    }
+
+    public void setAutoReleasedAt(String autoReleasedAt) {
+        this.autoReleasedAt = autoReleasedAt;
+    }
+
+    public String getAutoReleasedBy() {
+        return autoReleasedBy;
+    }
+
+    public void setAutoReleasedBy(String autoReleasedBy) {
+        this.autoReleasedBy = autoReleasedBy;
+    }
+
+    public String getAutoReleaseRule() {
+        return autoReleaseRule;
+    }
+
+    public void setAutoReleaseRule(String autoReleaseRule) {
+        this.autoReleaseRule = autoReleaseRule;
     }
 
     public String getNceNumber() {

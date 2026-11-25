@@ -400,7 +400,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
 
     private void persistComplianceStandards(SamplePatientUpdateData updateData) {
         List<String> ids = updateData.getPendingComplianceStandardIds();
-        if (ids == null || ids.isEmpty()) {
+        if (!updateData.isComplianceStandardsSent() && (ids == null || ids.isEmpty())) {
             return;
         }
         String sampleId = updateData.getSample() != null ? updateData.getSample().getId() : null;

@@ -1,4 +1,5 @@
 import { isPlausibleTemperature } from "./sections/handlingRules";
+import { sampleTimesValid } from "../dateUtils";
 
 /**
  * The complete level of Prepare Samples (FR-A7, FR-D7): what the "To
@@ -6,7 +7,8 @@ import { isPlausibleTemperature } from "./sections/handlingRules";
  * for every sample still live (typed, not rejected) at least one test or
  * panel (the server refuses a sample without, OGC-1443), a container when the
  * catalog names containers for its tests (OGC-1611 FR-G8), and a collection date
- * and time not before the admission date; and consent where the laboratory
+ * and time not before the admission date, sample times that read hh:mm
+ * (OGC-1657); and consent where the laboratory
  * requires it. The collector is optional (OGC-1419): many tubes arrive with no
  * name on them, so it never holds the step.
  */
@@ -59,6 +61,16 @@ export function prepareSamplesToContinue({
             { sample: sampleName(entry) },
           ),
           targetId: `containerType-${index}`,
+        });
+      }
+      if (!sampleTimesValid(sample)) {
+        items.push({
+          id: `sampleTimes-${index}`,
+          label: intl.formatMessage(
+            { id: "order.continue.item.sampleTimes" },
+            { sample: sampleName(entry) },
+          ),
+          targetId: `collectionTime-${index}`,
         });
       }
       if (!sample.collectionDate || !sample.collectionTime) {

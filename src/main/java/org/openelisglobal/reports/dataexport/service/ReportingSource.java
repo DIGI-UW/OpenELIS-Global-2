@@ -16,6 +16,14 @@ public interface ReportingSource {
         return List.of();
     }
 
+    /**
+     * The dates a user may apply the reporting period to, besides the definition's
+     * own date (OGC-1655). Empty when the report type offers no choice.
+     */
+    default List<String> dateBases() {
+        return List.of();
+    }
+
     void validateConfiguration(ReportSourceConfig configuration);
 
     long write(Writer output, ExportSnapshot request) throws IOException;

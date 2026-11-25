@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef, useContext } from "react";
 import {
   Button,
   Column,
-  DatePicker,
   DatePickerInput,
   Grid,
   InlineNotification,
@@ -11,6 +10,7 @@ import {
   Search,
   Tag,
 } from "@carbon/react";
+import { DatePicker } from "../common/DatePicker";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, Roles } from "../utils/Utils";
 import { format, isValid, parse } from "date-fns";

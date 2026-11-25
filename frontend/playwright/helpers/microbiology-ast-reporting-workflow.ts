@@ -3,6 +3,11 @@ import type { Locator, Page, TestInfo } from "@playwright/test";
 import { seedMicrobiologyAstReporting } from "./seed-microbiology-data";
 import { readMicrobiologyPatientReport } from "./microbiology-patient-report";
 import { LONG_TIMEOUT } from "./timeouts";
+import {
+  caseBarButton,
+  openMicrobiologyCaseScope,
+  releaseFinalReport,
+} from "./microbiology-ui";
 
 export async function startAstRun(
   page: Page,
@@ -14,8 +19,11 @@ export async function startAstRun(
     .click();
   const dialog = page.getByRole("dialog");
   await dialog
-    .getByLabel("Breakpoint standard", { exact: true })
+    .getByRole("combobox", { name: "Breakpoint standard", exact: true })
     .selectOption(breakpointStandardId);
+  await dialog
+    .getByRole("combobox", { name: "Clinical indication", exact: true })
+    .selectOption("NOT_STATED");
   await expect(dialog.getByLabel(/Reason/)).toHaveCount(0);
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
 }
@@ -53,7 +61,6 @@ export async function runMicrobiologyAstReportingWorkflow(
   await page.goto(`/Microbiology/cases/${seeded.caseId}`, {
     waitUntil: "domcontentloaded",
   });
-  const section = page.getByLabel("Testing section", { exact: true });
   await page
     .getByLabel("New note", { exact: true })
     .fill("M6 internal bench observation");
@@ -65,7 +72,7 @@ export async function runMicrobiologyAstReportingWorkflow(
   await page.getByText("Send with Result", { exact: true }).click();
   await page.getByRole("button", { name: "Save note", exact: true }).click();
   await expect(page.getByLabel("New note", { exact: true })).toHaveValue("");
-  await section.selectOption("AST");
+  await openMicrobiologyCaseScope(page, "AST");
   const isolate = page.getByTestId(`ast-isolate-${seeded.isolateId}`);
   await expect(isolate).toBeVisible({ timeout: LONG_TIMEOUT });
   await startAstRun(page, isolate, seeded.activeBreakpointStandardId!);
@@ -78,14 +85,12 @@ export async function runMicrobiologyAstReportingWorkflow(
     "Record and validate the initial susceptibility readings",
   );
   await enterAndValidateAstRun(page, firstRun, "4");
-  await section.selectOption("REPORT");
-  await page
-    .getByRole("button", { name: "Release partial report", exact: true })
-    .click();
+  await openMicrobiologyCaseScope(page, "REPORT");
+  await caseBarButton(page, "Release partial report").click();
   await expect(
     page.getByLabel("Report version", { exact: true }).locator("option"),
   ).toHaveCount(2, { timeout: LONG_TIMEOUT });
-  await section.selectOption("AST");
+  await openMicrobiologyCaseScope(page, "AST");
   await checkpoint?.(
     2,
     "Issue the first partial report, then repeat susceptibility testing",
@@ -109,7 +114,7 @@ export async function runMicrobiologyAstReportingWorkflow(
     .fill("Repeat confirmed for this agent only");
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
   await expect(dialog).toHaveCount(0, { timeout: LONG_TIMEOUT });
-  await section.selectOption("REPORT");
+  await openMicrobiologyCaseScope(page, "REPORT");
   const reportTable = page.getByRole("table", { name: /^ISO-1/ });
   await expect(
     reportTable.getByRole("cell", { name: "Resistant", exact: true }),
@@ -117,9 +122,7 @@ export async function runMicrobiologyAstReportingWorkflow(
   await expect(
     reportTable.getByRole("cell", { name: "Susceptible", exact: true }),
   ).toHaveCount(1);
-  await page
-    .getByRole("button", { name: "Release partial report", exact: true })
-    .click();
+  await caseBarButton(page, "Release partial report").click();
   await checkpoint?.(
     3,
     "Select the repeat for one drug while retaining the other drug result",
@@ -137,14 +140,12 @@ export async function runMicrobiologyAstReportingWorkflow(
     "Verify that the earlier issued report remains unchanged",
   );
   await versions.selectOption("");
-  await page
-    .getByRole("button", { name: "Release final report", exact: true })
-    .click();
+  await releaseFinalReport(page);
   await expect(versions.locator("option")).toHaveCount(4, {
     timeout: LONG_TIMEOUT,
   });
   await page.reload({ waitUntil: "domcontentloaded" });
-  await section.selectOption("AST");
+  await openMicrobiologyCaseScope(page, "AST");
   await expect(isolate).toBeVisible({ timeout: LONG_TIMEOUT });
   await expect(
     isolate.getByRole("button", { name: "Start AST run", exact: true }),
@@ -152,7 +153,7 @@ export async function runMicrobiologyAstReportingWorkflow(
   await expect(
     isolate.getByRole("button", { name: "Repeat", exact: true }),
   ).toHaveCount(0);
-  await section.selectOption("REPORT");
+  await openMicrobiologyCaseScope(page, "REPORT");
   await expect(
     reportTable.getByRole("cell", { name: "Resistant", exact: true }),
   ).toHaveCount(1);
@@ -170,8 +171,8 @@ export async function runMicrobiologyAstReportingWorkflow(
   const { text, pdf } = await readMicrobiologyPatientReport(page, seeded);
   expect(text).toContain(seeded.accessionNumber);
   expect(text).toContain("ISO-1");
-  expect(text).toContain("64 ug/mL Resistant");
-  expect(text).toContain("4 ug/mL Susceptible");
+  expect(text).toContain("64 mg/L Resistant");
+  expect(text).toContain("4 mg/L Susceptible");
   expect(text).toContain("M6 external clinical note");
   expect(text).not.toContain("M6 internal bench observation");
   const sections = [

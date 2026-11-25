@@ -75,6 +75,30 @@ public class ResultRun extends BaseObject<Long> {
     @Column(name = "completed_at")
     private Timestamp completedAt;
 
+    /** The workplan batch this run is (FR-B2, FR-G4); null for other sources. */
+    @Column(name = "batch_workplan_id")
+    private Long batchWorkplanId;
+
+    /** The reagent lot the run's values were produced with (FR-E3). */
+    @Column(name = "reagent_lot_id")
+    private Long reagentLotId;
+
+    public Long getBatchWorkplanId() {
+        return batchWorkplanId;
+    }
+
+    public void setBatchWorkplanId(Long batchWorkplanId) {
+        this.batchWorkplanId = batchWorkplanId;
+    }
+
+    public Long getReagentLotId() {
+        return reagentLotId;
+    }
+
+    public void setReagentLotId(Long reagentLotId) {
+        this.reagentLotId = reagentLotId;
+    }
+
     @Override
     public Long getId() {
         return id;
@@ -87,7 +111,12 @@ public class ResultRun extends BaseObject<Long> {
 
     /** The name the lab reads: RUN-42. */
     public String getLabel() {
-        return id == null ? null : "RUN-" + id;
+        return labelOf(id);
+    }
+
+    /** How a run is named to users: RUN- and its id. */
+    public static String labelOf(Long runId) {
+        return runId == null ? null : "RUN-" + runId;
     }
 
     public ResultRunSource getSource() {

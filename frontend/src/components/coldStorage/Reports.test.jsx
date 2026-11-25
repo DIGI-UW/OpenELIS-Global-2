@@ -1,7 +1,7 @@
 import React from "react";
 import { vi } from "vitest";
 import { differenceInCalendarDays } from "date-fns";
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../languages/en.json";
@@ -56,6 +56,71 @@ describe("Reports", () => {
    * undefined and every row was skipped - leaving a table of headers with no
    * empty-state row either, because rows.length was non-zero.
    */
+  it("leaves its notifications to the dashboard's single toast area", async () => {
+    fetchReportExcursions.mockResolvedValue([]);
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <NotificationContext.Provider
+          value={{
+            notificationVisible: true,
+            notifications: [{ id: 1, kind: "error", title: "Shown once" }],
+            setNotificationVisible: vi.fn(),
+            addNotification: vi.fn(),
+            removeNotification: vi.fn(),
+          }}
+        >
+          <Reports />
+        </NotificationContext.Provider>
+      </IntlProvider>,
+    );
+
+    expect(
+      await screen.findByText(
+        "No excursions available for the selected filters.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Shown once")).not.toBeInTheDocument();
+  });
+
+  it("asks for both dates before generating a report", async () => {
+    const addNotification = vi.fn();
+    fetchReportExcursions.mockResolvedValue([]);
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <NotificationContext.Provider
+          value={{
+            notificationVisible: false,
+            setNotificationVisible: vi.fn(),
+            addNotification,
+          }}
+        >
+          <Reports />
+        </NotificationContext.Provider>
+      </IntlProvider>,
+    );
+    const start = screen.getByLabelText("Start date");
+    act(() => start.focus());
+    fireEvent.click(start);
+    fireEvent.input(start, { target: { value: "" } });
+    const generate = screen.getByRole("button", { name: "Generate Report" });
+    act(() => {
+      fireEvent.touchStart(generate);
+      fireEvent.mouseDown(generate);
+      generate.focus();
+    });
+    await act(async () => {
+      fireEvent.click(generate);
+    });
+
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        title: "Missing date range",
+        subtitle: "Choose a start date and an end date to generate a report.",
+      }),
+    );
+  });
+
   it("renders a row per excursion the endpoint returns", async () => {
     fetchReportExcursions.mockResolvedValue([EXCURSION]);
 

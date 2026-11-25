@@ -8,6 +8,7 @@ import { vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
+import { MemoryRouter } from "react-router-dom";
 import messages from "../../languages/en.json";
 import ValidationReviewPanel from "./ValidationReviewPanel";
 
@@ -89,15 +90,17 @@ const row = (overrides = {}) => ({
 const renderPanel = (data, props = {}) =>
   render(
     <IntlProvider locale="en" messages={messages}>
-      <ValidationReviewPanel
-        data={data}
-        rows={props.rows || [data]}
-        configurationProperties={props.configurationProperties || {}}
-        qcAck={props.qcAck || { required: false, satisfied: true }}
-        onActionDone={props.onActionDone || vi.fn()}
-        onStale={props.onStale}
-        onQcHold={props.onQcHold}
-      />
+      <MemoryRouter>
+        <ValidationReviewPanel
+          data={data}
+          rows={props.rows || [data]}
+          configurationProperties={props.configurationProperties || {}}
+          qcAck={props.qcAck || { required: false, satisfied: true }}
+          onActionDone={props.onActionDone || vi.fn()}
+          onStale={props.onStale}
+          onQcHold={props.onQcHold}
+        />
+      </MemoryRouter>
     </IntlProvider>,
   );
 
@@ -149,6 +152,114 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
     cleanup();
     renderPanel(row({ qcStatus: "FAIL" }));
     expect(screen.getByTestId("review-qc")).toHaveTextContent("QC failed");
+  });
+
+  // OGC-1200 FR-G3: the run's verdict and what it recorded about the test.
+  const runQc = (overrides = {}) => ({
+    runId: 12,
+    runLabel: "RUN-12",
+    verdict: "FAIL",
+    decision: "ACCEPT_DESPITE",
+    reason: "Checked against a second run",
+    nceNumber: "NCE-2026-00041",
+    controls: [
+      {
+        id: "c1",
+        level: "NORMAL",
+        lotNumber: "LOT-N",
+        observed: "120",
+        expected: "100 ± 5",
+        verdict: "FAIL",
+        verdictSource: "COMPUTED",
+        operator: "Ama Kila",
+        recordedAt: null,
+      },
+    ],
+    ...overrides,
+  });
+
+  const openQcSection = () =>
+    fireEvent.click(
+      screen
+        .getByTestId("ref-section-qc")
+        .querySelector(".unifiedRefSectionHeader"),
+    );
+
+  it("reads a result's QC from the run it came from: the run, the decision and each control", () => {
+    const consoleError = vi.spyOn(console, "error");
+    renderPanel(row({ qcStatus: "FAIL", runQc: runQc() }));
+
+    expect(screen.getByTestId("review-qc")).toHaveTextContent("QC failed");
+    expect(screen.getByTestId("ref-section-qc")).toHaveTextContent(
+      "QC failed · RUN-12",
+    );
+    openQcSection();
+    expect(screen.getByTestId("run-qc-provenance-run")).toHaveTextContent(
+      "RUN-12",
+    );
+    expect(screen.getByTestId("run-qc-provenance-run")).toHaveAttribute(
+      "href",
+      "/Results?run=12",
+    );
+    expect(screen.getByTestId("run-qc-provenance-verdict")).toHaveTextContent(
+      "Fail",
+    );
+    expect(screen.getByTestId("run-qc-provenance-decision")).toHaveTextContent(
+      "Accept despite QC failure · Reason: Checked against a second run · Non-conformity NCE-2026-00041",
+    );
+    expect(
+      screen.getByTestId("run-qc-provenance-control-c1"),
+    ).toHaveTextContent(
+      "Fail NORMAL · LOT-N · 120 against 100 ± 5 · Judged against the QC target · Ama Kila",
+    );
+    expect(
+      screen.getByText("No reagent lot is recorded on this run."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Reagent and control lots for this analysis are reviewed on the Results Entry page.",
+      ),
+    ).toBeNull();
+    expect(
+      consoleError.mock.calls.filter((call) =>
+        String(call[0]).includes("validateDOMNesting"),
+      ),
+    ).toEqual([]);
+    consoleError.mockRestore();
+  });
+
+  it("names the run with no QC line when the run recorded no control for the test", () => {
+    renderPanel(
+      row({
+        qcStatus: "UNKNOWN",
+        runQc: runQc({
+          verdict: "NOT_REQUIRED",
+          decision: null,
+          reason: null,
+          nceNumber: null,
+          controls: [],
+        }),
+      }),
+    );
+
+    expect(screen.queryByTestId("review-qc")).toBeNull();
+    expect(screen.getByTestId("ref-section-qc")).toHaveTextContent("RUN-12");
+    openQcSection();
+    expect(screen.getByTestId("run-qc-provenance-verdict")).toHaveTextContent(
+      "Not required",
+    );
+    expect(screen.queryByTestId("run-qc-provenance-decision")).toBeNull();
+  });
+
+  it("points a result from no run to Results Entry for its lots", () => {
+    renderPanel(row({ qcStatus: "UNKNOWN" }));
+    openQcSection();
+    expect(screen.queryByTestId("run-qc-provenance")).toBeNull();
+    expect(
+      screen.getByText(
+        "Reagent and control lots for this analysis are reviewed on the Results Entry page.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("a missing method or analyzer reads 'Not recorded' instead of blank", () => {
@@ -360,7 +471,7 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
     });
     expect(screen.getByText("Validate & release")).toBeDisabled();
     expect(screen.getByTestId("review-qc-hold-hint")).toHaveTextContent(
-      "Release blocked: a failed QC control holds this result until its non-conformity is closed.",
+      "Release blocked: a failed QC control holds this result, through an open non-conformity or a failed control in the run it came from.",
     );
     expect(screen.getByText("Validate & release")).toHaveAttribute(
       "aria-describedby",
@@ -397,6 +508,17 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
     });
     expect(screen.getByText("Validate & release")).toBeEnabled();
     expect(screen.queryByTestId("review-qc-hold-hint")).toBeNull();
+  });
+
+  // OGC-1200 FR-C4: a run's failed control holds its results whatever the site says.
+  it("a result its run holds on a failed control cannot be released, even in a warn-only lab", () => {
+    renderPanel(row({ qcHold: true, qcHoldBlocksRelease: true }), {
+      configurationProperties: { QC_FAIL_BLOCKS_VALIDATION: "false" },
+    });
+    expect(screen.getByText("Validate & release")).toBeDisabled();
+    expect(screen.getByTestId("review-qc-hold-hint")).toHaveTextContent(
+      "Release blocked: a failed QC control holds this result",
+    );
   });
 
   it("Modify needs a reason when the lab requires one, then posts the new value as a modification", () => {
@@ -647,6 +769,7 @@ describe("ValidationReviewPanel sequential sign-off (OGC-1364 v2)", () => {
     signerName: name,
     roleName: "Validation",
     signedAt: "2026-11-13T09:02:00Z",
+    signedWhen: "13/11/2026 12:02",
     ...extra,
   });
 
@@ -681,6 +804,31 @@ describe("ValidationReviewPanel sequential sign-off (OGC-1364 v2)", () => {
     expect(release).toHaveAttribute("data-meaning", "VALIDATED_AND_RELEASED");
     expect(screen.getByTestId("review-sign-off-1")).toHaveTextContent(
       /Level 1 of 2: Ama Kila, Validation/,
+    );
+  });
+
+  // QA on OGC-1364: the time read the browser's format and zone, unlike History.
+  it("shows each signature's time as the server wrote it, in any browser time zone", () => {
+    renderPanel(
+      row({
+        reviewLevels: 2,
+        reviewLevel: 2,
+        signOffs: [signOff(1, "Ama Kila")],
+        supersededSignOffs: [
+          signOff(1, "Bo Lin", {
+            signedAt: "2026-11-12T22:15:00Z",
+            signedWhen: "13/11/2026 01:15",
+            supersededReason: "MODIFIED",
+          }),
+        ],
+      }),
+    );
+
+    expect(screen.getByTestId("review-sign-off-1")).toHaveTextContent(
+      "Level 1 of 2: Ama Kila, Validation, 13/11/2026 12:02",
+    );
+    expect(screen.getByTestId("review-sign-off-superseded")).toHaveTextContent(
+      "Level 1 of 2: Bo Lin, 13/11/2026 01:15 (superseded, value modified)",
     );
   });
 

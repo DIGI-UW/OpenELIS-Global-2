@@ -1,0 +1,32 @@
+{
+  "id": "SAMPLE_REJECTIONS",
+  "version": 1,
+  "label": "Sample rejections",
+  "source": "NON_CONFORMANCE",
+  "dateAnchor": "rejectionDate",
+  "layouts": [
+    "TABLE"
+  ],
+  "attributes": [
+    "ncAccessionNumber",
+    "rejectionReason",
+    "rejectionDate",
+    "ncOccurrenceId",
+    "ncSpecimenId",
+    "ncDateBasis",
+    "ncRecordedDate",
+    "ncRecordSource",
+    "ncRequestDate",
+    "ncSampleType",
+    "ncTest"
+  ],
+  "catalogs": [
+    "location"
+  ],
+  "filters": [
+    "labSectionIds"
+  ],
+  "defaultColumns": {
+    "TABLE": []
+  }
+}

@@ -34,6 +34,7 @@ import {
   consentApplies,
 } from "./prepareSamplesChecklist";
 import { samplesFromPendingRequests } from "./pendingRequestSamples";
+import { sampleTimesValid } from "../dateUtils";
 import { proposeContainers } from "../api/containerProposalApi";
 import { applyProposals, proposalSignature } from "./containerProposals";
 import { orderSavedMessage } from "../orderSavedMessage";
@@ -252,7 +253,10 @@ const OrderCollect = () => {
   // Published under the Property enum's name, the way REQUESTER_REQUIRED is.
   const consentRequired = consentApplies(configurationProperties, orderData);
   const consentSatisfied = !consentRequired || consentData.consentGiven;
-  const canSave = samples?.length > 0 && samples.some((s) => s.sampleTypeId);
+  const canSave =
+    samples?.length > 0 &&
+    samples.some((s) => s.sampleTypeId) &&
+    samples.every(sampleTimesValid);
   const toContinue = prepareSamplesToContinue({
     samples,
     labNumber,

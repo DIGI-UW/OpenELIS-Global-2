@@ -89,6 +89,13 @@ const openQueueFor = async (page: Page, accession: string) => {
   await loaded;
 };
 
+const searchSettings = async (page: Page, text: string) => {
+  const search = page.locator("#config-menu-search");
+  if (await search.isVisible()) {
+    await search.fill(text);
+  }
+};
+
 const openResultConfiguration = async (page: Page) => {
   const menu = new SiteInformationPage(page, "ResultConfigurationMenu");
   await menu.goto();
@@ -97,14 +104,28 @@ const openResultConfiguration = async (page: Page) => {
 
 const setFlag = async (page: Page, on: boolean) => {
   const menu = await openResultConfiguration(page);
-  await page.locator("#config-menu-search").fill("useMultiLevelValidation");
+  await searchSettings(page, "useMultiLevelValidation");
   await menu.setBooleanSetting(FLAG, on);
 };
 
 const flagValue = async (page: Page) => {
   const menu = await openResultConfiguration(page);
-  await page.locator("#config-menu-search").fill("useMultiLevelValidation");
+  await searchSettings(page, "useMultiLevelValidation");
   return (await menu.getSettingValue(FLAG)).trim();
+};
+
+const SELF_BLOCK = "Block validating your own results";
+
+const setSelfValidationBlock = async (page: Page, on: boolean) => {
+  const menu = await openResultConfiguration(page);
+  await searchSettings(page, "blockSelfValidation");
+  await menu.setBooleanSetting(SELF_BLOCK, on);
+};
+
+const selfValidationBlockOn = async (page: Page) => {
+  const menu = await openResultConfiguration(page);
+  await searchSettings(page, "blockSelfValidation");
+  return /true/i.test((await menu.getSettingValue(SELF_BLOCK)).trim());
 };
 
 const choosePolicy = async (page: Page, label: string) => {
@@ -380,15 +401,12 @@ test.describe("OGC-1364 validation policy", () => {
       await expect(page.getByTestId("validation-policy")).toBeVisible({
         timeout: NAV_TIMEOUT,
       });
-      await page.locator("#config-menu-search").fill("validate all results");
-      const names = page.locator("tbody tr td:nth-child(2)");
-      await expect(names.filter({ hasText: FLAG })).toHaveCount(1, {
-        timeout: UI_TIMEOUT,
-      });
       await expect(
-        names.filter({ hasText: /^validate all results$/ }),
-      ).toHaveCount(0);
-      await page.locator("#config-menu-search").fill("");
+        page.getByTestId("settings-group-validation").getByText(FLAG, {
+          exact: true,
+        }),
+      ).toBeVisible({ timeout: UI_TIMEOUT });
+      await expect(page.getByText(/^validate all results$/)).toHaveCount(0);
     });
 
     await test.step("No review takes the reviews to 0 and is kept", async () => {
@@ -526,10 +544,23 @@ test.describe("OGC-1364 validation policy", () => {
       await main.locator('[data-testid^="review-row-"]').first().click();
       await main.getByRole("button", { name: "Sign level 1 of 2" }).click();
       await signIfAsked(page);
+      await expect(main.getByTestId("show-waiting-toggle")).toContainText(
+        "Show results waiting for others (1)",
+        { timeout: LONG_TIMEOUT },
+      );
+      await expect(main.locator('[data-testid^="review-level-"]')).toHaveCount(
+        0,
+      );
+      await main
+        .getByTestId("show-waiting-toggle")
+        .locator("label")
+        .first()
+        .click();
       await expect(main.getByText("Level 2 of 2")).toBeVisible({
-        timeout: LONG_TIMEOUT,
+        timeout: UI_TIMEOUT,
       });
-      await main.locator('[data-testid^="review-row-"]').first().click();
+      await expect(main.locator('[data-testid^="review-row-"]')).toHaveCount(0);
+      await main.getByRole("button", { name: "Expand Row" }).first().click();
       await expect(main.getByTestId("review-level-blocked")).toContainText(
         "You signed a level of this result.",
       );
@@ -538,6 +569,9 @@ test.describe("OGC-1364 validation policy", () => {
       ).toBeDisabled();
       await expect(main.getByTestId("review-sign-off-1")).toContainText(
         "Level 1 of 2",
+      );
+      await expect(main.getByTestId("review-sign-off-1")).toHaveText(
+        /, \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/,
       );
     });
 
@@ -550,8 +584,135 @@ test.describe("OGC-1364 validation policy", () => {
         await expect(main.getByText("Level 2 of 2")).toBeVisible({
           timeout: LONG_TIMEOUT,
         });
-        await main.getByRole("button", { name: "Expand Row" }).first().click();
+        await main.locator('[data-testid^="review-row-"]').first().click();
         await main.getByRole("button", { name: "Validate & release" }).click();
+        await signIfAsked(second.page);
+        await openQueueFor(second.page, accession);
+        await expect(
+          second.page.getByTestId("release-all-clear-why-queueEmpty"),
+        ).toContainText("Nothing is waiting for validation.", {
+          timeout: LONG_TIMEOUT,
+        });
+      } finally {
+        await second.context.close();
+      }
+    });
+  });
+
+  test("a result its author may not validate waits for others and offers its author no Review", async ({
+    page,
+  }) => {
+    const blockBefore = await selfValidationBlockOn(page);
+    try {
+      await test.step("Every result waits for a validator, and authors may not validate their own", async () => {
+        await restoreLabDefault(page, {
+          trigger: "ALL",
+          levels: 1,
+          levelRoles: [],
+        });
+        await setSelfValidationBlock(page, true);
+      });
+
+      await test.step("The author finds an abnormal result among those waiting for others, without Review", async () => {
+        const order = await createEsigSampleOrder(page);
+        expect(order, "a sample order is needed").toBeTruthy();
+        await enterResult(page, order!.accessionNumber, "12");
+        await openQueueFor(page, order!.accessionNumber);
+        const main = page.getByRole("main");
+        await expect(main.getByTestId("show-waiting-toggle")).toContainText(
+          "Show results waiting for others (1)",
+          { timeout: LONG_TIMEOUT },
+        );
+        await main
+          .getByTestId("show-waiting-toggle")
+          .locator("label")
+          .first()
+          .click();
+        const expand = main.getByRole("button", { name: "Expand Row" }).first();
+        await expect(expand).toBeVisible({ timeout: UI_TIMEOUT });
+        await expect(main.locator('[data-testid^="review-row-"]')).toHaveCount(
+          0,
+        );
+        await expand.click();
+        await expect(
+          main.getByText(
+            "You entered this result; another validator must validate it.",
+          ),
+        ).toBeVisible({ timeout: UI_TIMEOUT });
+        await expect(
+          main.getByRole("button", { name: "Validate & release" }),
+        ).toBeDisabled();
+      });
+    } finally {
+      await setSelfValidationBlock(page, blockBefore);
+    }
+  });
+
+  test("one Reviewed signature signs level 1 of the clear results, and another validator releases them all clear", async ({
+    page,
+    browser,
+    baseURL,
+  }) => {
+    let accession = "";
+
+    await test.step("The lab-wide default asks for two reviews", async () => {
+      await restoreLabDefault(page, {
+        trigger: "ALL",
+        levels: 2,
+        levelRoles: [],
+      });
+    });
+
+    await test.step("Sign level 1 for all clear signs it and the result waits for others", async () => {
+      const order = await createEsigSampleOrder(page);
+      expect(order, "a sample order is needed").toBeTruthy();
+      accession = order!.accessionNumber;
+      await enterResult(page, accession, "6");
+      await openQueueFor(page, accession);
+      const main = page.getByRole("main");
+      const sign = main.getByTestId("sign-all-clear");
+      await expect(sign).toHaveText("Sign level 1 for all clear (1)", {
+        timeout: LONG_TIMEOUT,
+      });
+      await expect(main.getByTestId("release-all-clear")).toHaveText(
+        "Release all clear (0)",
+      );
+      await sign.click();
+      const modal = page.getByTestId("release-all-clear-modal");
+      await expect(modal.getByTestId("release-all-clear-body")).toContainText(
+        "Your signature signs that level only",
+      );
+      await modal
+        .getByTestId("release-all-clear-sign")
+        .getByRole("button")
+        .click();
+      await signIfAsked(page);
+      await expect(
+        page.getByText("Signed the next review level of 1 result."),
+      ).toBeVisible({ timeout: LONG_TIMEOUT });
+      await expect(main.getByTestId("sign-all-clear")).toBeHidden({
+        timeout: LONG_TIMEOUT,
+      });
+      await expect(main.getByTestId("show-waiting-toggle")).toContainText(
+        "Show results waiting for others (1)",
+      );
+    });
+
+    await test.step("Another validator releases it all clear at level 2", async () => {
+      const username = await createValidator(page);
+      const second = await signInAs(browser, baseURL!, username);
+      try {
+        await openQueueFor(second.page, accession);
+        const main = second.page.getByRole("main");
+        const release = main.getByTestId("release-all-clear");
+        await expect(release).toHaveText("Release all clear (1)", {
+          timeout: LONG_TIMEOUT,
+        });
+        await release.click();
+        await second.page
+          .getByTestId("release-all-clear-sign")
+          .getByRole("button")
+          .click();
         await signIfAsked(second.page);
         await openQueueFor(second.page, accession);
         await expect(

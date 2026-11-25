@@ -18,7 +18,7 @@ import { useOrderContext } from "../OrderContext";
 import { useNewOrderReset } from "../useNewOrderReset";
 import {
   describeUnmetRequirements,
-  hasRequesterOrRequestor,
+  fieldOrderRequirements,
 } from "../saveRequirements";
 import SaveRequirementsNotice from "../SaveRequirementsNotice";
 import { NotificationContext } from "../../layout/Layout";
@@ -37,7 +37,13 @@ import MicroOrderPreview, {
   MicroSampleCaseNote,
   useMicroOrderPreview,
 } from "./sections/MicroOrderPreview";
-import ComplianceStandardsSection from "./sections/ComplianceStandardsSection";
+import ComplianceStandardsSection, {
+  selectedStandardIds,
+} from "./sections/ComplianceStandardsSection";
+import EnvironmentalOrderBranch, {
+  orderBranchOf,
+  REGULATION_DRIVEN,
+} from "./sections/EnvironmentalOrderBranch";
 import { currentLocalTime, todayLocalIso } from "../dateUtils";
 import "../order-workflow.scss";
 import { orderSavedMessage } from "../orderSavedMessage";
@@ -74,6 +80,7 @@ const EnvironmentalOrderEnter = () => {
   const [printLabelsExpanded, setPrintLabelsExpanded] = useState(false);
   const [errors, setErrors] = useState({});
   const [showNceForm, setShowNceForm] = useState(false);
+  const [planTestIds, setPlanTestIds] = useState(null);
 
   // Seed workflowType + clear patient status on mount.
   useEffect(() => {
@@ -139,24 +146,19 @@ const EnvironmentalOrderEnter = () => {
     envFields.vecCollectionSiteId ||
     envFields.vecCollectionSiteName
   );
-  const hasSampleTypes = samples.some((s) => s.sampleTypeId);
-  const allSamplesHaveTests = samples
-    .filter((s) => s.sampleTypeId)
-    .every((s) => (s.tests?.length || 0) + (s.panels?.length || 0) > 0);
+  const orderBranch = orderBranchOf(orderData);
+  const regulationDriven = orderBranch === REGULATION_DRIVEN;
   const saveRequirements = [
+    ...fieldOrderRequirements({
+      labNumber: localLabNumber,
+      hasSite: hasPatientOrSite,
+      siteLabelId: "order.save.requirement.samplingSite",
+      sampleOrderItems: orderData?.sampleOrderItems,
+      samples,
+    }),
     {
-      met: Boolean(localLabNumber),
-      labelId: "order.save.requirement.labNumber",
-    },
-    { met: hasPatientOrSite, labelId: "order.save.requirement.samplingSite" },
-    {
-      met: hasRequesterOrRequestor(orderData?.sampleOrderItems),
-      labelId: "order.save.requirement.requesterOrRequestor",
-    },
-    { met: hasSampleTypes, labelId: "order.save.requirement.sampleType" },
-    {
-      met: hasSampleTypes && allSamplesHaveTests,
-      labelId: "order.save.requirement.testsPerSample",
+      met: !regulationDriven || selectedStandardIds(orderData).length > 0,
+      labelId: "order.save.requirement.complianceStandard",
     },
   ];
   const canSave = saveRequirements.every((requirement) => requirement.met);
@@ -392,6 +394,12 @@ const EnvironmentalOrderEnter = () => {
           </Accordion>
         </Tile>
 
+        <EnvironmentalOrderBranch
+          orderData={orderData}
+          setOrderData={setOrderData}
+          isReadOnly={isReadOnly && !isEditMode}
+        />
+
         {/* Sampling Site */}
         <VectorSection
           orderData={orderData}
@@ -423,12 +431,17 @@ const EnvironmentalOrderEnter = () => {
           workflowType={WORKFLOW_TYPE}
         />
 
-        {/* Applicable Compliance Standards */}
-        <ComplianceStandardsSection
-          orderData={orderData}
-          setOrderData={setOrderData}
-          isReadOnly={isReadOnly && !isEditMode}
-        />
+        {/* Applicable Compliance Standards (regulation-driven orders) */}
+        {regulationDriven && (
+          <ComplianceStandardsSection
+            orderData={orderData}
+            setOrderData={setOrderData}
+            isReadOnly={isReadOnly && !isEditMode}
+            samples={samples}
+            setSamples={setSamples}
+            onPlanChange={setPlanTestIds}
+          />
+        )}
 
         {/* Sample & Test Selection */}
         <SampleTestSection
@@ -438,6 +451,8 @@ const EnvironmentalOrderEnter = () => {
           setOrderData={setOrderData}
           isReadOnly={isReadOnly && !isEditMode}
           workflowType={WORKFLOW_TYPE}
+          planTestIds={regulationDriven ? planTestIds : null}
+          regulationDriven={regulationDriven}
           renderSampleNote={(index) => (
             <MicroSampleCaseNote preview={microPreview} sampleIndex={index} />
           )}

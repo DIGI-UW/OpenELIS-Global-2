@@ -27,10 +27,7 @@ import { Notification } from "@carbon/icons-react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import "./AlertSettings.scss";
 import { fetchAlertConfig, saveAlertConfig } from "../api";
-import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/CustomNotification";
+import { NotificationKinds } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import { hasRole, Roles } from "../../utils/Utils";
@@ -65,7 +62,7 @@ const getAlertTypes = (intl) => [
 
 function AlertSettings() {
   const intl = useIntl();
-  const { notificationVisible, setNotificationVisible, addNotification } =
+  const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   // AlertNotificationConfigRestController is ADMIN-only at class level, so a
@@ -216,8 +213,6 @@ function AlertSettings() {
 
   return (
     <div className="oe-alertSettings">
-      {notificationVisible === true ? <AlertDialog /> : ""}
-
       <Section>
         <div className="oe-alertSettings-headerRow">
           <Notification size={24} />

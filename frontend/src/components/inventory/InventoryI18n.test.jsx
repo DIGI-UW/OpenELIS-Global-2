@@ -55,6 +55,38 @@ describe("inventory i18n", () => {
     expect(absent).toEqual([]);
   });
 
+  it("defines every reason and transaction type the lot screens render by prefix", () => {
+    const prefixed = [
+      ...[
+        "EXPIRED",
+        "DAMAGED",
+        "CONTAMINATED",
+        "RECALLED",
+        "QC_FAILED",
+        "OTHER",
+      ].map((reason) => `disposal.reason.${reason}`),
+      ...[
+        "INVENTORY_COUNT",
+        "DAMAGED",
+        "FOUND",
+        "ERROR_CORRECTION",
+        "EXPIRED_DISPOSAL",
+        "OTHER",
+      ].map((reason) => `adjustment.reason.${reason}`),
+      ...[
+        "RECEIPT",
+        "CONSUMPTION",
+        "ADJUSTMENT",
+        "DISPOSAL",
+        "OPENING",
+        "QC_TEST",
+        "MANUAL",
+      ].map((type) => `transaction.type.${type}`),
+    ];
+
+    expect(prefixed.filter((key) => !(key in messages))).toEqual([]);
+  });
+
   it("defines every error code the inventory backend can send to a form", () => {
     const backendCodes = [
       "reports.error.unknownReportType",

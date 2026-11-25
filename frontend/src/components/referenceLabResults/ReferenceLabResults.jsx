@@ -1,7 +1,6 @@
 import {
   Button,
   Column,
-  DatePicker,
   DatePickerInput,
   Grid,
   InlineNotification,
@@ -22,6 +21,7 @@ import {
   TableRow,
   Tag,
 } from "@carbon/react";
+import { DatePicker } from "../common/DatePicker";
 import {
   CheckmarkOutline,
   Send,
@@ -36,6 +36,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { unstable_batchedUpdates } from "react-dom";
 import { FormattedMessage, useIntl } from "react-intl";
 import { Link as RouterLink, useHistory, useLocation } from "react-router-dom";
 import { AlertDialog } from "../common/CustomNotification";
@@ -460,10 +461,12 @@ const ReferenceLabResults = () => {
               dateFormat={siteDate.dateFormat}
               parseDate={siteDate.parseDate}
               datePickerType="range"
-              onChange={([from, to]) => {
-                setFilterDateFrom(from || null);
-                setFilterDateTo(to || null);
-              }}
+              onChange={([from, to]) =>
+                unstable_batchedUpdates(() => {
+                  setFilterDateFrom(from || null);
+                  setFilterDateTo(to || null);
+                })
+              }
               value={[filterDateFrom, filterDateTo].filter(Boolean)}
             >
               <DatePickerInput
