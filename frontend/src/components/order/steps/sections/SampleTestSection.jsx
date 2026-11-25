@@ -347,6 +347,9 @@ const SampleTestSection = ({
    */
   const planAppliedRef = useRef({});
   const planKey = planTestIds ? planTestIds.map(String).join(",") : null;
+  const sampleTypesKey = samples
+    .map((sample) => sample?.sampleTypeId || "")
+    .join(",");
   useEffect(() => {
     if (!regulationDriven) {
       planAppliedRef.current = {};
@@ -398,7 +401,7 @@ const SampleTestSection = ({
     if (changed) {
       applySamples(updated);
     }
-  }, [planKey, testsPerSample, samples.length]);
+  }, [planKey, testsPerSample, sampleTypesKey]);
 
   const hasSetTest = (sample, index) =>
     (sample.tests || []).some((selected) => {
@@ -498,12 +501,26 @@ const SampleTestSection = ({
   };
 
   const handleRemoveSample = (index) => {
+    // Keep each surviving row's plan history when its array index shifts.
+    const remaining = {};
+    Object.entries(planAppliedRef.current).forEach(([key, state]) => {
+      const [row, type] = key.split(":");
+      const rowIndex = Number(row);
+      if (rowIndex !== index) {
+        remaining[`${rowIndex > index ? rowIndex - 1 : rowIndex}:${type}`] =
+          state;
+      }
+    });
+    planAppliedRef.current = remaining;
     setSamples(samples.filter((_, i) => i !== index));
   };
 
   const handleSampleTypeChange = (sampleIndex, sampleTypeId) => {
     const updated = cloneSamples();
     const currentSampleType = updated[sampleIndex]?.sampleTypeId;
+    if (currentSampleType !== sampleTypeId) {
+      delete planAppliedRef.current[`${sampleIndex}:${currentSampleType}`];
+    }
     const shouldClearSelections =
       currentSampleType && currentSampleType !== sampleTypeId;
     const selectedType = sampleTypes.find(
