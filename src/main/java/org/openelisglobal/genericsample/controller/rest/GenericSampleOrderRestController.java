@@ -10,6 +10,9 @@ import org.openelisglobal.genericsample.form.GenericSampleImportResult;
 import org.openelisglobal.genericsample.form.GenericSampleOrderForm;
 import org.openelisglobal.genericsample.service.GenericSampleOrderService;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.sample.service.SampleLabUnitScopeService;
+import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.valueholder.Sample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -30,6 +33,18 @@ public class GenericSampleOrderRestController extends BaseController {
 
     @Autowired
     private GenericSampleOrderService genericSampleOrderService;
+
+    @Autowired
+    private SampleService sampleService;
+
+    @Autowired
+    private SampleLabUnitScopeService sampleLabUnitScopeService;
+
+    /** An order outside the user's lab units reads as absent. */
+    private boolean visible(HttpServletRequest request, String accessionNumber) {
+        Sample sample = sampleService.getSampleByAccessionNumber(accessionNumber);
+        return sample == null || sampleLabUnitScopeService.isVisible(getSysUserId(request), sample);
+    }
 
     @Override
     protected String getPageTitleKey() {
@@ -65,8 +80,13 @@ public class GenericSampleOrderRestController extends BaseController {
 
     @GetMapping(value = "/GenericSampleOrder", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> getGenericSampleOrderByAccessionNumber(
-            @RequestParam(required = true) String accessionNumber) {
+            @RequestParam(required = true) String accessionNumber, HttpServletRequest request) {
         try {
+            if (!visible(request, accessionNumber)) {
+                Map<String, String> errorResponse = new HashMap<>();
+                errorResponse.put("error", "No sample found with accession number: " + accessionNumber);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+            }
             GenericSampleOrderForm form = genericSampleOrderService
                     .getGenericSampleOrderByAccessionNumber(accessionNumber);
             if (form.getDefaultFields() == null || org.apache.commons.validator.GenericValidator
@@ -89,6 +109,11 @@ public class GenericSampleOrderRestController extends BaseController {
             @PathVariable("accessionNumber") String accessionNumber, @RequestBody GenericSampleOrderForm form) {
         try {
             String sysUserId = getSysUserId(request);
+            if (!visible(request, accessionNumber)) {
+                Map<String, String> errorResponse = new HashMap<>();
+                errorResponse.put("error", "No sample found with accession number: " + accessionNumber);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+            }
             Map<String, Object> result = genericSampleOrderService.updateGenericSampleOrder(accessionNumber, form,
                     sysUserId);
             return ResponseEntity.ok(result);

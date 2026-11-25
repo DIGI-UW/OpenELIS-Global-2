@@ -14,3 +14,9 @@
   gap: spacing.$spacing-05;
   max-width: 24rem;
 }
+
+.menu-settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}

@@ -406,6 +406,7 @@ public class AccessionValidationRangeController extends BaseResultValidationCont
                 createNeededNotes(analysisItem, analysis, noteUpdateList);
 
                 if (areResults(analysisItem)) {
+                    ResultsValidationUtility.keepStoredValueWhenUnchanged(analysisItem, analysis);
                     List<Result> results = createResultFromAnalysisItem(analysisItem, analysis, analysis,
                             noteUpdateList, deletableList);
                     for (Result result : results) {
@@ -560,7 +561,7 @@ public class AccessionValidationRangeController extends BaseResultValidationCont
         ResultSaveBean bean = ResultSaveBeanAdapter.fromAnalysisItem(analysisItem);
         ResultSaveService resultSaveService = new ResultSaveService(analysis, getSysUserId(request));
         List<Result> results = resultSaveService.createResultsFromTestResultItem(bean, deletableList);
-        if (analysisService.patientReportHasBeenDone(analysis) && resultSaveService.isUpdatedResult()) {
+        if (analysisService.releasedResultHasBeenReported(analysis) && resultSaveService.isUpdatedResult()) {
             analysis.setCorrectedSincePatientReport(true);
             noteUpdateList.add(noteService.createSavableNote(analysis, NoteType.EXTERNAL,
                     MessageUtil.getMessage("note.corrected.result"), RESULT_SUBJECT, getSysUserId(request)));

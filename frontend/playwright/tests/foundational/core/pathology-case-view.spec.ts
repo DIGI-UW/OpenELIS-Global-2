@@ -6,7 +6,21 @@ import {
   PathologyOrderTarget,
   SeededPathologyCase,
 } from "../../../helpers/seed-pathology-data";
-import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
+import {
+  expandSection,
+  NUMBERED_SECTION_TITLES,
+  openCase,
+  openStageMenu,
+  overlaps,
+  railStep,
+  saveDraft,
+  sectionHeader,
+  setStage,
+  slideRows,
+  stageControl,
+  summaryRow,
+} from "../../../helpers/pathology-case-view";
+import { UI_TIMEOUT } from "../../../helpers/timeouts";
 
 /**
  * The anatomic-pathology case view on the shared case-view shell.
@@ -38,21 +52,6 @@ import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
  * the same case changes shape as it moves.
  */
 
-/** The accordion's own heading text, section number and title together. */
-const NUMBERED_SECTION_TITLES = [
-  "1. Case Information",
-  "2. Grossing",
-  "3. Decalcification",
-  "4. Processing",
-  "5. Embedding",
-  "6. Microtomy",
-  "7. Staining",
-  "8. Coverslipping & QC",
-  "9. Pathologist Review",
-  "10. Findings & Conclusion",
-  "11. Reports",
-];
-
 /** The same eleven sections as the progress rail labels them. */
 const RAIL_STEP_LABELS = NUMBERED_SECTION_TITLES.map((title) =>
   title.replace(/^\d+\. /, ""),
@@ -66,15 +65,18 @@ const UNTRACKED_STAGE = "COVERSLIPPING";
 const UNTRACKED_STAGE_LABEL = "Coverslipping & QC";
 
 /**
- * Everything the stage control offers: the eleven bench stages, in bench
+ * Everything the stage control offers this case: the bench stages, in bench
  * order. Asserting the whole list at once is what makes the switched-off case
  * below meaningful, since it proves the one stage left out and every other
  * stage still there in a single assertion.
+ *
+ * Decalcification is not among them: the walk never flags the specimen for
+ * it at grossing, and the control offers that stage only to a flagged case or
+ * one already standing at it.
  */
 const STATUS_OPTIONS = [
   "Accessioned",
   "Grossing",
-  "Decalcification",
   "Processing",
   "Embedding",
   "Microtomy",
@@ -96,41 +98,6 @@ let seeded: SeededPathologyCase;
 /** The stage switch's value as the deployment had it before this spec ran. */
 let untrackedStageBefore = "true";
 
-/** Open the seeded case and wait until the shell has rendered. */
-async function openCase(page: Page) {
-  await page.goto(`/PathologyCaseView/${seeded.pathologySampleId}`, {
-    waitUntil: "domcontentloaded",
-  });
-  // The heading is on the page before the case is, carrying only that fixed
-  // prefix, so the load is waited on it and the lab number is asserted below.
-  const heading = page.getByRole("heading", {
-    name: /^Pathology Case\b/,
-    level: 3,
-  });
-  await expect(heading).toBeVisible({ timeout: NAV_TIMEOUT });
-  // The sections are rendered only once the case itself has arrived.
-  await expect(sectionHeaders(page)).toHaveCount(
-    NUMBERED_SECTION_TITLES.length,
-    { timeout: NAV_TIMEOUT },
-  );
-  // The lab number the heading has gained by now is what says the case on
-  // screen is the seeded one, which the prefix alone cannot.
-  await expect(heading).toContainText(seeded.accessionNumber);
-}
-
-/** Every accordion heading, in the order the accordion holds them. */
-function sectionHeaders(page: Page) {
-  return page.locator("button.cds--accordion__heading");
-}
-
-/**
- * The heading of one section, addressed by the accordion item id the screen
- * gives it, which is also what the progress rail scrolls to.
- */
-function sectionHeader(page: Page, sectionId: string) {
-  return page.locator(`#${sectionId} button.cds--accordion__heading`);
-}
-
 /**
  * The numbered title of each section, read from its own element rather than
  * from the heading button: a locked section's heading also carries the hint
@@ -143,91 +110,11 @@ function sectionTitles(page: Page) {
   );
 }
 
-/** One row of the case summary, addressed by the label in its first half. */
-function summaryRow(page: Page, label: string) {
-  return page.locator(".case-view__summary-row").filter({
-    has: page.locator(".case-view__summary-label", {
-      hasText: new RegExp(`^${label}$`),
-    }),
-  });
-}
-
 /** One row of the Case Information list, addressed by its label cell. */
 function caseInformationRow(page: Page, label: string) {
   return page
     .locator("#pathology-section-case-info .cds--structured-list-row")
     .filter({ has: page.getByText(label, { exact: true }) });
-}
-
-/** One step of the progress rail, addressed by its label. */
-function railStep(page: Page, label: string) {
-  return page
-    .locator('nav[aria-label="Case progress"] li.cds--progress-step')
-    .filter({
-      has: page.locator(".cds--progress-label", {
-        hasText: new RegExp(`^${label}$`),
-      }),
-    });
-}
-
-/** Whether two rendered boxes cover any of the same pixels. */
-function overlaps(
-  first: { x: number; y: number; width: number; height: number },
-  second: { x: number; y: number; width: number; height: number },
-) {
-  return (
-    first.x < second.x + second.width &&
-    second.x < first.x + first.width &&
-    first.y < second.y + second.height &&
-    second.y < first.y + first.height
-  );
-}
-
-/**
- * The stage control in the action bar. It is a Carbon Dropdown rather than a
- * native select, because the bar sits at the foot of a long page where a
- * native menu opens downward and the browser clips it; the menu is markup in
- * the page, opened by its own toggle, and its options exist only while it is
- * open.
- */
-function stageControl(page: Page) {
-  return page.getByRole("combobox", { name: "Status" });
-}
-
-/**
- * The stage menu's options, with the menu opened.
- *
- * The menu is asserted to be drawn above its own toggle, which is the whole
- * point of the control: the action bar is at the foot of a long page, and the
- * native select this replaced opened downward, where the window clipped it.
- * Measured rather than read off a class name, because the class is Carbon's
- * and the clipping was the browser's.
- */
-async function openStageMenu(page: Page) {
-  const toggle = stageControl(page);
-  await toggle.click();
-  const options = page.locator('#status [role="option"]');
-  await expect(options.first()).toBeVisible({ timeout: UI_TIMEOUT });
-
-  const toggleBox = await toggle.boundingBox();
-  const menuBox = await page
-    .locator("#status .cds--list-box__menu")
-    .boundingBox();
-  expect(toggleBox).not.toBeNull();
-  expect(menuBox).not.toBeNull();
-  expect(
-    menuBox!.y + menuBox!.height,
-    "the stage menu is drawn above its toggle",
-  ).toBeLessThanOrEqual(toggleBox!.y + 1);
-
-  return options;
-}
-
-/** Move the case to a stage by name, exactly as a technician would. */
-async function setStage(page: Page, label: string) {
-  const options = await openStageMenu(page);
-  await options.filter({ hasText: new RegExp(`^${label}$`) }).click();
-  await expect(stageControl(page)).toContainText(label);
 }
 
 /**
@@ -342,7 +229,7 @@ test.describe.serial("Pathology case view on the shared shell", () => {
   test("opens a new case on the shell at Accessioned", async ({
     page,
   }, testInfo) => {
-    await openCase(page);
+    await openCase(page, seeded);
 
     await test.step("the eleven sections are all there, in bench order", async () => {
       await expect(sectionTitles(page)).toHaveText(NUMBERED_SECTION_TITLES);
@@ -390,7 +277,7 @@ test.describe.serial("Pathology case view on the shared shell", () => {
   test("case information is collapsed and shows the specimen facts", async ({
     page,
   }) => {
-    await openCase(page);
+    await openCase(page, seeded);
 
     const header = sectionHeader(page, "pathology-section-case-info");
     await expect(header).toHaveAttribute("aria-expanded", "false");
@@ -419,7 +306,7 @@ test.describe.serial("Pathology case view on the shared shell", () => {
   test("sections ahead of the case are locked with the stage they wait for", async ({
     page,
   }) => {
-    await openCase(page);
+    await openCase(page, seeded);
 
     const grossing = sectionHeader(page, "pathology-section-grossing");
     await expect(grossing).toBeDisabled();
@@ -439,7 +326,7 @@ test.describe.serial("Pathology case view on the shared shell", () => {
   test("moving the case to Grossing unlocks the bench section and marks the form dirty", async ({
     page,
   }, testInfo) => {
-    await openCase(page);
+    await openCase(page, seeded);
 
     await setStage(page, "Grossing");
 
@@ -478,7 +365,7 @@ test.describe.serial("Pathology case view on the shared shell", () => {
   });
 
   test("discard changes reloads the saved case", async ({ page }) => {
-    await openCase(page);
+    await openCase(page, seeded);
 
     await setStage(page, "Grossing");
     await expect(summaryRow(page, "Stage")).toContainText("Grossing");
@@ -496,7 +383,7 @@ test.describe.serial("Pathology case view on the shared shell", () => {
   test("save draft persists the stage and the case reloads at it", async ({
     page,
   }) => {
-    await openCase(page);
+    await openCase(page, seeded);
 
     await setStage(page, "Grossing");
     await expect(page.getByText("Unsaved changes")).toBeVisible();
@@ -507,7 +394,7 @@ test.describe.serial("Pathology case view on the shared shell", () => {
       timeout: UI_TIMEOUT,
     });
 
-    await openCase(page);
+    await openCase(page, seeded);
 
     await expect(summaryRow(page, "Stage")).toContainText("Grossing");
     await expect(
@@ -524,32 +411,44 @@ test.describe.serial("Pathology case view on the shared shell", () => {
   test("a slide row lays its controls out side by side, not over one another", async ({
     page,
   }, testInfo) => {
-    await openCase(page);
+    await openCase(page, seeded);
+
+    // A slide names the block it was cut from, and only a block the server
+    // has already saved can be named, so the walk saves a cassette first.
+    await setStage(page, "Grossing");
+    await expandSection(page, "pathology-section-grossing");
+    await page.getByRole("button", { name: "Add cassette" }).click();
+    await saveDraft(page, seeded.pathologySampleId);
+
     await setStage(page, "Microtomy");
+    await expandSection(page, "pathology-section-microtomy");
+    await page.getByRole("button", { name: "Add slide" }).click();
 
-    const microtomy = sectionHeader(page, "pathology-section-microtomy");
-    await expect(microtomy).toBeEnabled();
-    await microtomy.click();
-
-    await page.getByRole("button", { name: "Add Slide(s)" }).click();
-
-    const row = page
-      .locator("#pathology-section-microtomy .pathology-case-view__row")
-      .first();
+    // The one slide on the list, still unsaved and so not yet named.
+    const row = slideRows(page);
     await expect(row).toBeVisible();
+
+    // The picker's name carries the row's name after its visible title.
+    const parent = row.getByRole("combobox", { name: /^Cut from block/ });
+    await parent.click();
+    await row.getByRole("option", { name: "A1", exact: true }).click();
+    await expect(parent).toHaveValue("A1");
 
     // The section bodies were moved onto the shell carrying the sixteen-column
     // Carbon Grid rows the flat form laid them out with, inside a centre
     // column that is nine of those sixteen. The columns wrapped and their
-    // controls were drawn on top of one another: on a slide, Upload file over
-    // Print Label. Only a browser can show it, so only this can catch it
-    // coming back.
+    // controls were drawn on top of one another. A new slide row now carries
+    // its identity line, the block picker, the location and its actions; only
+    // a browser can show that they still sit apart, so only this can catch an
+    // overlap coming back.
     const controls = [
+      row.locator(".pathology-case-view__row-identity"),
+      parent,
       // Carbon's file uploader renders its label and its own trigger as two
       // buttons of the same name; the first is the one a technician sees.
       row.getByRole("button", { name: "Upload file" }).first(),
-      row.getByRole("button", { name: "Print Label" }),
-      row.getByRole("button", { name: "Remove Slide" }),
+      // Named after the row it drops, "Remove New slide 1".
+      row.getByRole("button", { name: /^Remove/ }),
     ];
     const boxes = [];
     for (const control of controls) {
@@ -569,11 +468,12 @@ test.describe.serial("Pathology case view on the shared shell", () => {
     }
 
     // Carbon's file uploader renders an empty description paragraph above
-    // its button, with a margin, which set Upload file a line below Print
-    // Label; the two share a top edge only while that paragraph is hidden.
+    // its button, with a margin, which set Upload file a line below the
+    // button beside it; the two share a top edge only while that paragraph
+    // is hidden.
     expect(
-      Math.abs(boxes[0].y - boxes[1].y),
-      "Upload file and Print Label sit on one line",
+      Math.abs(boxes[2].y - boxes[3].y),
+      "Upload file and Remove sit on one line",
     ).toBeLessThanOrEqual(2);
 
     // For a human to look at what the assertion above only measures.
@@ -584,7 +484,7 @@ test.describe.serial("Pathology case view on the shared shell", () => {
   });
 
   test("the rail navigates to a section", async ({ page }) => {
-    await openCase(page);
+    await openCase(page, seeded);
 
     const reports = page.locator("#pathology-section-reports");
     // The last of eleven sections is below the fold on arrival, so the rail
@@ -602,7 +502,7 @@ test.describe.serial("Pathology case view on the shared shell", () => {
   }) => {
     // Opened first both to establish what a tracked stage looks like and
     // because the configuration calls below run inside the browser.
-    await openCase(page);
+    await openCase(page, seeded);
     const coverslippingStep = railStep(page, UNTRACKED_STAGE_LABEL);
     await expect(coverslippingStep).toHaveCount(1);
     await expect(coverslippingStep).not.toContainText("N/A");
@@ -612,7 +512,7 @@ test.describe.serial("Pathology case view on the shared shell", () => {
       // The browser reads the configuration once, when the application boots,
       // so a full page load is what puts the new switch in front of the
       // screen. A client-side route change would not.
-      await openCase(page);
+      await openCase(page, seeded);
 
       await expect(railStep(page, UNTRACKED_STAGE_LABEL)).toContainText("N/A");
       await expect(
@@ -626,7 +526,7 @@ test.describe.serial("Pathology case view on the shared shell", () => {
       await setStageSwitch(page, UNTRACKED_STAGE, untrackedStageBefore);
     }
 
-    await openCase(page);
+    await openCase(page, seeded);
     await expect(await openStageMenu(page)).toHaveText(STATUS_OPTIONS);
     await expect(railStep(page, UNTRACKED_STAGE_LABEL)).toHaveCount(1);
     await expect(railStep(page, UNTRACKED_STAGE_LABEL)).not.toContainText(

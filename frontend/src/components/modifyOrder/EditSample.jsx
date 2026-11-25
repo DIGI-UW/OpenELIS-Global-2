@@ -16,6 +16,7 @@ import {
   Column,
   TextInput,
   Checkbox,
+  InlineNotification,
 } from "@carbon/react";
 import { Add } from "@carbon/react/icons";
 import { getFromOpenElisServer } from "../utils/Utils";
@@ -25,10 +26,8 @@ import {
   newSampleKey,
 } from "../addOrder/sampleTypeUpdate";
 import { FormattedMessage, useIntl } from "react-intl";
-import {
-  OrderCurrentTestsHeaders,
-  OrderPossibleTestsHeaders,
-} from "../data/orderCurrentTestsHeaders";
+import { OrderCurrentTestsHeaders } from "../data/orderCurrentTestsHeaders";
+import ExistingSampleTests from "./ExistingSampleTests";
 /**
  * The row id of a test on Modify Order: the analysis for a current test, the
  * sample item and test for one that can be added. A test id alone repeats
@@ -39,6 +38,33 @@ export const editTestRowId = (test) =>
   test.analysisId
     ? "analysis-" + test.analysisId
     : "item-" + test.sampleItemId + "-test-" + test.testId;
+
+/**
+ * The order's available tests grouped by the existing sample they can be added
+ * to. The server names the sample (accession number, sample type) on the first
+ * row of each group only.
+ */
+export const availableTestsBySample = (possibleTests) => {
+  const groups = [];
+  (possibleTests || []).forEach((test) => {
+    let group = groups.find((g) => g.sampleItemId === test.sampleItemId);
+    if (!group) {
+      group = {
+        sampleItemId: test.sampleItemId,
+        accessionNumber: "",
+        sampleType: "",
+        sampleTypeId: "",
+        tests: [],
+      };
+      groups.push(group);
+    }
+    group.accessionNumber = group.accessionNumber || test.accessionNumber || "";
+    group.sampleType = group.sampleType || test.sampleType || "";
+    group.sampleTypeId = group.sampleTypeId || test.sampleTypeId || "";
+    group.tests.push(test);
+  });
+  return groups;
+};
 
 const EditSample = (props) => {
   const { samples, setSamples, orderFormValues, setOrderFormValues, error } =
@@ -51,8 +77,6 @@ const EditSample = (props) => {
   const [elementsCounter, setElementsCounter] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
-  const [page2, setPage2] = useState(1);
-  const [pageSize2, setPageSize2] = useState(5);
 
   const [rejectSampleReasons, setRejectSampleReasons] = useState([]);
 
@@ -92,23 +116,22 @@ const EditSample = (props) => {
       return test;
     });
   };
+  const setTestsAdded = (sampleItemId, testIds, add) => {
+    const ids = new Set(testIds);
+    setOrderFormValues({
+      ...orderFormValues,
+      possibleTests: (orderFormValues.possibleTests || []).map((test) =>
+        test.sampleItemId === sampleItemId && ids.has(test.testId)
+          ? { ...test, add }
+          : test,
+      ),
+    });
+  };
+
   const handleChecked = (e, rowId) => {
     var tests = [];
     var updatedTests = [];
-    if (e.currentTarget.name === "add") {
-      tests = orderFormValues.possibleTests;
-      updatedTests = tests.map((test) => {
-        if (editTestRowId(test) === rowId) {
-          return { ...test, add: e.currentTarget.checked };
-        } else {
-          return test;
-        }
-      });
-      setOrderFormValues({
-        ...orderFormValues,
-        possibleTests: updatedTests,
-      });
-    } else if (e.currentTarget.name === "removeSample") {
+    if (e.currentTarget.name === "removeSample") {
       tests = orderFormValues.existingTests;
       updatedTests = tests.map((test) => {
         if (editTestRowId(test) === rowId) {
@@ -152,16 +175,6 @@ const EditSample = (props) => {
 
     if (pageSize != pageInfo.pageSize) {
       setPageSize(pageInfo.pageSize);
-    }
-  };
-
-  const handlePageChange2 = (pageInfo) => {
-    if (page2 != pageInfo.page) {
-      setPage2(pageInfo.page);
-    }
-
-    if (pageSize2 != pageInfo.pageSize) {
-      setPageSize2(pageInfo.pageSize);
     }
   };
 
@@ -268,22 +281,14 @@ const EditSample = (props) => {
           ></Checkbox>
         </TableCell>
       );
-    } else if (cell.info.header === "add") {
-      return (
-        <TableCell key={cell.id}>
-          <Checkbox
-            id={cell.id + cell.info.header}
-            labelText=""
-            name="add"
-            checked={cell.value}
-            onChange={(e) => handleChecked(e, row.id)}
-          ></Checkbox>
-        </TableCell>
-      );
     } else {
       return <TableCell key={cell.id}></TableCell>;
     }
   };
+
+  const availableSamples = availableTestsBySample(
+    orderFormValues.possibleTests,
+  );
 
   return (
     <>
@@ -291,7 +296,7 @@ const EditSample = (props) => {
         <Column lg={16}>
           <DataTable
             rows={formatTestsObject(orderFormValues.existingTests)}
-            headers={OrderCurrentTestsHeaders}
+            headers={OrderCurrentTestsHeaders(intl)}
             isSortable
           >
             {({ rows, headers, getHeaderProps, getTableProps }) => (
@@ -368,86 +373,31 @@ const EditSample = (props) => {
           />
         </Column>
       </div>
-      <div className="orderLegendBody">
-        <Column lg={16}>
-          <DataTable
-            rows={formatTestsObject(orderFormValues.possibleTests)}
-            headers={OrderPossibleTestsHeaders}
-            isSortable
-          >
-            {({ rows, headers, getHeaderProps, getTableProps }) => (
-              <TableContainer
-                title={intl.formatMessage({ id: "availabletests.title" })}
-              >
-                <Table {...getTableProps()}>
-                  <TableHead>
-                    <TableRow>
-                      {headers.map((header) => (
-                        <TableHeader
-                          key={header.key}
-                          {...getHeaderProps({ header })}
-                        >
-                          {header.header}
-                        </TableHeader>
-                      ))}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    <>
-                      {rows
-                        .slice((page2 - 1) * pageSize2)
-                        .slice(0, pageSize2)
-                        .map((row) => (
-                          <TableRow key={row.id}>
-                            {row.cells.map((cell) => renderCell(cell, row))}
-                          </TableRow>
-                        ))}
-                    </>
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </DataTable>
-          <Pagination
-            onChange={handlePageChange2}
-            page={page2}
-            pageSize={pageSize2}
-            pageSizes={[5, 10, 20, 30]}
-            totalItems={orderFormValues.possibleTests.length}
-            forwardText={intl.formatMessage({ id: "pagination.forward" })}
-            backwardText={intl.formatMessage({ id: "pagination.backward" })}
-            itemRangeText={(min, max, total) =>
-              intl.formatMessage(
-                { id: "pagination.item-range" },
-                { min: min, max: max, total: total },
-              )
-            }
-            itemsPerPageText={intl.formatMessage({
-              id: "pagination.items-per-page",
-            })}
-            itemText={(min, max) =>
-              intl.formatMessage(
-                { id: "pagination.item" },
-                { min: min, max: max },
-              )
-            }
-            pageNumberText={intl.formatMessage({
-              id: "pagination.page-number",
-            })}
-            pageRangeText={(_current, total) =>
-              intl.formatMessage(
-                { id: "pagination.page-range" },
-                { total: total },
-              )
-            }
-            pageText={(page, pagesUnknown) =>
-              intl.formatMessage(
-                { id: "pagination.page" },
-                { page: pagesUnknown ? "" : page },
-              )
+      <div className="orderLegendBody" data-testid="available-tests">
+        <h3>
+          <FormattedMessage id="availabletests.title" />
+        </h3>
+        {availableSamples.length === 0 && (
+          <InlineNotification
+            kind="info"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({ id: "availabletests.none" })}
+          />
+        )}
+        {availableSamples.map((sample, index) => (
+          <ExistingSampleTests
+            key={"available-" + (sample.sampleItemId || index)}
+            sampleItemId={sample.sampleItemId}
+            accessionNumber={sample.accessionNumber}
+            sampleType={sample.sampleType}
+            sampleTypeId={sample.sampleTypeId}
+            tests={sample.tests}
+            onAddChange={(testIds, add) =>
+              setTestsAdded(sample.sampleItemId, testIds, add)
             }
           />
-        </Column>
+        ))}
       </div>
       <Stack gap={10}>
         <div className="orderLegendBody">

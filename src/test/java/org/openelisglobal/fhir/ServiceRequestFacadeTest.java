@@ -224,6 +224,34 @@ public class ServiceRequestFacadeTest extends BaseWebContextSensitiveTest {
         assertEquals("ServiceRequest", jsonResponse.get("resourceType").asText());
     }
 
+    /**
+     * OGC-1399: a ServiceRequest whose subject is not a known Patient is a client
+     * error. A Location or contained subject, and an unknown Patient, used to be
+     * read as a Patient and answered 500.
+     */
+    @Test
+    public void createServiceRequest_withASubjectThatIsNoKnownPatient_isRefusedAs400() throws Exception {
+        for (String subject : new String[] { "Location/68438220-5cef-44c4-9e6f-9f88e6b93287", "#subject",
+                "Patient/00000000-1399-0000-0000-000000000000" }) {
+            MockHttpServletRequest request = buildFhirRequest("POST", "/ServiceRequest");
+            request.setContentType("application/json");
+            request.setContent("""
+                    {
+                    "resourceType": "ServiceRequest",
+                    "status": "active",
+                    "intent": "order",
+                    "code": { "coding": [ { "system": "http://loinc.org", "code": "123456" } ] },
+                    "subject": { "reference": "%s" }
+                    }
+                    """.formatted(subject).getBytes());
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            fhirServlet.service(request, response);
+
+            assertEquals(subject, 400, response.getStatus());
+        }
+    }
+
     @Test
     public void createServiceRequest_shouldReturnCreatedServiceRequestGivenTestName() throws Exception {
         cleanRowsInCurrentConnection(new String[] { "analysis", });

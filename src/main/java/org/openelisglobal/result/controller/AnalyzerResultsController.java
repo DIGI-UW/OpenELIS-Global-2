@@ -17,8 +17,11 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzerimport.service.AnalyzerDeliveryBundleService;
 import org.openelisglobal.analyzerresults.action.AnalyzerResultsPaging;
 import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
+import org.openelisglobal.analyzerresults.service.AnalyzerResultPlacement;
+import org.openelisglobal.analyzerresults.service.AnalyzerResultPlacementService;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsAcceptService;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
@@ -54,6 +57,8 @@ import org.openelisglobal.testreflex.service.TestReflexService;
 import org.openelisglobal.testreflex.valueholder.TestReflex;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
@@ -107,6 +112,10 @@ public class AnalyzerResultsController extends BaseController {
     @Autowired
     private AnalyzerResultsService analyzerResultsService;
     @Autowired
+    private AnalyzerResultPlacementService placementService;
+    @Autowired
+    private AnalyzerDeliveryBundleService deliveryBundleService;
+    @Autowired
     private AnalyzerResultsAcceptService acceptService;
     @Autowired
     private ResultEntryAcknowledgementService acknowledgementService;
@@ -130,6 +139,8 @@ public class AnalyzerResultsController extends BaseController {
     private NoteService noteService;
     @Autowired
     private AnalyzerService analyzerService;
+    @Autowired
+    private TestResultComponentService testResultComponentService;
 
     private TypeOfSampleService typeOfSampleService;
 
@@ -275,6 +286,7 @@ public class AnalyzerResultsController extends BaseController {
 
                 analyzerResultItemList.add(resultItem);
             }
+            preTickMatchedGroup(group);
         }
 
         form.setDisplayMissingTestMsg(Boolean.valueOf(missingTest));
@@ -315,9 +327,14 @@ public class AnalyzerResultsController extends BaseController {
     private List<List<AnalyzerResultItem>> groupAnalyzerResults(List<AnalyzerResults> analyzerResultsList) {
         Map<String, Integer> accessionToAccessionGroupMap = new HashMap<>();
         List<List<AnalyzerResultItem>> accessionGroupedResultsList = new ArrayList<>();
+        // The rows of one test on one specimen (its number, call and parts) share a
+        // placement, so each is worked out once per page build.
+        Map<List<String>, AnalyzerResultPlacement> placements = new HashMap<>();
+        // The rows of one delivery share its receipt, looked up once per page build.
+        Map<List<String>, java.util.Optional<String>> receipts = new HashMap<>();
 
         for (AnalyzerResults analyzerResult : analyzerResultsList) {
-            AnalyzerResultItem resultItem = analyzerResultsToAnalyzerResultItem(analyzerResult);
+            AnalyzerResultItem resultItem = analyzerResultsToAnalyzerResultItem(analyzerResult, placements, receipts);
             Integer groupIndex = accessionToAccessionGroupMap.get(resultItem.getAccessionNumber());
             List<AnalyzerResultItem> group;
             if (groupIndex == null) {
@@ -343,12 +360,17 @@ public class AnalyzerResultsController extends BaseController {
         return analyzerResultsService.getResultsbyAnalyzer(getAnalyzerIdFromRequest());
     }
 
-    protected AnalyzerResultItem analyzerResultsToAnalyzerResultItem(AnalyzerResults result) {
+    protected AnalyzerResultItem analyzerResultsToAnalyzerResultItem(AnalyzerResults result,
+            Map<List<String>, AnalyzerResultPlacement> placements,
+            Map<List<String>, java.util.Optional<String>> receipts) {
 
         AnalyzerResultItem resultItem = new AnalyzerResultItem();
         boolean held = !GenericValidator.isBlankOrNull(result.getImportIssueReason());
-        boolean awaitingSpecimen = AnalyzerResults.IMPORT_ISSUE_AWAITING_SPECIMEN.equals(result.getImportIssueReason());
+        boolean awaitingReview = AnalyzerResults.IMPORT_ISSUE_AWAITING_SPECIMEN.equals(result.getImportIssueReason())
+                || AnalyzerResults.IMPORT_ISSUE_AWAITING_PLACEMENT.equals(result.getImportIssueReason());
         resultItem.setAccessionNumber(result.getAccessionNumber());
+        resultItem.setInstrumentSpecimenId(result.getInstrumentSpecimenId());
+        resultItem.setDeliveryReceiptId(deliveryReceiptIdOf(result, receipts));
         resultItem.setAnalyzerId(result.getAnalyzerId());
         resultItem.setIsControl(result.getIsControl());
         resultItem.setTestName(result.getTestName());
@@ -356,14 +378,18 @@ public class AnalyzerResultsController extends BaseController {
         resultItem.setId(result.getId());
         resultItem.setTestId(result.getTestId());
         resultItem.setComponentId(result.getComponentId());
+        if (!GenericValidator.isBlankOrNull(result.getComponentId())) {
+            resultItem.setComponentLabel(testResultComponentService.getMatch("id", result.getComponentId())
+                    .map(TestResultComponent::getLabel).orElse(null));
+        }
         resultItem.setCompleteDate(result.getCompleteDateForDisplay());
         resultItem.setLastUpdated(result.getLastupdated());
-        resultItem.setReadOnly((held && !awaitingSpecimen) || result.isReadOnly() || result.getTestId() == null);
-        resultItem.setResult(held && !awaitingSpecimen ? result.getRawResultValue() : getResultForItem(result));
-        resultItem.setSignificantDigits(getSignificantDigitsFromAnalyzerResults(result));
+        resultItem.setReadOnly((held && !awaitingReview) || result.isReadOnly() || result.getTestId() == null);
+        resultItem.setResult(held && !awaitingReview ? result.getRawResultValue() : getResultForItem(result));
+        resultItem.setSignificantDigits(acceptService.significantDigitsFor(result));
         resultItem.setTestResultType(result.getResultType());
-        resultItem.setDictionaryResultList(
-                held && !awaitingSpecimen ? new ArrayList<>() : getDictionaryResultList(result));
+        resultItem
+                .setDictionaryResultList(held && !awaitingReview ? new ArrayList<>() : getDictionaryResultList(result));
         resultItem.setIsHighlighted(!GenericValidator.isBlankOrNull(result.getDuplicateAnalyzerResultId())
                 || GenericValidator.isBlankOrNull(result.getTestId()));
         resultItem.setUserChoiceReflex(giveUserChoice(result));
@@ -375,13 +401,74 @@ public class AnalyzerResultsController extends BaseController {
         resultItem.setSourceTransport(result.getSourceTransport());
         resultItem.setRawTestCode(result.getRawTestCode());
         resultItem.setRawResultValue(result.getRawResultValue());
+        resultItem.setInstrumentNote(result.getInstrumentNote());
+        resultItem.setInstrumentFlags(result.getInstrumentFlags());
+        resultItem.setInstrumentSampleFlags(result.getInstrumentSampleFlags());
+        resultItem.setAssayName(result.getAssayName());
+        resultItem.setAssayVersion(result.getAssayVersion());
+        resultItem.setInstrumentOperator(result.getInstrumentOperator());
 
         if (resultItem.isUserChoiceReflex()) {
             setChoiceForCurrentValue(resultItem, result);
             resultItem.setUserChoicePending(!GenericValidator.isBlankOrNull(resultItem.getSelectionOneText()));
         }
         addSampleTypeOptionsIfAmbiguous(resultItem, result);
+        placeForReview(resultItem, result, placements);
         return resultItem;
+    }
+
+    /** Shows where a patient result would land and why. */
+    private void placeForReview(AnalyzerResultItem resultItem, AnalyzerResults result,
+            Map<List<String>, AnalyzerResultPlacement> placements) {
+        if (resultItem.getIsControl() || GenericValidator.isBlankOrNull(result.getTestId())
+                || (!GenericValidator.isBlankOrNull(result.getImportIssueReason())
+                        && !AnalyzerResults.IMPORT_ISSUE_AWAITING_PLACEMENT.equals(result.getImportIssueReason())
+                        && !AnalyzerResults.IMPORT_ISSUE_AWAITING_SPECIMEN.equals(result.getImportIssueReason()))) {
+            return;
+        }
+        String specimenId = GenericValidator.isBlankOrNull(result.getInstrumentSpecimenId())
+                ? result.getAccessionNumber()
+                : result.getInstrumentSpecimenId();
+        List<String> key = java.util.Arrays.asList(specimenId, result.getTestId(), result.getInstrumentPatientId(),
+                result.getInstrumentPatientName());
+        resultItem.setPlacement(placements.computeIfAbsent(key, ignored -> placementService.place(specimenId,
+                result.getTestId(), result.getInstrumentPatientId(), result.getInstrumentPatientName())));
+    }
+
+    /**
+     * A grouping is saved by one tick, so it is pre-ticked only when every result
+     * it would save has exactly one analysis waiting for it. One result that needs
+     * a decision leaves the whole grouping for the reviewer to tick.
+     */
+    private void preTickMatchedGroup(List<AnalyzerResultItem> group) {
+        List<AnalyzerResultItem> saved = group.stream().filter(item -> !item.isReadOnly()).toList();
+        boolean matched = !saved.isEmpty() && group.stream().noneMatch(AnalyzerResultItem::getIsControl)
+                && saved.stream().allMatch(item -> item.getPlacement() != null
+                        && item.getPlacement().state() == AnalyzerResultPlacement.State.RESOLVED
+                        && patientAgrees(item.getPlacement())
+                        && GenericValidator.isBlankOrNull(item.getImportIssueReason()) && !item.isUserChoiceReflex());
+        if (matched) {
+            saved.forEach(item -> item.setIsAccepted(true));
+        }
+    }
+
+    /**
+     * A result with no reported patient, or whose patient is the order's, may be
+     * pre-ticked.
+     */
+    private static boolean patientAgrees(AnalyzerResultPlacement placement) {
+        var status = placement.patient().status();
+        return status == AnalyzerResultPlacement.PatientStatus.NOT_REPORTED
+                || status == AnalyzerResultPlacement.PatientStatus.MATCH;
+    }
+
+    private String deliveryReceiptIdOf(AnalyzerResults result, Map<List<String>, java.util.Optional<String>> receipts) {
+        if (GenericValidator.isBlankOrNull(result.getSourceConnectionId())
+                || GenericValidator.isBlankOrNull(result.getSourceMessageId())) {
+            return null;
+        }
+        return receipts.computeIfAbsent(List.of(result.getSourceConnectionId(), result.getSourceMessageId()),
+                key -> deliveryBundleService.findReceiptId(key.get(0), key.get(1))).orElse(null);
     }
 
     /**
@@ -586,22 +673,6 @@ public class AnalyzerResultsController extends BaseController {
         }
     }
 
-    private String getSignificantDigitsFromAnalyzerResults(AnalyzerResults result) {
-        if (result.getTestId() == null) {
-            return null;
-        }
-
-        List<TestResult> testResults = testResultService.getActiveTestResultsByTest(result.getTestId());
-
-        if (GenericValidator.isBlankOrNull(result.getResult()) || testResults.isEmpty()) {
-            return null;
-        }
-
-        TestResult testResult = testResults.get(0);
-
-        return testResult.getSignificantDigits();
-    }
-
     private String getRoundedToSignificantDigits(AnalyzerResults result) {
         if (result.getTestId() != null) {
 
@@ -612,7 +683,7 @@ public class AnalyzerResultsController extends BaseController {
                 return result.getResult();
             }
 
-            String significantDigitsAsString = getSignificantDigitsFromAnalyzerResults(result);
+            String significantDigitsAsString = acceptService.significantDigitsFor(result);
             if (GenericValidator.isBlankOrNull(significantDigitsAsString) || "-1".equals(significantDigitsAsString)) {
                 return result.getResult();
             }

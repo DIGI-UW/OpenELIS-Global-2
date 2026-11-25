@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Worktree-isolated OpenELIS development stack interface."""
+"""Checkout-isolated OpenELIS development stack interface."""
 
 from __future__ import annotations
 
@@ -26,6 +26,23 @@ class StackContext(NamedTuple):
 
 
 LOCAL_DOMAINS = {"localhost", "127.0.0.1", "::1"}
+
+# Application images: (compose service, image variable in the harness compose
+# files, published repository, image name when built with `up --build`).
+APPLICATION_IMAGES = (
+    ("frontend.openelis.org", "DEV_STACK_FRONTEND_IMAGE", "openelis-global-2-frontend-dev", "frontend"),
+    ("oe.openelis.org", "DEV_STACK_BACKEND_IMAGE", "openelis-global-2-dev", "backend"),
+    ("astm-simulator", "DEV_STACK_MOCK_IMAGE", "openelis-global-2-analyzer-mock", "analyzer-mock"),
+    ("openelis-analyzer-bridge", "DEV_STACK_BRIDGE_IMAGE", "openelis-global-2-analyzer-bridge", "analyzer-bridge"),
+)
+SUBMODULE_SERVICES = {
+    "tools/analyzer-mock-server": "astm-simulator",
+    "tools/openelis-analyzer-bridge": "openelis-analyzer-bridge",
+}
+# Checkout paths baked into the backend development image; the WAR is mounted.
+BACKEND_IMAGE_INPUTS = ("Dockerfile.dev", "install", "tomcat/client-certificates")
+# Frontend files baked into the development image; src and public are mounted.
+FRONTEND_IMAGE_INPUTS = ("package.json", "package-lock.json", "vite.config.ts", "index.html", "tsconfig.json")
 
 def slugify(value: str, limit: int = 28) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-") or "worktree"
@@ -82,7 +99,7 @@ def build_environment(context: StackContext) -> dict[str, str]:
         environment.setdefault("DEV_STACK_INGRESS_BIND_ADDRESS", "127.0.0.1")
         environment.setdefault("DEV_STACK_HTTP_PORT", "0")
         environment.setdefault("DEV_STACK_HTTPS_PORT", "0")
-        environment.setdefault("DEV_STACK_TLS", "self-signed")
+        environment.setdefault("DEV_STACK_TLS", "local-ca")
     else:
         environment.setdefault("DEV_STACK_INGRESS_BIND_ADDRESS", "0.0.0.0")
         environment.setdefault("DEV_STACK_HTTP_PORT", "80")
@@ -91,6 +108,8 @@ def build_environment(context: StackContext) -> dict[str, str]:
     digest = int(hashlib.sha256(str(context.repo_root).encode("utf-8")).hexdigest()[:8], 16)
     environment["ANALYZER_NETWORK_NAMESPACE"] = context.project
     environment["ANALYZER_SUBNET_PREFIX"] = f"10.{64 + digest % 160}"
+    for _, variable, repository, _ in APPLICATION_IMAGES:
+        environment.setdefault(variable, published_image(environment, repository))
     return environment
 
 
@@ -174,7 +193,7 @@ def start_services(
     refresh_running_backend: bool,
 ) -> None:
     run(
-        compose_command(context, "up", "-d", "--remove-orphans"),
+        compose_command(context, "up", "-d", "--no-build", "--remove-orphans"),
         cwd=context.project_dir,
         environment=environment,
     )
@@ -184,6 +203,7 @@ def start_services(
                 context,
                 "up",
                 "-d",
+                "--no-build",
                 "--no-deps",
                 "--force-recreate",
                 "oe.openelis.org",
@@ -228,8 +248,12 @@ def initialize_submodule(
         )
 
 
-def ensure_submodules(context: StackContext, environment: dict[str, str]) -> None:
-    """Initialize empty submodules; build populated ones exactly as checked out."""
+def ensure_submodules(context: StackContext, environment: dict[str, str]) -> tuple[str, ...]:
+    """Initialize empty submodules and leave populated ones exactly as checked out.
+
+    Returns the submodules whose checkout differs from the recorded pin.
+    """
+    changed: list[str] = []
     for relative_path in required_submodules():
         path = context.repo_root / relative_path
         if not has_checkout(path):
@@ -249,12 +273,14 @@ def ensure_submodules(context: StackContext, environment: dict[str, str]) -> Non
         if checked_out == recorded and not changes:
             continue
         notice = (
-            f"{relative_path}: building checked-out {checked_out[:7]} "
+            f"{relative_path}: checked out {checked_out[:7]} "
             f"(recorded pin {recorded[:7]})"
         )
         if changes:
             notice += ", with uncommitted changes"
         print(notice)
+        changed.append(relative_path)
+    return tuple(changed)
 
 
 def heal_war_mount(context: StackContext) -> None:
@@ -300,12 +326,145 @@ def bootstrap_analyzer_harness(
 
 
 def build_images(context: StackContext, environment: dict[str, str]) -> None:
-    services = ["frontend.openelis.org", "oe.openelis.org", "astm-simulator", "openelis-analyzer-bridge"]
+    """Build every application image from the checkout and run those instead."""
+    for _, variable, _, name in APPLICATION_IMAGES:
+        environment[variable] = f"{context.project}-{name}:dev"
     run(
-        compose_command(context, "build", *services),
+        compose_command(context, "build", *(service for service, _, _, _ in APPLICATION_IMAGES)),
         cwd=context.project_dir,
         environment=environment,
     )
+
+
+def published_image(environment: dict[str, str], repository: str) -> str:
+    namespace = environment.get("DEV_STACK_IMAGE_NAMESPACE", "itechuw")
+    tag = environment.get("DEV_STACK_IMAGE_TAG", "develop")
+    return f"{namespace}/{repository}:{tag}"
+
+
+def frontend_image_differences(
+    context: StackContext, environment: dict[str, str], image: str
+) -> list[str]:
+    """Name the baked-in frontend files that differ between the image and the checkout."""
+    try:
+        listing = output(
+            ["docker", "run", "--rm", "--entrypoint", "sha256sum", image,
+             *(f"/app/{name}" for name in FRONTEND_IMAGE_INPUTS)],
+            cwd=context.repo_root,
+            environment=environment,
+        )
+    except subprocess.CalledProcessError:
+        return list(FRONTEND_IMAGE_INPUTS)
+    published = {}
+    for line in listing.splitlines():
+        digest, _, path = line.partition(" ")
+        published[Path(path.strip()).name] = digest
+    return [
+        name
+        for name in FRONTEND_IMAGE_INPUTS
+        if published.get(name)
+        != hashlib.sha256((context.repo_root / "frontend" / name).read_bytes()).hexdigest()
+    ]
+
+
+def pull_image(context: StackContext, environment: dict[str, str], image: str) -> None:
+    """Pull an image; on failure keep an existing copy or explain the way out."""
+    try:
+        run(["docker", "pull", image], cwd=context.repo_root, environment=environment)
+        return
+    except subprocess.CalledProcessError:
+        try:
+            run(["docker", "image", "inspect", image], cwd=context.repo_root, environment=environment, capture=True)
+        except subprocess.CalledProcessError:
+            raise RuntimeError(
+                f"Could not pull {image}. Check the network and registry access, "
+                "or rerun with --build to build the images from this checkout."
+            ) from None
+    print(f"Warning: could not pull {image}; using the copy already on this machine", file=sys.stderr)
+
+
+def backend_image_differences(
+    context: StackContext, environment: dict[str, str], image: str
+) -> list[str]:
+    """Name the backend image inputs that differ from the commit the image was built from."""
+    try:
+        revision = output(
+            ["docker", "image", "inspect", "--format",
+             '{{index .Config.Labels "org.opencontainers.image.revision"}}', image],
+            cwd=context.repo_root,
+            environment=environment,
+        )
+        if not revision or revision == "<no value>":
+            return []
+        changed = output(
+            ["git", "diff", "--name-only", revision, "--", *BACKEND_IMAGE_INPUTS],
+            cwd=context.repo_root,
+            environment=environment,
+        ).splitlines()
+    except subprocess.CalledProcessError:
+        return []
+    return [
+        path
+        for path in BACKEND_IMAGE_INPUTS
+        if any(line == path or line.startswith(path + "/") for line in changed)
+    ]
+
+
+def image_record(context: StackContext) -> Path:
+    return context.repo_root / ".dev-stack" / "images.json"
+
+
+def record_images(context: StackContext, environment: dict[str, str]) -> None:
+    """Remember which images this stack runs, for later `up --skip-build` restarts."""
+    record = image_record(context)
+    record.parent.mkdir(parents=True, exist_ok=True)
+    record.write_text(
+        json.dumps({variable: environment[variable] for _, variable, _, _ in APPLICATION_IMAGES}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def reuse_recorded_images(context: StackContext, environment: dict[str, str]) -> None:
+    """Select the images the last `up` ran, unless a variable was set explicitly."""
+    record = image_record(context)
+    if not record.is_file():
+        return
+    recorded = json.loads(record.read_text(encoding="utf-8"))
+    for _, variable, _, _ in APPLICATION_IMAGES:
+        if variable in recorded and variable not in os.environ:
+            environment[variable] = recorded[variable]
+
+
+def pull_images(
+    context: StackContext, environment: dict[str, str], changed_submodules: Sequence[str]
+) -> None:
+    """Pull the published development images and say what they cannot reflect."""
+    for _, variable, _, _ in APPLICATION_IMAGES:
+        pull_image(context, environment, environment[variable])
+    images = {service: environment[variable] for service, variable, _, _ in APPLICATION_IMAGES}
+    for path, service in SUBMODULE_SERVICES.items():
+        if path in changed_submodules:
+            print(
+                f"Warning: {service} runs the published {images[service]}, not the {path} "
+                "checkout. Rerun with --build to run the checkout.",
+                file=sys.stderr,
+            )
+    differences = frontend_image_differences(context, environment, images["frontend.openelis.org"])
+    if differences:
+        changed = ", ".join(f"frontend/{name}" for name in differences)
+        print(
+            f"Warning: {changed} differ from {images['frontend.openelis.org']}. "
+            "Rerun with --build if the frontend needs them.",
+            file=sys.stderr,
+        )
+    backend = images["oe.openelis.org"]
+    differences = backend_image_differences(context, environment, backend)
+    if differences:
+        print(
+            f"Warning: {', '.join(differences)} differ from the commit {backend} was built from. "
+            "Rerun with --build if the backend runtime needs them.",
+            file=sys.stderr,
+        )
 
 
 def published_port(context: StackContext, service: str, target: int, environment: dict[str, str]) -> int:
@@ -343,12 +502,68 @@ def endpoint_environment(context: StackContext, environment: dict[str, str]) -> 
     return endpoints
 
 
+def ensure_local_tls_trust(context: StackContext, environment: dict[str, str]) -> None:
+    if environment["DEV_STACK_TLS"].lower() != "local-ca":
+        return
+    if not is_local_domain(environment["LETSENCRYPT_DOMAIN"]):
+        raise ValueError("DEV_STACK_TLS=local-ca is only supported for loopback hosts")
+    print(
+        "Checking local HTTPS trust. First use installs this machine's development "
+        "certificate authority in the system trust store and may request administrator "
+        "authentication. Later starts reuse it.",
+        flush=True,
+    )
+    trust_environment = {**environment, "TRUST_STORES": "system"}
+    try:
+        # mkcert skips installation when this authority is already trusted.
+        run(["mkcert", "-install"], cwd=context.repo_root, environment=trust_environment)
+    except subprocess.CalledProcessError as error:
+        raise RuntimeError(
+            "Local HTTPS trust setup did not complete; no build was started. "
+            "Run scripts/dev-stack up in an interactive terminal and complete "
+            "the administrator prompt. For unattended starts, first run "
+            "TRUST_STORES=system mkcert -install interactively on this machine."
+        ) from error
+
+
+def configure_local_tls(context: StackContext, environment: dict[str, str]) -> None:
+    if not is_local_domain(environment["LETSENCRYPT_DOMAIN"]):
+        raise ValueError("DEV_STACK_TLS=local-ca is only supported for loopback hosts")
+    directory = context.repo_root / ".dev-stack" / "tls"
+    directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+    certificate, key = directory / "localhost.pem", directory / "localhost-key.pem"
+    run(
+        [
+            "mkcert", "-cert-file", str(certificate), "-key-file", str(key),
+            "localhost", "127.0.0.1", "::1",
+        ],
+        cwd=context.repo_root,
+        environment=environment,
+    )
+    key.chmod(0o600)
+    # Only the leaf certificate/key enter this worktree's proxy. The CA key
+    # stays in mkcert's per-user directory and is never copied to a container.
+    for source, destination in (
+        (certificate, "proxy:/etc/nginx/certs/apache-selfsigned.crt"),
+        (key, "proxy:/etc/nginx/keys/apache-selfsigned.key"),
+    ):
+        run(
+            compose_command(context, "cp", str(source), destination),
+            cwd=context.project_dir,
+            environment=environment,
+        )
+    reload_proxy(context, environment)
+
+
 def configure_tls(context: StackContext, environment: dict[str, str]) -> None:
     tls_mode = environment["DEV_STACK_TLS"].lower()
     if tls_mode == "self-signed":
         return
+    if tls_mode == "local-ca":
+        configure_local_tls(context, environment)
+        return
     if tls_mode != "letsencrypt":
-        raise ValueError("DEV_STACK_TLS must be either self-signed or letsencrypt")
+        raise ValueError("DEV_STACK_TLS must be local-ca, self-signed or letsencrypt")
     if is_local_domain(environment["LETSENCRYPT_DOMAIN"]):
         raise ValueError("DEV_STACK_TLS=letsencrypt requires a public LETSENCRYPT_DOMAIN")
     if not environment.get("LETSENCRYPT_EMAIL"):
@@ -373,6 +588,29 @@ def configure_tls(context: StackContext, environment: dict[str, str]) -> None:
         cwd=context.project_dir,
         environment=environment,
     )
+
+
+def verify_tls(context: StackContext, environment: dict[str, str]) -> None:
+    if environment["DEV_STACK_TLS"].lower() != "self-signed":
+        # Verify hostname and operating-system trust even when readiness is
+        # skipped. The shared headless readiness probe permits self-signed TLS.
+        try:
+            run(
+                [
+                    "curl", "--silent", "--show-error", "--output", os.devnull,
+                    "--connect-timeout", "10", "--max-time", "30",
+                    "--retry", "5", "--retry-delay", "1",
+                    "--retry-connrefused", "--retry-max-time", "10",
+                    endpoint_environment(context, environment)["BASE_URL"] + "/",
+                ],
+                cwd=context.repo_root,
+                environment=environment,
+            )
+        except subprocess.CalledProcessError as error:
+            raise RuntimeError(
+                "HTTPS verification failed after certificate setup. Check the "
+                "reported curl error and docs/dev_setup.md before retrying up."
+            ) from error
 
 
 def reload_proxy(context: StackContext, environment: dict[str, str]) -> None:
@@ -453,6 +691,12 @@ def cleanup_analyzer_networks(context: StackContext, environment: dict[str, str]
 
 
 def doctor(context: StackContext, environment: dict[str, str]) -> None:
+    if environment["DEV_STACK_TLS"].lower() == "local-ca" and not shutil.which("mkcert", path=environment.get("PATH")):
+        raise RuntimeError(
+            "Missing local HTTPS prerequisite: mkcert (macOS: brew install mkcert). "
+            "Then rerun scripts/dev-stack up; it handles the one-time system trust setup. "
+            "See docs/dev_setup.md for other platforms."
+        )
     for command in ("git", "docker", "mvn", "bash", "curl", "envsubst"):
         if not shutil.which(command, path=environment.get("PATH")):
             raise RuntimeError(f"Missing source-build prerequisite: {command}")
@@ -470,11 +714,21 @@ def doctor(context: StackContext, environment: dict[str, str]) -> None:
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="dev-stack",
-        description="Run the full worktree-isolated OpenELIS + analyzer development stack.",
+        description="Run the full checkout-isolated OpenELIS + analyzer development stack.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
     up = subparsers.add_parser("up")
-    up.add_argument("--skip-build", action="store_true")
+    images = up.add_mutually_exclusive_group()
+    images.add_argument(
+        "--skip-build",
+        action="store_true",
+        help="Reuse this checkout's WAR and the images the last up ran; build and pull nothing.",
+    )
+    images.add_argument(
+        "--build",
+        action="store_true",
+        help="Build the application images from this checkout instead of using the published ones.",
+    )
     up.add_argument("--no-wait", action="store_true")
     up.add_argument("--no-scenarios", action="store_true")
     down = subparsers.add_parser("down")
@@ -514,7 +768,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         ensure_local_env(context)
         environment = build_environment(context)
         doctor(context, environment)
-        ensure_submodules(context, environment)
+        ensure_local_tls_trust(context, environment)
+        changed_submodules = ensure_submodules(context, environment)
         bootstrap_analyzer_harness(context, environment, skip_submodules=True)
         backend_was_running = service_is_running(
             context, environment, "oe.openelis.org"
@@ -522,11 +777,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         heal_war_mount(context)
         if not args.skip_build:
             build_application(context, environment)
-            build_images(context, environment)
+            if args.build:
+                build_images(context, environment)
+            else:
+                pull_images(context, environment, changed_submodules)
+            record_images(context, environment)
         elif not (context.repo_root / "target" / "OpenELIS-Global.war").is_file():
             raise RuntimeError("--skip-build requires target/OpenELIS-Global.war")
         else:
-            images = [f"{context.project}-{name}:dev" for name in ("frontend", "backend", "analyzer-mock", "analyzer-bridge")]
+            reuse_recorded_images(context, environment)
+            images = [environment[variable] for _, variable, _, _ in APPLICATION_IMAGES]
             run(["docker", "image", "inspect", *images], cwd=context.repo_root, environment=environment, capture=True)
         start_services(
             context,
@@ -535,6 +795,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         reload_proxy(context, environment)
         configure_tls(context, environment)
+        verify_tls(context, environment)
         if not args.no_wait:
             wait_for_login(context, environment)
             if not args.no_scenarios:

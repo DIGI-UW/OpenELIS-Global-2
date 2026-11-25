@@ -134,7 +134,6 @@ export const InventoryItemAPI = {
   // Get all items (both active and inactive)
   getAll: (filters = {}) => {
     const params = new URLSearchParams();
-    if (filters.itemType) params.append("itemType", filters.itemType);
     if (filters.isActive !== undefined)
       params.append("isActive", filters.isActive);
     const query = params.toString();
@@ -144,8 +143,7 @@ export const InventoryItemAPI = {
   // Get item by ID
   getById: (id) => get(`/items/${id}`),
 
-  // Get all item types
-  getItemTypes: () => get("/items/types"),
+  getTags: () => get("/items/tags"),
 
   getLowStock: () => get("/items/low-stock"),
 
@@ -160,11 +158,39 @@ export const InventoryItemAPI = {
 
   // Activate item (restore from soft delete)
   activate: (id) => put(`/items/${id}/activate`, {}),
+
+  markOrdered: ({ itemIds, note, expectedDate }) =>
+    post("/items/mark-ordered", { itemIds, note, expectedDate }),
+
+  clearOrdered: (itemIds) => post("/items/clear-ordered", { itemIds }),
 };
 
 /** Items board API: one row per active item, sorted by urgency server side. */
 export const InventoryBoardAPI = {
-  get: () => get("/board"),
+  get: (includeInactive = false) =>
+    get(`/board${includeInactive ? "?includeInactive=true" : ""}`),
+};
+
+export const InventoryCountAPI = {
+  record: (entries) => post("/count", { entries }),
+};
+
+export const InventoryImportAPI = {
+  preview: (csv) => post("/import/preview", { csv }),
+
+  apply: (csv) => post("/import/apply", { csv }),
+
+  templateUrl: () => `${config.serverBaseUrl}${BASE_PATH}/import/template`,
+};
+
+export const InventoryTagAPI = {
+  getDirectory: () => get("/tags"),
+
+  create: (name) => post("/tags", { name }),
+
+  deactivate: (name) => post("/tags/deactivate", { name }),
+
+  activate: (name) => post("/tags/activate", { name }),
 };
 
 /**
@@ -182,8 +208,8 @@ export const InventoryLotAPI = {
     put(`/lots/${id}/qc-status`, { qcStatus, notes }),
 
   // Adjust quantity
-  adjust: (id, newQuantity, reason) =>
-    post(`/lots/${id}/adjust`, { newQuantity, reason }),
+  adjust: (id, newQuantity, reason, notes) =>
+    post(`/lots/${id}/adjust`, { newQuantity, reason, notes }),
 
   // Dispose lot
   dispose: (id, reason, notes) =>
@@ -218,6 +244,9 @@ export const InventoryManagementAPI = {
 
   // Receive new inventory
   receive: (receiveData) => post("/management/receive", receiveData),
+
+  /** A whole delivery in one transaction, so a failed line cannot half-apply. */
+  receiveBatch: (lots) => post("/management/receive/batch", lots),
 };
 
 /**
@@ -300,28 +329,34 @@ export const UsageAPI = {
   getByLot: (lotId) => get(`/usage/lot/${lotId}`),
 };
 
+const reportQuery = (params) => {
+  const queryParams = new URLSearchParams();
+  if (params.reportType) queryParams.append("reportType", params.reportType);
+  if (params.exportFormat)
+    queryParams.append("exportFormat", params.exportFormat);
+  if (params.startDate) queryParams.append("startDate", params.startDate);
+  if (params.endDate) queryParams.append("endDate", params.endDate);
+  if (params.includeInactive !== undefined)
+    queryParams.append("includeInactive", params.includeInactive);
+  if (params.includeExpired !== undefined)
+    queryParams.append("includeExpired", params.includeExpired);
+  (params.tags || []).forEach((tag) => queryParams.append("tags", tag));
+  return queryParams.toString();
+};
+
 /**
  * Reports API
  */
 export const ReportsAPI = {
+  preview: (params) =>
+    post(
+      `/reports/preview?${reportQuery({ ...params, exportFormat: undefined })}`,
+      {},
+    ),
+
   // Generate inventory report
   generate: async (params) => {
-    const queryParams = new URLSearchParams();
-    if (params.reportType) queryParams.append("reportType", params.reportType);
-    if (params.exportFormat)
-      queryParams.append("exportFormat", params.exportFormat);
-    if (params.startDate) queryParams.append("startDate", params.startDate);
-    if (params.endDate) queryParams.append("endDate", params.endDate);
-    if (params.includeInactive !== undefined)
-      queryParams.append("includeInactive", params.includeInactive);
-    if (params.includeExpired !== undefined)
-      queryParams.append("includeExpired", params.includeExpired);
-    if (params.groupByType !== undefined)
-      queryParams.append("groupByType", params.groupByType);
-    if (params.groupByLocation !== undefined)
-      queryParams.append("groupByLocation", params.groupByLocation);
-
-    const query = queryParams.toString();
+    const query = reportQuery(params);
     const endpoint = `${BASE_PATH}/reports/generate${query ? `?${query}` : ""}`;
 
     return new Promise((resolve, reject) => {
@@ -337,10 +372,11 @@ export const ReportsAPI = {
 
           // Extract filename from Content-Disposition header if available
           if (contentDisposition) {
-            const filenameMatch =
-              contentDisposition.match(/filename="?(.+)"?/i);
+            const filenameMatch = contentDisposition.match(
+              /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i,
+            );
             if (filenameMatch) {
-              filename = filenameMatch[1];
+              filename = decodeURIComponent(filenameMatch[1].trim());
             }
           }
 

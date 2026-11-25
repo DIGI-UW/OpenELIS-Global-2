@@ -54,6 +54,17 @@ public class UserContextHolderTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void getCurrentSysUser_withPairedBridge_returnsDaemonUser() {
+        SecurityContext ctx = SecurityContextHolder.createEmptyContext();
+        ctx.setAuthentication(new AnalyzerBridgeAuthenticationToken("ab".repeat(32)));
+        SecurityContextHolder.setContext(ctx);
+
+        SystemUser user = holder.getCurrentSysUser();
+        assertNotNull(user);
+        assertEquals("daemon", user.getLoginName());
+    }
+
+    @Test
     public void getCurrentSysUser_withAuthenticatedUser_returnsSystemUser() {
         // Resolve admin directly via the same path UserContextHolder uses, so
         // the test asserts on identical lookup semantics rather than chasing

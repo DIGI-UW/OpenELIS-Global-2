@@ -323,6 +323,10 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
         }
     }
 
+    /**
+     * The tests reflex and calculation rules generated. A calculation may fill the
+     * analysis a reflex has just added; that generated test is listed once.
+     */
     protected List<Analysis> setTestReflexes(ResultsUpdateDataSet actionDataSet, String sysUserId) {
         TestReflexUtil testReflexUtil = new TestReflexUtil();
         TestCalculatedUtil testCaliculatedUtil = new TestCalculatedUtil();
@@ -341,7 +345,12 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
         List<Analysis> caclculatedAnalyses = testCaliculatedUtil.addNewTestsToDBForCalculatedTests(allResults,
                 sysUserId);
         actionDataSet.getCalculatedResults().addAll(testCaliculatedUtil.getCalculatedResults());
-        reflexAnalysises.addAll(caclculatedAnalyses);
+        for (Analysis calculated : caclculatedAnalyses) {
+            if (reflexAnalysises.stream()
+                    .noneMatch(added -> added.getId() != null && added.getId().equals(calculated.getId()))) {
+                reflexAnalysises.add(calculated);
+            }
+        }
         return reflexAnalysises;
     }
 

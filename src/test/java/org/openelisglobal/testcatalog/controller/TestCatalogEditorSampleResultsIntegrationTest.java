@@ -285,6 +285,9 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
         c.code = code;
         c.label = label;
         c.displayOrder = order;
+        // Every component has a result type (OGC-1458); tests that need another
+        // type set it after.
+        c.resultType = "N";
         return c;
     }
 
@@ -553,40 +556,6 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
     }
 
     @org.junit.Test
-    public void copySampleResults_copiesComponentsOptionsAndInterpretations() {
-        // Seed the source test's config via the controller.
-        ResultComponentDto srcComp = comp(null, "SEX", "Sex", 1);
-        srcComp.resultType = "D";
-        srcComp.options.add(opt(null, "SRIT-Male", 1));
-        srcComp.interpretations.add(interp(null, "SRIT-Male", "Boy", "NORMAL"));
-        controller.saveSampleResults(String.valueOf(SOURCE_ID), body(srcComp), authedRequest());
-
-        // Copy onto the (empty) target test.
-        ResponseEntity<SampleResults> resp = controller.copySampleResults(String.valueOf(TEST_ID),
-                String.valueOf(SOURCE_ID), authedRequest());
-        assertEquals(200, resp.getStatusCode().value());
-
-        SampleResults target = controller.getSampleResults(String.valueOf(TEST_ID)).getBody();
-        assertEquals(1, target.components.size());
-        assertEquals("SEX", target.components.get(0).code);
-        assertEquals(1, target.components.get(0).options.size());
-        assertEquals("SRIT-Male", target.components.get(0).options.get(0).valueName);
-        assertEquals(1, target.components.get(0).interpretations.size());
-        assertEquals("Boy", target.components.get(0).interpretations.get(0).text);
-    }
-
-    @org.junit.Test
-    public void copySampleResults_unknownTargetReturns404() {
-        assertEquals(404, controller.copySampleResults("99999999", String.valueOf(SOURCE_ID), authedRequest())
-                .getStatusCode().value());
-    }
-
-    /**
-     * OGC-1234: a removed option stays as an inactive row, and adding the same
-     * value back is a new row beside it. A result entered now must resolve to the
-     * row the test offers, not to whichever row was inserted first.
-     */
-    @org.junit.Test
     public void dictionaryLookup_prefersTheActiveRowOverAnInactiveOneWithTheSameValue() {
         String value = String.valueOf(DICT_ID);
         ResultComponentDto primary = comp(null, "PRIMARY", "Result", 0);
@@ -670,29 +639,6 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
     }
 
     @org.junit.Test
-    public void copySampleResults_unknownSourceReturns404_andLeavesTheTargetUntouched() {
-        ResultComponentDto primary = comp(null, "PRIMARY", "Result", 0);
-        primary.resultType = "D";
-        primary.isPrimary = true;
-        primary.options.add(opt(null, "SRIT-Kept", 1));
-        controller.saveSampleResults(String.valueOf(TEST_ID), body(primary), authedRequest());
-
-        assertEquals(404, controller.copySampleResults(String.valueOf(TEST_ID), "99999999", authedRequest())
-                .getStatusCode().value());
-
-        SampleResults target = controller.getSampleResults(String.valueOf(TEST_ID)).getBody();
-        assertEquals(1, target.components.size());
-        assertEquals("SRIT-Kept", target.components.get(0).options.get(0).valueName);
-    }
-
-    /**
-     * OGC-1234: "Copy configuration from test" replaces. The editor stages the
-     * source's components with their ids dropped and the ordinary save commits
-     * them, so a target that is already configured (the case the copy endpoint
-     * skipped: 162 of 164 tests have a typed PRIMARY) ends up with exactly the
-     * source's components, options and interpretations, and nothing of its own.
-     */
-    @org.junit.Test
     public void savingAStagedCopy_replacesAConfiguredTargetsComponentsOptionsAndInterpretations() {
         ResultComponentDto targetPrimary = comp(null, "PRIMARY", "Target result", 0);
         targetPrimary.resultType = "D";
@@ -716,6 +662,7 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
 
         SampleResults staged = controller.getSampleResults(String.valueOf(SOURCE_ID)).getBody();
         staged.testId = String.valueOf(TEST_ID);
+        staged.version = controller.getSampleResults(String.valueOf(TEST_ID)).getBody().version;
         for (ResultComponentDto c : staged.components) {
             c.id = null;
             c.options.forEach(o -> o.id = null);
@@ -752,14 +699,14 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
     }
 
     @org.junit.Test
-    public void saveSampleResults_reAddingASoftDeletedCode_reactivatesInsteadOfColliding() {
-        // Add SYS, then remove it (soft-delete leaves the row with is_active='N',
-        // still occupying the (test_id, code) UNIQUE slot).
+    public void saveSampleResults_reAddingARemovedCode_isANewComponent() {
+        // Add SYS, then remove it: the removed row stays, inactive, for the record.
         controller.saveSampleResults(String.valueOf(TEST_ID), body(comp(null, "SYS", "Systolic", 1)), authedRequest());
-        controller.saveSampleResults(String.valueOf(TEST_ID), body(), authedRequest());
+        String removedId = controller.getSampleResults(String.valueOf(TEST_ID)).getBody().components.get(0).id;
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(comp(null, "DIA", "Diastolic", 2)), authedRequest());
 
-        // Re-add the same code — must reactivate the dead row, not insert a colliding
-        // one (which would violate uq_test_result_component_test_code → 500).
+        // OGC-1458: the code is free again, and adding it back is a new component,
+        // so nothing of the removed one (its ranges) comes back with it.
         ResponseEntity<SampleResults> resp = controller.saveSampleResults(String.valueOf(TEST_ID),
                 body(comp(null, "SYS", "Systolic BP", 1)), authedRequest());
         assertEquals(200, resp.getStatusCode().value());
@@ -768,11 +715,9 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
         assertEquals(1, after.components.size());
         assertEquals("SYS", after.components.get(0).code);
         assertEquals("Systolic BP", after.components.get(0).label);
-        // Exactly one physical row for (test_id, SYS) — reactivated, not duplicated.
-        Long rows = jdbc.queryForObject(
-                "SELECT count(*) FROM clinlims.test_result_component WHERE test_id = ? AND code = 'SYS'", Long.class,
-                TEST_ID);
-        assertEquals(Long.valueOf(1L), rows);
+        assertNotEquals("a new component, not the removed one", removedId, after.components.get(0).id);
+        assertEquals("N", jdbc.queryForObject("SELECT is_active FROM clinlims.test_result_component WHERE id = ?",
+                String.class, removedId));
     }
 
     @org.junit.Test
@@ -815,6 +760,23 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
         assertEquals("legacy UOM must surface on the PRIMARY component", String.valueOf(UOM_ID), loaded.uomId);
         assertEquals("legacy significant digits must surface on the PRIMARY component", Integer.valueOf(4),
                 loaded.significantDigits);
+    }
+
+    @org.junit.Test
+    public void syncPrimaryComponentFromLegacy_keepsThePrimarysTypeAndDigitsWhenOnlyAnotherComponentHasOptions() {
+        // The result-components import sets the primary's type and digits; a
+        // test-results row then adds an answer to another component only.
+        componentService.insert(component("PRIMARY", 0, "N", 3, true));
+        String callId = componentService.insert(component("CALL", 1, "D", null, false));
+        jdbc.update("INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, value, component_id, is_active,"
+                + " lastupdated) VALUES (?, ?, 'D', 'Detected', ?, true, NOW())", 952040L, TEST_ID, callId);
+
+        componentService.syncPrimaryComponentFromLegacy(String.valueOf(TEST_ID), "1");
+
+        ResultComponentDto loaded = controller.getSampleResults(String.valueOf(TEST_ID)).getBody().components.stream()
+                .filter(component -> "PRIMARY".equals(component.code)).findFirst().orElseThrow();
+        assertEquals("N", loaded.resultType);
+        assertEquals(Integer.valueOf(3), loaded.significantDigits);
     }
 
     @org.junit.Test
@@ -1109,6 +1071,21 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
     private java.util.List<String> normalLimitValues() {
         return jdbc.queryForList("SELECT CAST(normal_dictionary_id AS varchar) FROM clinlims.result_limits"
                 + " WHERE test_id = ? AND normal_dictionary_id IS NOT NULL ORDER BY id", String.class, TEST_ID);
+    }
+
+    private static org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component(String code,
+            int order, String resultType, Integer significantDigits, boolean primary) {
+        var component = new org.openelisglobal.testresultcomponent.valueholder.TestResultComponent();
+        component.setTestId(String.valueOf(TEST_ID));
+        component.setCode(code);
+        component.setLabel(code);
+        component.setDisplayOrder(order);
+        component.setResultType(resultType);
+        component.setSignificantDigits(significantDigits);
+        component.setIsActive("Y");
+        component.setIsPrimary(primary);
+        component.setSysUserId("1");
+        return component;
     }
 
     private static OptionDto opt(String id, String value, Integer sortOrder) {

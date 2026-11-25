@@ -53,6 +53,9 @@ const caseAtStage = (status) => ({
   lastName: "B",
   status,
   grossExam: "",
+  // Flagged, because only a specimen grossing flagged for decalcification is
+  // offered that stage, and these tests are about all eleven.
+  decalcificationRequired: true,
   microscopyExam: "",
   conclusionText: "",
   blocks: [],

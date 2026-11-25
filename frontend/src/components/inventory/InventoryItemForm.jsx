@@ -1,22 +1,19 @@
-import React, {
-  useState,
-  useEffect,
-  useContext,
-  useCallback,
-  useRef,
-} from "react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
 import {
   Modal,
   TextInput,
-  Dropdown,
   NumberInput,
+  Checkbox,
   TextArea,
   Stack,
+  Button,
+  Tag,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
 import { InventoryItemAPI } from "./InventoryService";
+import { useIsMounted } from "./useIsMounted";
 
 // Same rule as the server's CodeGenerator.toCode; it does not truncate, the
 // server does, so a code that grows on upper-casing (e.g. ß to SS) is cut there.
@@ -26,7 +23,33 @@ const toCode = (value) =>
     .replace(/[^A-Z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
+const EMPTY_FORM = {
+  code: "",
+  name: "",
+  tags: [],
+  category: "",
+  manufacturer: "",
+  catalogNumber: "",
+  upc: "",
+  units: "",
+  lowStockThreshold: 0,
+  expirationAlertDays: "",
+  trackLots: false,
+  stabilityAfterOpening: "",
+  storageRequirements: "",
+  compatibleAnalyzers: "",
+  testsPerKit: "",
+  leadTimeDays: "",
+};
+
+const InventoryItemForm = ({
+  open,
+  onClose,
+  onSave,
+  item = null,
+  observedLeadTime = null,
+  initialUpc = null,
+}) => {
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -44,66 +67,32 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
   const isEdit = !!item;
 
   // Form state
-  const [formData, setFormData] = useState({
-    code: "",
-    name: "",
-    itemType: "REAGENT",
-    category: "",
-    manufacturer: "",
-    units: "",
-    lowStockThreshold: 0,
-    stabilityAfterOpening: 0,
-    storageRequirements: "",
-    compatibleAnalyzers: "",
-    testsPerKit: 0,
-  });
+  const [formData, setFormData] = useState(
+    initialUpc ? { ...EMPTY_FORM, upc: initialUpc } : EMPTY_FORM,
+  );
 
   const [saving, setSaving] = useState(false);
   const normalizedCode = toCode(formData.code);
-  const isMountedRef = useRef(true);
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
+  const isMounted = useIsMounted();
 
   const [error, setError] = useState(null);
-  const [itemTypes, setItemTypes] = useState([]);
+  const [tagSuggestions, setTagSuggestions] = useState([]);
+  const [tagDraft, setTagDraft] = useState("");
 
-  // Load item types from backend
   useEffect(() => {
-    const loadItemTypes = async () => {
+    if (!open) return;
+    const loadTags = async () => {
       try {
-        const types = await InventoryItemAPI.getItemTypes();
-        if (!isMountedRef.current) return;
-        const formattedTypes = types.map((type) => ({
-          id: type,
-          text: getItemTypeLabel(type),
-        }));
-        setItemTypes(formattedTypes);
+        const tags = await InventoryItemAPI.getTags();
+        if (!isMounted()) return;
+        setTagSuggestions(tags);
       } catch (err) {
-        console.error("Error loading item types:", err);
-        notify({
-          kind: NotificationKinds.error,
-          title: intl.formatMessage({ id: "notification.error" }),
-          subtitle: "Failed to load item types",
-        });
+        // Not fatal: a tag can still be typed.
+        console.error("Error loading tags:", err);
       }
     };
-    loadItemTypes();
-  }, [notify, intl]);
-
-  const getItemTypeLabel = (type) => {
-    const labels = {
-      REAGENT: "Reagent",
-      RDT: "RDT (Rapid Diagnostic Test)",
-      CARTRIDGE: "Analyzer Cartridge",
-      HIV_KIT: "HIV Test Kit",
-      SYPHILIS_KIT: "Syphilis Test Kit",
-    };
-    return labels[type] || type;
-  };
+    loadTags();
+  }, [open]);
 
   // Load item data if editing, reset if adding new
   useEffect(() => {
@@ -111,42 +100,31 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
       setFormData({
         code: item.code || "",
         name: item.name || "",
-        itemType: item.itemType || "REAGENT",
+        tags: item.tags || [],
         category: item.category || "",
         manufacturer: item.manufacturer || "",
+        catalogNumber: item.catalogNumber || "",
+        upc: item.upc || "",
         units: item.units || "",
         lowStockThreshold: item.lowStockThreshold || 0,
-        stabilityAfterOpening: item.stabilityAfterOpening || 0,
+        expirationAlertDays: item.expirationAlertDays ?? "",
+        trackLots: item.trackLots === "Y",
+        stabilityAfterOpening: item.stabilityAfterOpening ?? "",
         storageRequirements: item.storageRequirements || "",
         compatibleAnalyzers: item.compatibleAnalyzers || "",
-        testsPerKit: item.testsPerKit || 0,
+        testsPerKit: item.testsPerKit ?? "",
+        leadTimeDays: item.leadTimeDays ?? "",
       });
     } else {
-      // Reset to initial state when adding new item
-      setFormData({
-        code: "",
-        name: "",
-        itemType: "REAGENT",
-        category: "",
-        manufacturer: "",
-        units: "",
-        lowStockThreshold: 0,
-        stabilityAfterOpening: 0,
-        storageRequirements: "",
-        compatibleAnalyzers: "",
-        testsPerKit: 0,
-      });
+      setFormData(initialUpc ? { ...EMPTY_FORM, upc: initialUpc } : EMPTY_FORM);
     }
-  }, [item, open]);
+  }, [item, open, initialUpc]);
 
   // Handle input changes
   const handleChange = (field, value) => {
     // Convert empty string or NaN to 0 for numeric fields
-    const numericFields = [
-      "lowStockThreshold",
-      "stabilityAfterOpening",
-      "testsPerKit",
-    ];
+    // The optional numbers stay blank; a 0 there is rejected by the server.
+    const numericFields = ["lowStockThreshold"];
 
     let processedValue = value;
     if (numericFields.includes(field)) {
@@ -167,50 +145,48 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
     setError(null);
   };
 
+  // Blank or 0 goes as null: the entity's @Min(1) rejects a 0.
+  const optionalNumber = (value) =>
+    value === "" || value == null || Number(value) === 0 ? null : Number(value);
+
+  // Same key the backend uses to fold case and spacing.
+  const tagKey = (tag) => tag.trim().replace(/\s+/g, " ").toLowerCase();
+
+  const hasTag = (tag) =>
+    formData.tags.some((applied) => tagKey(applied) === tagKey(tag ?? ""));
+
+  const addTag = (tag) => {
+    const trimmed = (tag ?? "").trim().replace(/\s+/g, " ");
+    if (!trimmed || hasTag(trimmed)) return;
+    setFormData((prev) => ({ ...prev, tags: [...prev.tags, trimmed] }));
+    setTagDraft("");
+    setError(null);
+  };
+
+  const removeTag = (tag) => {
+    setFormData((prev) => ({
+      ...prev,
+      tags: prev.tags.filter((applied) => applied !== tag),
+    }));
+  };
+
   // Validate form
   const validate = () => {
     if (!formData.name?.trim()) {
-      setError("Item name is required");
+      setError(intl.formatMessage({ id: "catalog.item.error.nameRequired" }));
       return false;
     }
-
-    if (!formData.itemType) {
-      setError("Item type is required");
-      return false;
-    }
-
-    // Only on create: legacy reagents have NULL stability and must stay
-    // editable without the operator inventing a value.
-    if (
-      !isEdit &&
-      formData.itemType === "REAGENT" &&
-      !formData.stabilityAfterOpening
-    ) {
-      setError(
-        intl.formatMessage({ id: "catalog.item.error.stabilityRequired" }),
-      );
-      return false;
-    }
-
-    if (
-      formData.itemType === "CARTRIDGE" &&
-      !formData.compatibleAnalyzers?.trim()
-    ) {
-      setError("Compatible analyzers are required for cartridges");
-      return false;
-    }
-
-    if (formData.itemType === "RDT" && !formData.testsPerKit) {
-      setError("Tests per kit is required for RDTs");
-      return false;
-    }
-
     return true;
   };
 
   // Handle save
   const handleSave = async () => {
     if (!validate()) return;
+
+    // A tag typed but not confirmed with Enter is still saved.
+    const typedTags = tagDraft.trim()
+      ? [...formData.tags, tagDraft.trim()]
+      : formData.tags;
 
     setSaving(true);
     setError(null);
@@ -219,24 +195,30 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
       // Build sanitized data with only type-relevant fields
       const sanitizedData = {
         name: formData.name,
-        itemType: formData.itemType,
+        tags: typedTags,
         category: formData.category,
         manufacturer: formData.manufacturer,
         units: formData.units,
         lowStockThreshold: Number(formData.lowStockThreshold) || 0,
+        // Blank stays null, not zero, so the learned lead time can take over.
+        leadTimeDays:
+          formData.leadTimeDays === "" || formData.leadTimeDays == null
+            ? null
+            : Number(formData.leadTimeDays),
       };
 
-      // Add type-specific fields only for relevant item types
-      if (formData.itemType === "REAGENT") {
-        // The entity is @Min(1), so an unset value has to go as null, not 0.
-        sanitizedData.stabilityAfterOpening =
-          Number(formData.stabilityAfterOpening) || null;
-        sanitizedData.storageRequirements = formData.storageRequirements;
-      } else if (formData.itemType === "CARTRIDGE") {
-        sanitizedData.compatibleAnalyzers = formData.compatibleAnalyzers;
-      } else if (formData.itemType === "RDT") {
-        sanitizedData.testsPerKit = Number(formData.testsPerKit) || 0;
-      }
+      sanitizedData.stabilityAfterOpening = optionalNumber(
+        formData.stabilityAfterOpening,
+      );
+      sanitizedData.storageRequirements = formData.storageRequirements;
+      sanitizedData.compatibleAnalyzers = formData.compatibleAnalyzers;
+      sanitizedData.testsPerKit = optionalNumber(formData.testsPerKit);
+      sanitizedData.catalogNumber = formData.catalogNumber;
+      sanitizedData.upc = formData.upc?.trim() || null;
+      sanitizedData.expirationAlertDays = optionalNumber(
+        formData.expirationAlertDays,
+      );
+      sanitizedData.trackLots = formData.trackLots ? "Y" : "N";
 
       if (isEdit) {
         await InventoryItemAPI.update(item.id, sanitizedData);
@@ -245,7 +227,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         sanitizedData.code = toCode(formData.code) || null;
         await InventoryItemAPI.create(sanitizedData);
       }
-      if (!isMountedRef.current) return;
+      if (!isMounted()) return;
       setSaving(false);
       onSave();
     } catch (err) {
@@ -255,7 +237,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         ? intl.formatMessage({ id: err.errorCode }, err.params)
         : err.message ||
           intl.formatMessage({ id: "catalog.item.error.saveGeneric" });
-      if (!isMountedRef.current) return;
+      if (!isMounted()) return;
       setError(errorMessage);
       setSaving(false);
       notify({
@@ -273,14 +255,17 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
       onRequestSubmit={handleSave}
       modalHeading={intl.formatMessage({
         id: isEdit
-          ? "catalog.item.form.title.edit"
-          : "catalog.item.form.title.add",
+          ? "inventory.item.form.title.edit"
+          : "inventory.item.form.title.add",
       })}
       primaryButtonText={intl.formatMessage({ id: "button.save" })}
       secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
       primaryButtonDisabled={saving}
-      size="md"
+      size="lg"
     >
+      <p className="inventory-item-derived">
+        <FormattedMessage id="catalog.item.form.help" />
+      </p>
       <Stack gap={5}>
         {error && (
           <div style={{ color: "red", marginBottom: "1rem" }}>{error}</div>
@@ -334,41 +319,95 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
           onChange={(e) => handleChange("code", e.target.value)}
         />
 
-        <Dropdown
-          id="itemType"
-          titleText={<FormattedMessage id="catalog.item.type" />}
-          label="Select item type"
-          items={itemTypes}
-          itemToString={(item) => (item ? item.text : "")}
-          selectedItem={
-            itemTypes.find((t) => t.id === formData.itemType) ?? null
-          }
-          onChange={({ selectedItem }) =>
-            handleChange("itemType", selectedItem.id)
-          }
-          required
-        />
+        {/* Native datalist, not ComboBox: Downshift owns the value, and
+            remounting it to clear the field stole focus mid-keystroke. */}
+        <div className="inventory-item-tags">
+          <TextInput
+            id="itemTags"
+            list="inventory-tag-suggestions"
+            labelText={<FormattedMessage id="inventory.item.tags" />}
+            helperText={intl.formatMessage({ id: "inventory.item.tags.help" })}
+            placeholder={intl.formatMessage({ id: "inventory.item.tags.add" })}
+            value={tagDraft}
+            onChange={(e) => setTagDraft(e.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter") return;
+              event.preventDefault();
+              event.stopPropagation();
+              addTag(tagDraft);
+            }}
+          />
+          <datalist id="inventory-tag-suggestions">
+            {tagSuggestions
+              .filter((tag) => !hasTag(tag))
+              .map((tag) => (
+                <option key={tag} value={tag} />
+              ))}
+          </datalist>
+          {formData.tags.length > 0 && (
+            <div className="inventory-item-tags__chips">
+              {formData.tags.map((tag) => (
+                <Tag
+                  key={tag}
+                  type="cool-gray"
+                  filter
+                  onClose={() => removeTag(tag)}
+                  title={intl.formatMessage(
+                    { id: "inventory.item.tags.remove" },
+                    { tag },
+                  )}
+                >
+                  {tag}
+                </Tag>
+              ))}
+            </div>
+          )}
+        </div>
 
-        <TextInput
-          id="category"
-          labelText={<FormattedMessage id="catalog.item.category" />}
-          value={formData.category}
-          onChange={(e) => handleChange("category", e.target.value)}
-        />
+        <div className="inventory-item-pair">
+          <TextInput
+            id="category"
+            labelText={<FormattedMessage id="catalog.item.category" />}
+            value={formData.category}
+            onChange={(e) => handleChange("category", e.target.value)}
+          />
+          <TextInput
+            id="manufacturer"
+            labelText={<FormattedMessage id="catalog.item.manufacturer" />}
+            value={formData.manufacturer}
+            onChange={(e) => handleChange("manufacturer", e.target.value)}
+          />
+        </div>
 
-        <TextInput
-          id="manufacturer"
-          labelText={<FormattedMessage id="catalog.item.manufacturer" />}
-          value={formData.manufacturer}
-          onChange={(e) => handleChange("manufacturer", e.target.value)}
-        />
+        <div className="inventory-item-pair">
+          <TextInput
+            id="catalogNumber"
+            labelText={<FormattedMessage id="catalog.item.catalogNumber" />}
+            value={formData.catalogNumber}
+            onChange={(e) => handleChange("catalogNumber", e.target.value)}
+          />
+          <TextInput
+            id="upc"
+            labelText={<FormattedMessage id="catalog.item.upc" />}
+            helperText={intl.formatMessage({ id: "catalog.item.upc.help" })}
+            value={formData.upc}
+            onChange={(e) => handleChange("upc", e.target.value)}
+          />
+          <TextInput
+            id="units"
+            labelText={<FormattedMessage id="catalog.item.units" />}
+            value={formData.units}
+            onChange={(e) => handleChange("units", e.target.value)}
+            placeholder="e.g., mL, tests, kits"
+          />
+        </div>
 
-        <TextInput
-          id="units"
-          labelText={<FormattedMessage id="catalog.item.units" />}
-          value={formData.units}
-          onChange={(e) => handleChange("units", e.target.value)}
-          placeholder="e.g., mL, tests, kits"
+        <Checkbox
+          id="trackLots"
+          labelText={intl.formatMessage({ id: "catalog.item.trackLots" })}
+          helperText={intl.formatMessage({ id: "catalog.item.trackLots.help" })}
+          checked={formData.trackLots}
+          onChange={(_, { checked }) => handleChange("trackLots", checked)}
         />
 
         <NumberInput
@@ -382,63 +421,91 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
           max={999999}
         />
 
-        {/* Type-specific fields */}
-        {formData.itemType === "REAGENT" && (
-          <>
-            <NumberInput
-              id="stabilityAfterOpening"
-              label={
-                <FormattedMessage id="catalog.item.stabilityAfterOpening" />
-              }
-              value={formData.stabilityAfterOpening ?? 0}
-              onChange={(e, { value }) =>
-                handleChange("stabilityAfterOpening", value ?? 0)
-              }
-              min={0}
-              max={365}
-              required
-            />
+        <NumberInput
+          id="leadTimeDays"
+          label={<FormattedMessage id="inventory.item.leadTime" />}
+          helperText={intl.formatMessage({
+            id: "inventory.item.leadTime.help",
+          })}
+          value={formData.leadTimeDays}
+          onChange={(e, { value }) => handleChange("leadTimeDays", value)}
+          min={0}
+          max={999}
+          allowEmpty
+        />
 
-            <TextArea
-              id="storageRequirements"
-              labelText={
-                <FormattedMessage id="catalog.item.storageRequirements" />
-              }
-              value={formData.storageRequirements}
-              onChange={(e) =>
-                handleChange("storageRequirements", e.target.value)
-              }
-              placeholder="e.g., Store at 2-8°C, protect from light"
-            />
-          </>
-        )}
+        {observedLeadTime != null &&
+          Number(formData.leadTimeDays) !== observedLeadTime && (
+            <div className="inventory-item-suggestion">
+              <span>
+                <FormattedMessage
+                  id="inventory.item.leadTime.observedSuggest"
+                  values={{ days: observedLeadTime }}
+                />
+              </span>
+              <Button
+                kind="ghost"
+                size="sm"
+                onClick={() => handleChange("leadTimeDays", observedLeadTime)}
+              >
+                <FormattedMessage id="inventory.item.leadTime.useObserved" />
+              </Button>
+            </div>
+          )}
 
-        {formData.itemType === "CARTRIDGE" && (
-          <TextInput
-            id="compatibleAnalyzers"
-            labelText={
-              <FormattedMessage id="catalog.item.compatibleAnalyzers" />
-            }
-            value={formData.compatibleAnalyzers}
-            onChange={(e) =>
-              handleChange("compatibleAnalyzers", e.target.value)
-            }
-            placeholder="e.g., GeneXpert, Cobas"
-            required
-          />
-        )}
+        <NumberInput
+          id="expirationAlertDays"
+          label={<FormattedMessage id="catalog.item.expirationAlertDays" />}
+          value={formData.expirationAlertDays}
+          onChange={(e, { value }) =>
+            handleChange("expirationAlertDays", value)
+          }
+          min={0}
+          max={365}
+          allowEmpty
+        />
 
-        {formData.itemType === "RDT" && (
-          <NumberInput
-            id="testsPerKit"
-            label={<FormattedMessage id="catalog.item.testsPerKit" />}
-            value={formData.testsPerKit ?? 0}
-            onChange={(e, { value }) => handleChange("testsPerKit", value ?? 0)}
-            min={1}
-            max={1000}
-            required
-          />
-        )}
+        <NumberInput
+          id="stabilityAfterOpening"
+          label={<FormattedMessage id="catalog.item.stabilityAfterOpening" />}
+          value={formData.stabilityAfterOpening}
+          onChange={(e, { value }) =>
+            handleChange("stabilityAfterOpening", value)
+          }
+          min={0}
+          max={365}
+          allowEmpty
+        />
+
+        <TextArea
+          id="storageRequirements"
+          labelText={<FormattedMessage id="catalog.item.storageRequirements" />}
+          value={formData.storageRequirements}
+          onChange={(e) => handleChange("storageRequirements", e.target.value)}
+          placeholder="e.g., Store at 2-8°C, protect from light"
+        />
+
+        <TextInput
+          id="compatibleAnalyzers"
+          labelText={<FormattedMessage id="catalog.item.compatibleAnalyzers" />}
+          value={formData.compatibleAnalyzers}
+          onChange={(e) => handleChange("compatibleAnalyzers", e.target.value)}
+          placeholder="e.g., GeneXpert, Cobas"
+        />
+
+        <NumberInput
+          id="testsPerKit"
+          label={<FormattedMessage id="catalog.item.testsPerKit" />}
+          value={formData.testsPerKit}
+          onChange={(e, { value }) => handleChange("testsPerKit", value)}
+          min={0}
+          max={1000}
+          allowEmpty
+        />
+
+        <p className="inventory-item-derived">
+          <FormattedMessage id="inventory.item.autoConsume.help" />
+        </p>
       </Stack>
     </Modal>
   );

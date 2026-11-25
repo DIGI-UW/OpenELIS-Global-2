@@ -11,8 +11,13 @@ import {
 } from "@carbon/react";
 import PatientInfo from "./PatientInfo";
 import AddSample from "./AddSample";
-import { newSampleKey } from "./sampleTypeUpdate";
-import { samplesMissingTests, samplesWithTests } from "./orderSamples";
+import { newSampleKey, rejectedWithoutReason } from "./sampleTypeUpdate";
+import {
+  missingTestsTitle,
+  samplesMissingTests,
+  samplesWithTests,
+} from "./orderSamples";
+import useSampleTypeNames from "./useSampleTypeNames";
 import AddOrder from "./AddOrder";
 import "./add-order.scss";
 import { createSampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
@@ -28,7 +33,10 @@ import OrderEntryAdditionalQuestions from "./OrderEntryAdditionalQuestions";
 import OrderSuccessMessage from "./OrderSuccessMessage";
 import OrderEntryMissingFieldsNotice from "./OrderEntryMissingFieldsNotice";
 import EQASampleEntry from "../eqa/EQASampleEntry";
-import EQAOrderForm, { eqaReceiptNoteMissing } from "../eqa/EQAOrderForm";
+import EQAOrderForm, {
+  eqaReceiptNoteMissing,
+  eqaSchemeMissing,
+} from "../eqa/EQAOrderForm";
 import EQAEnrollmentCoverageNotice from "../eqa/EQAEnrollmentCoverageNotice";
 import { FormattedMessage, useIntl } from "react-intl";
 import { createOrderEntryValidationSchema } from "../formModel/validationSchema/OrderEntryValidationSchema";
@@ -845,6 +853,7 @@ const Index = () => {
   };
 
   const missingTestSamples = samplesMissingTests(samples);
+  const sampleTypeNames = useSampleTypeNames();
 
   const navigateForward = () => {
     if (currentStepIndex < visibleSteps.length - 1) {
@@ -879,9 +888,9 @@ const Index = () => {
         <div className="pageContent">
           {notificationVisible === true ? <AlertDialog /> : ""}
           <div className="orderWorkFlowDiv">
-            <h2>
+            <h1 className="page-heading-05">
               <FormattedMessage id="order.test.request.heading" />
-            </h2>
+            </h1>
 
             {isLoadingReferral && (
               <div style={{ padding: "1rem" }}>
@@ -1050,9 +1059,11 @@ const Index = () => {
                       kind="error"
                       lowContrast
                       hideCloseButton
-                      title={intl.formatMessage(
-                        { id: "order.sample.missingTests" },
-                        { sampleNumber },
+                      title={missingTestsTitle(
+                        intl,
+                        samples,
+                        sampleNumber,
+                        sampleTypeNames,
                       )}
                       data-testid="order-sample-missing-tests"
                     />
@@ -1073,7 +1084,8 @@ const Index = () => {
                       className="forwardButton"
                       disabled={
                         currentStep === STEP_PROGRAM &&
-                        eqaReceiptNoteMissing(orderFormValues)
+                        (eqaReceiptNoteMissing(orderFormValues) ||
+                          eqaSchemeMissing(orderFormValues))
                       }
                       onClick={navigateForward}
                     >
@@ -1091,7 +1103,8 @@ const Index = () => {
                           (item) => item.status === false,
                         ) ||
                         errors?.errors?.length > 0 ||
-                        missingTestSamples.length > 0
+                        missingTestSamples.length > 0 ||
+                        rejectedWithoutReason(samples)
                       }
                       onClick={handleSubmitOrderForm}
                     >

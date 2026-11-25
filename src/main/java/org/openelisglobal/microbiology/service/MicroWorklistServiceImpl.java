@@ -85,7 +85,8 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         if (AST_GRAIN.equals(normalized.grain) && "reviewed".equals(normalized.status)) {
             return getReviewedAstWorklistPage(normalized);
         }
-        List<MicroCase> worklistCases = caseDAO.getOpenCases();
+        List<MicroCase> worklistCases = caseDAO.getOpenCases().stream()
+                .filter(microCase -> visible(normalized, microCase.getSampleItemId())).toList();
         List<String> caseIds = worklistCases.stream().map(MicroCase::getId).toList();
         List<String> sampleItemIds = worklistCases.stream().map(MicroCase::getSampleItemId).distinct().toList();
         Map<String, List<MicroIsolate>> isolatesByCase = groupBy(isolateDAO.getByCaseIds(caseIds),
@@ -141,7 +142,20 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
     private MicroWorklistPageForm getReviewedAstWorklistPage(MicroWorklistQueryForm query) {
         MicroReviewedAstWorklistQuery reviewedQuery = new MicroReviewedAstWorklistQuery(query.stage, query.urgency,
                 query.due, query.q, query.sort, (query.page - 1) * query.pageSize, query.pageSize);
-        List<MicroReviewedAstWorklistRow> selected = astRunDAO.getReviewedWorklistPage(reviewedQuery);
+        List<MicroReviewedAstWorklistRow> selected;
+        long reviewedTotal;
+        if (query.sampleItemVisible == null) {
+            selected = astRunDAO.getReviewedWorklistPage(reviewedQuery);
+            reviewedTotal = astRunDAO.countReviewedWorklist(reviewedQuery);
+        } else {
+            List<MicroReviewedAstWorklistRow> everyVisible = astRunDAO
+                    .getReviewedWorklistPage(new MicroReviewedAstWorklistQuery(query.stage, query.urgency, query.due,
+                            query.q, query.sort, 0, Integer.MAX_VALUE))
+                    .stream().filter(item -> visible(query, item.microCase().getSampleItemId())).toList();
+            int first = Math.min((query.page - 1) * query.pageSize, everyVisible.size());
+            selected = everyVisible.subList(first, Math.min(first + query.pageSize, everyVisible.size()));
+            reviewedTotal = everyVisible.size();
+        }
         List<MicroCase> cases = selected.stream().map(MicroReviewedAstWorklistRow::microCase).collect(
                 Collectors.toMap(MicroCase::getId, Function.identity(), (first, ignored) -> first, LinkedHashMap::new))
                 .values().stream().toList();
@@ -163,7 +177,7 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
 
         MicroWorklistPageForm page = new MicroWorklistPageForm();
         page.filterOptions = surveillanceFilterOptions(rows, patientOriginLabels(rows));
-        page.total = (int) Math.min(Integer.MAX_VALUE, astRunDAO.countReviewedWorklist(reviewedQuery));
+        page.total = (int) Math.min(Integer.MAX_VALUE, reviewedTotal);
         page.page = query.page;
         page.pageSize = query.pageSize;
         page.rows.addAll(rows);
@@ -300,7 +314,12 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
                 : "priority";
         normalized.page = Math.max(1, query.page);
         normalized.pageSize = Math.max(1, Math.min(100, query.pageSize));
+        normalized.sampleItemVisible = query.sampleItemVisible;
         return normalized;
+    }
+
+    private static boolean visible(MicroWorklistQueryForm query, String sampleItemId) {
+        return query.sampleItemVisible == null || query.sampleItemVisible.test(sampleItemId);
     }
 
     private boolean matches(MicroWorklistRowForm row, MicroWorklistQueryForm query) {

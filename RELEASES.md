@@ -5,12 +5,13 @@ are supported, and how the branches relate to them.
 
 ## Supported release lines
 
-| Line    | Status              | Latest tag | Notes                                                                                                                                |
-| ------- | ------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| 3.3     | Planned             |            | 3.3.0 is planned for 2026-11-27. It is the first release that uses Semantic Versioning.                                              |
-| 3.2.3.x | Supported (current) | 3.2.3.0    | Baseline release. `main` points at it.                                                                                               |
-| 3.2.2.x | Supported (legacy)  | 3.2.2.0    | For sites that cannot yet take the 3.2.3 analyzer framework. Support ends when those sites move up; the date will be announced here. |
-| ≤ 3.2.1 | Unsupported         | 3.2.1.11   | Upgrade to the current line.                                                                                                         |
+| Line    | Status             | Latest tag | Notes                                                                                                                                |
+| ------- | ------------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 3.4     | In development     |            | `develop` is at 3.4.0-SNAPSHOT.                                                                                                      |
+| 3.3     | Releasing          |            | `main` holds 3.3.0; the tag and GitHub Release follow. The first release under Semantic Versioning.                                  |
+| 3.2.3.x | Supported          | 3.2.3.0    | Baseline release.                                                                                                                    |
+| 3.2.2.x | Supported (legacy) | 3.2.2.0    | For sites that cannot yet take the 3.2.3 analyzer framework. Support ends when those sites move up; the date will be announced here. |
+| ≤ 3.2.1 | Unsupported        | 3.2.1.11   | Upgrade to the current line.                                                                                                         |
 
 ## Branches
 

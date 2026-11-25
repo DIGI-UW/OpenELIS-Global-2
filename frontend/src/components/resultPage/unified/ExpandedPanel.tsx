@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext } from "react";
 import {
   Button,
   InlineNotification,
@@ -31,6 +31,7 @@ import ReagentsQcSection from "./ReagentsQcSection";
 import AliquotsSection from "./AliquotsSection";
 import ReferralAction, {
   ReferralDraft,
+  datePlaceholderId,
   emptyReferralDraft,
 } from "./ReferralAction";
 // the shipped inline non-conformity form (FR-E1) — plain jsx, no types
@@ -51,6 +52,7 @@ import {
   resetSectionLayout,
 } from "./sectionLayout";
 import { labNow } from "../../utils/labClock";
+import { ConfigurationContext } from "../../layout/Layout";
 
 /**
  * OGC-1021 (R2 of OGC-811) — the expanded row panel.
@@ -109,12 +111,17 @@ export interface RejectDraft {
   rejectReasonId: string;
 }
 
-/** dd/MM/yyyy — the app's date format; FR-F2's "defaults to now". */
-export const todayForReferral = (): string => {
+/**
+ * Today in the lab's date format, which the server reads the referral date in:
+ * dd/MM/yyyy under fr-FR, MM/dd/yyyy otherwise. FR-F2's "defaults to now".
+ */
+export const todayForReferral = (dateLocale?: string): string => {
   const now = labNow();
   const dd = String(now.getDate()).padStart(2, "0");
   const mm = String(now.getMonth() + 1).padStart(2, "0");
-  return `${dd}/${mm}/${now.getFullYear()}`;
+  return dateLocale === "fr-FR"
+    ? `${dd}/${mm}/${now.getFullYear()}`
+    : `${mm}/${dd}/${now.getFullYear()}`;
 };
 
 interface ExpandedPanelProps {
@@ -230,6 +237,8 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   onNceApplyDisposition,
 }) => {
   const intl = useIntl();
+  const { configurationProperties } = (useContext(ConfigurationContext) ||
+    {}) as { configurationProperties?: Record<string, string> };
   const rowKey = worklistRowKey(row);
 
   const methodName =
@@ -531,7 +540,13 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
             disabled={row.referredOut}
             onClick={() =>
               onReferralDraftChange(
-                referralDraft ? null : emptyReferralDraft(todayForReferral()),
+                referralDraft
+                  ? null
+                  : emptyReferralDraft(
+                      todayForReferral(
+                        configurationProperties?.DEFAULT_DATE_LOCALE,
+                      ),
+                    ),
               )
             }
             data-testid={`referral-toggle-${rowKey}`}
@@ -605,7 +620,9 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
                 id: "label.results.referral.reportDate",
               })}
               placeholder={intl.formatMessage({
-                id: "label.results.referral.reportDate.placeholder",
+                id: datePlaceholderId(
+                  configurationProperties?.DEFAULT_DATE_LOCALE,
+                ),
               })}
               value={referenceLabReportDate}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -815,6 +832,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
             testId={row.testId as string | undefined}
             componentId={row.testResultComponentId as string | undefined}
             resultValue={row.resultValue as string | undefined}
+            dictionaryOptions={row.dictionaryResults}
             latestInterpretation={latestInterpretation}
             draft={interpretationDraft}
             onDraftChange={onInterpretationDraftChange}

@@ -1,7 +1,11 @@
 package org.openelisglobal.microbiology.controller.rest;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -13,9 +17,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.util.Arrays;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.microbiology.form.MicroWorklistPageForm;
 import org.openelisglobal.microbiology.form.MicroWorklistQueryForm;
 import org.openelisglobal.microbiology.service.MicroWorklistService;
+import org.openelisglobal.microbiology.service.MicrobiologyCaseAccessService;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -34,6 +40,40 @@ public class MicroWorklistRestControllerSecurityTest extends SecuritySliceMockMv
 
     @Autowired
     private MicroWorklistService worklistService;
+
+    @Autowired
+    private MicrobiologyCaseAccessService accessService;
+
+    @Autowired
+    private UserModuleService userModuleService;
+
+    /**
+     * A bench user's worklist holds only the cases of their lab units: the query
+     * carries the same check the case view applies. An administrator's carries
+     * none.
+     */
+    @Test
+    public void aBenchUsersWorklistIsLimitedToTheirLabUnits() throws Exception {
+        clearInvocations(worklistService);
+        when(userModuleService.isUserAdmin(any())).thenReturn(false);
+        when(accessService.canAccessSampleItem(eq("601"), any(), eq(false))).thenReturn(true);
+        when(accessService.canAccessSampleItem(eq("602"), any(), eq(false))).thenReturn(false);
+
+        mockMvc.perform(get("/rest/microbiology/worklist").with(user("analyst").roles("RESULTS")))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<MicroWorklistQueryForm> queryCaptor = ArgumentCaptor.forClass(MicroWorklistQueryForm.class);
+        verify(worklistService).getWorklistPage(queryCaptor.capture());
+        assertTrue(queryCaptor.getValue().sampleItemVisible.test("601"));
+        assertFalse(queryCaptor.getValue().sampleItemVisible.test("602"));
+
+        clearInvocations(worklistService);
+        when(userModuleService.isUserAdmin(any())).thenReturn(true);
+        mockMvc.perform(get("/rest/microbiology/worklist").with(user("manager").roles("ADMIN")))
+                .andExpect(status().isOk());
+        verify(worklistService).getWorklistPage(queryCaptor.capture());
+        assertNull(queryCaptor.getValue().sampleItemVisible);
+    }
 
     @Test
     public void getWorklistWithoutAuthenticationReturns401() throws Exception {
@@ -106,8 +146,19 @@ public class MicroWorklistRestControllerSecurityTest extends SecuritySliceMockMv
         }
 
         @Bean
-        MicroWorklistRestController microWorklistRestController(MicroWorklistService service) {
-            return new MicroWorklistRestController(service);
+        MicrobiologyCaseAccessService microbiologyCaseAccessService() {
+            return mock(MicrobiologyCaseAccessService.class);
+        }
+
+        @Bean
+        UserModuleService userModuleService() {
+            return mock(UserModuleService.class);
+        }
+
+        @Bean
+        MicroWorklistRestController microWorklistRestController(MicroWorklistService service,
+                MicrobiologyCaseAccessService accessService, UserModuleService userModuleService) {
+            return new MicroWorklistRestController(service, accessService, userModuleService);
         }
     }
 }

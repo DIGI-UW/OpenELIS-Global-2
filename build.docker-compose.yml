@@ -5,16 +5,19 @@ services:
     build:
       context: ./frontend
       dockerfile: ./Dockerfile.certs
-    restart: always
+    restart: "no"
+    # Gives the install its own TLS key on first start and keeps the stores built from it.
+    entrypoint: ["/bin/sh", "/ensure-install-keys.sh"]
     environment:
-        - KEYSTORE_PW="kspass"
-        - TRUSTSTORE_PW="tspass"
+        - KEYSTORE_PW=${SSL_KEYSTORE_PASSWORD:-kspass}
+        - TRUSTSTORE_PW=${SSL_TRUSTSTORE_PASSWORD:-tspass}
     networks:
         - default  
     volumes:
         - key_trust-store-volume:/etc/openelis-global
         - keys-vol:/etc/ssl/private/
         - certs-vol:/etc/ssl/certs/
+        - ./scripts/certs/ensure-install-keys.sh:/ensure-install-keys.sh:ro
 
   db.openelis.org:
       build:
@@ -52,10 +55,10 @@ services:
         db.openelis.org:
             condition: service_healthy
         certs:
-            condition: service_started
+            condition: service_completed_successfully
     ports:
-        - "8080:8080"
-        - "8443:8443"
+        - "${OE_WEBAPP_HTTP_PORT:-8080}:8080"
+        - "${OE_WEBAPP_HTTPS_PORT:-8443}:8443"
     restart: always
     networks:
       default:
@@ -63,6 +66,9 @@ services:
     environment:
         - DEFAULT_PW=adminADMIN!
         - TZ=${TZ:-UTC}
+        - OE_ENCRYPTION_PASSWORD=${OE_ENCRYPTION_PASSWORD:-}
+        - SSL_KEYSTORE_PASSWORD=${SSL_KEYSTORE_PASSWORD:-kspass}
+        - SSL_TRUSTSTORE_PASSWORD=${SSL_TRUSTSTORE_PASSWORD:-tspass}
         - SPRING_LIQUIBASE_CONTEXTS=test
         - ORG_OPENELISGLOBAL_UAT_SCENARIOS_ENABLED=${OE_UAT_SCENARIOS_ENABLED:-false}
         # The EQA scheduler sweep (deadline alerts, and the bridge that carries
@@ -107,10 +113,10 @@ services:
         db.openelis.org:
             condition: service_healthy
         certs:
-            condition: service_started
+            condition: service_completed_successfully
     ports:
-        - "8081:8080"
-        - "8444:8443"
+        - "${OE_FHIR_HTTP_PORT:-8081}:8080"
+        - "${OE_FHIR_HTTPS_PORT:-8444}:8443"
     networks:
         - default
     restart: always
@@ -152,17 +158,24 @@ services:
       dockerfile: ./Dockerfile
     container_name: openelisglobal-proxy
     ports:
-        - 80:80
-        - 443:443
+        - "${OE_HTTP_PORT:-80}:80"
+        - "${OE_HTTPS_PORT:-443}:443"
+    environment:
+        - OE_HTTPS_PORT=${OE_HTTPS_PORT:-443}
+    command:
+        - /bin/sh
+        - -c
+        - "envsubst '$$OE_HTTPS_PORT' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && exec nginx -g 'daemon off;'"
     volumes:
         - certs-vol:/etc/nginx/certs/
         - keys-vol:/etc/nginx/keys/
-        - ./volume/nginx/nginx-prod.conf:/etc/nginx/nginx.conf:ro
+        - ./volume/nginx/nginx-prod.conf:/etc/nginx/nginx.conf.template:ro
     networks:
         - default  
     restart: unless-stopped
     depends_on:
-       - certs
+       certs:
+           condition: service_completed_successfully
 
 secrets:
   common.properties:

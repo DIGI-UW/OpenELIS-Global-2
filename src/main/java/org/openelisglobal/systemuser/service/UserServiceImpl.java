@@ -1,5 +1,7 @@
 package org.openelisglobal.systemuser.service;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.util.ArrayList;
@@ -17,6 +19,7 @@ import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.constants.Constants;
+import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
@@ -81,11 +84,29 @@ public class UserServiceImpl implements UserService {
     private TestSectionService testSectionService;
     @Autowired
     private HttpSession session;
+    @PersistenceContext
+    private EntityManager entityManager;
 
+    private static final int LOGIN_NAME_LOCK_NAMESPACE = 730704;
+
+    /**
+     * The login identifies a user (OGC-1545), so two saves of the same login are
+     * serialized and the second is refused: checked before the transaction began,
+     * both passed and the login got two rows, which then could neither sign in nor
+     * be opened in Modify User.
+     */
     @Override
     @Transactional
     public void updateLoginUser(LoginUser loginUser, boolean loginUserNew, SystemUser systemUser, boolean systemUserNew,
             List<String> selectedRoles, String loggedOnUserId) {
+        entityManager.createNativeQuery("SELECT CAST(pg_advisory_xact_lock(:namespace, hashtext(:login)) AS text)")
+                .setParameter("namespace", LOGIN_NAME_LOCK_NAMESPACE)
+                .setParameter("login", loginUser.getLoginName().toLowerCase()).getSingleResult();
+        boolean taken = loginService.getAllMatching("loginName", loginUser.getLoginName()).stream()
+                .anyMatch(other -> loginUserNew || !other.getId().equals(loginUser.getId()));
+        if (taken) {
+            throw new LIMSDuplicateRecordException("login name already in use: " + loginUser.getLoginName());
+        }
         if (loginUserNew) {
             loginService.insert(loginUser);
         } else {

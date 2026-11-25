@@ -39,6 +39,7 @@ function BatchTestReassignmentAndCancelation() {
   const componentMounted = useRef(false);
   const intl = useIntl();
   const resetToDefault = () => {
+    setChangesToShow(false);
     setSaveButton(true);
     setIsLoading(true);
     setCurrentTest(true);
@@ -64,7 +65,6 @@ function BatchTestReassignmentAndCancelation() {
       noChangeBioReject: [],
       noChangeNotValidated: [],
     });
-    setChangesToShow(false);
 
     getFromOpenElisServer(
       `/rest/BatchTestReassignment`,

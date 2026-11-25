@@ -13,6 +13,8 @@
  */
 package org.openelisglobal.reports.action.implementation.reportBeans;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.result.valueholder.Result;
 
@@ -83,6 +85,20 @@ public final class ClinicalPatientData {
     private String tbSampleAspect;
     private String tbFollowupPeriodLine1;
     private String tbFollowupPeriodLine2;
+    private String analysisId;
+    private String testId;
+    private String flagCode;
+    private boolean referralPending = false;
+    private boolean confirmationSample = false;
+    private String methodName;
+    private String performingLabName;
+    private boolean inAccreditedScope = true;
+    private List<ReportComponentLine> components = new ArrayList<>();
+    private ReportCallbackLine callback;
+    private String completedTime;
+    private boolean released = false;
+    private boolean sampleRejected = false;
+    private boolean testRejected = false;
 
     public ClinicalPatientData() {
     }
@@ -143,6 +159,20 @@ public final class ClinicalPatientData {
         sampleId = data.getSampleId();
         sampleSortOrder = data.getSampleSortOrder();
         analysisStatus = data.getAnalysisStatus();
+        analysisId = data.getAnalysisId();
+        testId = data.getTestId();
+        flagCode = data.getFlagCode();
+        referralPending = data.isReferralPending();
+        confirmationSample = data.isConfirmationSample();
+        methodName = data.getMethodName();
+        performingLabName = data.getPerformingLabName();
+        inAccreditedScope = data.isInAccreditedScope();
+        components = new ArrayList<>(data.getComponents());
+        callback = data.getCallback();
+        completedTime = data.getCompletedTime();
+        released = data.isReleased();
+        sampleRejected = data.isSampleRejected();
+        testRejected = data.isTestRejected();
     }
 
     public String getReferralRefRange() {
@@ -668,5 +698,142 @@ public final class ClinicalPatientData {
 
     public void setPrescriber(String prescriber) {
         this.prescriber = prescriber;
+    }
+
+    /** The analysis the row prints. */
+    public String getAnalysisId() {
+        return analysisId;
+    }
+
+    public void setAnalysisId(String analysisId) {
+        this.analysisId = analysisId;
+    }
+
+    /** The test the row prints. */
+    public String getTestId() {
+        return testId;
+    }
+
+    public void setTestId(String testId) {
+        this.testId = testId;
+    }
+
+    /**
+     * The row's flag code ({@code B}, {@code E}, {@code BB}, {@code EE} or
+     * {@code *}), without markup; null when the value is within range.
+     */
+    public String getFlagCode() {
+        return flagCode;
+    }
+
+    public void setFlagCode(String flagCode) {
+        this.flagCode = flagCode;
+    }
+
+    /** Referred out with the result not back yet. */
+    public boolean isReferralPending() {
+        return referralPending;
+    }
+
+    public void setReferralPending(boolean referralPending) {
+        this.referralPending = referralPending;
+    }
+
+    /** The order is a confirmation sample. */
+    public boolean isConfirmationSample() {
+        return confirmationSample;
+    }
+
+    public void setConfirmationSample(boolean confirmationSample) {
+        this.confirmationSample = confirmationSample;
+    }
+
+    /** The localized name of the analysis's method. */
+    public String getMethodName() {
+        return methodName;
+    }
+
+    public void setMethodName(String methodName) {
+        this.methodName = methodName;
+    }
+
+    /** The reference laboratory that produced a referred result. */
+    public String getPerformingLabName() {
+        return performingLabName;
+    }
+
+    public void setPerformingLabName(String performingLabName) {
+        this.performingLabName = performingLabName;
+    }
+
+    /**
+     * Whether the test lies within an accreditation valid on the release date;
+     * referred results never do.
+     */
+    public boolean isInAccreditedScope() {
+        return inAccreditedScope;
+    }
+
+    public void setInAccreditedScope(boolean inAccreditedScope) {
+        this.inAccreditedScope = inAccreditedScope;
+    }
+
+    /**
+     * One line per printed component of a multi-component test, in display order.
+     */
+    public List<ReportComponentLine> getComponents() {
+        return components;
+    }
+
+    public void setComponents(List<ReportComponentLine> components) {
+        this.components = components;
+    }
+
+    /** The latest critical-value callback logged for the analysis, or null. */
+    public ReportCallbackLine getCallback() {
+        return callback;
+    }
+
+    public void setCallback(ReportCallbackLine callback) {
+        this.callback = callback;
+    }
+
+    /**
+     * When the result was validated and released, formatted for the report; null
+     * while pending.
+     */
+    public String getCompletedTime() {
+        return completedTime;
+    }
+
+    public void setCompletedTime(String completedTime) {
+        this.completedTime = completedTime;
+    }
+
+    /** The result is validated and released. */
+    public boolean isReleased() {
+        return released;
+    }
+
+    public void setReleased(boolean released) {
+        this.released = released;
+    }
+
+    /** The sample was rejected, so the test has no result. */
+    public boolean isSampleRejected() {
+        return sampleRejected;
+    }
+
+    public void setSampleRejected(boolean sampleRejected) {
+        this.sampleRejected = sampleRejected;
+    }
+
+    /** The result was rejected at technical or biologist validation. */
+    public boolean isTestRejected() {
+        return testRejected;
+    }
+
+    public void setTestRejected(boolean testRejected) {
+        this.testRejected = testRejected;
     }
 }

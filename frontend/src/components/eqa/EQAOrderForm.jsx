@@ -25,6 +25,12 @@ const OPEN_FOR_RESULTS = [
  * material. Exported so the wizard's Next button holds on the same
  * rule the receipt service enforces, rather than a second copy of it.
  */
+/** An EQA order names the scheme it belongs to (OGC-1483). */
+export const eqaSchemeMissing = (orderFormValues) => {
+  const order = orderFormValues?.sampleOrderItems || {};
+  return !!order.isEQASample && !String(order.eqaProgramId || "").trim();
+};
+
 export const eqaReceiptNoteMissing = (orderFormValues) => {
   const order = orderFormValues?.sampleOrderItems || {};
   return (
@@ -63,7 +69,7 @@ const EQAOrderForm = ({ orderFormValues, setOrderFormValues }) => {
     componentMounted.current = true;
 
     // Fetch self-enrolled programmes (My Programs)
-    getFromOpenElisServer("/rest/eqa/my-programs", (response) => {
+    getFromOpenElisServer("/rest/eqa/my-programs?active=true", (response) => {
       if (componentMounted.current && Array.isArray(response)) {
         setMyPrograms(response);
       }
@@ -205,7 +211,12 @@ const EQAOrderForm = ({ orderFormValues, setOrderFormValues }) => {
                 labelText={intl.formatMessage({
                   id: "eqa.order.programme",
                 })}
+                aria-required="true"
                 value={sampleOrder.eqaProgramId || ""}
+                invalid={eqaSchemeMissing(orderFormValues)}
+                invalidText={intl.formatMessage({
+                  id: "order.eqa.schemeRequired",
+                })}
                 onChange={(e) => updateField("eqaProgramId", e.target.value)}
               >
                 <SelectItem value="" text="" />

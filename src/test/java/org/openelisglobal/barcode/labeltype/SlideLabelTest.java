@@ -1,5 +1,6 @@
 package org.openelisglobal.barcode.labeltype;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -125,6 +126,41 @@ public class SlideLabelTest {
         assertFalse(fields.stream().anyMatch(field -> "H&E".equals(field.getValue())));
         assertFalse(fields.stream().anyMatch(field -> "B-4".equals(field.getValue())));
         assertFalse(fields.stream().anyMatch(field -> "C-9".equals(field.getValue())));
+    }
+
+    @Test
+    public void designation_isPrintedInsteadOfTheLegacyNumber() {
+        when(configurationProperties.getPropertyValue(any(Property.class))).thenAnswer(invocation -> {
+            Property property = invocation.getArgument(0);
+            switch (property) {
+            case SLIDE_LABEL_BARCODE_WIDTH:
+            case SLIDE_LABEL_BARCODE_HEIGHT:
+                return "2";
+            case SLIDE_LABEL_FIELD_PATIENT_ID:
+                return "false";
+            case SLIDE_LABEL_FIELD_SLIDE_ID:
+                return "true";
+            case SLIDE_LABEL_FIELD_STAIN_TYPE:
+            case SLIDE_LABEL_FIELD_BLOCK_ID:
+            case SLIDE_LABEL_FIELD_CASE_NUMBER:
+                return "false";
+            case MAX_SLIDE_LABEL_PRINTED:
+                return "10";
+            default:
+                return "";
+            }
+        });
+
+        PathologySlide slide = new PathologySlide();
+        slide.setSlideNumber(7);
+        slide.setDesignation("L1");
+
+        SlideLabel label = new SlideLabel(null, new Sample(), new PathologySample(), slide, "ACC-1", "H&E", "B-4", "C-9");
+        List<LabelField> fields = collect(label.getAboveFields());
+
+        assertTrue(fields.stream().anyMatch(field -> "L1".equals(field.getValue())));
+        assertFalse(fields.stream().anyMatch(field -> "7".equals(field.getValue())));
+        assertEquals("the barcode still carries the lab number", "ACC-1", label.getCode());
     }
 
     private List<LabelField> collect(Iterable<LabelField> fields) {

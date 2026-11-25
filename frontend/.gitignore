@@ -46,3 +46,4 @@ current_failures.txt
 # creates it because it nests inside the ./frontend/public bind mount; the
 # translations themselves live in volume/translation.
 /public/translation/
+/evidence-videos/

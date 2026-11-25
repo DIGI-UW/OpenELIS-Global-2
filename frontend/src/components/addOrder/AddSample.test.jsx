@@ -29,7 +29,11 @@ vi.mock("../common/CustomTimePicker", () => ({ default: () => <div /> }));
 vi.mock("../storage/LocationPicker/LocationPickerInline", () => ({
   default: () => <div />,
 }));
-vi.mock("../barcodeWorkflow/LabelsSection", () => ({ default: () => <div /> }));
+vi.mock("../barcodeWorkflow/LabelsSection", () => ({
+  default: ({ specimenLabelFormatter }) => (
+    <div>{specimenLabelFormatter ? specimenLabelFormatter(1) : null}</div>
+  ),
+}));
 vi.mock("./GpsCoordinatesCapture", () => ({ default: () => <div /> }));
 
 import AddSample from "./AddSample";
@@ -127,6 +131,13 @@ beforeEach(() => {
 });
 
 describe("AddSample test search (OGC-1387)", () => {
+  test("each sample's specimen labels are numbered by its place on the form", () => {
+    render(<Harness initialSamples={[emptySample(), emptySample()]} />);
+
+    expect(screen.getByText("Specimen labels sample 1")).toBeInTheDocument();
+    expect(screen.getByText("Specimen labels sample 2")).toBeInTheDocument();
+  });
+
   test("changing the sample type clears the search and its results", () => {
     render(<Harness initialSamples={[emptySample()]} />);
     chooseSampleType("4");
@@ -262,6 +273,21 @@ describe("AddSample carries what the step shows (OGC-1388)", () => {
       fireEvent.click(document.getElementById("reject_0"));
     });
     expect(latestSamples[0].sampleRejected).toBe(false);
+  });
+
+  // OGC-1488: a reason is required to submit, so Back must leave it choosable.
+  test("Next then Back keeps Reject ticked and its reason choosable", () => {
+    const { rerender } = render(<Harness initialSamples={[emptySample()]} />);
+    act(() => {
+      fireEvent.click(document.getElementById("reject_0"));
+    });
+
+    rerender(<Harness initialSamples={[emptySample()]} showStep={false} />);
+    rerender(<Harness initialSamples={[emptySample()]} showStep />);
+
+    expect(document.getElementById("reject_0")).toBeChecked();
+    expect(document.getElementById("rejectedReasonId_0")).toBeEnabled();
+    expect(latestSamples[0].sampleRejected).toBe(true);
   });
 
   test("the reference-lab referral is offered unless the screen turns it off", () => {

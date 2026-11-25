@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet id="127-analyzer-result-raw-sub-identity" author="oe">
+        <comment>Keep the sub-identity of the record a staged result came from next to its raw test code, so a held record shows as its own row in the mapping editor. Existing rows came from main records and take the empty sub-identity.</comment>
+        <addColumn schemaName="clinlims" tableName="analyzer_results">
+            <column name="raw_sub_identity" type="VARCHAR(255)" defaultValue="">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="analyzer_results" columnName="raw_sub_identity"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

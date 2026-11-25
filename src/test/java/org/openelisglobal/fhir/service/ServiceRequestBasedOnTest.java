@@ -70,6 +70,8 @@ public class ServiceRequestBasedOnTest {
     private org.openelisglobal.note.service.NoteService noteService;
     @Mock
     private TerminologyTransformService terminologyTransformService;
+    @Mock
+    private SampleLocationService sampleLocationService;
 
     @InjectMocks
     private ServiceRequestTransformServiceImpl transformService;

@@ -146,4 +146,24 @@ public interface EQACycleService extends BaseObjectService<EQACycle, Long> {
     record PanelSampleRequest(String sampleCode, String testId, String targetValue, String targetUnit,
             BigDecimal acceptanceRangeLow, BigDecimal acceptanceRangeHigh) {
     }
+
+    /**
+     * The cycles of a scheme that a new EQA order can still join: those not yet
+     * submitted, scored or closed, newest first. A scheme is matched by name,
+     * because that is all a lab enrollment carries (OGC-1483).
+     */
+    List<OpenCycle> findOpenCycles(String schemeName);
+
+    /**
+     * Whether the cycle belongs to the scheme of that name and still takes samples,
+     * as {@link #findOpenCycles} offers it.
+     */
+    boolean isOpenCycleOfScheme(Long cycleId, String schemeName);
+
+    /**
+     * A cycle as order entry offers it: its submission deadline and the panel
+     * sample codes the provider sent, when they are known.
+     */
+    record OpenCycle(Long id, String name, Integer cycleNumber, Date deadline, List<String> panelCodes) {
+    }
 }

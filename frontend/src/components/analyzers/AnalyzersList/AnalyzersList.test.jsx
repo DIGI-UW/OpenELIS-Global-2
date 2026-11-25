@@ -13,11 +13,14 @@
 // ========== MOCKS (BEFORE IMPORTS - Jest hoisting) ==========
 
 vi.mock("../../../services/analyzerService", () => ({
+  activateAnalyzer: vi.fn(),
+  changeAnalyzerUse: vi.fn(),
   createAnalyzer: vi.fn(),
   deactivateAnalyzer: vi.fn(),
   getAnalyzer: vi.fn(),
   getAnalyzers: vi.fn(),
   getAnalyzerDeliveryIssues: vi.fn(),
+  getBridgePairing: vi.fn(),
   getAnalyzerLabUnits: vi.fn(),
   getAnalyzerTypeCatalog: vi.fn(),
   getAnalyzerTypeMapping: vi.fn(),
@@ -50,6 +53,8 @@ import AnalyzersList from "./AnalyzersList";
 
 // 8. Utilities (import functions, not just for mocking)
 import {
+  activateAnalyzer,
+  changeAnalyzerUse,
   deactivateAnalyzer,
   getAnalyzer,
   getAnalyzers,
@@ -483,6 +488,140 @@ describe("AnalyzersList", () => {
     await userEvent.click(screen.getByTestId("analyzer-row-overflow-42"));
     expect(screen.getByRole("menuitem", { name: "Reactivate" })).toBeVisible();
     expect(screen.getByRole("menuitem", { name: "Deactivate" })).toBeVisible();
+  });
+
+  test("retires an inactive analyzer and lists it again only when retired analyzers are shown", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() =>
+        callback({
+          analyzers: [createMockAnalyzer({ id: "44", status: "INACTIVE" })],
+        }),
+      );
+    });
+    changeAnalyzerUse.mockImplementation((_id, _action, callback) =>
+      callback({ changed: true }),
+    );
+
+    renderWithIntl(<AnalyzersList />);
+
+    await userEvent.click(
+      await screen.findByTestId("analyzer-row-overflow-44"),
+    );
+    expect(screen.getByRole("menuitem", { name: "Delete" })).toBeVisible();
+    await userEvent.click(screen.getByRole("menuitem", { name: "Retire" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /Retire analyzer$/ }),
+    );
+
+    expect(changeAnalyzerUse).toHaveBeenCalledWith(
+      "44",
+      "retire",
+      expect.any(Function),
+    );
+    await waitFor(() => expect(getAnalyzers).toHaveBeenCalledTimes(2));
+    expect(getAnalyzers.mock.calls[1][0].includeRetired).toBe(false);
+
+    await userEvent.click(screen.getByLabelText("Show retired analyzers"));
+
+    await waitFor(() =>
+      expect(getAnalyzers.mock.lastCall[0].includeRetired).toBe(true),
+    );
+    expect(
+      new URLSearchParams(window.location.search).get("includeRetired"),
+    ).toBe("true");
+  });
+
+  test("offers Restore and Delete, not Activate, for a retired analyzer", async () => {
+    window.history.replaceState({}, "", "/analyzers?includeRetired=true");
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() =>
+        callback({
+          analyzers: [createMockAnalyzer({ id: "45", status: "RETIRED" })],
+        }),
+      );
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    await userEvent.click(
+      await screen.findByTestId("analyzer-row-overflow-45"),
+    );
+    expect(getAnalyzers.mock.calls[0][0].includeRetired).toBe(true);
+    expect(screen.getByLabelText("Show retired analyzers")).toBeChecked();
+    expect(screen.getByRole("menuitem", { name: "Restore" })).toBeVisible();
+    expect(screen.getByRole("menuitem", { name: "Delete" })).toBeVisible();
+    expect(
+      screen.queryByRole("menuitem", { name: "Activate" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "Retire" }),
+    ).not.toBeInTheDocument();
+  });
+
+  test("offers Activate, not Deactivate, for an analyzer still being set up", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() =>
+        callback({
+          analyzers: [createMockAnalyzer({ id: "43", status: "SETUP" })],
+        }),
+      );
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    await userEvent.click(
+      await screen.findByTestId("analyzer-row-overflow-43"),
+    );
+    expect(screen.getByRole("menuitem", { name: "Activate" })).toBeVisible();
+    expect(
+      screen.queryByRole("menuitem", { name: "Deactivate" }),
+    ).not.toBeInTheDocument();
+  });
+
+  test("activates an analyzer from setup and lists what blocks it", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/analyzers?lifecycle=activate&lifecycleAnalyzerId=43",
+    );
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() =>
+        callback({
+          analyzers: [
+            createMockAnalyzer({
+              id: "43",
+              name: "GeneXpert Lab 2",
+              status: "SETUP",
+            }),
+          ],
+        }),
+      );
+    });
+    activateAnalyzer.mockImplementation((_id, callback) =>
+      callback({
+        analyzerId: "43",
+        status: "SETUP",
+        ready: false,
+        activated: false,
+        blockers: [{ code: "analyzer.activation.blocker.mappings" }],
+        statusCode: 422,
+      }),
+    );
+
+    renderWithIntl(<AnalyzersList />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Activate analyzer" }),
+    ).toBeVisible();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Activate analyzer" }),
+    );
+
+    expect(activateAnalyzer).toHaveBeenCalledWith("43", expect.any(Function));
+    expect(reactivateAnalyzer).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText("Analyzer mappings must be verified again."),
+    ).toBeVisible();
   });
 
   test("opens an existing analyzer in linkable inline Instrument setup", async () => {

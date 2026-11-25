@@ -52,9 +52,11 @@ import { Add } from "@carbon/icons-react";
 import AddSample from "../addOrder/AddSample";
 import { sampleObject } from "../addOrder/Index";
 import {
+  missingTestsTitle,
   samplesMissingTests,
   samplesWithTests,
 } from "../addOrder/orderSamples";
+import useSampleTypeNames from "../addOrder/useSampleTypeNames";
 import { ModifyOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import UnifiedResults from "../resultPage/unified/UnifiedResults";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
@@ -69,6 +71,7 @@ import GenericSampleOrderEdit from "../genericSample/GenericSampleOrderEdit";
 import GenericSampleOrderImport from "../genericSample/GenericSampleOrderImport";
 
 const NoteBookInstanceEntryForm = () => {
+  const sampleTypeNames = useSampleTypeNames();
   let breadcrumbs = [
     { label: "home.label", link: "/" },
     { label: "notebook.label.dashboard", link: "/NoteBookDashboard" },
@@ -1672,9 +1675,11 @@ const NoteBookInstanceEntryForm = () => {
                                       kind="error"
                                       lowContrast
                                       hideCloseButton
-                                      title={intl.formatMessage(
-                                        { id: "order.sample.missingTests" },
-                                        { sampleNumber },
+                                      title={missingTestsTitle(
+                                        intl,
+                                        samples,
+                                        sampleNumber,
+                                        sampleTypeNames,
                                       )}
                                     />
                                   ),

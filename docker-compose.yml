@@ -5,15 +5,18 @@ services:
         image: itechuw/certgen:main
         platform: linux/amd64
         restart: "no"
+        # Gives the install its own TLS key on first start and keeps the stores built from it.
+        entrypoint: ["/bin/sh", "/ensure-install-keys.sh"]
         environment:
-            - KEYSTORE_PW="kspass"
-            - TRUSTSTORE_PW="tspass"
+            - KEYSTORE_PW=${SSL_KEYSTORE_PASSWORD:-kspass}
+            - TRUSTSTORE_PW=${SSL_TRUSTSTORE_PASSWORD:-tspass}
         networks:
             - default
         volumes:
             -  key_trust-store-volume:/etc/openelis-global
             -  keys-vol:/etc/ssl/private/
             -  certs-vol:/etc/ssl/certs/
+            -  ./scripts/certs/ensure-install-keys.sh:/ensure-install-keys.sh:ro
 
     db.openelis.org:
         container_name: openelisglobal-database 
@@ -43,11 +46,13 @@ services:
         image: itechuw/openelis-global-2:develop   
         platform: linux/amd64 
         depends_on:
-            - db.openelis.org
-            - certs
+            db.openelis.org:
+                condition: service_started
+            certs:
+                condition: service_completed_successfully
         ports:
-            - "8080:8080"
-            - "8443:8443"
+            - "${OE_WEBAPP_HTTP_PORT:-8080}:8080"
+            - "${OE_WEBAPP_HTTPS_PORT:-8443}:8443"
         restart: always
         networks:
           default:
@@ -56,6 +61,9 @@ services:
         environment:
             - DEFAULT_PW=adminADMIN! 
             - TZ=${TZ:-UTC}
+            - OE_ENCRYPTION_PASSWORD=${OE_ENCRYPTION_PASSWORD:-}
+            - SSL_KEYSTORE_PASSWORD=${SSL_KEYSTORE_PASSWORD:-kspass}
+            - SSL_TRUSTSTORE_PASSWORD=${SSL_TRUSTSTORE_PASSWORD:-tspass}
               # context.xml doesn't seem to be able to pick up environment variables directly, so we are passing them in as CATALINA_OPTS
             - CATALINA_OPTS=-Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Ddatasource.password=${OE_DB_PASSWORD:-clinlims} -Doe.ssl.truststorepath=${SSL_TRUSTSTORE_PATH:-/etc/openelis-global/truststore} -Doe.ssl.truststorepassword=${SSL_TRUSTSTORE_PASSWORD:-tspass} -Doe.ssl.keystorepath=${SSL_KEYSTORE_PATH:-/etc/openelis-global/keystore} -Doe.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass}
         volumes:
@@ -66,6 +74,7 @@ services:
             - ./volume/odoo/odoo-test-product-mapping.csv:/var/lib/openelis-global/odoo/odoo-test-product-mapping.csv
             - ./configuration:/var/lib/openelis-global/configuration
             - reporting-data:/var/lib/openelis-global/reporting
+            - ./volume/translation:/var/lib/openelis-global/translation:ro
         secrets:
             - source: common.properties
             
@@ -74,11 +83,13 @@ services:
         image: itechuw/openelis-global-2-fhir:develop
         platform: linux/amd64
         depends_on:
-            - db.openelis.org
-            - certs
+            db.openelis.org:
+                condition: service_started
+            certs:
+                condition: service_completed_successfully
         ports:
-            - "8081:8080"
-            - "8444:8443"
+            - "${OE_FHIR_HTTP_PORT:-8081}:8080"
+            - "${OE_FHIR_HTTPS_PORT:-8444}:8443"
         networks:
             - default
         restart: always
@@ -114,17 +125,24 @@ services:
         container_name: openelisglobal-proxy
         platform: linux/amd64
         ports:
-            - 80:80
-            - 443:443
+            - "${OE_HTTP_PORT:-80}:80"
+            - "${OE_HTTPS_PORT:-443}:443"
+        environment:
+            - OE_HTTPS_PORT=${OE_HTTPS_PORT:-443}
+        command:
+            - /bin/sh
+            - -c
+            - "envsubst '$$OE_HTTPS_PORT' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && exec nginx -g 'daemon off;'"
         volumes:
             - certs-vol:/etc/nginx/certs/
             - keys-vol:/etc/nginx/keys/
-            - ./volume/nginx/nginx-prod.conf:/etc/nginx/nginx.conf:ro
+            - ./volume/nginx/nginx-prod.conf:/etc/nginx/nginx.conf.template:ro
         networks:
             - default
         restart: unless-stopped
         depends_on:
-        - certs        
+            certs:
+                condition: service_completed_successfully
             
 secrets:
   common.properties:

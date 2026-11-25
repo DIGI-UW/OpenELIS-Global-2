@@ -36,7 +36,6 @@ import org.openelisglobal.analyte.service.AnalyteService;
 import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
@@ -709,9 +708,10 @@ public class MicrobiologyUatScenarioServiceTest {
                 .thenReturn(run);
         Analyzer analyzer = mock(Analyzer.class);
         when(analyzer.getId()).thenReturn("analyzer-1");
-        when(analyzer.getPinnedProfileBinding()).thenReturn(mock(AnalyzerProfileBinding.class));
+        when(analyzer.getPinnedProfile()).thenReturn(new org.openelisglobal.analyzer.valueholder.AnalyzerProfilePin(
+                "site.mock", 1, "sha256:" + "1".repeat(64)));
         when(analyzer.getBridgeConnectionId()).thenReturn("configured-connection");
-        when(analyzerService.getWithBinding("analyzer-1")).thenReturn(java.util.Optional.of(analyzer));
+        when(analyzerService.getWithMapping("analyzer-1")).thenReturn(java.util.Optional.of(analyzer));
 
         MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
         request.scenario = "AST_ANALYZER_REVIEW";
@@ -753,7 +753,7 @@ public class MicrobiologyUatScenarioServiceTest {
         request.scenario = "AST_ANALYZER_REVIEW";
         request.scenarioKey = "unbound-analyzer";
         request.analyzerInstrumentId = "unbound";
-        when(analyzerService.getWithBinding("unbound")).thenReturn(java.util.Optional.of(new Analyzer()));
+        when(analyzerService.getWithMapping("unbound")).thenReturn(java.util.Optional.of(new Analyzer()));
 
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
                 () -> service.provision(request, "1"));

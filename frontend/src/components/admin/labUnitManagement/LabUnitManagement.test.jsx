@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter, Route } from "react-router-dom";
 import { vi } from "vitest";
@@ -7,6 +8,7 @@ import LabUnitManagement from "./LabUnitManagement";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
+  putToOpenElisServerFullResponse,
 } from "../../utils/Utils";
 import messages from "../../../languages/en.json";
 
@@ -55,6 +57,7 @@ vi.mock("../../utils/Utils", async (importOriginal) => {
               isActive: true,
               sortOrder: 1,
               testCount: 4,
+              lastupdated: "1791800000000",
             },
           ],
         });
@@ -74,6 +77,7 @@ vi.mock("../../utils/Utils", async (importOriginal) => {
       }
     }),
     postToOpenElisServerJsonResponse: vi.fn(),
+    putToOpenElisServerFullResponse: vi.fn(),
   };
 });
 
@@ -89,9 +93,9 @@ const mockIntl = {
 // The editor is URL-driven: /MasterListsPage/LabUnitManagement/:labUnitId?/:section?
 // Wrap in a matching Route so useParams() sees the current segment when the
 // user navigates from the list to the editor.
-const renderPage = () =>
+const renderPage = (initialEntry = "/MasterListsPage/LabUnitManagement") =>
   render(
-    <MemoryRouter initialEntries={["/MasterListsPage/LabUnitManagement"]}>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <IntlProvider locale="en" messages={messages}>
         <Route
           path="/MasterListsPage/LabUnitManagement/:labUnitId?/:section?"
@@ -110,6 +114,15 @@ describe("LabUnitManagement", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Add Lab Unit")).toBeInTheDocument();
     expect(screen.getByText("Hematology")).toBeInTheDocument();
+  });
+
+  test("a deep link to a lab unit that does not exist says so, never an endless spinner (OGC-1461)", async () => {
+    renderPage("/MasterListsPage/LabUnitManagement/99999999/basic-info");
+
+    expect(await screen.findByTestId("lab-unit-not-found")).toHaveTextContent(
+      messages["label.labUnit.notFound"],
+    );
+    expect(screen.queryByText(messages["label.labUnit.loading"])).toBeNull();
   });
 
   test("add form renders one name input per active locale", async () => {
@@ -297,5 +310,234 @@ describe("LabUnitManagement deactivation flow (OGC-189 M3)", () => {
         "This lab unit stays on the worklists until its 2 pending analyses are completed.",
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe("LabUnitManagement deactivation into another unit (OGC-1459)", () => {
+  let base;
+  beforeEach(() => {
+    base = getFromOpenElisServer.getMockImplementation();
+    getFromOpenElisServer.mockImplementation((endpoint, callback) => {
+      if (endpoint === "/rest/lab-units-management") {
+        callback({
+          success: true,
+          data: [
+            {
+              id: "10",
+              name: "Hematology",
+              names: { en: "Hematology" },
+              domain: "CLINICAL",
+              isActive: true,
+              sortOrder: 1,
+              testCount: 4,
+            },
+            {
+              id: "11",
+              name: "Chemistry",
+              names: { en: "Chemistry" },
+              domain: "CLINICAL",
+              isActive: true,
+              sortOrder: 2,
+              testCount: 0,
+            },
+            {
+              id: "12",
+              name: "Parasitology",
+              names: { en: "Parasitology" },
+              domain: "CLINICAL",
+              isActive: false,
+              sortOrder: 3,
+              testCount: 0,
+            },
+          ],
+        });
+      } else {
+        base(endpoint, callback);
+      }
+    });
+  });
+  afterEach(() => {
+    getFromOpenElisServer.mockImplementation(base);
+  });
+
+  const openReassign = async () => {
+    renderPage();
+    fireEvent.click((await screen.findAllByText("Edit"))[0]);
+    fireEvent.click(await screen.findByRole("switch"));
+    await screen.findByText("This lab unit currently holds:");
+    fireEvent.click(screen.getByLabelText(/Reassign the tests/));
+  };
+
+  // OGC-1463 review: a deactivation refused as stale offers Refresh in the
+  // dialog, which loads the unit as it is now.
+  test("a stale deactivation offers Refresh, which reloads the unit", async () => {
+    postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
+      cb({ success: false, status: 409, conflict: "stale" }),
+    );
+    await openReassign();
+    fireEvent.change(document.querySelector("#lu-deactivate-destination"), {
+      target: { value: "11" },
+    });
+    fireEvent.change(screen.getByLabelText("Type DEACTIVATE to confirm"), {
+      target: { value: "DEACTIVATE" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: /Deactivate lab unit$/ }),
+    );
+
+    const notice = await screen.findByTestId("lab-unit-deactivate-stale");
+    expect(notice).toHaveTextContent(messages["error.staleSave.section"]);
+    const listAndImpact = getFromOpenElisServer.getMockImplementation();
+    getFromOpenElisServer.mockImplementation((endpoint, callback) =>
+      /\/rest\/lab-units-management\/10$/.test(endpoint)
+        ? callback({
+            success: true,
+            data: {
+              id: "10",
+              name: "Hematology",
+              names: { en: "Hematology" },
+              domain: "CLINICAL",
+              isActive: true,
+              lastupdated: "1791900000000",
+            },
+          })
+        : listAndImpact(endpoint, callback),
+    );
+    const loadsBefore = getFromOpenElisServer.mock.calls.length;
+    fireEvent.click(within(notice).getByRole("button", { name: "Refresh" }));
+
+    await waitFor(() =>
+      expect(screen.queryByTestId("lab-unit-deactivate-stale")).toBeNull(),
+    );
+    expect(
+      getFromOpenElisServer.mock.calls
+        .slice(loadsBefore)
+        .some(([url]) => /\/rest\/lab-units-management\/\d+$/.test(url)),
+    ).toBe(true);
+  });
+
+  test("offers only active units to take the tests", async () => {
+    await openReassign();
+
+    const destinations = Array.from(
+      document.querySelectorAll("#lu-deactivate-destination option"),
+    ).map((o) => o.textContent);
+    expect(destinations).toContain("Chemistry");
+    expect(destinations).not.toContain("Parasitology");
+  });
+
+  test("says why when the server refuses the deactivation", async () => {
+    postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
+      cb({
+        success: false,
+        message: "the destination lab unit is inactive; reactivate it first",
+      }),
+    );
+    await openReassign();
+    fireEvent.change(document.querySelector("#lu-deactivate-destination"), {
+      target: { value: "11" },
+    });
+    fireEvent.change(screen.getByLabelText("Type DEACTIVATE to confirm"), {
+      target: { value: "DEACTIVATE" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: /Deactivate lab unit$/ }),
+    );
+
+    expect(
+      await screen.findByText(
+        "the destination lab unit is inactive; reactivate it first",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("This lab unit currently holds:"),
+    ).toBeInTheDocument();
+  });
+
+  // OGC-1459 review: the inactive-destination refusal reads in the user's
+  // language, not the server's English text.
+  test("an inactive destination refusal is shown as the translated message", async () => {
+    postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
+      cb({
+        success: false,
+        refusal: "destination.inactive",
+        message: "the destination lab unit is inactive; reactivate it first",
+      }),
+    );
+    await openReassign();
+    fireEvent.change(document.querySelector("#lu-deactivate-destination"), {
+      target: { value: "11" },
+    });
+    fireEvent.change(screen.getByLabelText("Type DEACTIVATE to confirm"), {
+      target: { value: "DEACTIVATE" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: /Deactivate lab unit$/ }),
+    );
+
+    expect(
+      await screen.findByText(
+        messages["error.labUnit.deactivate.destinationInactive"],
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "the destination lab unit is inactive; reactivate it first",
+      ),
+    ).toBeNull();
+  });
+
+  /** OGC-1463: a save from a page older than another admin's change is refused. */
+  test("sends the loaded version and shows a stale save", async () => {
+    putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb({
+        status: 409,
+        json: () => Promise.resolve({ success: false, conflict: "stale" }),
+      }),
+    );
+    renderPage("/MasterListsPage/LabUnitManagement/10/basic-info");
+    const description = await waitFor(() => {
+      const el = document.getElementById("lu-description");
+      expect(el).not.toBeNull();
+      return el;
+    });
+    fireEvent.change(description, { target: { value: "Changed here" } });
+    fireEvent.click(screen.getByText("Save"));
+
+    expect(await screen.findByTestId("lab-unit-stale-save")).toHaveTextContent(
+      messages["error.staleSave.section"],
+    );
+    expect(
+      JSON.parse(putToOpenElisServerFullResponse.mock.calls[0][1]).lastupdated,
+    ).toBe("1791800000000");
+  });
+
+  /** OGC-1465: a rename onto another unit's name says so. */
+  test("a rename onto another unit's name names the problem", async () => {
+    putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb({
+        status: 409,
+        json: () =>
+          Promise.resolve({
+            success: false,
+            message: "A lab unit with this name already exists",
+          }),
+      }),
+    );
+    renderPage("/MasterListsPage/LabUnitManagement/10/basic-info");
+    const description = await waitFor(() => {
+      const el = document.getElementById("lu-description");
+      expect(el).not.toBeNull();
+      return el;
+    });
+    fireEvent.change(description, { target: { value: "Changed here" } });
+    fireEvent.click(screen.getByText("Save"));
+
+    expect(
+      await screen.findByText(
+        new RegExp(messages["error.labUnit.name.duplicate"]),
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("lab-unit-stale-save")).toBeNull();
   });
 });

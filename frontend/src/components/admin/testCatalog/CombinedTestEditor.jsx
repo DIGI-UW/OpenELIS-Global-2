@@ -53,6 +53,8 @@ const rangeSignature = (ranges) =>
         highCritical: r.highCritical ?? null,
         lowValid: r.lowValid ?? null,
         highValid: r.highValid ?? null,
+        lowReporting: r.lowReporting ?? null,
+        highReporting: r.highReporting ?? null,
       }))
       .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
   );
@@ -87,6 +89,10 @@ const CombinedTestEditor = () => {
   const [rangeDiffByTest, setRangeDiffByTest] = useState({});
   const [editingIndex, setEditingIndex] = useState(null);
   const [sharedSection, setSharedSection] = useState("ranges");
+  // Tests whose ranges (or the seed test's components) did not load. Applying a
+  // set seeded from a failed load would overwrite real ranges with nothing.
+  const [rangesLoadFailed, setRangesLoadFailed] = useState([]);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (testIds.length === 0) {
@@ -94,6 +100,17 @@ const CombinedTestEditor = () => {
     }
     setLoading(true);
     setError(false);
+    setRangesLoadFailed([]);
+    let componentsPending = true;
+    let rangesPending = true;
+    const failed = new Set();
+    const finish = () => {
+      if (componentsPending || rangesPending) {
+        return;
+      }
+      setRangesLoadFailed(testIds.filter((t) => failed.has(t)));
+      setLoading(false);
+    };
     getFromOpenElisServer(
       `/rest/test-catalog/group/summary?ids=${encodeURIComponent(ids)}`,
       (res) => {
@@ -111,6 +128,9 @@ const CombinedTestEditor = () => {
           getFromOpenElisServer(
             `/rest/test-catalog/tests/${id}/ranges`,
             (r) => {
+              if (!r || !Array.isArray(r.ranges)) {
+                failed.add(id);
+              }
               perTest[id] = (r && r.ranges) || [];
               ((r && r.sampleTypes) || []).forEach((t) => {
                 typesById[t.id] = t;
@@ -125,15 +145,20 @@ const CombinedTestEditor = () => {
                 setDiffers(!allSame);
                 // FR-74 — record which tests differ from the seed for the breakdown.
                 const diffMap = {};
+                const seedLoaded = !failed.has(testIds[0]);
                 testIds.forEach((t) => {
-                  diffMap[t] = rangeSignature(perTest[t]) !== seedSig;
+                  diffMap[t] =
+                    seedLoaded &&
+                    !failed.has(t) &&
+                    rangeSignature(perTest[t]) !== seedSig;
                 });
                 setRangeDiffByTest(diffMap);
                 // Seed the editor from the first test's ranges (the "set all to"
                 // starting point when they differ; the shared value when they agree).
                 setRanges(perTest[testIds[0]] || []);
                 setSampleTypes(Object.values(typesById));
-                setLoading(false);
+                rangesPending = false;
+                finish();
               }
             },
           );
@@ -151,11 +176,15 @@ const CombinedTestEditor = () => {
               label: c.label || c.code || c.id,
             })),
           );
+        } else {
+          failed.add(testIds[0]);
         }
+        componentsPending = false;
+        finish();
       },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ids]);
+  }, [ids, reloadKey]);
 
   const handleSaveRange = (r) => {
     setRanges((prev) =>
@@ -180,6 +209,9 @@ const CombinedTestEditor = () => {
   };
 
   const handleSaveAll = () => {
+    if (rangesLoadFailed.length > 0) {
+      return;
+    }
     setSaving(true);
     // Strip ids: the shared set is written fresh into each test's own rows. The
     // server maps componentId onto each test's own component (FR-11/FR-19).
@@ -418,7 +450,36 @@ const CombinedTestEditor = () => {
               <p>
                 <FormattedMessage id="label.testCatalog.group.rangesIntro" />
               </p>
-              {differs && (
+              {rangesLoadFailed.length > 0 && (
+                <div data-testid="group-ranges-load-error">
+                  <InlineNotification
+                    kind="error"
+                    lowContrast
+                    hideCloseButton
+                    title={intl.formatMessage({ id: "error.title" })}
+                    subtitle={intl.formatMessage(
+                      { id: "label.testCatalog.group.rangesLoadError" },
+                      {
+                        tests: rangesLoadFailed
+                          .map(
+                            (t) =>
+                              (summaries.find((s) => s.testId === t) || {})
+                                .name || t,
+                          )
+                          .join(", "),
+                      },
+                    )}
+                  />
+                  <Button
+                    kind="tertiary"
+                    size="sm"
+                    onClick={() => setReloadKey((k) => k + 1)}
+                  >
+                    <FormattedMessage id="common.retry" />
+                  </Button>
+                </div>
+              )}
+              {differs && rangesLoadFailed.length === 0 && (
                 <InlineNotification
                   kind="warning"
                   lowContrast
@@ -519,7 +580,7 @@ const CombinedTestEditor = () => {
                 </Button>
                 <Button
                   kind="primary"
-                  disabled={saving}
+                  disabled={saving || rangesLoadFailed.length > 0}
                   onClick={handleSaveAll}
                 >
                   <FormattedMessage id="button.testCatalog.setAllTo" />

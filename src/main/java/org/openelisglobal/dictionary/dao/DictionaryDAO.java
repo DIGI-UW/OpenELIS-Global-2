@@ -134,5 +134,11 @@ public interface DictionaryDAO extends BaseDAO<Dictionary, String> {
 
     public boolean duplicateDictionaryExists(Dictionary dictionary);
 
+    /**
+     * The entries in this one's category with its name or abbreviation, ignoring
+     * case and surrounding spaces.
+     */
+    public List<Dictionary> findDuplicates(Dictionary dictionary);
+
     public boolean isDictionaryFrozen(Dictionary dictionary);
 }

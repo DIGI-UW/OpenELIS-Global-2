@@ -903,6 +903,36 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
       >
         <FormattedMessage id="testnotificationconfig.browse.title" />
       </SideNavLink>
+      <SideNavMenu
+        title={intl.formatMessage({
+          id: "sidenav.label.admin.notifications",
+        })}
+        renderIcon={Bullhorn}
+        data-cy="notificationsMenu"
+      >
+        <SideNavMenuItem
+          {...navProps(`${path}/notificationTriggerConfig/triggers`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.notifications.triggers" />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          {...navProps(`${path}/notificationTriggerConfig/templates`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.notifications.templates" />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="notificationChannels"
+          {...navProps(`${path}/notificationTriggerConfig/channels`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.notifications.channels" />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="deliverySettings"
+          {...navProps(`${path}/notificationTriggerConfig/delivery`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.notifications.delivery" />
+        </SideNavMenuItem>
+      </SideNavMenu>
       <SideNavLink
         data-cy="dictMenu"
         renderIcon={CharacterWholeNumber}

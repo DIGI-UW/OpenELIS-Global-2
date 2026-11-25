@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet id="assert-unpinned-mapping-exported"
+        author="openelis">
+        <preConditions onFail="HALT" onError="HALT">
+            <!-- A mapping no analyzer used is still exported before its tables go. -->
+            <sqlCheck expectedResult="1"><![CDATA[
+                SELECT COUNT(*) FROM configuration_import_run r,
+                    jsonb_array_elements(r.summary::jsonb->'analyzer_site_binding_test') t
+                WHERE r.source = 'ANALYZER_MAPPING' AND r.status = 'EXPORTED'
+                AND (t->>'site_binding_revision_id')::numeric = 900021
+                AND t->>'source_row_key' = 'unpinned-test'
+            ]]></sqlCheck>
+            <sqlCheck expectedResult="0"><![CDATA[
+                SELECT COUNT(*) FROM configuration_import_run r
+                WHERE r.source = 'ANALYZER_MAPPING' AND r.summary::jsonb ? 'analyzers'
+            ]]></sqlCheck>
+            <not>
+                <tableExists tableName="analyzer_site_binding_revision" />
+            </not>
+        </preConditions>
+        <sql>SELECT 1;</sql>
+    </changeSet>
+</databaseChangeLog>

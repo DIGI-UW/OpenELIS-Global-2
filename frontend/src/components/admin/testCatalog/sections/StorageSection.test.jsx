@@ -6,11 +6,13 @@
  */
 
 // ========== MOCKS (before imports) ==========
+const notifications = vi.hoisted(() => ({ add: vi.fn() }));
+
 vi.mock("../../../layout/Layout", async () => {
   const React = await import("react");
   return {
     NotificationContext: React.createContext({
-      addNotification: () => {},
+      addNotification: (n) => notifications.add(n),
       setNotificationVisible: () => {},
     }),
   };
@@ -18,7 +20,7 @@ vi.mock("../../../layout/Layout", async () => {
 
 vi.mock("../../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
-  putToOpenElisServer: vi.fn(),
+  putToOpenElisServerFullResponse: vi.fn(),
 }));
 
 // ========== IMPORTS ==========
@@ -30,7 +32,7 @@ import { IntlProvider } from "react-intl";
 import StorageSection from "./StorageSection";
 import {
   getFromOpenElisServer,
-  putToOpenElisServer,
+  putToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
 import messages from "../../../../languages/en.json";
 
@@ -51,7 +53,9 @@ const emptyConfig = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  putToOpenElisServer.mockImplementation((url, payload, cb) => cb(200));
+  putToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>
+    cb({ status: 200, ok: true }),
+  );
 });
 
 describe("StorageSection", () => {
@@ -108,11 +112,45 @@ describe("StorageSection", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
-    const body = JSON.parse(putToOpenElisServer.mock.calls[0][1]);
+    await waitFor(() =>
+      expect(putToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+    const body = JSON.parse(putToOpenElisServerFullResponse.mock.calls[0][1]);
     expect(body.storageCondition).toBe("FROZEN");
     expect(body.storageDuration).toBe(14); // string → int
     expect(body.doNotFreeze).toBe(true);
+  });
+
+  /** OGC-1465: a value the server refuses is named, not a generic error. */
+  it("names the field the server refused", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb({ ...emptyConfig }),
+    );
+    putToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>
+      cb({
+        status: 422,
+        json: () => Promise.resolve({ invalidField: "storageDuration" }),
+      }),
+    );
+    renderSection();
+    await screen.findByTestId("storage-section");
+    fireEvent.change(
+      screen.getByLabelText(messages["label.testCatalog.storage.duration"]),
+      { target: { value: "-3" } },
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(notifications.add).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: expect.stringContaining(
+            messages["label.testCatalog.storage.duration"],
+          ),
+        }),
+      ),
+    );
   });
 
   it("shows an error state when the fetch fails", async () => {
@@ -190,7 +228,7 @@ describe("StorageSection in group mode (OGC-1238)", () => {
 
     expect(saveButton()).toBeDisabled();
     fireEvent.click(saveButton());
-    expect(putToOpenElisServer).not.toHaveBeenCalled();
+    expect(putToOpenElisServerFullResponse).not.toHaveBeenCalled();
 
     fireEvent.change(
       screen.getByLabelText(
@@ -225,8 +263,10 @@ describe("StorageSection in group mode (OGC-1238)", () => {
     );
     fireEvent.click(saveButton());
 
-    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
-    const [url, payload] = putToOpenElisServer.mock.calls[0];
+    await waitFor(() =>
+      expect(putToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+    const [url, payload] = putToOpenElisServerFullResponse.mock.calls[0];
     expect(url).toBe("/rest/test-catalog/group/storage");
     const body = JSON.parse(payload);
     expect(body.testIds).toEqual(["31", "32"]);
@@ -247,8 +287,10 @@ describe("StorageSection in group mode (OGC-1238)", () => {
     expect(saveButton()).toBeEnabled();
     fireEvent.click(saveButton());
 
-    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
-    const body = JSON.parse(putToOpenElisServer.mock.calls[0][1]);
+    await waitFor(() =>
+      expect(putToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+    const body = JSON.parse(putToOpenElisServerFullResponse.mock.calls[0][1]);
     expect(body.fields).toEqual(["storageCondition"]);
     expect(body.storage.storageCondition).toBe("FROZEN");
   });

@@ -93,9 +93,17 @@ public final class CsvParsingUtil {
     public static Map<String, Integer> createColumnMap(String[] headers) {
         Map<String, Integer> columnMap = new HashMap<>();
         for (int i = 0; i < headers.length; i++) {
-            columnMap.put(headers[i].trim().toLowerCase(), i);
+            String header = headers[i];
+            if (i == 0) {
+                header = stripByteOrderMark(header);
+            }
+            columnMap.put(header.trim().toLowerCase(), i);
         }
         return columnMap;
+    }
+
+    public static String stripByteOrderMark(String value) {
+        return value != null && !value.isEmpty() && value.charAt(0) == '\uFEFF' ? value.substring(1) : value;
     }
 
     /** Returns the trimmed cell at index, or {@code ""} when out of range/null. */
@@ -122,7 +130,7 @@ public final class CsvParsingUtil {
      */
     public static int findColumn(String[] headers, String name) {
         for (int i = 0; i < headers.length; i++) {
-            if (headers[i] != null && name.equalsIgnoreCase(headers[i].trim())) {
+            if (headers[i] != null && name.equalsIgnoreCase(stripByteOrderMark(headers[i]).trim())) {
                 return i;
             }
         }

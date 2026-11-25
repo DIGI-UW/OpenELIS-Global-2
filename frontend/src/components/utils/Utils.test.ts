@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  deleteFromOpenElisServer,
   fetchFromOpenElisServer,
   getFromOpenElisServer,
   labNumberForSearch,
   parseIsoDate,
+  putToOpenElisServer,
+  putToOpenElisServerFullResponse,
 } from "./Utils";
 
 const settlePromiseChain = async () => {
@@ -188,5 +191,90 @@ describe("parseIsoDate", () => {
   it("refuses a day the month does not have", () => {
     expect(parseIsoDate("2026-02-30")).toBe(false);
     expect(parseIsoDate("2026-13-01")).toBe(false);
+  });
+});
+
+describe("a write answered by a login page is a failure, not a save (OGC-1461)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  const answer = (over: Record<string, unknown>) =>
+    vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      redirected: false,
+      url: "https://lims/api/OpenELIS-Global/rest/thing",
+      headers: { get: () => null },
+      ...over,
+    } as unknown as Response);
+
+  const loginPage = () =>
+    answer({ headers: { get: () => "text/html;charset=UTF-8" } });
+
+  it("a status-only PUT reports a 200 login page as an ended session", async () => {
+    vi.stubGlobal("fetch", loginPage());
+    const callback = vi.fn();
+
+    putToOpenElisServer("/rest/thing", "{}", callback);
+    await settlePromiseChain();
+
+    expect(callback).toHaveBeenCalledWith(401);
+  });
+
+  it("a PUT redirected to the login page is an ended session too", async () => {
+    vi.stubGlobal(
+      "fetch",
+      answer({
+        redirected: true,
+        url: "https://lims/api/OpenELIS-Global/LoginPage",
+      }),
+    );
+    const callback = vi.fn();
+
+    putToOpenElisServer("/rest/thing", "{}", callback);
+    await settlePromiseChain();
+
+    expect(callback).toHaveBeenCalledWith(401);
+  });
+
+  it("a real save (JSON or empty body) still reports 200", async () => {
+    vi.stubGlobal(
+      "fetch",
+      answer({ headers: { get: () => "application/json" } }),
+    );
+    const json = vi.fn();
+    putToOpenElisServer("/rest/thing", "{}", json);
+    await settlePromiseChain();
+    expect(json).toHaveBeenCalledWith(200);
+
+    vi.stubGlobal("fetch", answer({}));
+    const empty = vi.fn();
+    putToOpenElisServer("/rest/thing", "{}", empty);
+    await settlePromiseChain();
+    expect(empty).toHaveBeenCalledWith(200);
+  });
+
+  it("a DELETE answered by a login page is an ended session", async () => {
+    vi.stubGlobal("fetch", loginPage());
+    const callback = vi.fn();
+
+    deleteFromOpenElisServer("/rest/thing", callback);
+    await settlePromiseChain();
+
+    expect(callback).toHaveBeenCalledWith(401);
+  });
+
+  it("a full-response PUT hands back a 401 response for a login page", async () => {
+    vi.stubGlobal("fetch", loginPage());
+    const callback = vi.fn();
+
+    putToOpenElisServerFullResponse("/rest/thing", "{}", callback);
+    await settlePromiseChain();
+
+    const response = callback.mock.calls[0][0] as Response;
+    expect(response.ok).toBe(false);
+    expect(response.status).toBe(401);
   });
 });

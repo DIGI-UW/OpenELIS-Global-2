@@ -1,22 +1,30 @@
 package org.openelisglobal.program.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.barcode.form.LabelRowForm;
 import org.openelisglobal.barcode.form.LabelsSectionForm;
 import org.openelisglobal.barcode.form.PostSavePrintDialogForm;
 import org.openelisglobal.barcode.service.BarcodeInfoService;
 import org.openelisglobal.barcode.service.BarcodeWorkflowPrintService;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.services.IStatusService;
@@ -29,14 +37,24 @@ import org.openelisglobal.common.services.serviceBeans.ResultSaveBean;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.dictionary.service.DictionaryService;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
+import org.openelisglobal.program.controller.pathology.PathologySampleForm.PathologySlideForm;
+import org.openelisglobal.program.dao.PathologyBlockDAO;
 import org.openelisglobal.program.dao.PathologySampleDAO;
+import org.openelisglobal.program.dao.PathologySlideDAO;
+import org.openelisglobal.program.util.DesignationScheme;
+import org.openelisglobal.program.util.PathologyDesignations;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistrySample;
+import org.openelisglobal.program.valueholder.pathology.CassetteState;
+import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion.ConclusionType;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest;
@@ -44,8 +62,11 @@ import org.openelisglobal.program.valueholder.pathology.PathologyRequest.Request
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestType;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
+import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 import org.openelisglobal.program.valueholder.pathology.PathologyTechnique;
 import org.openelisglobal.program.valueholder.pathology.PathologyTechnique.TechniqueType;
+import org.openelisglobal.referencetables.service.ReferenceTablesService;
+import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.openelisglobal.result.action.util.ResultSet;
 import org.openelisglobal.result.action.util.ResultsLoadUtility;
 import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
@@ -69,8 +90,33 @@ import org.springframework.stereotype.Service;
 public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<PathologySample, Integer>
         implements PathologySampleService {
 
+    /** reference_tables rows the block and slide audit entries point at. */
+    private static final String BLOCK_REFERENCE_TABLE = "PATHOLOGY_BLOCK";
+
+    private static final String SLIDE_REFERENCE_TABLE = "PATHOLOGY_SLIDE";
+
+    /** Dictionary category a laboratory fills with the tissue types it cuts. */
+    private static final String TISSUE_TYPE_CATEGORY = "pathology_tissue_types";
+
+    private static final ObjectMapper AUDIT_PAYLOAD_MAPPER = new ObjectMapper();
+
     @Autowired
     protected PathologySampleDAO baseObjectDAO;
+
+    @Autowired
+    private PathologyBlockDAO pathologyBlockDAO;
+
+    @Autowired
+    private PathologySlideDAO pathologySlideDAO;
+
+    @Autowired
+    private HistoryService historyService;
+
+    @Autowired
+    private ReferenceTablesService referenceTablesService;
+
+    @Autowired
+    private DictionaryService dictionaryService;
 
     @Autowired
     protected SystemUserService systemUserService;
@@ -145,10 +191,18 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         return baseObjectDAO.getCountWithOpenRequests();
     }
 
+    @Transactional
+    @Override
+    public List<PathologySlide> getSlides(Integer pathologySampleId) {
+        return baseObjectDAO.get(pathologySampleId).map(pathologySample -> new ArrayList<>(pathologySample.getSlides()))
+                .orElseGet(ArrayList::new);
+    }
+
     private PathologySample copyPathologySample(PathologySample oldPathologySample) {
         PathologySample pathologySample = new PathologySample();
         pathologySample.setBlocks(new ArrayList<>(oldPathologySample.getBlocks()));
         pathologySample.setConclusions(new ArrayList<>(oldPathologySample.getConclusions()));
+        pathologySample.setDecalcificationRequired(oldPathologySample.isDecalcificationRequired());
         pathologySample.setGrossExam(oldPathologySample.getGrossExam());
         pathologySample.setId(oldPathologySample.getId());
         pathologySample.setLastupdated(oldPathologySample.getLastupdated());
@@ -166,11 +220,57 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         return pathologySample;
     }
 
+    /**
+     * The case as stored, for the audit trail to compare a save against. A save
+     * edits the stored cassettes and slides in place, so they are copied row by row
+     * here; comparing against the rows themselves would find a moved cassette
+     * unchanged.
+     */
+    private PathologySample auditedStateOf(PathologySample storedCase) {
+        PathologySample storedState = copyPathologySample(storedCase);
+        storedState.setBlocks(storedCase.getBlocks().stream().map(PathologySampleServiceImpl::copyOfBlock)
+                .collect(Collectors.toList()));
+        storedState.setSlides(storedCase.getSlides().stream().map(PathologySampleServiceImpl::copyOfSlide)
+                .collect(Collectors.toList()));
+        return storedState;
+    }
+
+    private static PathologyBlock copyOfBlock(PathologyBlock stored) {
+        PathologyBlock block = new PathologyBlock();
+        block.setId(stored.getId());
+        block.setBlockNumber(stored.getBlockNumber());
+        block.setDesignation(stored.getDesignation());
+        block.setBarcode(stored.getBarcode());
+        block.setCassetteState(stored.getCassetteState());
+        block.setTissueTypeId(stored.getTissueTypeId());
+        block.setPartDesignation(stored.getPartDesignation());
+        block.setActive(stored.isActive());
+        block.setLocation(stored.getLocation());
+        block.setLastupdated(stored.getLastupdated());
+        return block;
+    }
+
+    private static PathologySlide copyOfSlide(PathologySlide stored) {
+        PathologySlide slide = new PathologySlide();
+        slide.setId(stored.getId());
+        slide.setSlideNumber(stored.getSlideNumber());
+        slide.setBlockId(stored.getBlockId());
+        slide.setDesignation(stored.getDesignation());
+        slide.setBarcode(stored.getBarcode());
+        slide.setActive(stored.isActive());
+        slide.setLocation(stored.getLocation());
+        slide.setFileType(stored.getFileType());
+        slide.setLastupdated(stored.getLastupdated());
+        return slide;
+    }
+
     @Transactional
     @Override
     public void updateWithFormValues(Integer pathologySampleId, PathologySampleForm form) {
         // copying is so we get an object that is detached from hibernate
-        PathologySample pathologySample = copyPathologySample(get(pathologySampleId));
+        PathologySample storedCase = get(pathologySampleId);
+        PathologySample pathologySample = copyPathologySample(storedCase);
+        PathologySample storedState = auditedStateOf(storedCase);
         pathologySample.setSysUserId(form.getSystemUserId());
         if (!GenericValidator.isBlankOrNull(form.getAssignedPathologistId())) {
             pathologySample.setPathologist(systemUserService.get(form.getAssignedPathologistId()));
@@ -179,15 +279,23 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
             pathologySample.setTechnician(systemUserService.get(form.getAssignedTechnicianId()));
         }
         pathologySample.setStatus(form.getStatus());
-        pathologySample.getBlocks().removeAll(pathologySample.getBlocks());
-        if (form.getBlocks() != null)
-            form.getBlocks().stream().forEach(e -> e.setId(null));
-        pathologySample.getBlocks().addAll(form.getBlocks());
-        pathologySample.getSlides().removeAll(pathologySample.getSlides());
-        if (form.getSlides() != null)
-            form.getSlides().stream().forEach(e -> e.setId(null));
-        pathologySample.getSlides().addAll(form.getSlides());
+        DesignationScheme scheme = DesignationScheme.fromConfiguration();
+        String accessionNumber = pathologySample.getSample() == null ? null
+                : pathologySample.getSample().getAccessionNumber();
+        List<String> cassettesCut = reconcileBlocks(pathologySample, form.getBlocks(), scheme, accessionNumber);
+        reconcileSlides(pathologySample, form.getSlides(), scheme, accessionNumber);
         pathologySample.setGrossExam(form.getGrossExam());
+        // The flag records what grossing found. Past the stage an untick would make a
+        // decalcified specimen read as one that never needed it, so it is no longer
+        // taken.
+        if (form.getDecalcificationRequired() != null && !pastDecalcification(storedCase)) {
+            pathologySample.setDecalcificationRequired(form.getDecalcificationRequired());
+        }
+        if (movesInto(PathologyStatus.DECALCIFICATION, storedCase, form)
+                || movesOnFrom(PathologyStatus.DECALCIFICATION, storedCase, form)) {
+            // A case that went through the stage must never read as not needing it.
+            pathologySample.setDecalcificationRequired(true);
+        }
         pathologySample.setMicroscopyExam(form.getMicroscopyExam());
         pathologySample.getConclusions().removeAll(pathologySample.getConclusions());
         pathologySample.getConclusions().add(createConclusion(form.getConclusionText(), ConclusionType.TEXT));
@@ -216,12 +324,387 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
             referToImmunoHistoChemistry(pathologySample, form);
         }
         try {
-            update(pathologySample);
+            baseObjectDAO.evict(storedCase);
+            PathologySample savedCase = updateAgainst(pathologySample, storedState);
+            recordCassettesCut(savedCase, cassettesCut, pathologySample.getSysUserId());
             persistPathologyBarcodeCountsIfSupplied(pathologySample, form);
             populatePathologyWorkflowPrintModels(pathologySample, form);
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw e;
+        }
+    }
+
+    @Transactional
+    @Override
+    public Optional<PathologyBlock> deactivateBlock(Integer blockId, String reason, String sysUserId) {
+        Optional<PathologyBlock> found = pathologyBlockDAO.get(blockId);
+        if (found.isEmpty() || !found.get().isActive()) {
+            return found;
+        }
+
+        PathologyBlock block = found.get();
+        block.setActive(false);
+        block.setSysUserId(sysUserId);
+        pathologyBlockDAO.update(block);
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("verb", PATHOLOGY_BLOCK_DEACTIVATED);
+        putIfPresent(payload, "designation", block.displayIdentifier());
+        putIfPresent(payload, "reason", reason);
+        recordRowEvent(BLOCK_REFERENCE_TABLE, block.getStringId(), IActionConstants.AUDIT_TRAIL_UPDATE, payload,
+                sysUserId);
+        return Optional.of(block);
+    }
+
+    @Transactional
+    @Override
+    public Optional<PathologyBlock> embedBlock(Integer blockId, String sysUserId) {
+        Optional<PathologyBlock> found = pathologyBlockDAO.get(blockId);
+        if (found.isEmpty()) {
+            return found;
+        }
+
+        PathologyBlock block = found.get();
+        if (!block.isActive()) {
+            throw new PathologyCaseRuleException("block " + blockId + " has been retired, so it cannot be embedded");
+        }
+        if (block.getCassetteState() == CassetteState.BLOCK) {
+            return found;
+        }
+
+        CassetteState from = block.getCassetteState() == null ? CassetteState.CASSETTE : block.getCassetteState();
+        block.setCassetteState(CassetteState.BLOCK);
+        block.setSysUserId(sysUserId);
+        pathologyBlockDAO.update(block);
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("verb", PATHOLOGY_BLOCK_EMBEDDED);
+        putIfPresent(payload, "designation", block.displayIdentifier());
+        payload.put("from", from.name());
+        payload.put("to", CassetteState.BLOCK.name());
+        recordRowEvent(BLOCK_REFERENCE_TABLE, block.getStringId(), IActionConstants.AUDIT_TRAIL_UPDATE, payload,
+                sysUserId);
+        return Optional.of(block);
+    }
+
+    @Transactional
+    @Override
+    public PathologySample getCaseOfBlock(Integer blockId) {
+        return blockId == null ? null : baseObjectDAO.getCaseOfBlock(blockId);
+    }
+
+    @Transactional
+    @Override
+    public PathologySample getCaseOfSlide(Integer slideId) {
+        return slideId == null ? null : baseObjectDAO.getCaseOfSlide(slideId);
+    }
+
+    @Transactional
+    @Override
+    public Optional<PathologySlide> deactivateSlide(Integer slideId, String reason, String sysUserId) {
+        Optional<PathologySlide> found = pathologySlideDAO.get(slideId);
+        if (found.isEmpty() || !found.get().isActive()) {
+            return found;
+        }
+
+        PathologySlide slide = found.get();
+        slide.setActive(false);
+        slide.setSysUserId(sysUserId);
+        pathologySlideDAO.update(slide);
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("verb", PATHOLOGY_SLIDE_DEACTIVATED);
+        putIfPresent(payload, "designation", slide.displayIdentifier());
+        if (slide.getBlockId() != null) {
+            payload.put("blockId", slide.getBlockId());
+        }
+        putIfPresent(payload, "reason", reason);
+        recordRowEvent(SLIDE_REFERENCE_TABLE, slide.getStringId(), IActionConstants.AUDIT_TRAIL_UPDATE, payload,
+                sysUserId);
+        return Optional.of(slide);
+    }
+
+    /**
+     * Applies the posted cassettes to the case. A posted row is matched by its id
+     * and keeps the identity the server gave it; a row with no id is a new cassette
+     * and is named here; a row the case holds but the client did not post is left
+     * exactly as it is.
+     *
+     * <p>
+     * The identity the server assigns to a new row is readable only by fetching the
+     * case again, because the save answers with the form that was posted.
+     *
+     * @return the designations of the cassettes cut in this save
+     */
+    private List<String> reconcileBlocks(PathologySample pathologySample, List<PathologyBlock> postedBlocks,
+            DesignationScheme scheme, String accessionNumber) {
+        List<String> cassettesCut = new ArrayList<>();
+        if (postedBlocks == null) {
+            return cassettesCut;
+        }
+        List<PathologyBlock> blocksOnCase = pathologySample.getBlocks();
+        for (PathologyBlock posted : postedBlocks) {
+            if (posted.getId() != null) {
+                applyToBlock(blockOnCase(pathologySample, posted.getId()), posted);
+            } else {
+                PathologyBlock cassette = cutCassette(posted, blocksOnCase, scheme, accessionNumber,
+                        pathologySample.getSysUserId());
+                blocksOnCase.add(cassette);
+                cassettesCut.add(cassette.getDesignation());
+            }
+        }
+        return cassettesCut;
+    }
+
+    /**
+     * Applies the posted slides to the case, on the same three rules as
+     * {@link #reconcileBlocks}, with the addition that a new slide has to name the
+     * block it was cut from.
+     */
+    private void reconcileSlides(PathologySample pathologySample, List<PathologySlideForm> postedSlides,
+            DesignationScheme scheme, String accessionNumber) {
+        if (postedSlides == null) {
+            return;
+        }
+        List<PathologySlide> slidesOnCase = pathologySample.getSlides();
+        for (PathologySlideForm posted : postedSlides) {
+            if (posted.getId() != null) {
+                applyToSlide(slideOnCase(pathologySample, posted.getId()), posted);
+            } else {
+                slidesOnCase.add(cutSlide(posted, pathologySample, slidesOnCase, scheme, accessionNumber));
+            }
+        }
+    }
+
+    /**
+     * Location and the tissue held are the fields a case save edits, and a retired
+     * row is left as it is.
+     */
+    private void applyToBlock(PathologyBlock block, PathologyBlock posted) {
+        if (!block.isActive()) {
+            return;
+        }
+        String tissueTypeId = tissueTypeAfterSave(block.getTissueTypeId(), posted.getTissueTypeId());
+        block.setLocation(posted.getLocation());
+        block.setTissueTypeId(tissueTypeId);
+    }
+
+    /**
+     * An unchanged value is never checked again, so an entry retired after a
+     * cassette recorded it cannot block a save of the case.
+     */
+    private String tissueTypeAfterSave(String stored, String posted) {
+        String requested = StringUtils.trimToNull(posted);
+        if (requested == null || Objects.equals(requested, stored)) {
+            return requested;
+        }
+        if (!isActiveTissueType(requested)) {
+            throw new PathologyCaseRuleException(
+                    "tissue type " + requested + " is not an active entry of " + TISSUE_TYPE_CATEGORY);
+        }
+        return requested;
+    }
+
+    /**
+     * A tissue type a cassette may be given: an entry of the laboratory's own
+     * tissue category that is still in use.
+     */
+    private boolean isActiveTissueType(String dictionaryId) {
+        try {
+            Integer.parseInt(dictionaryId);
+        } catch (NumberFormatException e) {
+            // The dictionary key binds as an integer, so anything else names no entry
+            // and is the client's mistake, not a failure of the lookup.
+            return false;
+        }
+        Dictionary entry = dictionaryService.getDataForId(dictionaryId);
+        return entry != null && "Y".equals(entry.getIsActive()) && entry.getDictionaryCategory() != null
+                && TISSUE_TYPE_CATEGORY.equals(entry.getDictionaryCategory().getCategoryName());
+    }
+
+    /**
+     * PathologyStatus is declared in bench order (FR-2.6), so a later ordinal is a
+     * stage the case reaches after decalcification.
+     */
+    private static boolean pastDecalcification(PathologySample storedCase) {
+        return storedCase.getStatus() != null
+                && storedCase.getStatus().ordinal() > PathologyStatus.DECALCIFICATION.ordinal();
+    }
+
+    /**
+     * Whether this save moves the case onto the stage from another one; a save of a
+     * case already standing there does not.
+     */
+    private static boolean movesInto(PathologyStatus stage, PathologySample storedCase, PathologySampleForm form) {
+        return form.getStatus() == stage && storedCase.getStatus() != stage;
+    }
+
+    /**
+     * Whether this save takes a case standing at the stage on to a later one, so
+     * the case has been through it; a move back to an earlier stage has not.
+     */
+    private static boolean movesOnFrom(PathologyStatus stage, PathologySample storedCase, PathologySampleForm form) {
+        return storedCase.getStatus() == stage && form.getStatus() != null
+                && form.getStatus().ordinal() > stage.ordinal();
+    }
+
+    /**
+     * A retired slide is left as it is. An image is only replaced when one was
+     * posted: the case view sends the slide rows back without their stored images,
+     * and treating that as an erasure would lose the image on the next save of any
+     * other field.
+     */
+    private void applyToSlide(PathologySlide slide, PathologySlide posted) {
+        if (!slide.isActive()) {
+            return;
+        }
+        slide.setLocation(posted.getLocation());
+        if (posted.getImage() != null) {
+            slide.setImage(posted.getImage());
+            slide.setFileType(posted.getFileType());
+        }
+    }
+
+    /**
+     * Cuts a cassette under the case's first part, holding the tissue type posted
+     * with it; the part it came from is not captured on this screen.
+     */
+    private PathologyBlock cutCassette(PathologyBlock posted, List<PathologyBlock> blocksOnCase,
+            DesignationScheme scheme, String accessionNumber, String sysUserId) {
+        String part = PathologyDesignations.firstPart(scheme);
+        String designation = PathologyDesignations.nextBlockDesignation(designationsOfBlocks(blocksOnCase), part,
+                scheme);
+
+        PathologyBlock block = new PathologyBlock();
+        block.setPartDesignation(part);
+        block.setDesignation(designation);
+        block.setBarcode(PathologyDesignations.blockBarcode(accessionNumber, designation, scheme));
+        block.setCassetteState(CassetteState.CASSETTE);
+        block.setActive(true);
+        block.setLocation(posted.getLocation());
+        block.setTissueTypeId(tissueTypeAfterSave(null, posted.getTissueTypeId()));
+        block.setSysUserId(sysUserId);
+        return block;
+    }
+
+    private PathologySlide cutSlide(PathologySlide posted, PathologySample pathologySample,
+            List<PathologySlide> slidesOnCase, DesignationScheme scheme, String accessionNumber) {
+        PathologyBlock block = blockCutFrom(posted.getBlockId(), pathologySample);
+        String designation = PathologyDesignations
+                .nextSlideDesignation(designationsOfSlidesCutFrom(slidesOnCase, block.getId()), scheme);
+
+        PathologySlide slide = new PathologySlide();
+        slide.setBlockId(block.getId());
+        slide.setDesignation(designation);
+        slide.setBarcode(
+                PathologyDesignations.slideBarcode(accessionNumber, block.displayIdentifier(), designation, scheme));
+        slide.setActive(true);
+        slide.setLocation(posted.getLocation());
+        slide.setImage(posted.getImage());
+        slide.setFileType(posted.getFileType());
+        slide.setSysUserId(pathologySample.getSysUserId());
+        return slide;
+    }
+
+    private PathologyBlock blockOnCase(PathologySample pathologySample, Integer blockId) {
+        for (PathologyBlock block : pathologySample.getBlocks()) {
+            if (blockId.equals(block.getId())) {
+                return block;
+            }
+        }
+        throw new PathologyCaseRuleException(
+                "block " + blockId + " is not on pathology case " + pathologySample.getId());
+    }
+
+    private PathologySlide slideOnCase(PathologySample pathologySample, Integer slideId) {
+        for (PathologySlide slide : pathologySample.getSlides()) {
+            if (slideId.equals(slide.getId())) {
+                return slide;
+            }
+        }
+        throw new PathologyCaseRuleException(
+                "slide " + slideId + " is not on pathology case " + pathologySample.getId());
+    }
+
+    /**
+     * Only a block the case already holds, has persisted and still has in use can
+     * be named: a cassette added in the same post has no id yet, so the slides cut
+     * from it are added on the save that follows.
+     */
+    private PathologyBlock blockCutFrom(Integer blockId, PathologySample pathologySample) {
+        if (blockId == null) {
+            throw new PathologyCaseRuleException(
+                    "a slide must name the block it was cut from on pathology case " + pathologySample.getId());
+        }
+        PathologyBlock block = blockOnCase(pathologySample, blockId);
+        if (!block.isActive()) {
+            throw new PathologyCaseRuleException(
+                    "block " + blockId + " has been retired, so no slide can be cut from it");
+        }
+        return block;
+    }
+
+    private List<String> designationsOfBlocks(List<PathologyBlock> blocks) {
+        return blocks.stream().map(PathologyBlock::getDesignation).collect(Collectors.toList());
+    }
+
+    private List<String> designationsOfSlidesCutFrom(List<PathologySlide> slides, Integer blockId) {
+        return slides.stream().filter(slide -> blockId.equals(slide.getBlockId())).map(PathologySlide::getDesignation)
+                .collect(Collectors.toList());
+    }
+
+    private void putIfPresent(Map<String, Object> payload, String key, String value) {
+        if (StringUtils.isNotBlank(value)) {
+            payload.put(key, value.trim());
+        }
+    }
+
+    /**
+     * One audit entry per cassette cut, written once the merge has given each row
+     * its id; designations are unique within a case, so they find the rows.
+     */
+    private void recordCassettesCut(PathologySample savedCase, List<String> cassettesCut, String sysUserId) {
+        for (PathologyBlock block : savedCase.getBlocks()) {
+            if (cassettesCut.contains(block.getDesignation())) {
+                Map<String, Object> payload = new LinkedHashMap<>();
+                payload.put("verb", PATHOLOGY_BLOCK_CREATED);
+                putIfPresent(payload, "designation", block.getDesignation());
+                putIfPresent(payload, "barcode", block.getBarcode());
+                recordRowEvent(BLOCK_REFERENCE_TABLE, block.getStringId(), IActionConstants.AUDIT_TRAIL_INSERT, payload,
+                        sysUserId);
+            }
+        }
+    }
+
+    /**
+     * Writes the audit entry an event on a block or slide leaves behind.
+     * history.activity is a one-character code, so the verb travels in the changes
+     * payload, which never carries anything about the patient.
+     */
+    private void recordRowEvent(String referenceTableName, String referenceId, String activity,
+            Map<String, Object> payload, String sysUserId) {
+        ReferenceTables referenceTable = referenceTablesService.getReferenceTableByName(referenceTableName);
+        if (referenceTable == null) {
+            throw new LIMSRuntimeException(
+                    referenceTableName + " is missing from reference_tables, so the event cannot be audited");
+        }
+
+        History history = new History();
+        history.setReferenceId(referenceId);
+        history.setReferenceTable(referenceTable.getId());
+        history.setActivity(activity);
+        history.setTimestamp(new Timestamp(System.currentTimeMillis()));
+        history.setSysUserId(sysUserId);
+        history.setChanges(asJson(payload));
+        historyService.insert(history);
+    }
+
+    private byte[] asJson(Map<String, Object> payload) {
+        try {
+            return AUDIT_PAYLOAD_MAPPER.writeValueAsString(payload).getBytes(StandardCharsets.UTF_8);
+        } catch (JsonProcessingException e) {
+            throw new LIMSRuntimeException("the pathology audit payload could not be written", e);
         }
     }
 

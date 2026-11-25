@@ -76,6 +76,21 @@ public class EQALabPerformanceServiceImpl implements EQALabPerformanceService {
         return page;
     }
 
+    @Override
+    public Integer getAcceptanceRate(LocalDate from, LocalDate to) {
+        int scored = 0;
+        int acceptable = 0;
+        for (EQAParticipantResult result : participantResultDAO.getAll()) {
+            LocalDate scoredOn = anchorDate(result);
+            if (result.getSubmissionStatus() != EQASubmissionStatus.DRAFT && result.getPerformanceStatus() != null
+                    && scoredOn != null && !scoredOn.isBefore(from) && !scoredOn.isAfter(to)) {
+                scored++;
+                acceptable += result.getPerformanceStatus() == EQAPerformanceStatus.ACCEPTABLE ? 1 : 0;
+            }
+        }
+        return rate(acceptable, scored);
+    }
+
     private Map<String, Object> kpis(List<EQAParticipantResult> results, LocalDate windowStart, int uncoveredTests) {
         LocalDate priorStart = windowStart.minusMonths(WINDOW_MONTHS);
 

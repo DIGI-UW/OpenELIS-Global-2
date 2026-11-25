@@ -10,17 +10,22 @@
 vi.mock("../../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
   postToOpenElisServer: vi.fn(),
-  putToOpenElisServer: vi.fn(),
+  putToOpenElisServerFullResponse: vi.fn(),
   deleteFromOpenElisServer: vi.fn(),
 }));
 
 // ========== IMPORTS ==========
 import React from "react";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import AlertsSection from "./AlertsSection";
-import { getFromOpenElisServer } from "../../../utils/Utils";
+import {
+  deleteFromOpenElisServer,
+  getFromOpenElisServer,
+  putToOpenElisServerFullResponse,
+} from "../../../utils/Utils";
 import messages from "../../../../languages/en.json";
 
 const RULES = [
@@ -102,5 +107,89 @@ describe("AlertsSection", () => {
     getFromOpenElisServer.mockImplementation((url, cb) => cb([]));
     renderSection();
     expect(await screen.findByTestId("add-rule-button")).toBeInTheDocument();
+  });
+
+  /** OGC-1463: each toggle sends the version the server last returned. */
+  it("sends the rule's version and takes the new one from the answer", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb([{ ...RULES[0], version: "v1" }]),
+    );
+    putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb({
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            ...RULES[0],
+            enabled: JSON.parse(body).enabled,
+            version: JSON.parse(body).version === "v1" ? "v2" : "v3",
+          }),
+      }),
+    );
+    renderSection();
+    const toggle = await waitFor(() => {
+      const el = document.getElementById("enabled-rule-1");
+      expect(el).not.toBeNull();
+      return el;
+    });
+
+    fireEvent.click(toggle);
+    await waitFor(() =>
+      expect(putToOpenElisServerFullResponse).toHaveBeenCalledTimes(1),
+    );
+    await waitFor(() =>
+      expect(toggle).toHaveAttribute("aria-checked", "false"),
+    );
+    fireEvent.click(toggle);
+    await waitFor(() =>
+      expect(putToOpenElisServerFullResponse).toHaveBeenCalledTimes(2),
+    );
+
+    const versions = putToOpenElisServerFullResponse.mock.calls.map(
+      ([, body]) => JSON.parse(body).version,
+    );
+    expect(versions).toEqual(["v1", "v2"]);
+  });
+
+  it("says so when a toggle is refused as stale", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb([{ ...RULES[0], version: "v1" }]),
+    );
+    putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb({
+        status: 409,
+        json: () => Promise.resolve({ conflict: "stale", version: "v9" }),
+      }),
+    );
+    renderSection();
+    await screen.findByText("Critical SMS");
+
+    fireEvent.click(document.getElementById("enabled-rule-1"));
+
+    expect(await screen.findByTestId("alerts-stale-save")).toHaveTextContent(
+      messages["error.staleSave.section"],
+    );
+  });
+
+  // OGC-1463 review: a delete from a page older than another admin's edit is
+  // refused, and the section says so.
+  it("sends the rule's version with a delete and shows a stale refusal", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb([{ ...RULES[0], version: "v1" }]),
+    );
+    deleteFromOpenElisServer.mockImplementation((url, cb) => cb(409));
+    renderSection();
+    fireEvent.click(await screen.findByTestId("delete-alert-rule-1"));
+    const dialog = await screen.findByRole("dialog", {
+      name: messages["label.testCatalog.alerts.delete.title"],
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: /Delete$/ }));
+
+    await waitFor(() => expect(deleteFromOpenElisServer).toHaveBeenCalled());
+    expect(deleteFromOpenElisServer.mock.calls[0][0]).toBe(
+      "/rest/test-catalog/42/alerts/rule-1?version=v1",
+    );
+    expect(await screen.findByTestId("alerts-stale-save")).toHaveTextContent(
+      messages["error.staleSave.section"],
+    );
   });
 });

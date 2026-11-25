@@ -1,6 +1,7 @@
 package org.openelisglobal.inventory.daoimpl;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
@@ -83,6 +84,27 @@ public class InventoryUsageDAOImpl extends BaseDAOImpl<InventoryUsage, Long> imp
             return query.list();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting usage by date range", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DailyUsage> getDailyTotals(Timestamp startDate, Timestamp endDate) throws LIMSRuntimeException {
+        try {
+            String hql = "SELECT u.inventoryItem.id, cast(u.usageDate as date), SUM(u.quantityUsed)"
+                    + " FROM InventoryUsage u WHERE u.usageDate >= :startDate AND u.usageDate < :endDate"
+                    + " GROUP BY u.inventoryItem.id, cast(u.usageDate as date)";
+            Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(hql, Object[].class);
+            query.setParameter("startDate", startDate);
+            query.setParameter("endDate", endDate);
+            List<DailyUsage> totals = new ArrayList<>();
+            for (Object[] row : query.list()) {
+                totals.add(new DailyUsage((Long) row[0], ((java.sql.Date) row[1]).toLocalDate(),
+                        ((Number) row[2]).doubleValue()));
+            }
+            return totals;
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting daily usage totals", e);
         }
     }
 }

@@ -148,7 +148,10 @@ const PanelBasicInfoSection = ({ panel, isCreate, onSaved }) => {
             saveExisting(created.id);
           } else {
             setSaving(false);
-            notify(NotificationKinds.error, "error.panel.save");
+            notify(
+              NotificationKinds.error,
+              REFUSAL_MESSAGES[created?.refusal] || "error.panel.save",
+            );
           }
         },
       );

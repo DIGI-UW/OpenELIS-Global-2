@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.analyzer.service.AnalyzerProfileBindingService;
+import org.openelisglobal.analyzer.service.AnalyzerMappingService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +26,7 @@ public class AnalyzerServiceTest extends BaseWebContextSensitiveTest {
     @Autowired
     private AnalyzerService analyzerService;
     @Autowired
-    private AnalyzerProfileBindingService profiles;
+    private AnalyzerMappingService mappings;
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -46,8 +46,9 @@ public class AnalyzerServiceTest extends BaseWebContextSensitiveTest {
             analyzer.setActive(false);
             analyzer.setStatus(Analyzer.AnalyzerStatus.SETUP);
             analyzer.setSysUserId(TEST_SYS_USER_ID);
-            profiles.assignProfile(analyzer, PROFILE_ID, PROFILE_REVISION, TEST_SYS_USER_ID);
             String id = analyzerService.insert(analyzer);
+            analyzer.setMapping(
+                    mappings.assignProfile(analyzer, PROFILE_ID, PROFILE_REVISION, TEST_SYS_USER_ID).mapping());
             expectedIds.add(id);
             if (firstAnalyzerId == null) {
                 firstAnalyzerId = id;

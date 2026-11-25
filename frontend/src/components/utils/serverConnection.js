@@ -157,20 +157,40 @@ export async function readSessionResponse(response) {
   return details;
 }
 
+const LANDED_ON_LOGIN_PAGE = Symbol("landed on the login page");
+
 /**
- * Fetches the session once; a request or a session body held open past the
- * timeout fails.
+ * True when the server redirected the session check to its login page. It
+ * does that for a session cookie it no longer knows, the one a browser still
+ * holds right after Logout, and the redirected response carries a new session
+ * cookie.
+ */
+const landedOnLoginPage = (response) =>
+  response.redirected &&
+  new URL(response.url, window.location.origin).pathname.endsWith("/LoginPage");
+
+/**
+ * Fetches the session; a request or a session body held open past the timeout
+ * fails. A check redirected to the login page reached the server, so it is
+ * asked once more with the new session cookie instead of being reported as an
+ * outage; a second redirect means the user is signed out.
  */
 export async function requestSession(
   url,
   timeoutMs = SERVER_REQUEST_TIMEOUT_MS,
 ) {
-  return fetchWithTimeout(
-    url,
-    { credentials: "include" },
-    timeoutMs,
-    readSessionResponse,
-  );
+  const check = () =>
+    fetchWithTimeout(url, { credentials: "include" }, timeoutMs, (response) =>
+      landedOnLoginPage(response)
+        ? LANDED_ON_LOGIN_PAGE
+        : readSessionResponse(response),
+    );
+  const answer = await check();
+  if (answer !== LANDED_ON_LOGIN_PAGE) {
+    return answer;
+  }
+  const retried = await check();
+  return retried === LANDED_ON_LOGIN_PAGE ? { authenticated: false } : retried;
 }
 
 /**

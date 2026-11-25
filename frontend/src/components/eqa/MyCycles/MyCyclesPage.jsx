@@ -36,14 +36,13 @@ import {
   kpiValueStyle,
 } from "../eqaCommon";
 import {
-  createMyCycle,
   fetchMyCycles,
-  fetchMyPrograms,
   importScoresCsv,
   submitCycle,
   submitCycleManually,
 } from "./cyclesApi";
 import { asList } from "../eqaApi";
+import NewEqaCycleModal from "./NewEqaCycleModal";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -192,50 +191,20 @@ const MyCyclesPage = () => {
     });
   };
 
-  // "New cycle": a participant records a cycle for a provider that does not
-  // send consignments to this OpenELIS. Consignments from an
-  // OpenELIS provider open their cycle on import, so this is the fallback.
-  const EMPTY_NEW_CYCLE = {
-    schemeName: "",
-    cycleName: "",
-    distributionDate: "",
-    submissionDeadline: "",
-  };
   const [newCycleOpen, setNewCycleOpen] = useState(false);
-  const [newCycle, setNewCycle] = useState(EMPTY_NEW_CYCLE);
-  const [myPrograms, setMyPrograms] = useState([]);
-  const [newCycleError, setNewCycleError] = useState(null);
   const [newCycleNotice, setNewCycleNotice] = useState(null);
-  const [savingCycle, setSavingCycle] = useState(false);
 
-  const openNewCycle = () => {
-    setNewCycleError(null);
-    setNewCycle(EMPTY_NEW_CYCLE);
-    fetchMyPrograms(setMyPrograms);
-    setNewCycleOpen(true);
-  };
+  const openNewCycle = () => setNewCycleOpen(true);
 
-  const handleCreateCycle = () => {
-    setSavingCycle(true);
-    setNewCycleError(null);
-    createMyCycle(newCycle, (result) => {
-      setSavingCycle(false);
-      if (!result.ok) {
-        setNewCycleError(
-          result.error ||
-            t("eqa.cycle.new.error", "Could not create the cycle"),
-        );
-        return;
-      }
-      setNewCycleOpen(false);
-      setNewCycleNotice(
-        t(
-          "eqa.cycle.new.created",
-          'Cycle created. It is listed as Planned; use "Receive panel" when the panel arrives.',
-        ),
-      );
-      fetchMyCycles(setCycles);
-    });
+  const handleCycleCreated = () => {
+    setNewCycleOpen(false);
+    setNewCycleNotice(
+      t(
+        "eqa.cycle.new.created",
+        'Cycle created. It is listed as Planned; use "Receive panel" when the panel arrives.',
+      ),
+    );
+    fetchMyCycles(setCycles);
   };
 
   useEffect(() => {
@@ -963,95 +932,10 @@ const MyCyclesPage = () => {
       </Grid>
 
       {newCycleOpen && (
-        <Modal
-          open
-          size="sm"
-          modalHeading={t("eqa.cycle.new.heading", "New EQA cycle")}
-          primaryButtonText={t("eqa.cycle.new.create", "Create cycle")}
-          secondaryButtonText={t("eqa.queue.cancel", "Cancel")}
-          primaryButtonDisabled={
-            savingCycle ||
-            !newCycle.schemeName ||
-            !newCycle.cycleName.trim() ||
-            !newCycle.submissionDeadline
-          }
-          onRequestClose={() => setNewCycleOpen(false)}
-          onSecondarySubmit={() => setNewCycleOpen(false)}
-          onRequestSubmit={handleCreateCycle}
-        >
-          <p style={{ color: "#525252", marginBottom: "1rem" }}>
-            {t(
-              "eqa.cycle.new.help",
-              'For a provider that does not send consignments to this OpenELIS: record the cycle the panel belongs to so it appears here with "Receive panel". Consignments from an OpenELIS provider open their cycle on import.',
-            )}
-          </p>
-          {newCycleError && (
-            <InlineNotification
-              kind="error"
-              lowContrast
-              hideCloseButton
-              title={newCycleError}
-              style={{ marginBottom: "1rem" }}
-            />
-          )}
-          <Select
-            id="new-cycle-scheme"
-            labelText={t(
-              "eqa.cycle.new.scheme",
-              "Scheme (from My EQA Schemes)",
-            )}
-            helperText={
-              myPrograms.length === 0
-                ? t(
-                    "eqa.cycle.new.noPrograms",
-                    "Enroll in a scheme under My EQA Schemes first.",
-                  )
-                : undefined
-            }
-            value={newCycle.schemeName}
-            onChange={(e) =>
-              setNewCycle({ ...newCycle, schemeName: e.target.value })
-            }
-          >
-            <SelectItem value="" text="" />
-            {myPrograms.map((prog) => (
-              <SelectItem
-                key={prog.id}
-                value={prog.programName}
-                text={prog.programName}
-              />
-            ))}
-          </Select>
-          <TextInput
-            id="new-cycle-name"
-            labelText={t("eqa.cycle.new.name", "Cycle name")}
-            value={newCycle.cycleName}
-            onChange={(e) =>
-              setNewCycle({ ...newCycle, cycleName: e.target.value })
-            }
-            style={{ marginTop: "1rem" }}
-          />
-          <TextInput
-            id="new-cycle-distribution"
-            type="date"
-            labelText={t("eqa.cycle.new.distributionDate", "Distribution date")}
-            value={newCycle.distributionDate}
-            onChange={(e) =>
-              setNewCycle({ ...newCycle, distributionDate: e.target.value })
-            }
-            style={{ marginTop: "1rem" }}
-          />
-          <TextInput
-            id="new-cycle-deadline"
-            type="date"
-            labelText={t("eqa.cycle.new.deadline", "Submission deadline")}
-            value={newCycle.submissionDeadline}
-            onChange={(e) =>
-              setNewCycle({ ...newCycle, submissionDeadline: e.target.value })
-            }
-            style={{ marginTop: "1rem" }}
-          />
-        </Modal>
+        <NewEqaCycleModal
+          onClose={() => setNewCycleOpen(false)}
+          onCreated={handleCycleCreated}
+        />
       )}
       {scoreImport && (
         <Modal

@@ -95,7 +95,8 @@ public class ObservationSearchFacadeTest extends BaseWebContextSensitiveTest {
         assertEquals(List.of(SAMPLE_ITEM_601_UUID), idsOf(bundle, "Specimen"));
 
         bundle = search(RESULT_3_UUID, "_include", "Observation:performer");
-        assertEquals(List.of(PROVIDER_1_UUID), idsOf(bundle, "Practitioner"));
+        assertEquals("the ordering provider is not the performer, so nothing is included", List.of(),
+                idsOf(bundle, "Practitioner"));
 
         bundle = search(RESULT_4_UUID, "_revinclude", "DiagnosticReport:result");
         assertEquals(List.of(ANALYSIS_2_UUID), idsOf(bundle, "DiagnosticReport"));

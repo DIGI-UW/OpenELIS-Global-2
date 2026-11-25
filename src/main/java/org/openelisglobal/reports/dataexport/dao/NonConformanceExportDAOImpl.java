@@ -4,10 +4,15 @@ import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
 import java.util.stream.Stream;
 import org.hibernate.jpa.QueryHints;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
+import org.openelisglobal.localization.ShippedLabels;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
+import org.openelisglobal.qaevent.valueholder.NceType;
 import org.openelisglobal.reports.dataexport.form.ExportSnapshot;
 import org.openelisglobal.reports.dataexport.service.ExportDateRange;
 import org.springframework.stereotype.Component;
@@ -24,7 +29,7 @@ public class NonConformanceExportDAOImpl extends BaseDAOImpl<NcEvent, Integer> i
     public Stream<EventRow> events(ExportSnapshot request) {
         var filter = request.filterSpec();
         String hql = "select e.id, link.id, si.id, coalesce(s.accessionNumber, e.labOrderNumber), "
-                + "case when si.rejected = true then reason.qaEventName else kind.name end, "
+                + "case when si.rejected = true then reason.qaEventName else null end, kind.id, "
                 + "section.testSectionName, e.nameOfReporter, e.dateOfEvent, e.reportDate, e.status "
                 + "from NcEvent e left join NceSpecimen link on link.nceId = e.id "
                 + "left join SampleItem si on cast(si.id as integer) = link.sampleItemId "
@@ -47,14 +52,21 @@ public class NonConformanceExportDAOImpl extends BaseDAOImpl<NcEvent, Integer> i
                 + "or (e.reportingUnitId is null and link.analysisId is null and exists "
                 + "(select a.id from Analysis a where a.sampleItem.id = si.id and a.testSection.id in :sections))) "
                 + "order by e.id, link.id";
+        Map<Integer, String> typeLabels = new HashMap<>();
+        Locale locale = request.userLocale();
+        for (NceType type : entityManager.createQuery("from NceType", NceType.class).getResultList()) {
+            typeLabels.put(type.getId(),
+                    ShippedLabels.label(type.getDisplayKey(), type.getNameLocalization(), type.getName(), locale));
+        }
         return entityManager.createQuery(hql, Object[].class)
                 .setParameter("from", Date.valueOf(LocalDate.parse(filter.dateFrom())))
                 .setParameter("to", Date.valueOf(LocalDate.parse(filter.dateTo())))
                 .setParameter("sections", filter.labSectionIds())
                 .setParameter("units", filter.labSectionIds().stream().map(Integer::valueOf).toList())
                 .setHint(QueryHints.HINT_FETCH_SIZE, 250).setHint(QueryHints.HINT_READONLY, true).getResultStream()
-                .map(r -> new EventRow((Integer) r[0], (Integer) r[1], (String) r[2], (String) r[3], (String) r[4],
-                        (String) r[5], (String) r[6], (Date) r[7], (Date) r[8], (String) r[9]));
+                .map(r -> new EventRow((Integer) r[0], (Integer) r[1], (String) r[2], (String) r[3],
+                        r[4] != null ? (String) r[4] : typeLabels.get((Integer) r[5]), (String) r[6], (String) r[7],
+                        (Date) r[8], (Date) r[9], (String) r[10]));
     }
 
     @Override

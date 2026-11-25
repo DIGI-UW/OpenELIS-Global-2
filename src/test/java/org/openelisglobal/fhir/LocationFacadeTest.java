@@ -92,6 +92,33 @@ public class LocationFacadeTest extends BaseWebContextSensitiveTest {
         assertEquals("room", json.get("meta").get("tag").get(0).get("code").asText());
     }
 
+    /**
+     * OGC-1399 (IG Known Issue 9): ServiceRequest.locationReference and the subject
+     * of a patientless order point at Location/{organization fhir id}, which did
+     * not resolve.
+     */
+    @Test
+    public void readLocation_shouldReturnTheSiteLocationOfAnOrganization() throws Exception {
+
+        JsonNode json = readJson("20e61b21-1399-42cc-b708-1a1194888781");
+
+        assertEquals("Location", json.get("resourceType").asText());
+        assertEquals("20e61b21-1399-42cc-b708-1a1194888781", json.get("id").asText());
+        assertEquals("Bekasi Riverside", json.get("name").asText());
+        assertEquals("active", json.get("status").asText());
+        assertEquals("si", json.get("physicalType").get("coding").get(0).get("code").asText());
+        assertEquals("Organization/20e61b21-1399-42cc-b708-1a1194888781",
+                json.get("managingOrganization").get("reference").asText());
+    }
+
+    @Test
+    public void readLocation_shouldMarkAnInactiveOrganizationsSiteInactive() throws Exception {
+
+        JsonNode json = readJson("20e61b21-1399-42cc-b708-1a1194888782");
+
+        assertEquals("inactive", json.get("status").asText());
+    }
+
     @Test
     public void readLocation_shouldReturn400GivenInvalidId() throws Exception {
 

@@ -226,13 +226,13 @@ const OrderWorkflowLayout = ({
           <div className="workflow-header">
             <div className="workflow-title-section">
               {title && (
-                <h2 className="order-step-title">
+                <h1 className="order-step-title">
                   {typeof title === "string" ? (
                     <FormattedMessage id={title} />
                   ) : (
                     title
                   )}
-                </h2>
+                </h1>
               )}
               <SaveStatusIndicator />
             </div>

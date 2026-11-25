@@ -70,3 +70,16 @@ export function prepareSamplesToContinue({
   }
   return items;
 }
+
+/**
+ * Whether the laboratory's consent rule applies to this order. A site whose
+ * regulator requires consent turns CONSENT_REQUIRED_FOR_COLLECTION on; an EQA
+ * proficiency sample has no person to consent, so it is never held for it
+ * (OGC-1483).
+ */
+export function consentApplies(configurationProperties = {}, orderData = {}) {
+  return (
+    configurationProperties.CONSENT_REQUIRED_FOR_COLLECTION === "true" &&
+    !orderData?.sampleOrderItems?.isEQASample
+  );
+}

@@ -6,16 +6,19 @@ import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
  *
  * The dashboard used to print the stored status constant straight onto the
  * screen, so the Stage column and the stage filter read MICROTOMY rather than
- * Microtomy, and the filter built its own "in progress" set (everything that
- * was not complete) which disagreed with the grouping the count tiles showed.
- * The filter, the Stage column and the tiles now read one ordered bench-stage
- * list, and every stage is shown in the user's language.
+ * Microtomy. The filter, the Stage column and the tiles now read one ordered
+ * bench-stage list, every stage is shown in the user's language, and the
+ * "In Progress" option matches the grouping the count tiles use. The landing
+ * worklist is deliberately wider, every stage but Completed, so a case waiting
+ * for a pathologist is listed, and the "Not Completed" option names that set.
  *
  * What this proves on a deployed stack:
  *   - the four count tiles render, each with a whole-number count,
  *   - the stage filter offers exactly the eleven bench stages, localized and
- *     in bench order, behind the three fixed options: a disabled placeholder
- *     and two groupings, and
+ *     in bench order, behind the four fixed options: a disabled placeholder
+ *     and three groupings,
+ *   - the landing request asks for the stage awaiting a pathologist and the
+ *     control reads Not Completed, and
  *   - narrowing to one stage and widening back to All both hold.
  *
  * The per-deployment switches that decide which of the optional stages a
@@ -43,13 +46,14 @@ const BENCH_STAGE_LABELS = [
 ];
 
 /**
- * The filter opens with three fixed options: a disabled placeholder and two
+ * The filter opens with four fixed options: a disabled placeholder and three
  * groupings. Every stage follows. Asserting the whole array at once proves
  * the count, the order and the localization in a single assertion.
  */
 const STAGE_FILTER_OPTIONS = [
   "Status",
   "All",
+  "Not Completed",
   "In Progress",
   ...BENCH_STAGE_LABELS,
 ];
@@ -92,7 +96,16 @@ test.describe("Pathology Dashboard bench stages", () => {
   test("stage filter lists the eleven bench stages, localized and in bench order", async ({
     page,
   }) => {
+    // The landing worklist request names READY_PATHOLOGIST: the set is every
+    // stage but Completed. The unit tests pin the exact ten.
+    const landingWorklist = page.waitForRequest(
+      (request) =>
+        request.url().includes("/rest/pathology/dashboard?") &&
+        /statuses=[^&]*READY_PATHOLOGIST/.test(request.url()),
+      { timeout: NAV_TIMEOUT },
+    );
     await page.goto("/PathologyDashboard", { waitUntil: "domcontentloaded" });
+    await landingWorklist;
 
     // The filter renders without a visible label, so the select is addressed
     // by its element type and id, which the dashboard sets explicitly.
@@ -114,19 +127,20 @@ test.describe("Pathology Dashboard bench stages", () => {
       stageFilter.getByText("MICROTOMY", { exact: true }),
     ).toHaveCount(0);
 
-    // The dashboard opens on the in-progress grouping.
-    await expect(stageFilter).toHaveValue("IN_PROGRESS");
+    // The landing set has its own option, so the control names it.
+    await expect(stageFilter).toHaveValue("NOT_COMPLETED");
   });
 
   test("selecting a single stage narrows the filter", async ({ page }) => {
     await page.goto("/PathologyDashboard", { waitUntil: "domcontentloaded" });
 
     const stageFilter = page.locator("select#statusFilter");
-    // The opening selection is only settled once the stage list has arrived,
-    // so wait for it before changing the selection.
-    await expect(stageFilter).toHaveValue("IN_PROGRESS", {
-      timeout: NAV_TIMEOUT,
-    });
+    // The stage options are only present once the stage list has arrived,
+    // so wait for them before changing the selection.
+    await expect(stageFilter.locator("option")).toHaveText(
+      STAGE_FILTER_OPTIONS,
+      { timeout: NAV_TIMEOUT },
+    );
 
     await stageFilter.selectOption("MICROTOMY");
     await expect(stageFilter).toHaveValue("MICROTOMY");
@@ -141,5 +155,18 @@ test.describe("Pathology Dashboard bench stages", () => {
     await stageFilter.selectOption("All");
     await expect(stageFilter).toHaveValue("All");
     await expect(stageColumn).toBeVisible();
+
+    // The option must ask for the landing set again: every stage but
+    // Completed, so READY_PATHOLOGIST is named and COMPLETED is not.
+    const landingAgain = page.waitForRequest(
+      (request) =>
+        request.url().includes("/rest/pathology/dashboard?") &&
+        /statuses=[^&]*READY_PATHOLOGIST/.test(request.url()) &&
+        !/(=|,)COMPLETED(,|&|$)/.test(request.url()),
+      { timeout: NAV_TIMEOUT },
+    );
+    await stageFilter.selectOption("NOT_COMPLETED");
+    await landingAgain;
+    await expect(stageFilter).toHaveValue("NOT_COMPLETED");
   });
 });

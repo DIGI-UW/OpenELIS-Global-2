@@ -13,16 +13,23 @@ import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.testalertrule.service.TestAlertRuleService;
+import org.openelisglobal.testalertrule.valueholder.TestAlertRule;
+import org.openelisglobal.testcatalog.service.TestQcTargetService;
+import org.openelisglobal.testcatalog.valueholder.TestQcTarget;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.testresultcomponent.dao.TestResultComponentDAO;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.testresultinterpretation.service.TestResultInterpretationService;
 import org.openelisglobal.testresultinterpretation.valueholder.TestResultInterpretation;
+import org.openelisglobal.testterminology.service.TestTerminologyMappingService;
+import org.openelisglobal.testterminology.valueholder.TestTerminologyMapping;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
 import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,6 +56,18 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
 
     @Autowired
     private ResultLimitService resultLimitService;
+
+    @Lazy
+    @Autowired
+    private TestAlertRuleService alertRuleService;
+
+    @Lazy
+    @Autowired
+    private TestTerminologyMappingService terminologyMappingService;
+
+    @Lazy
+    @Autowired
+    private TestQcTargetService qcTargetService;
 
     TestResultComponentServiceImpl() {
         super(TestResultComponent.class);
@@ -86,6 +105,27 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
         for (TestResultComponent e : existing) {
             existingById.put(e.getId(), e);
         }
+        // Removed components go first: each update is flushed at once, so a kept
+        // component taking a removed one's code (Primary removed, the next one
+        // promoted) must not meet that code still active (OGC-1458). A desired row
+        // without an id claims the active row holding its code.
+        Set<String> claimedIds = new HashSet<>();
+        Map<String, String> activeIdByCode = new HashMap<>();
+        for (TestResultComponent e : existing) {
+            activeIdByCode.put(e.getCode(), e.getId());
+        }
+        for (TestResultComponent d : desired) {
+            if (d.getId() != null && existingById.containsKey(d.getId())) {
+                claimedIds.add(d.getId());
+            } else if (activeIdByCode.containsKey(d.getCode())) {
+                claimedIds.add(activeIdByCode.get(d.getCode()));
+            }
+        }
+        for (TestResultComponent e : existing) {
+            if (!claimedIds.contains(e.getId())) {
+                retireComponent(testId, e.getId(), sysUserId);
+            }
+        }
         Set<String> keptIds = new HashSet<>();
         for (TestResultComponent d : desired) {
             TestResultComponent match = (d.getId() != null && existingById.containsKey(d.getId()))
@@ -108,11 +148,10 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 update(match);
                 keptIds.add(match.getId());
             } else {
-                // The (test_id, code) UNIQUE slot may already be occupied — by a
-                // soft-deleted row (re-added code) or by an active row the caller
-                // referenced without an id (e.g. the FR-56 pre-seeded PRIMARY).
-                // Either way the code is the natural key: reconcile that row in
-                // place — inserting a fresh one would violate the constraint.
+                // An active row the caller referenced without an id (e.g. the FR-56
+                // pre-seeded PRIMARY) holds this code: reconcile it in place. A
+                // removed component's row keeps its code but is inactive, so a
+                // re-added code is a new component (OGC-1458).
                 TestResultComponent slot = baseObjectDAO.getByTestIdAndCode(testId, d.getCode());
                 if (slot != null) {
                     slot.setLabel(d.getLabel());
@@ -139,18 +178,62 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 }
             }
         }
-        for (TestResultComponent e : existing) {
-            if (!keptIds.contains(e.getId())) {
-                TestResultComponent fresh = baseObjectDAO.get(e.getId()).orElse(null);
-                if (fresh != null) {
-                    fresh.setIsActive("N");
-                    fresh.setSysUserId(sysUserId);
-                    update(fresh);
-                }
+        ensureSinglePrimary(testId, sysUserId);
+        retireQcTargetsThatNoLongerFit(testId, sysUserId);
+        return baseObjectDAO.getActiveComponentsByTestId(testId);
+    }
+
+    /**
+     * Deactivate a removed component and retire what was scoped to it (OGC-1458):
+     * its reference ranges can never apply again, so they are deleted; its alert
+     * rules are switched off and become test-level so the admin can still edit or
+     * re-scope them; its select-list options, interpretations, terminology mappings
+     * and QC targets are deactivated, so test-level readers (reflex, analyzer
+     * mapping, result entry) no longer see them and nothing blocks the next save.
+     */
+    private void retireComponent(String testId, String componentId, String sysUserId) {
+        TestResultComponent component = baseObjectDAO.get(componentId).orElse(null);
+        if (component == null) {
+            return;
+        }
+        component.setIsActive("N");
+        component.setSysUserId(sysUserId);
+        update(component);
+        for (ResultLimit limit : resultLimitService.getResultLimitsByComponentId(componentId)) {
+            resultLimitService.delete(limit.getId(), sysUserId);
+        }
+        for (TestResult option : testResultService.getActiveOptionsByComponentId(componentId)) {
+            option.setIsActive(false);
+            option.setSysUserId(sysUserId);
+            testResultService.update(option);
+        }
+        for (TestResultInterpretation interpretation : interpretationService.getActiveByComponentId(componentId)) {
+            interpretation.setIsActive("N");
+            interpretation.setSysUserId(sysUserId);
+            interpretationService.update(interpretation);
+        }
+        for (TestAlertRule rule : alertRuleService.getByTestId(testId)) {
+            if (componentId.equals(rule.getComponentId())) {
+                rule.setEnabled(false);
+                rule.setComponentId(null);
+                rule.setSysUserId(sysUserId);
+                alertRuleService.update(rule);
             }
         }
-        ensureSinglePrimary(testId, sysUserId);
-        return baseObjectDAO.getActiveComponentsByTestId(testId);
+        for (TestTerminologyMapping mapping : terminologyMappingService.getActiveByTestId(testId)) {
+            if (componentId.equals(mapping.getComponentId())) {
+                mapping.setIsActive("N");
+                mapping.setSysUserId(sysUserId);
+                terminologyMappingService.update(mapping);
+            }
+        }
+        for (TestQcTarget target : qcTargetService.getByTestId(testId)) {
+            if (componentId.equals(target.getComponentId()) && target.isActive()) {
+                target.setActive(false);
+                target.setSysUserId(sysUserId);
+                qcTargetService.update(target);
+            }
+        }
     }
 
     @Override
@@ -165,14 +248,6 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
         Map<String, String> codeToId = new HashMap<>();
         for (TestResultComponent c : baseObjectDAO.getActiveComponentsByTestId(testId)) {
             codeToId.put(c.getCode(), c.getId());
-        }
-        if (interpretationsByComponentCode != null) {
-            for (Map.Entry<String, List<TestResultInterpretation>> entry : interpretationsByComponentCode.entrySet()) {
-                String componentId = codeToId.get(entry.getKey());
-                if (componentId != null) {
-                    interpretationService.saveInterpretationsForComponent(componentId, entry.getValue(), sysUserId);
-                }
-            }
         }
         Map<String, Map<String, String>> storedValueByTypedValue = new HashMap<>();
         if (optionsByComponentCode != null && !optionsByComponentCode.isEmpty()) {
@@ -192,6 +267,25 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                         }
                     }
                     storedValueByTypedValue.put(componentId, stored);
+                }
+            }
+        }
+        // Options first: a new free-text option is stored as a dictionary id, and an
+        // interpretation typed against that option's text must match what is
+        // stored, or it never fires (OGC-1458).
+        if (interpretationsByComponentCode != null) {
+            for (Map.Entry<String, List<TestResultInterpretation>> entry : interpretationsByComponentCode.entrySet()) {
+                String componentId = codeToId.get(entry.getKey());
+                if (componentId != null) {
+                    Map<String, String> stored = storedValueByTypedValue.getOrDefault(componentId, Map.of());
+                    for (TestResultInterpretation interpretation : entry.getValue()) {
+                        String typed = interpretation.getValueMatch() == null ? null
+                                : interpretation.getValueMatch().trim();
+                        if (typed != null && stored.containsKey(typed)) {
+                            interpretation.setValueMatch(stored.get(typed));
+                        }
+                    }
+                    interpretationService.saveInterpretationsForComponent(componentId, entry.getValue(), sysUserId);
                 }
             }
         }
@@ -462,13 +556,17 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
         if (test == null) {
             return;
         }
-        List<TestResult> testResults = new ArrayList<>(testResultService.getActiveTestResultsByTest(testId));
+        TestResultComponent primary = findPrimaryComponent(testId);
+        // The primary's type and digits come from its own options, not from those a
+        // catalog row put on another component.
+        String primaryId = primary == null ? null : primary.getId();
+        List<TestResult> testResults = new ArrayList<>(testResultService.getActiveTestResultsByTest(testId).stream()
+                .filter(tr -> tr.getComponentId() == null || tr.getComponentId().equals(primaryId)).toList());
         testResults.sort((a, b) -> Long.compare(parseId(b.getId()), parseId(a.getId())));
         String uomId = test.getUnitOfMeasure() == null ? null : test.getUnitOfMeasure().getId();
         String resultType = latestResultType(testResults);
         Integer significantDigits = latestSignificantDigits(testResults);
 
-        TestResultComponent primary = findPrimaryComponent(testId);
         if (primary == null) {
             // Legacy created this test outside the new editor (or before the M1
             // backfill ran), so it has no component yet — create its PRIMARY.
@@ -486,8 +584,12 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             insert(primary);
         } else {
             primary.setUomId(uomId);
-            primary.setResultType(resultType);
-            primary.setSignificantDigits(significantDigits);
+            // With no result rows of its own (an import that only added answers to
+            // another component), the primary keeps the type and digits it was given.
+            if (!testResults.isEmpty()) {
+                primary.setResultType(resultType);
+                primary.setSignificantDigits(significantDigits);
+            }
             primary.setSysUserId(sysUserId);
             update(primary);
         }
@@ -495,22 +597,34 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
         // Legacy writes options (test_result) and ranges (result_limits) with a NULL
         // component_id; repoint those onto the PRIMARY component so the new editor,
         // which scopes both by component_id, surfaces them.
-        String primaryId = primary.getId();
         for (TestResult tr : testResults) {
             if (tr.getComponentId() == null) {
-                tr.setComponentId(primaryId);
+                tr.setComponentId(primary.getId());
                 tr.setSysUserId(sysUserId);
                 testResultService.update(tr);
             }
         }
         for (ResultLimit rl : resultLimitService.getAllResultLimitsForTest(testId)) {
             if (rl.getComponentId() == null) {
-                rl.setComponentId(primaryId);
+                rl.setComponentId(primary.getId());
                 rl.setSysUserId(sysUserId);
                 resultLimitService.update(rl);
             }
         }
         ensureSinglePrimary(testId, sysUserId);
+        retireQcTargetsThatNoLongerFit(testId, sysUserId);
+    }
+
+    /**
+     * A change of the primary component's result type between numeric and coded
+     * retires the QC targets of the old shape, so Results Entry stops prefilling
+     * them and the QC Targets section can save again (OGC-1462).
+     */
+    private void retireQcTargetsThatNoLongerFit(String testId, String sysUserId) {
+        TestResultComponent primary = findPrimaryComponent(testId);
+        boolean quantitative = primary == null
+                || !TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(primary.getResultType());
+        qcTargetService.retireTargetsNotFitting(testId, quantitative, sysUserId);
     }
 
     private TestResultComponent findPrimaryComponent(String testId) {
@@ -617,9 +731,9 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
         for (TestResultComponent src : baseObjectDAO.getActiveComponentsByTestId(sourceTestId)) {
             TestResultComponent existing = getByTestIdAndCode(targetTestId, src.getCode());
             // A configured component (it has a result type) is never clobbered.
-            // A blank row — the FR-56 pre-seeded PRIMARY, or a soft-deleted stub —
-            // is reconciled from the source instead, so variant creation copies
-            // the source's primary configuration onto the pre-seeded row.
+            // A blank row (the FR-56 pre-seeded PRIMARY) is reconciled from the
+            // source instead, so creating a test as a copy fills the pre-seeded
+            // row with the source's primary configuration.
             if (existing != null && existing.getResultType() != null && !existing.getResultType().isBlank()
                     && "Y".equals(existing.getIsActive())) {
                 continue;

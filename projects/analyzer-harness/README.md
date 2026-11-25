@@ -22,18 +22,25 @@ commands, prerequisites and separation from published-image deployment.
 ## Workflow wait policy
 
 Analyzer browser tests wait for observable UI, API, and persisted-result states.
-Assertions use the existing whole-test deadline, configured through the harness
-Playwright projects, rather than separate step deadlines. Do not add sleeps or
-increase a test's deadline to repair failures. Diagnose the missing state using
-traces and service logs. Video-only pacing is presentation, never readiness.
+Neither a step nor a test has a time budget: the harness Playwright projects set
+one ten-minute limit that only ends a test that hangs, with its trace, and no
+spec sets its own. A slow service shows as a slow test, to be fixed in that
+service. Do not add sleeps; diagnose a missing state using traces and service
+logs. Video-only pacing is presentation, never readiness.
 
 ## Startup Catalog
 
-Before OE starts, the harness copies missing molecular test and result-choice
-CSVs from `projects/analyzer-harness/config-templates/` into the writable
-`configuration-data` volume. OE loads them through its ordinary startup
-configuration service. The harness files are test data, not application-wide
-clinical defaults. Existing uploaded files are not overwritten on restart.
+Before OE starts, the harness copies its dictionary,
+`projects/analyzer-harness/dictionary/`, into the writable `configuration-data`
+volume. OE loads it through its ordinary startup configuration service. The
+dictionary holds only what the analyzer stories use, as `analyzer-harness-*`
+files in the `volume/configuration/backend/` shape: the tests each shipped
+profile resolves by LOINC, their sample types, and the answers and components
+every shipped instrument sends, so each binds on a fresh setup with no operator
+work. A domain the dictionary supplies replaces OE's built-in files for that
+domain; other domains load the built-in files, as in every OE2 deployment. It is
+test data, not an application-wide clinical default. A file already in the
+volume, such as a Catalog Import upload, is not overwritten on restart.
 
 - CI and local parity load the same harness catalog through the normal loader.
 - Local development keeps optional Catalog Import uploads in its worktree-scoped
@@ -87,11 +94,29 @@ Playwright.
 The startup path does not execute SQL fixture loaders or use fixed primary keys.
 It calls `seed-analyzers.sh --ensure-connections` to create missing
 profile-backed harness connections through authenticated application services.
-Ordinary restarts preserve existing connection configuration, mappings, and
-review data; they do not replay result traffic. CI uses the same
-`--ensure-connections` mode. The Playwright scenarios own their API-created
-clinical orders and native traffic. CI parity is a separate validation command
-because it intentionally reproduces CI packaging.
+Ordinary restarts preserve existing profile-pinned connection configuration,
+mappings, and review data; they do not replay result traffic. A harness analyzer
+row from before profile-pinned analyzers (no profile, no Bridge connection) is
+set up like a new one. CI uses the same `--ensure-connections` mode. The
+Playwright scenarios own their API-created clinical orders and native traffic.
+CI parity is a separate validation command because it intentionally reproduces
+CI packaging.
+
+A stack for recording the evidence videos starts with
+`scripts/dev-stack up --no-scenarios` and then runs
+`seed-analyzers.sh --networks-only`, which creates the mock's transports and no
+analyzer: every analyzer on screen is one a story sets up.
+
+The `harness-demo-video` Playwright project records every harness story tagged
+`@evidence` and nothing else. The tags on a story also say where its video
+belongs: one lane per analyzer type (`@astm`, `@hl7`, `@file`) and one stage
+(`@admin`, `@setup`, `@results`, `@exceptions`). After
+`npm run pw:test:harness-demo-video` (which also writes the JSON report),
+`npm run pw:evidence-videos` turns each recording into one MP4 under
+`evidence-videos/<lane>/<stage>/`, with the stretches in which nothing on screen
+changes cut short, and lists them in `index.json`. A story without its three
+tags, or without a passing recording, stops the packager. The videos are
+attached to the pull request, never committed.
 
 To remove this worktree's data explicitly:
 

@@ -141,6 +141,8 @@ public class ResultsValidationUtility {
     protected org.openelisglobal.samplehuman.service.SampleHumanService sampleHumanService;
     @Autowired
     protected org.openelisglobal.testresultcomponent.service.TestResultComponentService testResultComponentService;
+    @Autowired
+    protected org.openelisglobal.unitofmeasure.service.UnitOfMeasureService unitOfMeasureService;
 
     private Patient currentPatient;
     protected String SAMPLE_STATUS_OBSERVATION_HISTORY_TYPE_ID;
@@ -563,6 +565,32 @@ public class ResultsValidationUtility {
         return displayTestName;
     }
 
+    /**
+     * A part of a multi-component test carries its own unit, blank when it has
+     * none, as Results Entry shows it; every other row carries the test's unit.
+     */
+    protected String rowUnits(String testId, Result result) {
+        String componentId = result == null || result.getTestResult() == null ? null
+                : result.getTestResult().getComponentId();
+        if (componentId != null) {
+            List<org.openelisglobal.testresultcomponent.valueholder.TestResultComponent> components = testResultComponentService
+                    .getActiveComponentsByTestId(testId);
+            if (components.size() > 1) {
+                for (org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component : components) {
+                    if (component.getId().equals(componentId)) {
+                        if (component.getUomId() == null) {
+                            return "";
+                        }
+                        org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure uom = unitOfMeasureService
+                                .getUnitOfMeasureById(component.getUomId());
+                        return uom == null || uom.getUnitOfMeasureName() == null ? "" : uom.getUnitOfMeasureName();
+                    }
+                }
+            }
+        }
+        return getUnitsByTestId(testId);
+    }
+
     public final List<ResultValidationItem> getResultItemFromAnalysis(Analysis analysis) throws LIMSRuntimeException {
         org.openelisglobal.analysis.service.AnalysisAnchor anchor = analysisAnchorService.resolveAnchor(analysis);
         return getResultItemFromAnalysis(analysis, anchor);
@@ -603,6 +631,10 @@ public class ResultsValidationUtility {
 
         ResultValidationItem parentItem = null;
         for (Result result : resultList) {
+            if (result != null && (result.getValidatedDate() != null
+                    || (result.getParentResult() != null && result.getParentResult().getValidatedDate() != null))) {
+                continue;
+            }
             if (parentItem != null && result.getParentResult() != null
                     && parentItem.getResultId().equals(result.getParentResult().getId())) {
                 parentItem.setQualifiedResultValue(result.getValue());
@@ -687,7 +719,7 @@ public class ResultsValidationUtility {
             testItem.setResultType(getTestResultType(testResults));
         }
         testItem.setResultFlag(ValidationSignals.resultFlag(resultLimit, testItem.getResultType(),
-                result == null ? null : result.getValue()));
+                result == null ? null : result.getReportedValue()));
         testItem.setCriticalRange(CriticalRangeFormat.display(resultLimit, testItem.getResultType(),
                 testResults.isEmpty() ? "0" : testResults.get(0).getSignificantDigits()));
         testItem.setTestSortNumber(test.getSortOrder());
@@ -1070,7 +1102,7 @@ public class ResultsValidationUtility {
 
     public final AnalysisItem testResultItemToAnalysisItem(ResultValidationItem testResultItem) {
         AnalysisItem analysisResultItem = new AnalysisItem();
-        String testUnits = getUnitsByTestId(testResultItem.getTestId());
+        String testUnits = rowUnits(testResultItem.getTestId(), testResultItem.getResult());
         String testName = testResultItem.getTestName();
         String sortOrder = testResultItem.getTestSortNumber();
         Result result = testResultItem.getResult();
@@ -1120,6 +1152,7 @@ public class ResultsValidationUtility {
                 analysisResultItem.setMultiSelectResultValues(analysisService.getJSONMultiSelectResults(analysis));
             } else {
                 analysisResultItem.setResult(getFormattedResult(testResultItem));
+                analysisResultItem.setStoredResult(result.getEnteredValue());
             }
 
             if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(testResultItem.getResultType())) {
@@ -1173,6 +1206,27 @@ public class ResultsValidationUtility {
         analysisResultItem.setExpandedUncertainty(testResultItem.getExpandedUncertainty());
 
         return analysisResultItem;
+    }
+
+    /**
+     * Validation shows a numeric result rounded to its test's places, and a release
+     * posts the row back as shown; saving that replaced what was entered or
+     * received, so 0.9 became "0" (OGC-1544). When the posted value is only the
+     * display of the stored result, the stored value is kept; a value the validator
+     * changed is saved as given.
+     */
+    public static void keepStoredValueWhenUnchanged(AnalysisItem item, Analysis analysis) {
+        if (!TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(item.getResultType())
+                || GenericValidator.isBlankOrNull(item.getResult())
+                || GenericValidator.isBlankOrNull(item.getResultId()) || analysis == null) {
+            return;
+        }
+        ResultService resultService = SpringContext.getBean(ResultService.class);
+        resultService.getResultsByAnalysis(analysis).stream()
+                .filter(stored -> item.getResultId().equals(stored.getId()))
+                .filter(stored -> !GenericValidator.isBlankOrNull(stored.getValue()))
+                .filter(stored -> item.getResult().trim().equals(resultService.getResultValue(stored, false)))
+                .findFirst().ifPresent(stored -> item.setResult(stored.getEnteredValue()));
     }
 
     protected final String getFormattedResult(ResultValidationItem testResultItem) {

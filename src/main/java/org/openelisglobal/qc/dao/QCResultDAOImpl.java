@@ -36,7 +36,7 @@ public class QCResultDAOImpl extends BaseDAOImpl<QCResult, String> implements QC
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
             CriteriaQuery<QCResult> cq = cb.createQuery(QCResult.class);
             Root<QCResult> root = cq.from(QCResult.class);
-            cq.where(cb.equal(root.get("controlLotId"), controlLotId));
+            cq.where(cb.equal(root.get("controlLotId"), controlLotId), cb.isNotNull(root.get("resultValue")));
             cq.orderBy(cb.desc(root.get("runDateTime")));
             return entityManager.createQuery(cq).getResultList();
         } catch (RuntimeException e) {
@@ -50,7 +50,7 @@ public class QCResultDAOImpl extends BaseDAOImpl<QCResult, String> implements QC
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
             CriteriaQuery<QCResult> cq = cb.createQuery(QCResult.class);
             Root<QCResult> root = cq.from(QCResult.class);
-            cq.where(cb.equal(root.get("controlLotId"), controlLotId));
+            cq.where(cb.equal(root.get("controlLotId"), controlLotId), cb.isNotNull(root.get("resultValue")));
             cq.orderBy(cb.desc(root.get("runDateTime")));
             return entityManager.createQuery(cq).setMaxResults(limit).getResultList();
         } catch (RuntimeException e) {
@@ -86,7 +86,7 @@ public class QCResultDAOImpl extends BaseDAOImpl<QCResult, String> implements QC
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
             CriteriaQuery<QCResult> cq = cb.createQuery(QCResult.class);
             Root<QCResult> root = cq.from(QCResult.class);
-            cq.where(cb.equal(root.get("controlLotId"), controlLotId));
+            cq.where(cb.equal(root.get("controlLotId"), controlLotId), cb.isNotNull(root.get("resultValue")));
             cq.orderBy(cb.asc(root.get("runDateTime")));
             return entityManager.createQuery(cq).getResultList();
         } catch (RuntimeException e) {

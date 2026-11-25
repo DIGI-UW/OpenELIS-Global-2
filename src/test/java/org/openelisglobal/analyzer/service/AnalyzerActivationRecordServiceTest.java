@@ -22,10 +22,8 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.dao.AnalyzerActivationRecordDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerActivationRecord;
-import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -67,7 +65,7 @@ public class AnalyzerActivationRecordServiceTest {
         AnalyzerActivationRecord inserted = captured.getValue();
         assertEquals("81", saved.getId());
         assertSame(fixture.analyzer, inserted.getAnalyzer());
-        assertSame(fixture.revision, inserted.getSiteBindingRevision());
+        assertSame(fixture.revision, inserted.getMapping());
         assertSame(fixture.confirmation, inserted.getVerificationConfirmation());
         assertEquals(CONNECTION_ID, inserted.getBridgeConnectionId());
         assertEquals("ACTIVE", inserted.getActivationIntent());
@@ -103,22 +101,18 @@ public class AnalyzerActivationRecordServiceTest {
     }
 
     private static Fixture fixture() {
-        AnalyzerProfileBinding profile = new AnalyzerProfileBinding();
-        profile.setProfileId(PROFILE_ID);
-        profile.setProfileRevision(2);
-        profile.setProfileFingerprint(PROFILE_FINGERPRINT);
-        AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
-        binding.setProfileBinding(profile);
-        AnalyzerSiteBindingRevision revision = new AnalyzerSiteBindingRevision();
+        AnalyzerMapping revision = new AnalyzerMapping();
         revision.setId("61");
-        revision.setSiteBinding(binding);
-        AnalyzerSiteBindingConfirmation confirmation = new AnalyzerSiteBindingConfirmation();
+        revision.setProfileId(PROFILE_ID);
+        revision.setProfileRevision(2);
+        revision.setProfileFingerprint(PROFILE_FINGERPRINT);
+        AnalyzerMappingConfirmation confirmation = new AnalyzerMappingConfirmation();
         confirmation.setId("71");
-        confirmation.setSiteBindingRevision(revision);
+        confirmation.setMapping(revision);
         Analyzer analyzer = new Analyzer();
         analyzer.setId("42");
         analyzer.setBridgeConnectionId(CONNECTION_ID);
-        analyzer.setSiteBindingRevision(revision);
+        analyzer.setMapping(revision);
         return new Fixture(analyzer, revision, confirmation);
     }
 
@@ -128,7 +122,6 @@ public class AnalyzerActivationRecordServiceTest {
         return (ObjectNode) JSON.readTree(json);
     }
 
-    private record Fixture(Analyzer analyzer, AnalyzerSiteBindingRevision revision,
-            AnalyzerSiteBindingConfirmation confirmation) {
+    private record Fixture(Analyzer analyzer, AnalyzerMapping revision, AnalyzerMappingConfirmation confirmation) {
     }
 }

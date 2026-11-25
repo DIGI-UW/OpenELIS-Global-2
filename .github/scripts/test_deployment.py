@@ -245,9 +245,30 @@ class DeploymentTest(unittest.TestCase):
         self.assertTrue((self.diagnostics / "compose-status.txt").exists())
         self.assertEqual(self.previous_override, (self.diagnostics / "previous-images.json").read_text())
         log_command = next(call.args[0] for call in diagnostics.call_args_list if "logs" in call.args[0])
-        self.assertTrue(set(deployment.SERVICES).union(deployment.ANALYZER_SERVICES).issubset(log_command))
+        self.assertTrue(set(deployment.SERVICES).issubset(log_command))
         self.assertFalse(any(args[:1] == ["env"] for args in self.commands))
         self.assertIn("keep-existing-value", (self.root / ".env").read_text())
+
+    def test_a_site_without_a_pairing_code_gets_one_and_keeps_it(self):
+        self.ready_health()
+        self.deploy()
+        first = deployment.read_env_file(self.root / ".env")
+        self.ready_health()
+        self.deploy()
+        second = deployment.read_env_file(self.root / ".env")
+
+        self.assertRegex(first["ANALYZER_BRIDGE_PAIRING_CODE"], r"^[0-9a-f]{32}$")
+        self.assertEqual(first["ANALYZER_BRIDGE_PAIRING_CODE"], second["ANALYZER_BRIDGE_PAIRING_CODE"])
+        self.assertEqual("keep-existing-value", second["SERVER_SECRET"])
+
+    def test_a_configured_pairing_code_is_left_alone(self):
+        env_file = self.root / ".env"
+        env_file.write_text(env_file.read_text() + "ANALYZER_BRIDGE_PAIRING_CODE=SITE-CODE")
+        self.ready_health()
+        self.deploy()
+
+        self.assertEqual("SITE-CODE",
+                         deployment.read_env_file(self.root / ".env")["ANALYZER_BRIDGE_PAIRING_CODE"])
 
     def test_wrong_running_image_cannot_publish_ready(self):
         self.wrong_image = True
@@ -263,7 +284,7 @@ class DeploymentTest(unittest.TestCase):
         self.assertIn("BASE_URL=http://127.0.0.1:" + str(test_readiness.ReadinessTest.server.server_port), seed)
         self.assertIn("MOCK_URL=" + deployment.DEFAULT_MOCK_URL, seed)
         self.assertEqual(["bash", str(release / "projects/analyzer-harness/seed-analyzers.sh"),
-                          "--ensure-connections", "--no-mock-network", "--activate"], seed[-5:])
+                          "--ensure-connections", "--no-mock-network"], seed[-4:])
         self.assertLess(self.commands.index(self.compose_calls("up")[0]), self.commands.index(seed))
         self.assertEqual([("http://127.0.0.1:" + str(test_readiness.ReadinessTest.server.server_port)
                            + "/api/OpenELIS-Global/rest", deployment.DEFAULT_MOCK_URL, "DEV01900361250089391")],
@@ -271,7 +292,7 @@ class DeploymentTest(unittest.TestCase):
         target = json.loads(self.target.read_text())
         self.assertEqual(self.sha, target["appSha"])
         self.assertEqual(str(release), target["release"])
-        self.assertEqual(5, len(target["images"]))
+        self.assertEqual(set(deployment.SERVICES), set(target["images"]))
         self.assertEqual("DEV01900361250089391", target["verification"]["analyzerDelivery"]["accession"])
 
     def test_failed_delivery_proof_withdraws_ready_identity(self):
@@ -294,6 +315,54 @@ class DeploymentTest(unittest.TestCase):
         self.deploy()
         self.assertEqual({self.sha, "previous"}, {path.name for path in releases.iterdir()})
         self.assertIn(["docker", "image", "prune", "--all", "--force"], self.commands)
+
+    def test_a_release_the_deploy_user_cannot_delete_is_removed_through_docker_and_never_fails_the_deploy(self):
+        """Run 39466371613 attempt 4 passed readiness and the analyzer smoke, then failed
+        with "[Errno 13] Permission denied: 'backend'" while pruning an old release."""
+        releases = self.root / "releases"
+        (releases / "old").mkdir(parents=True)
+        (releases / "previous").mkdir()
+        (self.target.parent / "target.json").write_text(json.dumps({"release": str(releases / "previous")}))
+        real_rmtree = deployment.shutil.rmtree
+
+        def refuse_old(path, *args, **kwargs):
+            if Path(path).name == "old":
+                raise PermissionError(13, "Permission denied", "backend")
+            return real_rmtree(path, *args, **kwargs)
+
+        self.ready_health()
+        with patch.object(deployment.shutil, "rmtree", side_effect=refuse_old):
+            self.deploy()
+
+        removal = [args for args in self.commands if args[:3] == ["docker", "run", "--rm"]]
+        self.assertEqual(1, len(removal))
+        self.assertIn(f"{releases}:/releases", removal[0])
+        self.assertEqual(["rm", "-rf", "/releases/old"], removal[0][-3:])
+        self.assertTrue((self.target.parent / "target.json").is_file())
+        self.assertIn(["docker", "image", "prune", "--all", "--force"], self.commands)
+
+    def test_a_release_docker_cannot_delete_either_is_left_with_a_warning(self):
+        releases = self.root / "releases"
+        (releases / "old").mkdir(parents=True)
+        self.ready_health()
+
+        def refuse_docker_removal(args, cwd, capture=False, **kwargs):
+            if args[:3] == ["docker", "run", "--rm"]:
+                raise deployment.subprocess.CalledProcessError(1, args)
+            return self.command(args, cwd, capture, **kwargs)
+
+        real_rmtree = deployment.shutil.rmtree
+
+        def refuse_old(path, *args, **kwargs):
+            if Path(path).name == "old":
+                raise PermissionError(13, "Permission denied", "backend")
+            return real_rmtree(path, *args, **kwargs)
+
+        with patch.object(deployment.shutil, "rmtree", side_effect=refuse_old):
+            self.deploy(run=refuse_docker_removal)
+
+        self.assertTrue((self.target.parent / "target.json").is_file())
+        self.assertIn("could not remove old release", (self.diagnostics / "prune-warnings.txt").read_text())
 
     def test_site_settings_read_the_env_file_when_compose_cannot_list_it(self):
         (self.root / ".env").write_text(
@@ -327,15 +396,21 @@ class AnalyzerDeliveryTest(unittest.TestCase):
     def setUp(self):
         self.calls = []
         self.rows = []
+        self.on_page = "1"
 
     def http(self, method, url, body=None):
         self.calls.append((method, url, body))
-        if url.endswith("/simulate/astm/genexpert_astm"):
+        if url.endswith("/simulate/fixture/genexpert_astm/hivvl/quantified"):
             return {"status": "completed", "pushed": 1}
         if url.endswith("/analyzer/analyzers"):
             return {"analyzers": [{"id": 7, "name": "QuantStudio 5"},
-                                  {"id": 2, "name": deployment.SMOKE_ANALYZER}]}
+                                  {"id": 2, "name": deployment.SMOKE_ANALYZER, "status": "ACTIVE",
+                                   "profileId": "cepheid-genexpert-astm", "bridgeConnectionId": "c-2"}]}
         if url.endswith("/AnalyzerResults?id=2"):
+            return {"resultList": self.rows if self.on_page == "1" else [],
+                    "paging": {"searchTermToPage": [{"id": "DEV01900000000000011", "value": self.on_page}]
+                               if self.rows else []}}
+        if url.endswith("/AnalyzerResults?id=2&page=2"):
             return {"resultList": self.rows}
         raise AssertionError(url)
 
@@ -348,12 +423,21 @@ class AnalyzerDeliveryTest(unittest.TestCase):
 
         report = deployment.verify_analyzer_delivery("https://oe/rest", "http://mock", "DEV01900000000000011",
                                                      http=self.http, sleep=arrive_on_second_poll, timeout=5)
-        push = self.calls[0]
-        self.assertEqual(("POST", "http://mock/simulate/astm/genexpert_astm",
+        push = next(call for call in self.calls if call[0] == "POST")
+        self.assertEqual(("POST", "http://mock/simulate/fixture/genexpert_astm/hivvl/quantified",
                           {"destination": "tcp://openelis-analyzer-bridge:12001", "sample_id": "DEV01900000000000011",
                            "sender_id": "OE2-TEST-GENEXPERT"}), push)
         self.assertEqual({"accession": "DEV01900000000000011", "rows": 1}, report)
         self.assertEqual(1, len(polls))
+
+    def test_reads_the_page_of_the_review_list_that_holds_the_accession(self):
+        self.on_page = "2"
+        self.rows = [{"accessionNumber": "DEV01900000000000011", "rawTestCode": "HIVVL"}]
+
+        report = deployment.verify_analyzer_delivery("https://oe/rest", "http://mock", "DEV01900000000000011",
+                                                     http=self.http, sleep=lambda _: None, timeout=5)
+
+        self.assertEqual({"accession": "DEV01900000000000011", "rows": 1}, report)
 
     def test_result_that_never_arrives_fails_with_the_last_response(self):
         with self.assertRaisesRegex(RuntimeError, "never reached OpenELIS"):
@@ -363,12 +447,29 @@ class AnalyzerDeliveryTest(unittest.TestCase):
     def test_mock_that_did_not_push_fails_before_polling(self):
         def refused(method, url, body=None):
             self.calls.append((method, url, body))
+            if url.endswith("/analyzer/analyzers"):
+                return self.http(method, url, body)
             return {"status": "failed", "pushed": 0, "error": "connection refused"}
 
         with self.assertRaisesRegex(RuntimeError, "connection refused"):
             deployment.verify_analyzer_delivery("https://oe/rest", "http://mock", "DEV01900000000000011",
                                                 http=refused, sleep=lambda _s: None, timeout=5)
-        self.assertEqual(1, len(self.calls))
+        self.assertFalse(any("AnalyzerResults" in call[1] for call in self.calls))
+
+    def test_an_inactive_unconnected_smoke_analyzer_is_named_before_anything_is_sent(self):
+        """Testing kept analyzer rows from before profile pins: INACTIVE, no profile, no Bridge
+        connection. The smoke used to push into them and time out with an empty review list."""
+        def legacy(method, url, body=None):
+            self.calls.append((method, url, body))
+            if url.endswith("/analyzer/analyzers"):
+                return {"analyzers": [{"id": "2", "name": deployment.SMOKE_ANALYZER, "status": "INACTIVE",
+                                       "profileId": "", "bridgeConnectionId": None}]}
+            raise AssertionError(url)
+
+        with self.assertRaisesRegex(RuntimeError, "status INACTIVE, profile none, Bridge connection none"):
+            deployment.verify_analyzer_delivery("https://oe/rest", "http://mock", "DEV01900000000000011",
+                                                http=legacy, sleep=lambda _s: None, timeout=5)
+        self.assertEqual([("GET", "https://oe/rest/analyzer/analyzers", None)], self.calls)
 
 
 if __name__ == "__main__":

@@ -1,9 +1,16 @@
-import React, { useState, useContext } from "react";
-import { Modal, TextArea, InlineNotification } from "@carbon/react";
+import React, { useState, useContext, useEffect } from "react";
+import {
+  Modal,
+  TextArea,
+  InlineNotification,
+  Select,
+  SelectItem,
+} from "@carbon/react";
 import { useIntl } from "react-intl";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import { rejectPool, rejectSampleItem } from "../../api/sampleAcceptanceApi";
+import { getFromOpenElisServer } from "../../../utils/Utils";
 
 /**
  * RejectDialog — the S-09 (OGC-580) Vector reject action. Unlike ResampleDialog
@@ -12,11 +19,16 @@ import { rejectPool, rejectSampleItem } from "../../api/sampleAcceptanceApi";
  * (the pool is the unit of acceptance), or rejects a single non-pooled vector
  * specimen by sampleItemId.
  *
+ * An EQA sample (OGC-1488) is rejected for one of the lab's rejection reasons,
+ * which is required, with an optional comment: PT material cannot be
+ * recollected either.
+ *
  * Props:
  *  - vectorPoolId: reject the whole pool (preferred); else
  *  - sampleItemId: reject a single (non-pooled vector) specimen
  *  - labNumber
  *  - initialReason: text pre-filled from failed checklist items (editable)
+ *  - eqa: the specimen is an EQA sample; a rejection reason must be chosen
  *  - onClose(): close without rejecting
  *  - onSuccess(): rejection committed
  */
@@ -25,6 +37,7 @@ const RejectDialog = ({
   sampleItemId,
   labNumber,
   initialReason,
+  eqa = false,
   onClose,
   onSuccess,
 }) => {
@@ -35,16 +48,33 @@ const RejectDialog = ({
   const [reason, setReason] = useState(initialReason || "");
   const [submitting, setSubmitting] = useState(false);
   const [reasonInvalid, setReasonInvalid] = useState(false);
+  const [rejectReasons, setRejectReasons] = useState([]);
+  const [rejectReasonId, setRejectReasonId] = useState("");
+
+  useEffect(() => {
+    if (!eqa) return undefined;
+    let mounted = true;
+    getFromOpenElisServer("/rest/displayList/REJECTION_REASONS", (res) => {
+      if (mounted) setRejectReasons(Array.isArray(res) ? res : []);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [eqa]);
 
   const handleSubmit = () => {
-    if (!reason || !reason.trim()) {
+    if (eqa ? !rejectReasonId : !reason || !reason.trim()) {
       setReasonInvalid(true);
       return;
     }
     setSubmitting(true);
     const action = vectorPoolId
       ? rejectPool(vectorPoolId, reason.trim())
-      : rejectSampleItem(sampleItemId, reason.trim());
+      : rejectSampleItem(
+          sampleItemId,
+          (reason || "").trim(),
+          eqa ? rejectReasonId : undefined,
+        );
     action
       .then(() => {
         onSuccess?.();
@@ -94,27 +124,55 @@ const RejectDialog = ({
         hideCloseButton
         title=""
         subtitle={intl.formatMessage({
-          id: "sampleAcceptance.reject.info",
-          defaultMessage:
-            "Reject this catch as unusable. This cannot be re-collected, so no replacement order is created.",
+          id: eqa
+            ? "sampleAcceptance.reject.info.eqa"
+            : "sampleAcceptance.reject.info",
         })}
       />
+      {eqa && (
+        <Select
+          id="reject-reason-code"
+          labelText={intl.formatMessage({ id: "sample.reject.reason.label" })}
+          aria-required="true"
+          value={rejectReasonId}
+          invalid={reasonInvalid}
+          invalidText={intl.formatMessage({
+            id: "sample.reject.reasonRequired",
+          })}
+          onChange={(e) => {
+            setRejectReasonId(e.target.value);
+            if (e.target.value) setReasonInvalid(false);
+          }}
+          disabled={submitting}
+        >
+          <SelectItem
+            text={intl.formatMessage({ id: "sample.reject.reason.choose" })}
+            value=""
+          />
+          {rejectReasons.map((option) => (
+            <SelectItem key={option.id} text={option.value} value={option.id} />
+          ))}
+        </Select>
+      )}
       <TextArea
         id="reject-reason"
         labelText={intl.formatMessage({
-          id: "sampleAcceptance.reject.reason.label",
-          defaultMessage: "Reason (pre-filled from failed items — editable)",
+          id: eqa
+            ? "sampleAcceptance.reject.comment.label"
+            : "sampleAcceptance.reject.reason.label",
         })}
         rows={3}
         value={reason}
-        invalid={reasonInvalid}
+        invalid={!eqa && reasonInvalid}
         invalidText={intl.formatMessage({
           id: "sampleAcceptance.reject.reason.required",
           defaultMessage: "A reason is required",
         })}
         onChange={(e) => {
           setReason(e.target.value);
-          if (reasonInvalid && e.target.value.trim()) setReasonInvalid(false);
+          if (!eqa && reasonInvalid && e.target.value.trim()) {
+            setReasonInvalid(false);
+          }
         }}
         disabled={submitting}
       />

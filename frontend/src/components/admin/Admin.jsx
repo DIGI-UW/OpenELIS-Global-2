@@ -348,7 +348,7 @@ function Admin() {
         component={TestNotificationConfigEdit}
       />
       <Route
-        path={`${path}/notificationTriggerConfig`}
+        path={`${path}/notificationTriggerConfig/:tab?`}
         component={NotificationTriggerConfig}
       />
       <Route path={`${path}/DictionaryMenu`} component={DictionaryManagement} />

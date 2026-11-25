@@ -16,12 +16,14 @@ vi.mock("../../../utils/Utils", () => ({
 
 // ========== IMPORTS ==========
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import ReagentsSection from "./ReagentsSection";
 import {
   getFromOpenElisServer,
+  postToOpenElisServer,
   putToOpenElisServer,
   deleteFromOpenElisServer,
 } from "../../../utils/Utils";
@@ -136,6 +138,117 @@ describe("ReagentsSection", () => {
     expect(
       await screen.findByText(messages["label.testCatalog.reagents.updated"]),
     ).toBeInTheDocument();
+  });
+
+  // OGC-1465 review: a unit longer than its column is marked and not sent.
+  it("marks a unit over 50 characters and does not send it", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => cb(TWO_REAGENTS));
+    renderSection();
+    const unit = await screen.findByDisplayValue("mL");
+
+    fireEvent.change(unit, { target: { value: "u".repeat(51) } });
+    fireEvent.click(screen.getByTestId("reagents-save"));
+
+    expect(
+      (
+        await screen.findAllByText(
+          messages["label.testCatalog.reagents.unitTooLong"],
+        )
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(putToOpenElisServer).not.toHaveBeenCalled();
+  });
+
+  it("keeps the typed quantity when the save fails, so a retry can send it (OGC-1461)", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => cb(TWO_REAGENTS));
+    putToOpenElisServer.mockImplementation((url, body, cb) => cb(500));
+    renderSection();
+    const qty = await screen.findByDisplayValue("2.5");
+
+    fireEvent.change(qty, { target: { value: "3.75" } });
+    fireEvent.click(screen.getByTestId("reagents-save"));
+
+    expect(
+      await screen.findByText(messages["label.testCatalog.reagents.saveError"]),
+    ).toBeInTheDocument();
+    expect(screen.getByDisplayValue("3.75")).toBeInTheDocument();
+    expect(screen.getByTestId("reagents-save")).toBeEnabled();
+  });
+
+  it("a row that failed to save keeps its edit when another row saved (OGC-1461)", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => cb(TWO_REAGENTS));
+    putToOpenElisServer.mockImplementation((url, body, cb) =>
+      cb(url.endsWith("/reagents/7") ? 200 : 500),
+    );
+    renderSection();
+    await screen.findByDisplayValue("2.5");
+
+    fireEvent.change(document.getElementById("qty-link-1"), {
+      target: { value: "3" },
+    });
+    fireEvent.change(document.getElementById("qty-link-2"), {
+      target: { value: "4" },
+    });
+    fireEvent.click(screen.getByTestId("reagents-save"));
+
+    expect(
+      await screen.findByText(messages["label.testCatalog.reagents.saveError"]),
+    ).toBeInTheDocument();
+    expect(document.getElementById("qty-link-1")).toHaveValue(3);
+    expect(document.getElementById("qty-link-2")).toHaveValue(4);
+    expect(screen.getByTestId("reagents-save")).toBeEnabled();
+  });
+
+  it("a partly failed link keeps the dialog and its error while the list reloads (OGC-1461)", async () => {
+    let linked = [TWO_REAGENTS[1]];
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/inventory/items") {
+        cb([
+          { id: 7, name: "Glucose Reagent" },
+          { id: 9, name: "Buffer Solution" },
+          { id: 11, name: "Lysis Buffer" },
+        ]);
+      } else {
+        cb(linked);
+      }
+    });
+    postToOpenElisServer.mockImplementation((url, body, cb) => {
+      if (JSON.parse(body).reagentId === 7) {
+        linked = [...linked, TWO_REAGENTS[0]];
+        cb(201);
+      } else {
+        cb(500);
+      }
+    });
+    renderSection();
+    fireEvent.click(await screen.findByTestId("link-reagent-button"));
+
+    const user = userEvent.setup();
+    const linkDialog = () =>
+      screen
+        .getAllByRole("dialog")
+        .find((d) =>
+          within(d).queryByText(
+            messages["label.testCatalog.reagents.modal.title"],
+          ),
+        );
+    const dialog = linkDialog();
+    await user.click(within(dialog).getByRole("button", { name: /open/i }));
+    await user.click(
+      await screen.findByRole("option", { name: /Glucose Reagent/ }),
+    );
+    await user.click(screen.getByRole("option", { name: /Lysis Buffer/ }));
+    await user.click(
+      within(dialog).getByRole("button", { name: /link selected/i }),
+    );
+
+    expect(
+      await within(dialog).findByText(
+        messages["label.testCatalog.reagents.linkError"],
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("reagent-row-link-1")).toBeInTheDocument();
+    expect(linkDialog()).toBe(dialog);
   });
 
   it("discards a pending edit on Cancel without writing", async () => {

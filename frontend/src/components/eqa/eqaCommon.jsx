@@ -1,6 +1,7 @@
 import React from "react";
 import { Tag } from "@carbon/react";
 import { useIntl } from "react-intl";
+import { csvCell, downloadBlob } from "../utils/Utils";
 
 /**
  * Presentation bits every EQA page repeats. Carbon's own text token rather than a
@@ -62,19 +63,7 @@ export const calendarOnlyInput = {
 export const isDispatched = (row) =>
   row.boxState === "SENT" || !!row.shippedDate;
 
-/** RFC 4180 cell: everything quoted, embedded quotes doubled. */
-export const csvCell = (value) =>
-  `"${String(value ?? "").replace(/"/g, '""')}"`;
-
-/** Hands the browser a Blob to save under filename. */
-export const downloadBlob = (blob, filename) => {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
-};
+export { csvCell, downloadBlob };
 
 /** Hands the browser a CSV without a round trip to the server. */
 export const downloadCsv = (content, filename) =>

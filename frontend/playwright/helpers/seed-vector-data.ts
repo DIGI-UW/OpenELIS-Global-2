@@ -138,7 +138,7 @@ export async function seedVectorPositivity(
   await addRequestingOrganization(page, `E2E Positivity Org ${stamp}`);
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(
-    page.getByText("Sample Order Entry has been saved successfully").first(),
+    page.getByText(/Order \S+ has been saved\./).first(),
   ).toBeVisible({ timeout: 20_000 });
 
   // 2. Identify the pool's specimens as Anopheles (CONFIRMED) — MIR is by species.

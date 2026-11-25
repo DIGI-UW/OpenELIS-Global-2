@@ -1,5 +1,6 @@
 package org.openelisglobal.eqa.service;
 
+import java.time.LocalDate;
 import java.util.Map;
 
 /**
@@ -21,4 +22,10 @@ public interface EQALabPerformanceService {
      *         together.
      */
     Map<String, Object> getLabPerformance();
+
+    /**
+     * Percent of submitted results scored acceptable, among those scored between
+     * the two dates inclusive. Null when none were scored.
+     */
+    Integer getAcceptanceRate(LocalDate from, LocalDate to);
 }

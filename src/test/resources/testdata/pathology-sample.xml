@@ -50,17 +50,26 @@
         gross_exam="Abnormal tissues observed"
         microscopy_exam="Microscopic details of sample" />
 
+    <!-- last_updated is the row's optimistic-lock version; a child row inserted
+        without one can never be updated or deleted by the application, which is
+        why every pathology row here carries it. -->
     <pathology_block id="101" pathology_sample_id="1"
-        block_number="11" location="Lab 1" />
+        last_updated="2024-06-10 12:00:00.0" block_number="11"
+        location="Lab 1" />
     <pathology_slide id="201" pathology_sample_id="1"
-        file_type="JPEG" location="Slide Storage 1" />
-    <pathology_request id="301" pathology_sample_id="1"
+        last_updated="2024-06-10 12:00:00.0" file_type="JPEG"
+        location="Slide Storage 1" />
+    <pathology_request id="301"
+        last_updated="2024-06-10 12:00:00.0" pathology_sample_id="1"
         status="OPENED" type="DICTIONARY" value="HISTOLOGY" />
 
     <pathology_technique id="401"
-        pathology_sample_id="1" type="TEXT" value="Frozen Section" />
+        last_updated="2024-06-10 12:00:00.0" pathology_sample_id="1"
+        type="TEXT" value="Frozen Section" />
     <pathology_conclusion id="501"
-        pathology_sample_id="1" type="DICTIONARY" value="Benign Tumor" />
-    <pathology_report id="601" pathology_sample_id="1"
+        last_updated="2024-06-10 12:00:00.0" pathology_sample_id="1"
+        type="DICTIONARY" value="Benign Tumor" />
+    <pathology_report id="601"
+        last_updated="2024-06-10 12:00:00.0" pathology_sample_id="1"
         file_type="PDF" report_type="PATHOLOGY" />
 </dataset>

@@ -43,6 +43,16 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
 
     private static final String TISSUE = "Tissue, biopsy";
 
+    /** The block the fixture seeds on the first case. */
+    private static final int LEGACY_BLOCK_ID = 101;
+
+    private static final String TISSUE_TYPE_CATEGORY = "pathology_tissue_types";
+    private static final int TISSUE_CATEGORY = 9403;
+    private static final int RETIRED_TISSUE = 9403;
+    private static final String RETIRED_TISSUE_NAME = "Bone, retired";
+
+    private boolean insertedTheCategory;
+
     @Autowired
     private PathologyDisplayService pathologyDisplayService;
 
@@ -61,12 +71,14 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
         // of them.
         authenticateAs("technician1");
         removeSeededSpecimenRows();
+        removeSeededTissueRows();
         seedSpecimenRows();
     }
 
     @After
     public void cleanUp() {
         removeSeededSpecimenRows();
+        removeSeededTissueRows();
         TimeZone.setDefault(runnersTimeZone);
     }
 
@@ -128,6 +140,25 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
                 requester);
     }
 
+    @Test
+    public void caseDisplayItem_namesARetiredTissueTypeACassetteHolds() {
+        int categoryId = ensureTissueCategory();
+        jdbcTemplate.update(
+                "INSERT INTO clinlims.dictionary (id, is_active, dict_entry, local_abbrev,"
+                        + " dictionary_category_id, sort_order, lastupdated) VALUES (?, 'N', ?, 'PTRet', ?, 1, now())",
+                RETIRED_TISSUE, RETIRED_TISSUE_NAME, categoryId);
+        jdbcTemplate.update("UPDATE clinlims.pathology_block SET tissue_type_id = ? WHERE id = ?", RETIRED_TISSUE,
+                LEGACY_BLOCK_ID);
+
+        PathologyCaseViewDisplayItem displayItem = pathologyDisplayService
+                .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+
+        assertEquals(
+                "an entry taken out of use after a cassette recorded it is missing from the category list"
+                        + " the picker reads, so the case names it itself",
+                RETIRED_TISSUE_NAME, displayItem.getTissueTypeNames().get(String.valueOf(RETIRED_TISSUE)));
+    }
+
     private void seedSpecimenRows() {
         jdbcTemplate.update("INSERT INTO clinlims.localization (id, description, lastupdated) VALUES (?, ?, now())",
                 SPECIMEN_TYPE_NAME, "PathologyCaseViewSpecimenType");
@@ -150,6 +181,29 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
                 "INSERT INTO clinlims.sample_item (id, sort_order, samp_id, typeosamp_id, status_id,"
                         + " lastupdated) VALUES (?, 2, ?, ?, 1, now())",
                 SECOND_SPECIMEN_ITEM, CASE_WITH_TWO_SPECIMEN_ITEMS, SPECIMEN_TYPE);
+    }
+
+    /**
+     * Liquibase seeds the category, but an earlier dataset naming
+     * dictionary_category may have truncated it, so it is added only when absent.
+     */
+    private int ensureTissueCategory() {
+        insertedTheCategory = jdbcTemplate.update("INSERT INTO clinlims.dictionary_category (id, description,"
+                + " local_abbrev, name, lastupdated) SELECT ?, 'Pathology - Tissue Types', 'PathTissue', ?, now()"
+                + " WHERE NOT EXISTS (SELECT 1 FROM clinlims.dictionary_category WHERE name = ?)", TISSUE_CATEGORY,
+                TISSUE_TYPE_CATEGORY, TISSUE_TYPE_CATEGORY) == 1;
+        return jdbcTemplate.queryForObject("SELECT id FROM clinlims.dictionary_category WHERE name = ?", Integer.class,
+                TISSUE_TYPE_CATEGORY);
+    }
+
+    private void removeSeededTissueRows() {
+        jdbcTemplate.update("UPDATE clinlims.pathology_block SET tissue_type_id = NULL WHERE tissue_type_id = ?",
+                RETIRED_TISSUE);
+        jdbcTemplate.update("DELETE FROM clinlims.dictionary WHERE id = ?", RETIRED_TISSUE);
+        if (insertedTheCategory) {
+            jdbcTemplate.update("DELETE FROM clinlims.dictionary_category WHERE id = ?", TISSUE_CATEGORY);
+            insertedTheCategory = false;
+        }
     }
 
     private void removeSeededSpecimenRows() {

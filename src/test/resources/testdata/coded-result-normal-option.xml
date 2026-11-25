@@ -1,0 +1,80 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- The range names 9701 as normal and option 9702 is marked Normal; 9703
+        is neither. Result 9804 holds 9703 but is still bound to the 9702 row. -->
+
+    <status_of_sample id="1" description="Sample Entered"
+        code="1" status_type="SAMPLE" name="Entered"
+        lastupdated="2025-01-01 12:00:00" />
+    <status_of_sample id="2"
+        description="Technical Acceptance" code="2" status_type="ANALYSIS"
+        name="Technical Acceptance" lastupdated="2025-01-01 12:00:00" />
+
+    <localization id="1" description="Test Name" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="HIV Rapid Test" />
+    <localization id="2" description="Sample Type Name" />
+    <localization_value id="2" localization_id="2"
+        locale="en" value="Serum" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+
+    <type_of_sample id="1" description="Serum" domain="H"
+        name_localization_id="2" lastupdated="2025-01-01 12:00:00" />
+
+    <test_section id="1" name="Serology"
+        description="Serology" is_external="N"
+        lastupdated="2025-01-01 12:00:00" sort_order="1"
+        name_localization_id="1" display_key="sero" />
+
+    <test_formats id="1" lastupdated="2025-01-01 12:00:00" />
+
+    <test id="9700" description="HIV Rapid Test" is_active="Y"
+        is_reportable="Y" orderable="true" lastupdated="2025-01-01 12:00:00"
+        test_section_id="1" test_format_id="1" sort_order="1"
+        name="HIV Rapid Test" guid="test-hiv-rapid-001"
+        name_localization_id="1" />
+
+    <test_result id="9711" test_id="9700" tst_rslt_type="D"
+        value="9701" lastupdated="2025-01-01 12:00:00" sort_order="10"
+        is_quantifiable="false" is_active="true" is_normal="false" />
+    <test_result id="9712" test_id="9700" tst_rslt_type="D"
+        value="9702" lastupdated="2025-01-01 12:00:00" sort_order="20"
+        is_quantifiable="false" is_active="true" is_normal="true" />
+    <test_result id="9713" test_id="9700" tst_rslt_type="D"
+        value="9703" lastupdated="2025-01-01 12:00:00" sort_order="30"
+        is_quantifiable="false" is_active="true" is_normal="false" />
+
+    <result_limits id="9720" test_id="9700"
+        test_result_type_id="2" normal_dictionary_id="9701"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <sample id="9750" accession_number="HIV-CODED-001" status_id="1"
+        received_date="2025-06-01 00:00:00.0"
+        entered_date="2025-06-01 00:00:00.0"
+        collection_date="2025-06-01 00:00:00.0"
+        lastupdated="2025-06-01 12:00:00" />
+
+    <sample_item id="9760" sort_order="1" status_id="1"
+        samp_id="9750" typeosamp_id="1" collection_date="2025-06-01 10:00:00"
+        lastupdated="2025-06-01 12:00:00" />
+
+    <analysis id="9800" sampitem_id="9760" test_id="9700"
+        test_sect_id="1" revision="0" status_id="2"
+        started_date="2025-06-01 11:00:00" lastupdated="2025-06-01 12:00:00"
+        analysis_type="MANUAL" is_reportable="Y" />
+
+    <result id="9801" analysis_id="9800" test_result_id="9711"
+        result_type="D" value="9701" is_reportable="Y"
+        lastupdated="2025-06-01 12:00:00" />
+    <result id="9802" analysis_id="9800" test_result_id="9712"
+        result_type="D" value="9702" is_reportable="Y"
+        lastupdated="2025-06-01 12:00:00" />
+    <result id="9803" analysis_id="9800" test_result_id="9713"
+        result_type="D" value="9703" is_reportable="Y"
+        lastupdated="2025-06-01 12:00:00" />
+    <result id="9804" analysis_id="9800" test_result_id="9712"
+        result_type="D" value="9703" is_reportable="Y"
+        lastupdated="2025-06-01 12:00:00" />
+</dataset>

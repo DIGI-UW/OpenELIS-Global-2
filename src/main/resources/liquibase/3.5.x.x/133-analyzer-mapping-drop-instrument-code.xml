@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet id="133-analyzer-mapping-drop-instrument-code" author="oe">
+        <comment>The code an instrument sends for an assay is a setting of its Bridge connection, not of the analyzer's mapping, so the mapping stops holding it.</comment>
+        <dropColumn schemaName="clinlims" tableName="analyzer_mapping_test" columnName="instrument_code"/>
+        <rollback>
+            <addColumn schemaName="clinlims" tableName="analyzer_mapping_test">
+                <column name="instrument_code" type="VARCHAR(64)"/>
+            </addColumn>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

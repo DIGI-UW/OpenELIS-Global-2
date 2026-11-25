@@ -113,9 +113,7 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             { "sample_human", "sample_human_seq" }, { "analysis", "analysis_seq" }, { "result", "result_seq" },
             { "inventory_item", "inventory_item_seq" }, { "observation_history", "observation_history_seq" },
             { "image", "image_seq" }, { "organization", "organization_seq" }, { "analyzer", "analyzer_seq" },
-            { "analyzer_profile_binding", "analyzer_profile_binding_seq" },
-            { "analyzer_site_binding", "analyzer_site_binding_seq" },
-            { "analyzer_site_binding_revision", "analyzer_site_binding_revision_seq" },
+            { "analyzer_mapping", "analyzer_mapping_seq" },
             { "referral_status_history", "referral_status_history_seq" }, { "calculation", "calculation_seq" },
             { "result_limits", "result_limits_seq" }, { "site_information", "site_information_seq" },
             { "reflex_rule", "reflex_rule_seq" }, { "reflex_rule_condition", "reflex_rule_condition_seq" },
@@ -646,6 +644,19 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                         + "SELECT nextval('clinlims.site_information_seq'), ?, ?, 'text', now() "
                         + "WHERE NOT EXISTS (SELECT 1 FROM clinlims.site_information WHERE name = ?)",
                 name, value, name);
+    }
+
+    /**
+     * Idempotently ensure a {@code clinlims.system_role} row with this name exists.
+     * Several fixtures replace the whole role table with their own rows and leave
+     * the seeded roles out for the rest of the JVM run, so a test that grants a
+     * seeded role by name would otherwise grant nothing. Insert-if-absent only; the
+     * id comes from the role sequence.
+     */
+    protected void ensureSystemRole(String name) {
+        jdbcTemplate.update("INSERT INTO clinlims.system_role (id, name, description, active, editable) "
+                + "SELECT nextval('clinlims.system_role_seq'), ?, ?, true, false "
+                + "WHERE NOT EXISTS (SELECT 1 FROM clinlims.system_role WHERE name = ?)", name, name, name);
     }
 
     /**

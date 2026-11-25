@@ -145,6 +145,19 @@ describe("CatalogImport", () => {
     ).toHaveValue("");
   });
 
+  // OGC-1466 review: a file dropped again (or under the same name in another
+  // case) replaces the staged copy instead of adding a second row.
+  test("a file dropped twice is staged once", async () => {
+    renderPage();
+    await waitFor(() => expect(getFromOpenElisServer).toHaveBeenCalled());
+
+    await drop([csv("tests-cphl.csv")]);
+    await drop([csv("tests-cphl.csv"), csv("TESTS-CPHL.csv")]);
+
+    const table = await screen.findByTestId("catalog-import-files");
+    expect(table.querySelectorAll("tbody tr")).toHaveLength(1);
+  });
+
   test("previews before it can apply, and shows each file's counts and skipped rows", async () => {
     postToOpenElisServerFormDataJsonResponse.mockImplementation(
       (url, formData, callback) =>
@@ -192,6 +205,27 @@ describe("CatalogImport", () => {
     expect(
       screen.queryByTestId("catalog-import-apply-hint"),
     ).not.toBeInTheDocument();
+  });
+
+  /** OGC-1466: a preview is about the files as typed; a type change asks for a new one. */
+  test("changing a file's catalog area after a preview turns Apply off", async () => {
+    applyAnswers({});
+    renderPage();
+    await waitFor(() => expect(getFromOpenElisServer).toHaveBeenCalled());
+    await drop([csv("tests-cphl.csv")]);
+    await userEvent.click(screen.getByRole("button", { name: "Preview" }));
+    await screen.findByRole("heading", { name: "What these files would do" });
+    const apply = screen.getByRole("button", { name: "Apply" });
+    expect(apply).toBeEnabled();
+
+    await userEvent.selectOptions(
+      screen.getByLabelText(/Catalog area/i, {
+        selector: "#domain-tests-cphl\\.csv",
+      }),
+      "result-limits",
+    );
+
+    expect(apply).toBeDisabled();
   });
 
   test("a refused apply keeps the preview on screen and says why", async () => {

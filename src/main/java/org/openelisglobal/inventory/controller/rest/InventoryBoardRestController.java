@@ -9,21 +9,26 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/inventory/board")
+// Same roles as the /inventory routes in App.jsx.
+@PreAuthorize("hasAnyRole('RESULTS', 'ADMIN')")
 public class InventoryBoardRestController extends BaseRestController {
 
     @Autowired
     private InventoryProjectionService inventoryProjectionService;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<InventoryProjection>> getBoard() {
+    public ResponseEntity<List<InventoryProjection>> getBoard(
+            @RequestParam(name = "includeInactive", defaultValue = "false") boolean includeInactive) {
         try {
-            return ResponseEntity.ok(inventoryProjectionService.getBoard());
+            return ResponseEntity.ok(inventoryProjectionService.getBoard(includeInactive));
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

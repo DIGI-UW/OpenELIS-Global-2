@@ -17,6 +17,7 @@ import {
   Tag,
   OverflowMenu,
   OverflowMenuItem,
+  Checkbox,
   Dropdown,
   Callout,
 } from "@carbon/react";
@@ -38,6 +39,7 @@ import AnalyzerLifecycleModal, {
 import AnalyzerSetup, {
   type AnalyzerSetupStep,
 } from "../AnalyzerSetup/AnalyzerSetup";
+import BridgePairing from "../BridgePairing/BridgePairing";
 
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import type { Analyzer, AnalyzerStatus } from "../types";
@@ -70,18 +72,32 @@ const hasHeldResults = (analyzer: Analyzer) =>
 const isAnalyzerSetupStep = (
   value: string | null,
 ): value is AnalyzerSetupStep =>
-  value === "instrument" || value === "verify" || value === "connect";
+  value === "instrument" ||
+  value === "assays" ||
+  value === "verify" ||
+  value === "connect";
 
 const isAnalyzerLifecycleAction = (
   value: string | null,
 ): value is AnalyzerLifecycleAction =>
-  value === "deactivate" || value === "reactivate";
+  value === "activate" ||
+  value === "deactivate" ||
+  value === "reactivate" ||
+  value === "retire" ||
+  value === "restore" ||
+  value === "delete";
 
 const lifecycleActionsFor = (
   status: AnalyzerStatus,
 ): AnalyzerLifecycleAction[] => {
+  if (status === "RETIRED") {
+    return ["restore", "delete"];
+  }
+  if (status === "SETUP") {
+    return ["activate", "retire", "delete"];
+  }
   if (status === "INACTIVE") {
-    return ["reactivate"];
+    return ["reactivate", "retire", "delete"];
   }
   if (status === "ERROR_PENDING" || status === "OFFLINE") {
     return ["reactivate", "deactivate"];
@@ -131,6 +147,7 @@ const AnalyzersList = () => {
   const listStatus = queryParams.get("status") || "";
   const listTestUnit = queryParams.get("testUnit") || "";
   const listAnalyzerType = queryParams.get("analyzerType") || "";
+  const listIncludeRetired = queryParams.get("includeRetired") === "true";
   const firstAttentionAnalyzer = analyzers.find(hasHeldResults);
   const [undeliveredCount, setUndeliveredCount] = useState(0);
 
@@ -259,13 +276,27 @@ const AnalyzersList = () => {
     ["setup", "analyzerId", "profile", "revision"].forEach((key) =>
       params.delete(key),
     );
+    reloadAnalyzers();
+    history.push({ pathname: "/analyzers", search: params.toString() });
+  };
+
+  const reloadAnalyzers = () =>
     loadAnalyzers({
       status: listStatus,
       testUnit: listTestUnit,
       analyzerType: listAnalyzerType,
+      includeRetired: listIncludeRetired,
       ...(listSearch ? { search: listSearch } : {}),
     });
-    history.push({ pathname: "/analyzers", search: params.toString() });
+
+  const toggleRetired = (checked: boolean) => {
+    const params = new URLSearchParams(location.search);
+    if (checked) {
+      params.set("includeRetired", "true");
+    } else {
+      params.delete("includeRetired");
+    }
+    history.push({ pathname: location.pathname, search: params.toString() });
   };
 
   useEffect(() => {
@@ -304,13 +335,21 @@ const AnalyzersList = () => {
     loadAnalyzers(
       {
         ...initialFilters,
+        includeRetired: listIncludeRetired,
         ...(listSearch ? { search: listSearch } : {}),
       },
       controller.signal,
     );
 
     return () => controller.abort();
-  }, [listAnalyzerType, listSearch, listStatus, listTestUnit, loadAnalyzers]);
+  }, [
+    listAnalyzerType,
+    listIncludeRetired,
+    listSearch,
+    listStatus,
+    listTestUnit,
+    loadAnalyzers,
+  ]);
 
   useEffect(() => {
     const storedScrollY = sessionStorage.getItem("analyzers.scrollY");
@@ -483,6 +522,8 @@ const AnalyzersList = () => {
         />
       )}
 
+      <BridgePairing />
+
       {firstAttentionAnalyzer && (
         <Callout
           kind="warning"
@@ -643,6 +684,12 @@ const AnalyzersList = () => {
                     id: "analyzer.status.offline",
                   }),
                 },
+                {
+                  id: "RETIRED",
+                  text: intl.formatMessage({
+                    id: "analyzer.status.retired",
+                  }),
+                },
               ]}
               itemToString={(item) => (item ? item.text : "")}
               selectedItem={
@@ -669,6 +716,17 @@ const AnalyzersList = () => {
                 }
               }}
               size="lg"
+            />
+          </Column>
+          <Column lg={4} md={4} sm={4}>
+            <Checkbox
+              id="analyzer-show-retired"
+              data-testid="analyzer-show-retired"
+              labelText={intl.formatMessage({
+                id: "analyzer.filter.showRetired",
+              })}
+              checked={listIncludeRetired}
+              onChange={(_event, { checked }) => toggleRetired(checked)}
             />
           </Column>
         </Grid>
@@ -765,6 +823,7 @@ const AnalyzersList = () => {
                                   ACTIVE: "green",
                                   ERROR_PENDING: "red", // Carbon doesn't support "orange", use "red" for error states
                                   OFFLINE: "red",
+                                  RETIRED: "gray",
                                 };
                                 const statusColor =
                                   statusColorMap[unifiedStatus] || "gray";
@@ -885,7 +944,7 @@ const AnalyzersList = () => {
           analyzer={lifecycleAnalyzer}
           open
           onClose={closeLifecycle}
-          onConfirm={() => loadAnalyzers()}
+          onConfirm={() => reloadAnalyzers()}
         />
       )}
     </div>

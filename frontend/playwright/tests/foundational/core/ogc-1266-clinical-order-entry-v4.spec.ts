@@ -147,7 +147,7 @@ test.describe("OGC-1266 clinical order entry", () => {
       timeout: LONG_TIMEOUT,
     });
     await expect(
-      page.getByRole("heading", { level: 2, name: "Prepare Samples" }),
+      page.getByRole("heading", { level: 1, name: "Prepare Samples" }),
     ).toBeVisible({ timeout: UI_TIMEOUT });
     const steps = page.locator(".order-stepper .cds--progress-label");
     await expect(steps).toHaveText(
@@ -200,7 +200,7 @@ test.describe("OGC-1266 clinical order entry", () => {
       timeout: LONG_TIMEOUT,
     });
     await expect(
-      page.getByRole("heading", { level: 2, name: "Sample check" }),
+      page.getByRole("heading", { level: 1, name: "Sample check" }),
     ).toBeVisible({ timeout: UI_TIMEOUT });
     await expect(
       page.getByRole("button", { name: "Return to Prepare Samples" }),

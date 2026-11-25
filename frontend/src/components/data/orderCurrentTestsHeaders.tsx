@@ -1,57 +1,39 @@
-import React from "react";
-import { FormattedMessage } from "react-intl";
+import type { IntlShape } from "react-intl";
 import type { TableHeaderData } from "./LabTableHeaders";
 
-export const OrderCurrentTestsHeaders: TableHeaderData[] = [
+export const OrderCurrentTestsHeaders = (
+  intl: IntlShape,
+): TableHeaderData[] => [
   {
     key: "accessionNumber",
-    header: <FormattedMessage id="sample.label.labnumber" />,
+    header: intl.formatMessage({ id: "sample.label.labnumber" }),
   },
   {
     key: "sampleType",
-    header: <FormattedMessage id="sample.type" />,
+    header: intl.formatMessage({ id: "sample.type" }),
   },
   {
     key: "collectionDate",
-    header: <FormattedMessage id="sample.collection.date" />,
+    header: intl.formatMessage({ id: "sample.collection.date" }),
   },
   {
     key: "collectionTime",
-    header: <FormattedMessage id="sample.collection.time" />,
+    header: intl.formatMessage({ id: "sample.collection.time" }),
   },
   {
     key: "removeSample",
-    header: <FormattedMessage id="sample.remove.action" />,
+    header: intl.formatMessage({ id: "sample.remove.action" }),
   },
   {
     key: "testName",
-    header: <FormattedMessage id="sample.entry.project.testName" />,
+    header: intl.formatMessage({ id: "sample.entry.project.testName" }),
   },
   {
     key: "hasResults",
-    header: <FormattedMessage id="header.results.recorded" />,
+    header: intl.formatMessage({ id: "header.results.recorded" }),
   },
   {
     key: "canceled",
-    header: <FormattedMessage id="header.cancel.test" />,
-  },
-];
-
-export const OrderPossibleTestsHeaders: TableHeaderData[] = [
-  {
-    key: "accessionNumber",
-    header: <FormattedMessage id="sample.label.labnumber" />,
-  },
-  {
-    key: "sampleType",
-    header: <FormattedMessage id="sample.type" />,
-  },
-  {
-    key: "testName",
-    header: <FormattedMessage id="sample.entry.project.testName" />,
-  },
-  {
-    key: "add",
-    header: <FormattedMessage id="header.assign" />,
+    header: intl.formatMessage({ id: "header.cancel.test" }),
   },
 ];

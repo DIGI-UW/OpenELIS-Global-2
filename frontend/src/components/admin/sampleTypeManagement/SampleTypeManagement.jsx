@@ -67,6 +67,7 @@ import {
 import { injectIntl, FormattedMessage } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import useDomains from "../../common/useDomains";
+import StaleSaveNotice, { isStaleConflict } from "../../common/StaleSaveNotice";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
@@ -87,6 +88,9 @@ let breadcrumbs = [
 // Domain values come from the single /rest/domains source (useDomains); only
 // the tag color palette is presentational and assigned by list position.
 const DOMAIN_TAG_COLORS = ["green", "purple", "teal", "cyan", "magenta"];
+
+/** type_of_sample.description is varchar(40); a new type's name becomes its key. */
+const SAMPLE_TYPE_DESCRIPTION_MAX = 40;
 
 // ─── Main Component ───────────────────────────────────────────────
 
@@ -145,6 +149,7 @@ function SampleTypeManagement({ intl }) {
 
   // Form validation and state
   const [formErrors, setFormErrors] = useState({});
+  const [staleSave, setStaleSave] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showEditSuccess, setShowEditSuccess] = useState(false);
@@ -212,6 +217,7 @@ function SampleTypeManagement({ intl }) {
               abbreviation: item.abbreviation || "",
               sortOrder: item.sortOrder || 0,
               whonetCode: item.whonetCode || "",
+              lastUpdated: item.lastUpdated || null,
             }));
             setSampleTypes(sampleTypeData);
           } else {
@@ -335,12 +341,42 @@ function SampleTypeManagement({ intl }) {
       abbreviation: st.abbreviation || "",
       sortOrder: st.sortOrder || 0,
       whonetCode: st.whonetCode || "",
+      lastUpdated: st.lastUpdated || null,
     });
     setWhonetCodeSaved(false);
+    setStaleSave(false);
     setFormErrors({});
     setShowSuccess(false);
     loadAssociatedTests(st.id);
   }, [view, sampleTypeId, sampleTypes, editingType, loadAssociatedTests]);
+
+  // Other sections of this page (Display Order) change the sample type too, so
+  // coming back to Basic Info takes the stored version and sort order; otherwise
+  // the next save here would be refused as stale (OGC-1463).
+  const editingTypeId = editingType ? editingType.id : null;
+  useEffect(() => {
+    if (
+      view !== "editor" ||
+      activeSection !== "basic-info" ||
+      !editingTypeId ||
+      String(editingTypeId) !== String(sampleTypeId)
+    ) {
+      return;
+    }
+    getFromOpenElisServer(`/rest/sample-types/${editingTypeId}`, (res) => {
+      if (res && res.success && res.data) {
+        setEditingType((prev) =>
+          prev && String(prev.id) === String(res.data.id)
+            ? {
+                ...prev,
+                sortOrder: res.data.sortOrder || 0,
+                lastUpdated: res.data.lastUpdated || null,
+              }
+            : prev,
+        );
+      }
+    });
+  }, [view, activeSection, editingTypeId, sampleTypeId]);
 
   // Seed the "add" form once when we land on /SampleTypeManagement/new.
   useEffect(() => {
@@ -425,7 +461,8 @@ function SampleTypeManagement({ intl }) {
         sampleTypes.some(
           (st) =>
             st.name.toLowerCase() === formData.name.trim().toLowerCase() &&
-            st.id !== formData.id,
+            st.id !== formData.id &&
+            st.domain === (formData.domain || "CLINICAL"),
         )
       ) {
         errors.name = "This sample type name already exists";
@@ -444,9 +481,27 @@ function SampleTypeManagement({ intl }) {
         errors.abbreviation = "Abbreviation must be 10 characters or less";
       }
 
+      if (
+        !errors.name &&
+        view === "add" &&
+        formData.name.trim().length > SAMPLE_TYPE_DESCRIPTION_MAX
+      ) {
+        errors.name = intl.formatMessage({
+          id: "error.sampleType.nameTooLong",
+        });
+      }
+      if (
+        !errors.description &&
+        formData.description.trim().length > SAMPLE_TYPE_DESCRIPTION_MAX
+      ) {
+        errors.description = intl.formatMessage({
+          id: "error.sampleType.update.description.400",
+        });
+      }
+
       return errors;
     },
-    [sampleTypes],
+    [sampleTypes, view, intl],
   );
 
   const refreshSampleTypes = useCallback(async () => {
@@ -473,6 +528,7 @@ function SampleTypeManagement({ intl }) {
         abbreviation: item.abbreviation || "",
         sortOrder: item.sortOrder || 0,
         whonetCode: item.whonetCode || "",
+        lastUpdated: item.lastUpdated || null,
       }));
       setSampleTypes(mapped);
       return mapped;
@@ -528,6 +584,19 @@ function SampleTypeManagement({ intl }) {
                   : { name: duplicate.message };
                 reject(duplicate);
               } else if (result && result.status === 400) {
+                const descriptionRefused = (result.fieldErrors || []).some(
+                  (fe) => fe.field === "description",
+                );
+                if (descriptionRefused) {
+                  const refusal = new Error(
+                    intl.formatMessage({
+                      id: "error.sampleType.update.description.400",
+                    }),
+                  );
+                  refusal.fieldErrors = { description: refusal.message };
+                  reject(refusal);
+                  return;
+                }
                 const nameRefused = (result.fieldErrors || []).some(
                   (fe) =>
                     fe.field === "sampleTypeEnglishName" ||
@@ -586,6 +655,7 @@ function SampleTypeManagement({ intl }) {
             editingType.active !== undefined ? editingType.active : true,
           sortOrder: editingType.sortOrder || 0,
           whonetCode: editingType.whonetCode?.trim() || "",
+          lastUpdated: editingType.lastUpdated || null,
         };
         await new Promise((resolve, reject) => {
           putToOpenElisServerFullResponse(
@@ -601,6 +671,12 @@ function SampleTypeManagement({ intl }) {
                 body = response ? await response.json() : null;
               } catch (e) {
                 body = null;
+              }
+              if (isStaleConflict(response ? response.status : 0, body)) {
+                const stale = new Error("stale");
+                stale.stale = true;
+                reject(stale);
+                return;
               }
               const messageId = body?.field
                 ? `error.sampleType.update.${body.field}.${response.status}`
@@ -638,6 +714,7 @@ function SampleTypeManagement({ intl }) {
                   abbreviation: d.abbreviation || "",
                   sortOrder: d.sortOrder || 0,
                   whonetCode: d.whonetCode || "",
+                  lastUpdated: d.lastUpdated || null,
                 });
               }
               resolve();
@@ -649,6 +726,10 @@ function SampleTypeManagement({ intl }) {
         setFormErrors({});
       }
     } catch (error) {
+      if (error.stale) {
+        setStaleSave(true);
+        return;
+      }
       const operation = view === "add" ? "create" : "update";
       setFormErrors({
         ...(error.fieldErrors || {}),
@@ -1191,9 +1272,25 @@ function SampleTypeManagement({ intl }) {
                 reflect the saved status, mirroring the Test Catalog editor's
                 load-then-render pattern. */}
             {view === "editor" &&
-            !(
-              editingType && String(editingType.id) === String(sampleTypeId)
+            !isLoading &&
+            !sampleTypes.some(
+              (item) => String(item.id) === String(sampleTypeId),
             ) ? (
+              <InlineNotification
+                kind="error"
+                lowContrast
+                hideCloseButton
+                data-testid="sample-type-not-found"
+                title={intl.formatMessage({
+                  id: loadError
+                    ? "label.sampleType.editorLoadError"
+                    : "label.sampleType.notFound",
+                })}
+              />
+            ) : view === "editor" &&
+              !(
+                editingType && String(editingType.id) === String(sampleTypeId)
+              ) ? (
               <div
                 style={{
                   display: "flex",
@@ -1212,6 +1309,11 @@ function SampleTypeManagement({ intl }) {
               <>
                 {activeSection === "basic-info" && (
                   <div>
+                    {staleSave && (
+                      <div style={{ marginBottom: "var(--cds-spacing-06)" }}>
+                        <StaleSaveNotice testId="sample-type-stale-save" />
+                      </div>
+                    )}
                     {(showSuccess || formErrors.submit) && (
                       <div style={{ marginBottom: "var(--cds-spacing-06)" }}>
                         <Stack gap={5}>
@@ -1474,6 +1576,7 @@ function SampleTypeManagement({ intl }) {
                             onClick={saveEditor}
                             disabled={
                               isSubmitting ||
+                              staleSave ||
                               Object.entries(formErrors).some(
                                 ([field, message]) =>
                                   field !== "submit" && !!message,

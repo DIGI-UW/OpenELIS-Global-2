@@ -1,6 +1,7 @@
 package org.openelisglobal.fhir;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -10,6 +11,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Arrays;
+import javax.sql.DataSource;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -19,6 +21,7 @@ import org.openelisglobal.fhir.providers.SpecimenProvider;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockServletConfig;
@@ -37,6 +40,9 @@ public class SpecimenFacadeTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private MockServletContext servletContext;
+
+    @Autowired
+    private DataSource dataSource;
 
     @Autowired
     private FhirContext fhirContext;
@@ -407,6 +413,90 @@ public class SpecimenFacadeTest extends BaseWebContextSensitiveTest {
         fhirServlet.service(request, response);
 
         assertEquals(response.getContentAsString(), 422, response.getStatus());
+    }
+
+    @Test
+    public void readSpecimen_aUcumUnit_isSentWithTheUcumSystem() throws Exception {
+        String specimenUuid = specimenWithQuantity("g/L", null);
+
+        JsonNode quantity = readSpecimen(specimenUuid).get("container").get(0).get("specimenQuantity");
+
+        assertEquals("g/L", quantity.get("unit").asText());
+        assertEquals("http://unitsofmeasure.org", quantity.get("system").asText());
+        assertEquals("g/L", quantity.get("code").asText());
+    }
+
+    @Test
+    public void readSpecimen_aLabTypedUnit_isSentAsTextOnly() throws Exception {
+        String specimenUuid = specimenWithQuantity("10^3/µl", null);
+
+        JsonNode quantity = readSpecimen(specimenUuid).get("container").get(0).get("specimenQuantity");
+
+        assertEquals("10^3/µl", quantity.get("unit").asText());
+        assertFalse("not a UCUM code, so no UCUM system", quantity.has("system"));
+        assertFalse(quantity.has("code"));
+    }
+
+    @Test
+    public void readSpecimen_aLabTypedUnitWithAUcumCode_sendsThatCode() throws Exception {
+        String specimenUuid = specimenWithQuantity("10^3/µl", "10*3/uL");
+
+        JsonNode quantity = readSpecimen(specimenUuid).get("container").get(0).get("specimenQuantity");
+
+        assertEquals("10^3/µl", quantity.get("unit").asText());
+        assertEquals("http://unitsofmeasure.org", quantity.get("system").asText());
+        assertEquals("10*3/uL", quantity.get("code").asText());
+    }
+
+    @Test
+    public void updateSpecimen_withTheResourceAsRead_keepsAUnitWithAUcumCode() throws Exception {
+        String specimenUuid = specimenWithQuantity("10^3/µl", "10*3/uL");
+
+        MockHttpServletResponse response = putSpecimen(specimenUuid, readSpecimen(specimenUuid).toString());
+
+        assertEquals(response.getContentAsString(), 200, response.getStatus());
+        assertEquals("1400", sampleItemService.get("2").getUnitOfMeasure().getId());
+    }
+
+    @Test
+    public void updateSpecimen_withOnlyAUcumCode_findsTheUnitThatCarriesIt() throws Exception {
+        String specimenUuid = specimenWithQuantity("10^3/µl", "10*3/uL");
+        jdbcSetUnitOfMeasure(null);
+        ObjectNode asRead = (ObjectNode) readSpecimen(specimenUuid);
+        ObjectNode quantity = (ObjectNode) asRead.get("container").get(0).get("specimenQuantity");
+        quantity.remove("unit");
+        quantity.put("system", "http://unitsofmeasure.org");
+        quantity.put("code", "10*3/uL");
+
+        MockHttpServletResponse response = putSpecimen(specimenUuid, asRead.toString());
+
+        assertEquals(response.getContentAsString(), 200, response.getStatus());
+        assertEquals("1400", sampleItemService.get("2").getUnitOfMeasure().getId());
+    }
+
+    @Test
+    public void updateSpecimen_withTheResourceAsRead_keepsALabTypedUnit() throws Exception {
+        String specimenUuid = specimenWithQuantity("10^3/µl", null);
+        String unitId = sampleItemService.get("2").getUnitOfMeasure().getId();
+
+        MockHttpServletResponse response = putSpecimen(specimenUuid, readSpecimen(specimenUuid).toString());
+
+        assertEquals(response.getContentAsString(), 200, response.getStatus());
+        assertEquals("1400", sampleItemService.get("2").getUnitOfMeasure().getId());
+    }
+
+    private void jdbcSetUnitOfMeasure(String uomId) {
+        new JdbcTemplate(dataSource).update("UPDATE clinlims.sample_item SET uom_id = CAST(? AS numeric) WHERE id = 2",
+                uomId);
+    }
+
+    private String specimenWithQuantity(String unitName, String ucumCode) {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        jdbc.update("INSERT INTO clinlims.unit_of_measure (id, name, description, ucum_code, is_active, lastupdated)"
+                + " VALUES (1400, ?, ?, ?, 'Y', now()) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name,"
+                + " ucum_code = EXCLUDED.ucum_code", unitName, unitName, ucumCode);
+        jdbc.update("UPDATE clinlims.sample_item SET quantity = 3, uom_id = 1400 WHERE id = 2");
+        return "68438220-5cef-44c4-9e6f-9f88e6b93271";
     }
 
     private JsonNode readSpecimen(String specimenUuid) throws Exception {

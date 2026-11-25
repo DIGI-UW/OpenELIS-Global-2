@@ -49,15 +49,11 @@ public class PractitionerRevIncludeFacadeTest extends BaseWebContextSensitiveTes
     }
 
     @Test
-    public void revIncludeObservationPerformer_addsTheProvidersResults() throws Exception {
+    public void revIncludeObservationPerformer_addsNothing_theOrderingProviderIsNotThePerformer() throws Exception {
         JsonNode bundle = search(PROVIDER_1_UUID, "Observation:performer");
         assertEquals(1, bundle.get("total").asInt());
         assertEquals(List.of(PROVIDER_1_UUID), idsOf(bundle, "Practitioner"));
-        assertEquals(List.of(RESULT_3_UUID), idsOf(bundle, "Observation"));
-        assertEquals("match", bundle.get("entry").get(0).get("search").get("mode").asText());
-        assertEquals("include", bundle.get("entry").get(1).get("search").get("mode").asText());
-        assertEquals("Practitioner/" + PROVIDER_1_UUID,
-                bundle.get("entry").get(1).get("resource").get("performer").get(0).get("reference").asText());
+        assertEquals(List.of(), idsOf(bundle, "Observation"));
     }
 
     @Test

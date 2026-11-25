@@ -84,5 +84,8 @@
         <property name="coverageFactor" type="java.math.BigDecimal">
             <column name="coverage_factor" />
         </property>
+        <property name="validatedDate" type="java.sql.Timestamp">
+            <column name="validated_date" />
+        </property>
     </class>
 </hibernate-mapping>

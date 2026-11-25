@@ -104,6 +104,8 @@ const SampleAcceptanceChecklist = ({
   // are terminal (no resample / re-collection).
   const poolMode = !!vectorPoolId;
   const isVector = domain === "VECTOR";
+  const isEqa = evaluation?.eqa === true;
+  const rejectsOnly = isVector || isEqa;
 
   const seedAnswers = useCallback((latest) => {
     const seeded = {};
@@ -377,6 +379,8 @@ const SampleAcceptanceChecklist = ({
                   id="sampleAcceptance.qa.subtitle.rejectedVector"
                   defaultMessage="This catch was rejected — read-only."
                 />
+              ) : isEqa ? (
+                <FormattedMessage id="sampleAcceptance.qa.subtitle.rejectedEqa" />
               ) : (
                 <FormattedMessage
                   id="sampleAcceptance.qa.subtitle.rejected"
@@ -580,9 +584,9 @@ const SampleAcceptanceChecklist = ({
           hideCloseButton
           title=""
           subtitle={intl.formatMessage({
-            id: "sampleAcceptance.qa.failHint",
-            defaultMessage:
-              "This sample has failed checks — report an NCE or resample instead of accepting.",
+            id: rejectsOnly
+              ? "sampleAcceptance.qa.failHint.reject"
+              : "sampleAcceptance.qa.failHint",
           })}
         />
       )}
@@ -609,7 +613,7 @@ const SampleAcceptanceChecklist = ({
               defaultMessage="Report NCE"
             />
           </Button>
-          {canResample && !isVector && (
+          {canResample && !rejectsOnly && (
             <Button
               kind="tertiary"
               renderIcon={Renew}
@@ -621,7 +625,7 @@ const SampleAcceptanceChecklist = ({
               />
             </Button>
           )}
-          {canResample && isVector && (
+          {canResample && rejectsOnly && (
             <Button
               kind="danger--tertiary"
               renderIcon={Close}
@@ -676,6 +680,7 @@ const SampleAcceptanceChecklist = ({
       {showNce && (
         <InlineNceForm
           accessionNumber={labNumber}
+          sampleItemId={sampleItemId}
           initialDescription={buildFailureReason()}
           onClose={() => setShowNce(false)}
           onSubmitSuccess={() => setShowNce(false)}
@@ -698,6 +703,7 @@ const SampleAcceptanceChecklist = ({
           sampleItemId={sampleItemId}
           labNumber={labNumber}
           initialReason={buildFailureReason()}
+          eqa={isEqa}
           onClose={() => setShowReject(false)}
           onSuccess={handleRejectSuccess}
         />

@@ -792,7 +792,7 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
 
     private Patient getForPatientFromServer(IGenericClient fhirClient, List<ServiceRequest> serviceRequests) {
         for (ServiceRequest serviceRequest : serviceRequests) {
-            if (serviceRequest.getSubject() != null && serviceRequest.getSubject().getReference() != null) {
+            if (FhirUtil.refersToPatient(serviceRequest.getSubject())) {
                 return fhirClient.read().resource(Patient.class)
                         .withId(serviceRequest.getSubject().getReferenceElement().getIdPart()).execute();
             }

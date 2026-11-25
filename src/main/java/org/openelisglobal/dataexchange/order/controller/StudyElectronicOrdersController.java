@@ -248,10 +248,12 @@ public class StudyElectronicOrdersController extends BaseController {
             if (serviceRequest.getRequisition() != null) {
                 displayItem.setReferringLabNumber(serviceRequest.getRequisition().getValue());
             }
-            org.hl7.fhir.r4.model.Patient fhirPatient = fhirClient.read() //
-                    .resource(org.hl7.fhir.r4.model.Patient.class) //
-                    .withId(serviceRequest.getSubject().getReferenceElement().getIdPart()) //
-                    .execute();
+            org.hl7.fhir.r4.model.Patient fhirPatient = FhirUtil.refersToPatient(serviceRequest.getSubject())
+                    ? fhirClient.read() //
+                            .resource(org.hl7.fhir.r4.model.Patient.class) //
+                            .withId(serviceRequest.getSubject().getReferenceElement().getIdPart()) //
+                            .execute()
+                    : null;
             if (fhirPatient != null) {
                 for (Identifier identifier : fhirPatient.getIdentifier()) {
                     // get patient UPID

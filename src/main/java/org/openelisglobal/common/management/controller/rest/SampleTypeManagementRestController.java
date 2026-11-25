@@ -12,9 +12,11 @@ import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.common.services.StaleSaveGuard;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.sampletypeterminology.service.SampleTypeTerminologyMappingService;
 import org.openelisglobal.sampletypeterminology.valueholder.SampleTypeTerminologyMapping;
+import org.openelisglobal.terminology.TerminologySystems;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,8 +49,10 @@ public class SampleTypeManagementRestController extends BaseRestController {
     @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService;
 
-    // Kept in sync with the frontend `SOURCES` array in TerminologySection.jsx.
-    private static final Set<String> TERM_SOURCES = new HashSet<>(Arrays.asList("LOINC", "SNOMED", "CIEL", "OCL"));
+    /**
+     * A sample type's WHONET code is its own field, so a new WHONET mapping would
+     * hold the same fact twice; a legacy one is kept while it is unchanged.
+     */
     private static final String LEGACY_WHONET_SOURCE = "WHONET";
     private static final Set<String> TERM_RELATIONSHIPS = new HashSet<>(
             Arrays.asList("SAME_AS", "BROADER_THAN", "NARROWER_THAN"));
@@ -91,6 +95,7 @@ public class SampleTypeManagementRestController extends BaseRestController {
             this.disposalInstructions = typeOfSample.getDisposalInstructions();
             this.isActive = typeOfSample.getIsActive();
             this.sortOrder = typeOfSample.getSortOrder();
+            this.lastUpdated = StaleSaveGuard.token(typeOfSample.getLastupdated());
         }
 
         // Getters and Setters
@@ -295,6 +300,11 @@ public class SampleTypeManagementRestController extends BaseRestController {
         return ResponseEntity.ok(new ApiResponse<>(true, "Display order updated successfully", dtos));
     }
 
+    /**
+     * Saves a sample type's Basic Info. The position in lists is not part of it: it
+     * belongs to the display-order endpoint, so a page loaded before a move cannot
+     * undo the move (OGC-1465).
+     */
     @PutMapping(value = "/sample-types/{sampleTypeId}")
     public ResponseEntity<ApiResponse<SampleTypeManagementDTO>> updateSampleType(HttpServletRequest request,
             @PathVariable String sampleTypeId, @RequestBody @Valid SampleTypeManagementDTO sampleTypeDTO,
@@ -310,6 +320,14 @@ public class SampleTypeManagementRestController extends BaseRestController {
                 return ResponseEntity.notFound().build();
             }
 
+            if (sampleTypeDTO.getDomain() != null && Domain.fromRaw(sampleTypeDTO.getDomain()) == null) {
+                return ResponseEntity.unprocessableEntity()
+                        .body(ApiResponse.refusedOn("domain", "The domain must be CLINICAL, ENVIRONMENTAL or VECTOR."));
+            }
+            if (StaleSaveGuard.isStale(sampleTypeDTO.getLastUpdated(), existingTypeOfSample.getLastupdated())) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                        ApiResponse.refusedOn("stale", "Someone else changed this sample type after it was opened."));
+            }
             ResponseEntity<ApiResponse<SampleTypeManagementDTO>> refusal = refuseUpdate(existingTypeOfSample,
                     sampleTypeDTO);
             if (refusal != null) {
@@ -346,10 +364,6 @@ public class SampleTypeManagementRestController extends BaseRestController {
             if (sampleTypeDTO.getDisposalInstructions() != null) {
                 String disposal = sampleTypeDTO.getDisposalInstructions().trim();
                 existingTypeOfSample.setDisposalInstructions(disposal.isEmpty() ? null : disposal);
-            }
-
-            if (sampleTypeDTO.getSortOrder() > 0) {
-                existingTypeOfSample.setSortOrder(sampleTypeDTO.getSortOrder());
             }
 
             // Null means "not sent" — section saves (e.g. Disposal) must not
@@ -394,7 +408,7 @@ public class SampleTypeManagementRestController extends BaseRestController {
         } catch (Exception e) {
             LogEvent.logError("SampleTypeManagementRestController", "updateSampleType", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(false, "Error updating sample type: " + e.getMessage(), null));
+                    .body(new ApiResponse<>(false, "The sample type could not be saved.", null));
         }
     }
 
@@ -417,6 +431,10 @@ public class SampleTypeManagementRestController extends BaseRestController {
         if (abbreviation != null && abbreviation.length() > 10) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.refusedOn("abbreviation", "The abbreviation has at most 10 characters."));
+        }
+        if (requested.getDescription() != null && requested.getDescription().trim().length() > 40) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.refusedOn("description", "The description has at most 40 characters."));
         }
         if (requested.getWhonetCode() != null && requested.getWhonetCode().trim().length() > 5) {
             return ResponseEntity.badRequest()
@@ -526,14 +544,16 @@ public class SampleTypeManagementRestController extends BaseRestController {
         Set<String> seen = new HashSet<>();
         List<SampleTypeTerminologyMapping> desired = new ArrayList<>();
         for (TerminologyMappingDto m : body.mappings) {
-            if (isBlank(m.source) || isBlank(m.code)) {
+            m.source = TerminologySystems.sourceOf(m.source);
+            if (m.source == null || isBlank(m.code)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
             boolean unchangedLegacyWhonet = isUnchangedLegacyWhonetMapping(m, activeMappings);
-            if ((!TERM_SOURCES.contains(m.source) || !isValidRelationship(m.relationship)) && !unchangedLegacyWhonet) {
+            boolean whonet = LEGACY_WHONET_SOURCE.equalsIgnoreCase(m.source);
+            if ((whonet || !isValidRelationship(m.relationship)) && !unchangedLegacyWhonet) {
                 return ResponseEntity.unprocessableEntity().build();
             }
-            if (!seen.add(m.source + " " + m.code)) {
+            if (!seen.add(m.source + " " + m.code.trim())) {
                 return ResponseEntity.unprocessableEntity().build();
             }
             SampleTypeTerminologyMapping e = new SampleTypeTerminologyMapping();
@@ -660,8 +680,16 @@ public class SampleTypeManagementRestController extends BaseRestController {
     @PutMapping(value = "/sample-types/{sampleTypeId}/tests/{testId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<Void>> addTestToSampleType(HttpServletRequest request,
             @PathVariable String sampleTypeId, @PathVariable String testId) {
-        if (typeOfSampleService.getTypeOfSampleById(sampleTypeId) == null || testService.getTestById(testId) == null) {
+        TypeOfSample type = typeOfSampleService.getTypeOfSampleById(sampleTypeId);
+        org.openelisglobal.test.valueholder.Test test = testService.getTestById(testId);
+        if (type == null || test == null) {
             return ResponseEntity.notFound().build();
+        }
+        Domain typeDomain = Domain.fromRaw(type.getDomain());
+        Domain testDomain = Domain.fromRaw(test.getDomain());
+        if (typeDomain != null && testDomain != null && typeDomain != testDomain) {
+            return ResponseEntity.unprocessableEntity().body(new ApiResponse<>(false,
+                    "a " + testDomain.name() + " test cannot use a " + typeDomain.name() + " sample type", null));
         }
         boolean alreadyLinked = typeOfSampleTestService.getTypeOfSampleTestsForSampleType(sampleTypeId).stream()
                 .anyMatch(link -> testId.equals(link.getTestId()));
@@ -677,12 +705,29 @@ public class SampleTypeManagementRestController extends BaseRestController {
         return ResponseEntity.ok(new ApiResponse<>(true, "Test linked to sample type", null));
     }
 
-    /** Unlink a test from this sample type. */
+    /**
+     * Unlink a test from this sample type. An active or orderable test keeps at
+     * least one sample type, the same rule its Basic Info save applies: with none
+     * it can be placed on no sample in order entry (OGC-1460).
+     */
     @org.springframework.web.bind.annotation.DeleteMapping(value = "/sample-types/{sampleTypeId}/tests/{testId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<Void>> removeTestFromSampleType(HttpServletRequest request,
             @PathVariable String sampleTypeId, @PathVariable String testId) {
-        if (typeOfSampleService.getTypeOfSampleById(sampleTypeId) == null) {
+        if (typeOfSampleService.getTypeOfSampleById(sampleTypeId) == null
+                || !org.openelisglobal.testcatalog.controller.rest.TestCatalogNumericIdGuard.isNumericId(testId)) {
             return ResponseEntity.notFound().build();
+        }
+        org.openelisglobal.test.valueholder.Test test = testService.getTestById(testId.trim());
+        if (test != null && (test.isActive() || Boolean.TRUE.equals(test.getOrderable()))) {
+            boolean otherType = typeOfSampleTestService.getTypeOfSampleTestsForTest(testId).stream()
+                    .anyMatch(link -> !sampleTypeId.equals(link.getTypeOfSampleId()));
+            if (!otherType) {
+                return ResponseEntity.unprocessableEntity()
+                        .body(new ApiResponse<>(false,
+                                "this is the only sample type of an active test; deactivate the test or give it another"
+                                        + " sample type first",
+                                null));
+            }
         }
         String userId = getSysUserId(request);
         boolean removed = false;

@@ -2,8 +2,6 @@ package org.openelisglobal.test.service;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -14,6 +12,7 @@ import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.common.util.CsvParsingUtil;
 import org.openelisglobal.configuration.service.CatalogReferenceResolver;
 import org.openelisglobal.configuration.service.CsvLoadSummary;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
@@ -169,7 +168,7 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
 
     @Override
     public void processConfiguration(InputStream inputStream, String fileName, boolean dryRun) throws Exception {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+        BufferedReader reader = CsvParsingUtil.openCsvReader(inputStream);
 
         String headerLine = reader.readLine();
         if (headerLine == null) {
@@ -194,27 +193,31 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
         int lineNumber = 1;
         int nextSortOrder = 1;
 
-        while ((line = reader.readLine()) != null) {
-            lineNumber++;
-            if (line.trim().isEmpty() || line.trim().startsWith("#")) {
-                continue;
-            }
+        try {
+            while ((line = reader.readLine()) != null) {
+                lineNumber++;
+                if (line.trim().isEmpty() || line.trim().startsWith("#")) {
+                    continue;
+                }
 
-            String[] values = parseCsvLine(line);
-            int rowLine = lineNumber;
-            int defaultSortOrder = nextSortOrder;
-            LoadedRow<List<String>> result;
-            try {
-                result = rowTransaction.run(() -> processRow(values, columns, rowLine, fileName, defaultSortOrder));
-            } catch (Exception e) {
-                result = LoadedRow.skipped(CsvLoadSummary.reason(e));
+                String[] values = parseCsvLine(line);
+                int rowLine = lineNumber;
+                int defaultSortOrder = nextSortOrder;
+                LoadedRow<List<String>> result;
+                try {
+                    result = rowTransaction.run(() -> processRow(values, columns, rowLine, fileName, defaultSortOrder));
+                } catch (Exception e) {
+                    result = LoadedRow.skipped(CsvLoadSummary.reason(e));
+                }
+                summary.record(result, getClass().getSimpleName(), rowLine);
+                recordUnresolved(fileName, rowLine);
+                if (!result.isSkipped()) {
+                    touchedTestIds.addAll(result.value());
+                    nextSortOrder++;
+                }
             }
-            summary.record(result, getClass().getSimpleName(), rowLine);
-            recordUnresolved(fileName, rowLine);
-            if (!result.isSkipped()) {
-                touchedTestIds.addAll(result.value());
-                nextSortOrder++;
-            }
+        } finally {
+            rowTransaction.close();
         }
 
         if (!dryRun) {

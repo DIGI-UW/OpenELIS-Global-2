@@ -110,7 +110,7 @@ export default function SampleItemsPage() {
         defaultMessage: "Storage location",
       }),
     },
-    { key: "actions", header: "" },
+    { key: "actions", header: "", isSortable: false },
   ];
 
   const handleManageLocation = (sample) => {

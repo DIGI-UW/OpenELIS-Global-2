@@ -15,7 +15,7 @@ import {
 /**
  * OGC-949 M15 / OGC-992 (epic OGC-762) — Link Reagent modal.
  *
- * Multi-select of reagent inventory (item_type=REAGENT) minus the reagents
+ * Multi-select of inventory items minus the reagents
  * already linked to this test. "Link Selected" creates one test_reagent_link
  * per selected reagent with default usage_type=PRIMARY (quantity left null,
  * filled in later via the per-row inline edit, OGC-993).
@@ -35,13 +35,18 @@ const LinkReagentModal = ({
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (open) {
+      setSelected([]);
+      setError(null);
+    }
+  }, [open]);
+
+  useEffect(() => {
     if (!open || !testId) {
       return;
     }
-    setSelected([]);
-    setError(null);
     const linked = new Set(linkedReagentIds.map((id) => String(id)));
-    getFromOpenElisServer("/rest/inventory/items/type/REAGENT", (res) => {
+    getFromOpenElisServer("/rest/inventory/items", (res) => {
       const items = Array.isArray(res) ? res : [];
       setAvailable(
         items
@@ -73,11 +78,17 @@ const LinkReagentModal = ({
     setError(null);
     const statuses = await Promise.all(selected.map((s) => linkOne(s.id)));
     setSaving(false);
-    if (statuses.every((s) => s >= 200 && s < 300)) {
-      setSelected([]);
+    const linked = (status) =>
+      (status >= 200 && status < 300) || status === 409;
+    const failed = selected.filter((_, i) => !linked(statuses[i]));
+    if (failed.length < selected.length) {
       onLinked();
+    }
+    if (failed.length === 0) {
+      setSelected([]);
       onClose();
     } else {
+      setSelected(failed);
       setError(
         intl.formatMessage({ id: "label.testCatalog.reagents.linkError" }),
       );

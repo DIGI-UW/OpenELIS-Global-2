@@ -22,6 +22,8 @@ import com.opencsv.CSVReaderBuilder;
 import com.opencsv.exceptions.CsvException;
 import java.io.IOException;
 import java.io.StringReader;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -840,6 +842,36 @@ public class StringUtil {
             mantissa.append('0');
         }
         return parts.group(1) + mantissa + parts.group(3);
+    }
+
+    /**
+     * A plain decimal as reported: rounded half up to the decimal places the test
+     * reports to (OGC-1544), so at no places {@code 0.9} reads {@code 1} and at one
+     * place {@code 0.95} reads {@code 1.0}. A value behind {@code <} or {@code >}
+     * is only padded or loses trailing zeros ({@code <40.00} reads {@code <40}),
+     * because rounding would move the bound. Scientific notation (see
+     * {@link #padMantissa}), a value that is not a number and a negative place
+     * count are returned unchanged.
+     */
+    public static String roundToPlaces(String value, int decimalPlaces) {
+        if (value == null || decimalPlaces < 0 || isScientificNotation(value)) {
+            return value;
+        }
+        String prefix = comparatorPrefix(value.trim());
+        BigDecimal number;
+        try {
+            number = new BigDecimal(withoutComparator(value));
+        } catch (NumberFormatException notANumber) {
+            return value;
+        }
+        if (!prefix.isEmpty()) {
+            try {
+                return prefix + number.setScale(decimalPlaces, RoundingMode.UNNECESSARY).toPlainString();
+            } catch (ArithmeticException wouldRound) {
+                return value;
+            }
+        }
+        return number.setScale(decimalPlaces, RoundingMode.HALF_UP).toPlainString();
     }
 
     /** The value without a leading {@code <} or {@code >} and surrounding space. */

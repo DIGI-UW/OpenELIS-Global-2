@@ -18,11 +18,9 @@ import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationExceptio
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.fhir.FhirConstants;
 import org.openelisglobal.fhir.search.searchparams.ObservationSearchParams;
-import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.samplehuman.valueholder.SampleHuman;
 import org.openelisglobal.search.dao.ObservationSearchDao;
-import org.openelisglobal.search.dao.PractitionerSearchDao;
 import org.openelisglobal.search.service.SampleHumanSearchDao;
 
 /**
@@ -35,20 +33,17 @@ public class ObservationBundleProvider extends BaseFhirBundleProvider<Result, Ob
     private final ObservationSearchParams searchParams;
     private final ObservationSearchDao observationSearchDao;
     private final SampleHumanSearchDao sampleHumanSearchDao;
-    private final PractitionerSearchDao practitionerSearchDao;
     private final FhirTransformService fhirTransformService;
     private final IStatusService statusService;
 
     public ObservationBundleProvider(ObservationSearchParams searchParams, ObservationSearchDao observationSearchDao,
-            SampleHumanSearchDao sampleHumanSearchDao, PractitionerSearchDao practitionerSearchDao,
-            FhirTransformService fhirTransformService, IStatusService statusService) {
+            SampleHumanSearchDao sampleHumanSearchDao, FhirTransformService fhirTransformService,
+            IStatusService statusService) {
         this.searchParams = Objects.requireNonNull(searchParams, "ObservationSearchParams must not be null");
         this.observationSearchDao = Objects.requireNonNull(observationSearchDao,
                 "ObservationSearchDao must not be null");
         this.sampleHumanSearchDao = Objects.requireNonNull(sampleHumanSearchDao,
                 "SampleHumanSearchDao must not be null");
-        this.practitionerSearchDao = Objects.requireNonNull(practitionerSearchDao,
-                "PractitionerSearchDao must not be null");
         this.fhirTransformService = Objects.requireNonNull(fhirTransformService,
                 "FhirTransformService must not be null");
         this.statusService = Objects.requireNonNull(statusService, "IStatusService must not be null");
@@ -108,33 +103,21 @@ public class ObservationBundleProvider extends BaseFhirBundleProvider<Result, Ob
 
         boolean wantsPatient = searchParams.hasInclude(FhirConstants.OBSERVATION_PATIENT_INCLUDE,
                 FhirConstants.OBSERVATION_SUBJECT_INCLUDE);
-        boolean wantsPerformer = searchParams.hasInclude(FhirConstants.OBSERVATION_PERFORMER_INCLUDE);
-        if (wantsPatient || wantsPerformer) {
+        if (wantsPatient) {
             List<String> sampleIds = analyses.values().stream().map(Analysis::getSampleItem).filter(Objects::nonNull)
                     .map(item -> item.getSample().getId()).distinct().toList();
             Set<String> patientIds = new LinkedHashSet<>();
-            Set<String> providerIds = new LinkedHashSet<>();
             for (SampleHuman sampleHuman : sampleHumanSearchDao.findBySampleIds(sampleIds)) {
                 if (sampleHuman.getPatientId() != null) {
                     patientIds.add(sampleHuman.getPatientId());
                 }
-                if (sampleHuman.getProviderId() != null) {
-                    providerIds.add(sampleHuman.getProviderId());
-                }
             }
-            if (wantsPatient) {
-                for (String patientId : patientIds) {
-                    try {
-                        resources.add(fhirTransformService.transformToFhirPatient(patientId));
-                    } catch (FhirTransformationException e) {
-                        LogEvent.logWarn(getClass().getSimpleName(), "getResources",
-                                "skipping Patient " + patientId + ": " + e.getMessage());
-                    }
-                }
-            }
-            if (wantsPerformer) {
-                for (Provider provider : practitionerSearchDao.findByIds(new ArrayList<>(providerIds))) {
-                    resources.add(fhirTransformService.transformProviderToPractitioner(provider));
+            for (String patientId : patientIds) {
+                try {
+                    resources.add(fhirTransformService.transformToFhirPatient(patientId));
+                } catch (FhirTransformationException e) {
+                    LogEvent.logWarn(getClass().getSimpleName(), "getResources",
+                            "skipping Patient " + patientId + ": " + e.getMessage());
                 }
             }
         }

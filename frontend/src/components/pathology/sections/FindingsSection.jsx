@@ -70,7 +70,9 @@ const FindingsSection = ({
         id="microscopyExam"
         disabled={readOnly}
         rows={6}
-        labelText={intl.formatMessage({ id: "pathology.label.microexam" })}
+        labelText={intl.formatMessage({
+          id: "pathology.label.microscopyExam",
+        })}
         value={caseInfo.microscopyExam ?? ""}
         onChange={(e) => updateCase({ microscopyExam: e.target.value })}
       />

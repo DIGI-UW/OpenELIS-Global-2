@@ -1,0 +1,95 @@
+# Pairing OpenELIS with the Analyzer Bridge
+
+OpenELIS and the Analyzer Bridge authenticate each other by certificate, not by
+password. They pair once, and from then on each side accepts only the other's
+certificate in both directions:
+
+- OpenELIS calls the Bridge (connections, profiles, probes, undelivered results)
+  presenting its own certificate, and trusts only the Bridge certificate it
+  pinned.
+- The Bridge delivers results to `/analyzer/fhir` presenting its own
+  certificate. OpenELIS accepts a delivery only from the paired Bridge's
+  certificate and records it as the system user. An OpenELIS password or session
+  is refused there.
+
+Neither side needs a certificate authority, and host names play no part: each
+side trusts the other's certificate by its SHA-256 fingerprint.
+
+## Pairing
+
+The Bridge accepts a pairing only with its pairing code, and only once per code.
+The code is either configured (`BRIDGE_PAIRING_CODE` on the Bridge) or generated
+when an unpaired Bridge starts, in which case the Bridge prints it in its log.
+
+OpenELIS pairs in one of two ways:
+
+- **With a configured code.** When `ANALYZER_BRIDGE_PAIRING_CODE` (property
+  `analyzer.bridge.pairing-code`) is set to the Bridge's code, OpenELIS pairs on
+  startup, and on its first call to the Bridge if it is still unpaired or its
+  pin is stale (see "Pairing again"). Giving both containers the same value
+  pairs them with no manual step. A configured code the Bridge refuses, because
+  it is wrong or already used, is not tried again, so the Bridge keeps its
+  attempts for the code entered on the page.
+- **On the Analyzers page.** A Global Admin enters the code there. The page
+  shows whether OpenELIS is paired, the Bridge address, the start of the
+  Bridge's certificate fingerprint and when it paired, and why a code was
+  refused.
+
+While pairing, OpenELIS sends the code and the fingerprint of the HTTPS
+certificate it serves, presents its own certificate, and pins the certificate
+the Bridge presented once the Bridge confirms it. Results the Bridge receives
+before pairing wait in its outbox and are delivered once it is paired.
+
+The first pairing trusts whichever certificate answers at the Bridge address:
+the code is not yet bound to either side's certificate, so something that can
+intercept the link at that moment could pair in the Bridge's place. Pair where
+nothing can sit between them, such as the Compose stack's own network. Binding
+the code to both certificates needs a change to the Bridge's pairing protocol.
+
+## Identities
+
+OpenELIS creates its own key pair the first time it pairs and keeps it in the
+database, with the private key encrypted. It does not reuse the certificate it
+serves HTTPS with, so renewing that certificate does not break the pairing.
+
+The Bridge keeps its key pair and pairing record on its state volume. When it is
+configured with a server keystore, it uses that instead.
+
+The Bridge trusts OpenELIS's HTTPS certificate either by the fingerprint
+OpenELIS sent while pairing or because its trust store validates it. In the
+Compose stacks the Bridge is given the stack's trust store, so OpenELIS stays
+trusted after its certificate is regenerated.
+
+## Pairing again
+
+A paired Bridge refuses its current code. To pair again, for example after
+reinstalling either side, configure a new code on the Bridge, restart it, and
+enter that code on the Analyzers page or set it as OpenELIS's configured code.
+OpenELIS reads the pairing from its database wherever it checks it, so the new
+pairing applies to result delivery at once, without a restart.
+
+OpenELIS checks its pin against the Bridge at the configured address, through
+the Bridge's `GET /pairing`, each time the Analyzers page loads and on the
+configured-code schedule. The pin is stale when the Bridge presents a
+certificate other than the pinned one, as after a database copied from another
+stack or a Bridge reinstalled with a new identity, or when the Bridge presents
+the pinned certificate but reports itself unpaired, as after its state volume
+was replaced. The Analyzers page then says which of the two it is and asks for
+the code. With a configured code, OpenELIS pairs again on its own, replacing the
+stored pin and logging the replacement; a code the Bridge refuses is not tried
+again. The first-pairing caveat above applies to this pairing too. An
+unreachable Bridge leaves the pin as it is.
+
+## Tomcat
+
+OpenELIS's HTTPS connector requests a client certificate without requiring one,
+and accepts any certificate in the handshake through
+`org.openelisglobal.tomcat.AnyClientCertificateTrustManager`, which the OpenELIS
+images install in Tomcat's `lib` directory. The handshake still proves the
+client holds the certificate's private key; OpenELIS then admits only the paired
+Bridge's certificate. Browsers and the proxy present no certificate and are
+unaffected.
+
+A server.xml that does not request client certificates, such as one installed by
+the Linux installer template, leaves OpenELIS unable to receive results from a
+paired Bridge.

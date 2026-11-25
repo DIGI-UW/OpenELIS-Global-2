@@ -281,6 +281,40 @@ public class QCResultServiceImpl extends BaseObjectServiceImpl<QCResult, String>
         return result;
     }
 
+    @Override
+    @Transactional
+    public QCResult createAnalyzerQualitativeQCResult(String analyzerId, String testId, String controlLotId,
+            QCQualitativeOutcome outcome, LocalDateTime timestamp) throws IllegalArgumentException {
+        if (outcome == null || !outcome.isValidFor(QCSource.ASTM)) {
+            throw new IllegalArgumentException("Outcome " + outcome + " is not valid for an analyzer control");
+        }
+        requireUsableLot(controlLotId);
+
+        QCResult result = new QCResult();
+        result.setId(UUID.randomUUID().toString());
+        result.setSource(QCSource.ASTM);
+        result.setQualitativeOutcome(outcome);
+        result.setControlLotId(controlLotId);
+        result.setTestId(testId);
+        result.setInstrumentId(analyzerId);
+        result.setUnitOfMeasure(resolveUnit(null, testId));
+        result.setRunDateTime(Timestamp.valueOf(timestamp));
+        // OpenELIS has already judged the answer against the target, as a technician
+        // judges a bench run, so the verdict is recorded rather than left PENDING.
+        result.setResultStatus(outcome.isFailing() ? "REJECTED" : "ACCEPTED");
+        result.setNonConformityFlag(outcome.isFailing());
+        result.setSystemUserId(SYSTEM_AUTOMATION_USER_ID);
+        result.setSysUserId(String.valueOf(SYSTEM_AUTOMATION_USER_ID));
+
+        String id = resultDAO.insert(result);
+        LogEvent.logInfo(this.getClass().getName(), "createAnalyzerQualitativeQCResult",
+                "Recorded analyzer QC result " + id + " outcome=" + outcome);
+        if (outcome.isFailing()) {
+            eventPublisher.publishEvent(new BenchControlFailedEvent(this, result));
+        }
+        return result;
+    }
+
     /**
      * Fetch a control lot and refuse one that cannot take a new run. ACTIVE and
      * ESTABLISHMENT both accept results — an establishment lot simply has no

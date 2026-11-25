@@ -28,7 +28,7 @@ public class AnalyzerDeliveryIssueServiceImpl implements AnalyzerDeliveryIssueSe
     @Override
     @Transactional(readOnly = true)
     public List<AnalyzerDeliveryIssue> getOpenIssues() {
-        Map<String, Analyzer> byConnection = analyzerService.getAllWithBindings().stream()
+        Map<String, Analyzer> byConnection = analyzerService.getAllWithMapping().stream()
                 .filter(analyzer -> analyzer.getBridgeConnectionId() != null).collect(
                         Collectors.toMap(Analyzer::getBridgeConnectionId, Function.identity(), (first, next) -> first));
         List<AnalyzerDeliveryIssue> issues = new ArrayList<>();
@@ -58,7 +58,7 @@ public class AnalyzerDeliveryIssueServiceImpl implements AnalyzerDeliveryIssueSe
         Analyzer analyzer = connectionId == null ? null : byConnection.get(connectionId);
         String state = text(row, "state");
         return new AnalyzerDeliveryIssue(text(row, "id"), state, analyzer == null ? null : analyzer.getId(),
-                analyzer == null ? null : analyzer.getName(), connectionId, text(row, "sourceId"),
+                analyzer == null ? null : analyzer.getName(), connectionId, text(row, "sourceId"), text(row, "sender"),
                 text(row, "protocol"), text(row, "accession"), row.path("attempts").asInt(0), text(row, "receivedAt"),
                 text(row, "failureReason"),
                 row.path("lastHttpStatus").isNumber() ? row.path("lastHttpStatus").asInt() : null,

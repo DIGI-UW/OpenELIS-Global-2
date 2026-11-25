@@ -128,6 +128,14 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
 
     @Override
     @Transactional
+    public void saveRangesForTests(Map<String, List<ResultLimit>> desiredByTestId, String sysUserId) {
+        for (Map.Entry<String, List<ResultLimit>> entry : desiredByTestId.entrySet()) {
+            saveRangesForTest(entry.getKey(), entry.getValue(), sysUserId);
+        }
+    }
+
+    @Override
+    @Transactional
     public void saveRangesForTest(String testId, List<ResultLimit> desired, String sysUserId) {
         // The Ranges editor only manages NUMERIC reference ranges. Dictionary /
         // select-list limits (those carrying normal_dictionary_id, a non-numeric

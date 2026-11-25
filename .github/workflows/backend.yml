@@ -37,11 +37,24 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "20"
+      # The formatter comes from download.eclipse.org; when that site does not
+      # answer, the same pinned release is fetched from an Eclipse mirror.
       - name: Check formatting
-        run: mvn spotless:check
+        run: |
+          if curl -fsSL --max-time 30 https://download.eclipse.org/eclipse/updates/4.26/p2.index | grep -q '^version='; then
+            mvn spotless:check
+          else
+            echo "::warning::download.eclipse.org is unavailable; using the eclipse-p2-mirror profile"
+            mvn -Peclipse-p2-mirror spotless:check
+          fi
 
   deployment-contract:
     uses: ./.github/workflows/deployment-checks.yml
+    permissions:
+      contents: read
+
+  analyzer-components:
+    uses: ./.github/workflows/analyzer-components.yml
     permissions:
       contents: read
 
@@ -216,7 +229,14 @@ jobs:
   backend-checkpoint:
     name: 01 Checkpoint - Backend
     if: always()
-    needs: [changes, formatting, deployment-contract, backend-verify]
+    needs:
+      [
+        changes,
+        formatting,
+        deployment-contract,
+        analyzer-components,
+        backend-verify,
+      ]
     runs-on: ubuntu-latest
     steps:
       - name: Check backend result
@@ -224,6 +244,7 @@ jobs:
           CHANGES_RESULT: ${{ needs.changes.result }}
           FORMATTING_RESULT: ${{ needs.formatting.result }}
           CONTRACT_RESULT: ${{ needs.deployment-contract.result }}
+          ANALYZER_RESULT: ${{ needs.analyzer-components.result }}
           BACKEND_REQUIRED: ${{ needs.changes.outputs.backend }}
           BACKEND_RESULT: ${{ needs.backend-verify.result }}
         run: |
@@ -231,8 +252,8 @@ jobs:
             echo "Change detection failed: $CHANGES_RESULT"
             exit 1
           fi
-          if [[ "$FORMATTING_RESULT" != "success" || "$CONTRACT_RESULT" != "success" ]]; then
-            echo "Required validation failed: formatting=$FORMATTING_RESULT, deployment-contract=$CONTRACT_RESULT"
+          if [[ "$FORMATTING_RESULT" != "success" || "$CONTRACT_RESULT" != "success" || "$ANALYZER_RESULT" != "success" ]]; then
+            echo "Required validation failed: formatting=$FORMATTING_RESULT, deployment-contract=$CONTRACT_RESULT, analyzer-components=$ANALYZER_RESULT"
             exit 1
           fi
           if [[ "$BACKEND_RESULT" == "success" ]] || [[ "$BACKEND_REQUIRED" == "false" && "$BACKEND_RESULT" == "skipped" ]]; then

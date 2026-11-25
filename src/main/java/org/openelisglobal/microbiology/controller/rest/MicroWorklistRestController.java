@@ -1,10 +1,13 @@
 package org.openelisglobal.microbiology.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.microbiology.form.MicroWorklistPageForm;
 import org.openelisglobal.microbiology.form.MicroWorklistQueryForm;
 import org.openelisglobal.microbiology.service.MicroWorklistService;
+import org.openelisglobal.microbiology.service.MicrobiologyCaseAccessService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,9 +20,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class MicroWorklistRestController extends BaseRestController {
 
     private final MicroWorklistService worklistService;
+    private final MicrobiologyCaseAccessService accessService;
+    private final UserModuleService userModuleService;
 
-    public MicroWorklistRestController(MicroWorklistService worklistService) {
+    public MicroWorklistRestController(MicroWorklistService worklistService,
+            MicrobiologyCaseAccessService accessService, UserModuleService userModuleService) {
         this.worklistService = worklistService;
+        this.accessService = accessService;
+        this.userModuleService = userModuleService;
     }
 
     @GetMapping
@@ -31,8 +39,13 @@ public class MicroWorklistRestController extends BaseRestController {
             @RequestParam(required = false) List<String> significance, @RequestParam(required = false) String stage,
             @RequestParam(required = false) String urgency, @RequestParam(required = false) String due,
             @RequestParam(required = false) String q, @RequestParam(required = false) String sort,
-            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
+            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize,
+            HttpServletRequest request) {
         MicroWorklistQueryForm query = new MicroWorklistQueryForm();
+        if (!userModuleService.isUserAdmin(request)) {
+            String userId = getSysUserId(request);
+            query.sampleItemVisible = sampleItemId -> accessService.canAccessSampleItem(sampleItemId, userId, false);
+        }
         query.grain = grain;
         query.status = status;
         query.from = from;

@@ -8,6 +8,8 @@ import static org.junit.Assert.assertTrue;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -17,6 +19,8 @@ import org.openelisglobal.config.ControllerSetup;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.FieldError;
 import org.springframework.web.context.request.ServletWebRequest;
 
 /**
@@ -128,5 +132,29 @@ public class SamplePatientEntryRestControllerErrorPathTest {
 
         assertNull("Sanity: handler must not accidentally include a Location header",
                 runtime.getHeaders().getLocation());
+    }
+
+    /**
+     * OGC-1483: an EQA or declared no-patient order refused for its samples reports
+     * that reason, not the empty patient form it never had.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    public void aNoPatientOrder_reportsOnlyTheErrorsThatRefusedIt() {
+        BeanPropertyBindingResult result = new BeanPropertyBindingResult(new SamplePatientEntryForm(),
+                "samplePatientEntryForm");
+        result.addError(new FieldError("samplePatientEntryForm", "patientProperties.nationalId", "Cannot be blank"));
+        result.addError(new FieldError("samplePatientEntryForm", "sampleOrderItems", "errors.samples.with.no.tests"));
+
+        Map<String, Object> withoutPatient = SamplePatientEntryRestController.buildErrorBody(result,
+                "Validation failed", "clinical", true);
+        Map<String, Object> withPatient = SamplePatientEntryRestController.buildErrorBody(result, "Validation failed",
+                "clinical", false);
+
+        List<Map<String, String>> reported = (List<Map<String, String>>) withoutPatient.get("fieldErrors");
+        assertTrue(reported.stream().noneMatch(e -> e.get("field").startsWith("patientProperties")));
+        assertTrue(reported.stream().anyMatch(e -> "sampleOrderItems".equals(e.get("field"))));
+        assertTrue(withoutPatient.get("error").toString().startsWith("sampleOrderItems"));
+        assertTrue(((List<?>) withPatient.get("fieldErrors")).size() == 2);
     }
 }

@@ -29,7 +29,12 @@ import SamplesCollectionSection from "./sections/SamplesCollectionSection";
 import PrepareLabelsSection from "./sections/PrepareLabelsSection";
 import ConsentAccordionSection from "./sections/ConsentAccordionSection";
 import "../order-workflow.scss";
-import { prepareSamplesToContinue } from "./prepareSamplesChecklist";
+import {
+  prepareSamplesToContinue,
+  consentApplies,
+} from "./prepareSamplesChecklist";
+import { samplesFromPendingRequests } from "./pendingRequestSamples";
+import { orderSavedMessage } from "../orderSavedMessage";
 
 /**
  * OrderCollect - Step 2: Collect Sample
@@ -148,28 +153,10 @@ const OrderCollect = () => {
         if (componentMounted.current && requests && requests.length > 0) {
           // Convert pending requests to samples array for the UI
           const samplesFromRequests = convertRequestsToSamples(requests);
-          // Merge with any existing sample data.
-          // collectionDate/Time are intentionally NOT preserved from existing:
-          // the backend stores the order entry date there, not an actual
-          // collection date. SampleCollectionCard will auto-fill them to
-          // today when they are empty. Only Step-2-specific fields (collector,
-          // conditions, receivedDate/Time) are preserved.
-          const mergedSamples = samplesFromRequests.map((reqSample, idx) => {
-            const existing = samples[idx];
-            if (existing && existing.sampleTypeId === reqSample.sampleTypeId) {
-              return {
-                ...reqSample,
-                collectorId: existing.collectorId || reqSample.collectorId,
-                collectionConditions:
-                  existing.collectionConditions ||
-                  reqSample.collectionConditions,
-                receivedDate: existing.receivedDate || reqSample.receivedDate,
-                receivedTime: existing.receivedTime || reqSample.receivedTime,
-              };
-            }
-            return reqSample;
-          });
-          seedSamples(mergedSamples);
+          const atLoad = samples;
+          seedSamples((current) =>
+            samplesFromPendingRequests(samplesFromRequests, atLoad, current),
+          );
         }
       } catch {
         // Failed to load pending requests
@@ -185,10 +172,10 @@ const OrderCollect = () => {
   // prepareSamplesToContinue). Informed consent stays advisory by default (FRS
   // FR-5-001/FR-5-002); a site whose regulator requires it turns
   // consentRequiredForCollection on. Environmental and vector samples have no
-  // human subject, so consent never applies to them.
+  // human subject, so consent never applies to them, and neither does an EQA
+  // proficiency sample, which has no person to consent (OGC-1483).
   // Published under the Property enum's name, the way REQUESTER_REQUIRED is.
-  const consentRequired =
-    configurationProperties.CONSENT_REQUIRED_FOR_COLLECTION === "true";
+  const consentRequired = consentApplies(configurationProperties, orderData);
   const consentSatisfied = !consentRequired || consentData.consentGiven;
   const canSave = samples?.length > 0 && samples.some((s) => s.sampleTypeId);
   const toContinue = prepareSamplesToContinue({
@@ -214,7 +201,10 @@ const OrderCollect = () => {
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "save.order.success.msg" }),
+        message: orderSavedMessage(
+          intl,
+          labNumber || orderData?.sampleOrderItems?.labNo,
+        ),
       });
       setNotificationVisible(true);
       return true;

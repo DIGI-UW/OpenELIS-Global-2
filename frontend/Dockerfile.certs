@@ -3,8 +3,6 @@
 #
 FROM ubuntu:focal AS build
 
-ENV KEYSTORE_PW="kspass"
-ENV TRUSTSTORE_PW="tspass"
 
 ##
 # Prerequesites
@@ -24,20 +22,6 @@ RUN sed -i 's|http://archive.ubuntu.com|http://azure.archive.ubuntu.com|g; s|htt
     && apt-get clean
 
 ##
-# Certificates
-#
-
-# Self-signed Certs
-RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/apache-selfsigned.key -out /etc/ssl/certs/apache-selfsigned.crt \
-    -subj "/C=US/ST=WA/L=Seattle/O=DIGI-UW/OU=DIGI/CN=localhost" \
-    -addext "subjectAltName=DNS:*.openelis.org"
-
-RUN mkdir /etc/openelis-global/
-# Keystore
-RUN openssl pkcs12 -inkey /etc/ssl/private/apache-selfsigned.key -in /etc/ssl/certs/apache-selfsigned.crt -export -out /etc/openelis-global/keystore --passin pass:${KEYSTORE_PW} --passout pass:${KEYSTORE_PW}
-# # Client-facing Keystore
-RUN cp /etc/openelis-global/keystore /etc/openelis-global/client_facing_keystore
-# # Truststore
-RUN keytool -import -alias oeCert -file /etc/ssl/certs/apache-selfsigned.crt -storetype pkcs12 -keystore /etc/openelis-global/truststore -storepass ${TRUSTSTORE_PW} -noprompt
-
-RUN chmod -R a+rwx /etc/openelis-global/
+# The certs service runs scripts/certs/ensure-install-keys.sh with this image's
+# openssl and keytool; no key is built into the image.
+RUN mkdir -p /etc/openelis-global /etc/ssl/private /etc/ssl/certs

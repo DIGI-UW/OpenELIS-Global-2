@@ -13,13 +13,14 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
-import org.openelisglobal.alert.valueholder.AlertNotificationPayload;
 import org.openelisglobal.analyte.dao.AnalyteDAO;
 import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.delivery.service.DeliveryOutboxService;
+import org.openelisglobal.delivery.service.DeliveryRequest;
 import org.openelisglobal.eqa.dao.EQAParticipantFollowupDAO;
 import org.openelisglobal.eqa.dao.EQAParticipantResultDAO;
 import org.openelisglobal.eqa.valueholder.EQACompetencyEventType;
@@ -31,8 +32,10 @@ import org.openelisglobal.eqa.valueholder.EQAParticipantResult;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQAProgramEnrollment;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
-import org.openelisglobal.notification.service.sender.EmailNotificationSender;
-import org.openelisglobal.notification.valueholder.EmailNotification;
+import org.openelisglobal.notification.valueholder.NotificationChannel;
+import org.openelisglobal.notification.valueholder.NotificationLog;
+import org.openelisglobal.notification.valueholder.NotificationLog.Product;
+import org.openelisglobal.notification.valueholder.NotificationRecipientType;
 import org.openelisglobal.organization.service.OrganizationContactService;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
@@ -83,7 +86,7 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
     private OrganizationContactService organizationContactService;
 
     @Autowired
-    private EmailNotificationSender emailSender;
+    private DeliveryOutboxService deliveryOutboxService;
 
     @Autowired
     private EQAParticipantResultDAO participantResultDAO;
@@ -391,15 +394,16 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
 
         boolean emailed = false;
         if (!GenericValidator.isBlankOrNull(recipient)) {
-            EmailNotification email = new EmailNotification();
-            email.setRecipientEmailAddress(recipient);
-            email.setPayload(new AlertNotificationPayload(subject, message));
             try {
-                emailSender.send(email);
-                emailed = true;
+                NotificationLog queued = deliveryOutboxService.enqueue(new DeliveryRequest().setProduct(Product.TRIGGER)
+                        .setEventCode("EQA_FOLLOWUP").setRecipientType(NotificationRecipientType.FACILITY)
+                        .setRecipientDisplayName(recipient).setRecipientEmail(recipient).setSubject(subject)
+                        .setMessage(message).setSentByUserId(sysUserId).addChannel(NotificationChannel.EMAIL));
+                emailed = queued.getOverallStatus() != NotificationLog.OverallStatus.FAILED
+                        && queued.getOverallStatus() != NotificationLog.OverallStatus.SKIPPED;
             } catch (RuntimeException e) {
-                // A mail transport that is not configured must not roll back the
-                // notification itself: the reviewer falls back to the CSV instead.
+                // A queue that cannot be written must not roll back the notification
+                // itself: the reviewer falls back to the CSV instead.
                 LogEvent.logError(e);
             }
         }

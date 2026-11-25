@@ -16,6 +16,8 @@ import org.hibernate.stat.Statistics;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.inventory.dao.InventoryUsageDAO;
+import org.openelisglobal.inventory.dao.InventoryUsageDAO.DailyUsage;
 import org.openelisglobal.inventory.projection.InventoryProjection.BoardStatus;
 import org.openelisglobal.inventory.projection.InventoryProjection.LeadTimeTier;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +43,9 @@ public class InventoryProjectionServiceIntegrationTest extends BaseWebContextSen
 
     @Autowired
     private DataSource dataSource;
+
+    @Autowired
+    private InventoryUsageDAO inventoryUsageDAO;
 
     @Autowired
     private EntityManagerFactory entityManagerFactory;
@@ -138,9 +143,10 @@ public class InventoryProjectionServiceIntegrationTest extends BaseWebContextSen
 
     @Test
     public void theBoardReadCostDoesNotGrowWithLotsOrRetiredItems() {
-        jdbc.update("INSERT INTO clinlims.inventory_item (id, fhir_uuid, code, name, item_type, units, is_active,"
-                + " last_updated) VALUES (?, gen_random_uuid(), 'PROJ_RETIRED', 'Retired item', 'REAGENT', 'mL',"
-                + " 'N', NOW())", RETIRED_ITEM_ID);
+        jdbc.update(
+                "INSERT INTO clinlims.inventory_item (id, fhir_uuid, code, name, units, is_active, last_updated)"
+                        + " VALUES (?, gen_random_uuid(), 'PROJ_RETIRED', 'Retired item', 'mL', 'N', NOW())",
+                RETIRED_ITEM_ID);
         jdbc.update("INSERT INTO clinlims.inventory_lot (id, fhir_uuid, inventory_item_id, lot_number,"
                 + " expiration_date, receipt_date, initial_quantity, current_quantity, qc_status, status, version,"
                 + " last_updated) VALUES (?, gen_random_uuid(), ?, 'PROJ-LOT-RETIRED', NOW() + INTERVAL '1 year',"
@@ -154,7 +160,8 @@ public class InventoryProjectionServiceIntegrationTest extends BaseWebContextSen
         try {
             Map<Long, InventoryProjection> rows = board();
 
-            assertEquals("items, stock, and usage: one statement each", 3, statistics.getPrepareStatementCount());
+            assertEquals("items, stock, usage, order cycles, and one batch of tags", 5,
+                    statistics.getPrepareStatementCount());
             assertEquals(USABLE_QUANTITY, rows.get(REAGENT_ITEM_ID).getOnHand(), 0.0001);
             assertNull("a retired item gets no row", rows.get(RETIRED_ITEM_ID));
         } finally {
@@ -208,6 +215,25 @@ public class InventoryProjectionServiceIntegrationTest extends BaseWebContextSen
                 + " usage_date, performed_by_user, last_updated)"
                 + " VALUES (9500, ?, 1002, 1, NOW() - (? * INTERVAL '1 day'), 1, NOW())", RDT_ITEM_ID, daysAgo);
         return board().get(RDT_ITEM_ID).getBasisDate();
+    }
+
+    @Test
+    public void twoUsesOnOneDayBecomeOneDailyTotal() {
+        for (long id = 9601; id <= 9602; id++) {
+            jdbc.update(
+                    "INSERT INTO clinlims.inventory_usage (id, inventory_item_id, lot_id, quantity_used,"
+                            + " usage_date, performed_by_user, last_updated) VALUES (?, ?, 1002, ?, NOW(), 1, NOW())",
+                    id, RDT_ITEM_ID, id == 9601 ? 1.5 : 2.5);
+        }
+
+        List<DailyUsage> totals = inventoryUsageDAO
+                .getDailyTotals(java.sql.Timestamp.valueOf(LocalDate.now().atStartOfDay()),
+                        java.sql.Timestamp.valueOf(LocalDate.now().plusDays(1).atStartOfDay()))
+                .stream().filter(total -> total.itemId().equals(RDT_ITEM_ID)).toList();
+
+        assertEquals(1, totals.size());
+        assertEquals(LocalDate.now(), totals.get(0).day());
+        assertEquals(4.0, totals.get(0).quantity(), 0.0001);
     }
 
     @Test

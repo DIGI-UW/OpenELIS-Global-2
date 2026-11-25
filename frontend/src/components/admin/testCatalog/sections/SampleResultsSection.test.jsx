@@ -11,7 +11,7 @@
 // ========== MOCKS (before imports) ==========
 vi.mock("../../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
-  putToOpenElisServer: vi.fn(),
+  putToOpenElisServerFullResponse: vi.fn(),
   postToOpenElisServerJsonResponse: vi.fn(),
 }));
 
@@ -34,7 +34,7 @@ import SampleResultsSection from "./SampleResultsSection";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
-  putToOpenElisServer,
+  putToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
 import messages from "../../../../languages/en.json";
 
@@ -102,7 +102,8 @@ const renderSection = () =>
 
 const saveButton = () =>
   screen.getByRole("button", { name: messages["label.button.save"] });
-const savedPayload = () => JSON.parse(putToOpenElisServer.mock.calls[0][1]);
+const savedPayload = () =>
+  JSON.parse(putToOpenElisServerFullResponse.mock.calls[0][1]);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -117,7 +118,9 @@ beforeEach(() => {
       cb(clone(SAMPLE_RESULTS));
     }
   });
-  putToOpenElisServer.mockImplementation((url, body, cb) => cb(200));
+  putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+    cb({ ok: true, status: 200, json: () => Promise.resolve({}) }),
+  );
   postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
     cb({ components: [] }),
   );
@@ -182,7 +185,7 @@ describe("SampleResultsSection", () => {
     );
     fireEvent.click(saveButton());
 
-    expect(putToOpenElisServer).toHaveBeenCalledTimes(1);
+    expect(putToOpenElisServerFullResponse).toHaveBeenCalledTimes(1);
     const [first, second] = savedPayload().components;
     expect(first).toMatchObject({ lod: 0.1, loq: 0.3 });
     expect(second).toMatchObject({ lod: null, loq: null });
@@ -216,7 +219,7 @@ describe("SampleResultsSection", () => {
         .length,
     ).toBeGreaterThan(0);
     fireEvent.click(saveButton());
-    expect(putToOpenElisServer).not.toHaveBeenCalled();
+    expect(putToOpenElisServerFullResponse).not.toHaveBeenCalled();
   });
 
   it("marks an option qualifiable and sends it", async () => {
@@ -268,7 +271,7 @@ describe("SampleResultsSection", () => {
       "Systolic lists Male more than once",
     );
     fireEvent.click(saveButton());
-    expect(putToOpenElisServer).not.toHaveBeenCalled();
+    expect(putToOpenElisServerFullResponse).not.toHaveBeenCalled();
   });
 
   it("accepts two options that share a label but store different values", async () => {
@@ -285,7 +288,7 @@ describe("SampleResultsSection", () => {
 
     expect(screen.queryByTestId("duplicate-options-0")).not.toBeInTheDocument();
     fireEvent.click(saveButton());
-    expect(putToOpenElisServer).toHaveBeenCalledTimes(1);
+    expect(putToOpenElisServerFullResponse).toHaveBeenCalledTimes(1);
   });
 
   it("clears a stored default that is not one of the options", async () => {
@@ -326,8 +329,8 @@ describe("SampleResultsSection", () => {
 
     fireEvent.click(saveButton());
 
-    expect(putToOpenElisServer).toHaveBeenCalledTimes(1);
-    expect(putToOpenElisServer.mock.calls[0][0]).toBe(
+    expect(putToOpenElisServerFullResponse).toHaveBeenCalledTimes(1);
+    expect(putToOpenElisServerFullResponse.mock.calls[0][0]).toBe(
       "/rest/test-catalog/tests/7/sample-results",
     );
     const payload = savedPayload();
@@ -907,7 +910,7 @@ describe("SampleResultsSection", () => {
         expect.anything(),
       );
       expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
-      expect(putToOpenElisServer).not.toHaveBeenCalled();
+      expect(putToOpenElisServerFullResponse).not.toHaveBeenCalled();
     });
 
     it("cancelling the confirmation keeps this test's configuration", async () => {
@@ -945,12 +948,12 @@ describe("SampleResultsSection", () => {
       expect(screen.queryByDisplayValue("Systolic")).toBeNull();
       expect(screen.getAllByText("HIV1").length).toBeGreaterThan(0);
       expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
-      expect(putToOpenElisServer).not.toHaveBeenCalled();
+      expect(putToOpenElisServerFullResponse).not.toHaveBeenCalled();
 
       fireEvent.click(saveButton());
 
-      expect(putToOpenElisServer).toHaveBeenCalledTimes(1);
-      expect(putToOpenElisServer.mock.calls[0][0]).toBe(
+      expect(putToOpenElisServerFullResponse).toHaveBeenCalledTimes(1);
+      expect(putToOpenElisServerFullResponse.mock.calls[0][0]).toBe(
         "/rest/test-catalog/tests/7/sample-results",
       );
       const payload = savedPayload();
@@ -1030,7 +1033,7 @@ describe("SampleResultsSection", () => {
 
       expect(await screen.findByDisplayValue("Systolic")).toBeInTheDocument();
       expect(screen.queryByTestId("copy-staged-warning")).toBeNull();
-      expect(putToOpenElisServer).not.toHaveBeenCalled();
+      expect(putToOpenElisServerFullResponse).not.toHaveBeenCalled();
     });
 
     it("a source with no result configuration stages nothing and says so", async () => {
@@ -1168,4 +1171,211 @@ describe("SampleResultsSection copy picker filter (OGC-1238)", () => {
     ).map((o) => o.textContent);
     expect(options).toEqual(["QA Sibling (Serum)"]);
   });
+});
+
+describe("SampleResultsSection typed options and refusals (OGC-1458)", () => {
+  const renderWithNotifications = async (addNotification) => {
+    const { NotificationContext } = await import("../../../layout/Layout");
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <NotificationContext.Provider
+          value={{ addNotification, setNotificationVisible: () => {} }}
+        >
+          <SampleResultsSection testId="7" />
+        </NotificationContext.Provider>
+      </IntlProvider>,
+    );
+  };
+
+  it("marks a typed option as free text, so a typed number is never a dictionary id", async () => {
+    renderSection();
+    await screen.findByDisplayValue("SYS");
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: messages["label.testCatalog.sampleResults.addCustomOption"],
+      }),
+    );
+    fireEvent.click(saveButton());
+
+    const options = savedPayload().components[0].options;
+    expect(options[options.length - 1].freeText).toBe(true);
+    expect(options[0].freeText).toBeUndefined();
+  });
+
+  /** OGC-1463: a save refused as stale says so; Refresh loads the stored copy. */
+  it("sends the loaded version and shows a stale save with Refresh", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.endsWith("/sample-results")) {
+        cb({ ...clone(SAMPLE_RESULTS), version: "v1" });
+      } else if (url.startsWith("/rest/test-catalog/dictionary")) {
+        cb([{ id: "500", name: "Positive" }]);
+      } else {
+        cb([]);
+      }
+    });
+    putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb({
+        ok: false,
+        status: 409,
+        json: () => Promise.resolve({ conflict: "stale", version: "v2" }),
+      }),
+    );
+    renderSection();
+    await screen.findByDisplayValue("SYS");
+    const loads = () =>
+      getFromOpenElisServer.mock.calls.filter(([url]) =>
+        url.endsWith("/sample-results"),
+      ).length;
+
+    fireEvent.click(saveButton());
+
+    expect(
+      await screen.findByTestId("sample-results-stale-save"),
+    ).toHaveTextContent(messages["error.staleSave.section"]);
+    expect(savedPayload().version).toBe("v1");
+    expect(saveButton()).toBeDisabled();
+    const before = loads();
+    fireEvent.click(
+      screen.getByRole("button", { name: messages["label.results.refresh"] }),
+    );
+    expect(loads()).toBe(before + 1);
+    expect(screen.queryByTestId("sample-results-stale-save")).toBeNull();
+  });
+
+  it("explains that an active test keeps at least one component", async () => {
+    const addNotification = vi.fn();
+    putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb({
+        ok: false,
+        status: 422,
+        json: () =>
+          Promise.resolve({ refusal: "components.activeNeedsComponent" }),
+      }),
+    );
+    await renderWithNotifications(addNotification);
+    await screen.findByDisplayValue("SYS");
+
+    fireEvent.click(saveButton());
+
+    await vi.waitFor(() =>
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message:
+            messages["error.testCatalog.sampleResults.activeNeedsComponent"],
+        }),
+      ),
+    );
+  });
+
+  it("shows the stored components again after that refusal", async () => {
+    putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb({
+        ok: false,
+        status: 422,
+        json: () =>
+          Promise.resolve({ refusal: "components.activeNeedsComponent" }),
+      }),
+    );
+    await renderWithNotifications(vi.fn());
+    await screen.findByDisplayValue("SYS");
+    const loads = () =>
+      getFromOpenElisServer.mock.calls.filter(([url]) =>
+        url.endsWith("/sample-results"),
+      ).length;
+    const before = loads();
+
+    fireEvent.click(saveButton());
+
+    await vi.waitFor(() => expect(loads()).toBe(before + 1));
+  });
+
+  it("stops its loads when it unmounts, so no update lands on a gone screen", async () => {
+    const { unmount } = render(
+      <IntlProvider locale="en" messages={messages}>
+        <SampleResultsSection testId="7" />
+      </IntlProvider>,
+    );
+    await screen.findByDisplayValue("SYS");
+    const signals = getFromOpenElisServer.mock.calls
+      .map((call) => call[2])
+      .filter(Boolean);
+    expect(signals.length).toBeGreaterThanOrEqual(3);
+
+    unmount();
+
+    expect(signals.every((signal) => signal.aborted)).toBe(true);
+  });
+
+  it("names the component whose result type the server refused", async () => {
+    const addNotification = vi.fn();
+    putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb({
+        ok: false,
+        status: 422,
+        json: () =>
+          Promise.resolve({
+            refusal: "resultType.unknown",
+            refusedComponent: "Systolic",
+          }),
+      }),
+    );
+    await renderWithNotifications(addNotification);
+    await screen.findByDisplayValue("SYS");
+
+    fireEvent.click(saveButton());
+
+    await vi.waitFor(() =>
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: expect.stringContaining("Systolic"),
+        }),
+      ),
+    );
+  });
+
+  it("stops each text field at its column width (OGC-1467)", async () => {
+    await renderWithNotifications(vi.fn());
+    await screen.findByDisplayValue("SYS");
+
+    expect(document.getElementById("comp-label-0")).toHaveAttribute(
+      "maxLength",
+      "255",
+    );
+  });
+
+  it.each([
+    ["value.tooLong", "longer than"],
+    ["unit.unknown", "unit of measure"],
+  ])(
+    "explains the %s refusal on the named component (OGC-1467)",
+    async (refusal, wording) => {
+      const addNotification = vi.fn();
+      putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+        cb({
+          ok: false,
+          status: 422,
+          json: () =>
+            Promise.resolve({ refusal, refusedComponent: "Systolic" }),
+        }),
+      );
+      await renderWithNotifications(addNotification);
+      await screen.findByDisplayValue("SYS");
+
+      fireEvent.click(saveButton());
+
+      await vi.waitFor(() =>
+        expect(addNotification).toHaveBeenCalledWith(
+          expect.objectContaining({
+            kind: "error",
+            message: expect.stringMatching(
+              new RegExp(`Systolic[\\s\\S]*${wording}`, "i"),
+            ),
+          }),
+        ),
+      );
+    },
+  );
 });

@@ -76,13 +76,13 @@ export function exceedsConfiguredPrecision(
 
 /**
  * Whether the row is holding a newly typed value finer than the test reports
- * to.
+ * to, which the entry field warns about. The value is saved as typed and
+ * reported rounded to the test's places (OGC-1544), so it is not refused.
  *
- * <p>A value already stored at that precision is left alone: it is a record
- * that exists, and refusing to save the row would strand it — the reader could
- * not so much as add a note to say so. What is refused is entering a new one.
+ * <p>A value already stored at that precision raises no warning: it is a
+ * record that exists.
  */
-export function blocksSaveOnPrecision(row: {
+export function warnsOnPrecision(row: {
   resultType?: string;
   resultValue?: string;
   rawResultValue?: string;
@@ -209,7 +209,7 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
       );
 
     case "N": {
-      const tooPrecise = blocksSaveOnPrecision(row);
+      const tooPrecise = warnsOnPrecision(row);
       return (
         <TextInput
           id={`unifiedResultValue-${rowKey}`}
@@ -217,9 +217,9 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
           hideLabel
           type="text"
           inputMode="text"
-          invalid={tooPrecise}
-          invalidText={intl.formatMessage(
-            { id: "error.results.precision" },
+          warn={tooPrecise}
+          warnText={intl.formatMessage(
+            { id: "warning.results.precision" },
             { 0: row.significantDigits ?? 0 },
           )}
           value={row.resultValue || ""}

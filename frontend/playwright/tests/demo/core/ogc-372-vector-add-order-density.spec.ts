@@ -118,9 +118,7 @@ test.describe("OGC-372: Vector add-order → collection density", () => {
       await page.getByRole("button", { name: "Save", exact: true }).click();
       // Carbon renders the toast text in more than one node; assert at least one.
       await expect(
-        page
-          .getByText("Sample Order Entry has been saved successfully")
-          .first(),
+        page.getByText(/Order \S+ has been saved\./).first(),
       ).toBeVisible({ timeout: 20_000 });
       await demo.evidence("372-3-saved");
     });

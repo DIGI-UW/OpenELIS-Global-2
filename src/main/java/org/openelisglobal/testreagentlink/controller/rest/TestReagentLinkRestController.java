@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Set;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.inventory.service.InventoryItemService;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
@@ -32,9 +31,9 @@ import org.springframework.web.server.ResponseStatusException;
  * linkage that the v2 Reagents tab (OGC-762) consumes.
  *
  * <p>
- * A "reagent" is an {@code inventory_item} with {@code item_type = 'REAGENT'};
- * there is no standalone reagent table (see {@link TestReagentLink}). Current
- * stock is read from inventory ({@link InventoryItemService}).
+ * A "reagent" is any {@code inventory_item}; there is no standalone reagent
+ * table (see {@link TestReagentLink}). Current stock is read from inventory
+ * ({@link InventoryItemService}).
  *
  * <p>
  * Base path {@code /rest/test-catalog/{testId}/reagents} stays within the
@@ -101,6 +100,7 @@ public class TestReagentLinkRestController extends BaseRestController {
         requireTest(testId);
         requireReagent(body.reagentId);
         validateUsageType(body.usageType);
+        validateQuantity(body.quantityPerTest, body.quantityUnit);
         if (reagentLinkService.getByTestIdAndReagentId(testId, body.reagentId) != null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Reagent is already linked to this test");
         }
@@ -125,6 +125,7 @@ public class TestReagentLinkRestController extends BaseRestController {
         if (link == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Reagent is not linked to this test");
         }
+        validateQuantity(body.quantityPerTest, body.quantityUnit);
         if (body.usageType != null) {
             validateUsageType(body.usageType);
             link.setUsageType(body.usageType);
@@ -162,13 +163,8 @@ public class TestReagentLinkRestController extends BaseRestController {
         if (reagentId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reagentId is required");
         }
-        InventoryItem item = findItem(reagentId);
-        if (item == null) {
+        if (findItem(reagentId) == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Reagent not found: " + reagentId);
-        }
-        if (item.getItemType() != ItemType.REAGENT) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Inventory item " + reagentId + " is not a reagent");
         }
     }
 
@@ -176,6 +172,22 @@ public class TestReagentLinkRestController extends BaseRestController {
     private InventoryItem findItem(Long itemId) {
         List<InventoryItem> matches = inventoryItemService.getAllMatching("id", itemId);
         return matches.isEmpty() ? null : matches.get(0);
+    }
+
+    /** The column holds numeric(15,6) and a 50-character unit (OGC-1465). */
+    private static final BigDecimal MAX_QUANTITY = new BigDecimal("1000000000");
+
+    private static final int UNIT_MAX_LENGTH = 50;
+
+    private void validateQuantity(BigDecimal quantity, String unit) {
+        if (quantity != null && (quantity.signum() < 0 || quantity.compareTo(MAX_QUANTITY) >= 0)) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "quantityPerTest must be zero or more and below 1000000000");
+        }
+        if (unit != null && unit.length() > UNIT_MAX_LENGTH) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "quantityUnit must be at most " + UNIT_MAX_LENGTH + " characters");
+        }
     }
 
     private void validateUsageType(String usageType) {

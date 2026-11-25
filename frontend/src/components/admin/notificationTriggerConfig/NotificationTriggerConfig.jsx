@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useContext, useEffect } from "react";
+import { Redirect, useHistory, useParams } from "react-router-dom";
 import {
   Tabs,
   TabList,
@@ -10,29 +11,62 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { NotificationContext } from "../../layout/Layout";
+import { AlertDialog } from "../../common/CustomNotification";
 import TriggersTab from "./tabs/TriggersTab";
 import TemplatesTab from "./tabs/TemplatesTab";
-import SentMessagesTab from "./tabs/SentMessagesTab";
+import ChannelsTab from "./tabs/ChannelsTab";
+import DeliverySettingsTab from "./tabs/DeliverySettingsTab";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
-    label: "notificationtrigger.config.title",
+    label: "sidenav.label.admin.notifications",
     link: "/MasterListsPage/notificationTriggerConfig",
   },
 ];
 
+/** Each tab is a route, so the SideNav and a bookmark can open one directly. */
+export const NOTIFICATION_TABS = [
+  "triggers",
+  "templates",
+  "channels",
+  "delivery",
+];
+
+/**
+ * Only the selected tab is mounted, so each tab loads its data when opened
+ * and the page shows one toast for whichever tab raised it.
+ */
 function NotificationTriggerConfig() {
   const intl = useIntl();
+  const history = useHistory();
+  const { tab } = useParams();
+  const { notificationVisible } = useContext(NotificationContext);
+  const selectedIndex = Math.max(
+    0,
+    NOTIFICATION_TABS.indexOf(tab || "triggers"),
+  );
+
+  useEffect(() => {
+    if (tab && tab !== "sent" && !NOTIFICATION_TABS.includes(tab)) {
+      history.replace("/MasterListsPage/notificationTriggerConfig/triggers");
+    }
+  }, [tab, history]);
+
+  if (tab === "sent") {
+    return <Redirect to="/SentMessages?product=trigger" />;
+  }
 
   return (
     <div className="adminPageContent">
+      {notificationVisible === true ? <AlertDialog /> : ""}
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
           <h2 style={{ marginTop: "1rem" }}>
-            <FormattedMessage id="notificationtrigger.config.title" />
+            <FormattedMessage id="sidenav.label.admin.notifications" />
           </h2>
           <p style={{ color: "#525252", marginBottom: "1rem" }}>
             <FormattedMessage id="notificationtrigger.config.subtitle" />
@@ -41,31 +75,38 @@ function NotificationTriggerConfig() {
       </Grid>
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
-          <Tabs>
+          <Tabs
+            selectedIndex={selectedIndex}
+            onChange={({ selectedIndex: next }) =>
+              history.push(
+                `/MasterListsPage/notificationTriggerConfig/${NOTIFICATION_TABS[next]}`,
+              )
+            }
+          >
             <TabList
               aria-label={intl.formatMessage({
-                id: "notificationtrigger.config.title",
+                id: "sidenav.label.admin.notifications",
               })}
             >
               <Tab>
-                <FormattedMessage id="notificationtrigger.tabs.triggers" />
+                <FormattedMessage id="sidenav.label.admin.notifications.triggers" />
               </Tab>
               <Tab>
-                <FormattedMessage id="notificationtrigger.tabs.templates" />
+                <FormattedMessage id="sidenav.label.admin.notifications.templates" />
               </Tab>
               <Tab>
-                <FormattedMessage id="notificationtrigger.tabs.sentmessages" />
+                <FormattedMessage id="sidenav.label.admin.notifications.channels" />
+              </Tab>
+              <Tab>
+                <FormattedMessage id="sidenav.label.admin.notifications.delivery" />
               </Tab>
             </TabList>
             <TabPanels>
+              <TabPanel>{selectedIndex === 0 && <TriggersTab />}</TabPanel>
+              <TabPanel>{selectedIndex === 1 && <TemplatesTab />}</TabPanel>
+              <TabPanel>{selectedIndex === 2 && <ChannelsTab />}</TabPanel>
               <TabPanel>
-                <TriggersTab />
-              </TabPanel>
-              <TabPanel>
-                <TemplatesTab />
-              </TabPanel>
-              <TabPanel>
-                <SentMessagesTab />
+                {selectedIndex === 3 && <DeliverySettingsTab />}
               </TabPanel>
             </TabPanels>
           </Tabs>

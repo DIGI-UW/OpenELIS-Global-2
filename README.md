@@ -92,12 +92,20 @@ scripts/dev-stack up
 scripts/dev-stack url
 ```
 
-The launcher builds the backend, frontend, Analyzer Bridge and mock from the
-checkout and pinned submodules. Its containers, images, ports and data belong to
-this worktree. Frontend edits hot reload; re-run `up` after backend or
-dependency changes. Native builds, focused tests, domain setup and
-published-image deployment are described in
-[the development guide](docs/dev_setup.md).
+Install the [development prerequisites](docs/dev_setup.md#work-on-source),
+including mkcert, first. On the first start on a machine, `up` sets up trusted
+local HTTPS and may request administrator authentication. Later starts reuse
+that trust. Use the printed localhost URL; no manual certificate generation,
+browser warning bypass, domain setup or port selection is needed.
+
+The launcher builds the backend WAR from the checkout and runs it, with the
+frontend source mounted, in the published development images; it does not build
+container images. Its containers, ports and data belong to this worktree.
+Frontend edits hot reload; re-run `up` after backend changes. Run
+`scripts/dev-stack up --build` to build the images from the checkout instead,
+which frontend dependency, Dockerfile, Analyzer Bridge and mock changes need.
+Native builds, focused tests, domain setup and published-image deployment are
+described in [the development guide](docs/dev_setup.md).
 
 #### The Instances can be accessed at
 
@@ -106,13 +114,10 @@ published-image deployment are described in
 | Legacy UI    | `<scripts/dev-stack url>/api/OpenELIS-Global/` |            admin: adminADMIN! |
 | New React UI |       output of `scripts/dev-stack url`        |            admin: adminADMIN! |
 
-**Note:** If your browser indicates that the website is not secure after
-accessing any of these links, simply follow these steps:
-
-1. Scroll down on the warning page.
-2. Click on the "Advanced" button.
-3. Finally, click on "Proceed to https://localhost" to access the development
-   environment.
+If you see a certificate warning, confirm you are using the URL printed by
+`scripts/dev-stack url` and that `scripts/dev-stack up` completed its trust
+setup. Restart the browser to refresh its trust settings. If the warning
+persists, follow [the development guide](docs/dev_setup.md); do not bypass it.
 
 #### Formating the Source code after making changes
 

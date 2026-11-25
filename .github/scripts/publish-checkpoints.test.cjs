@@ -4,13 +4,29 @@ const fs = require("node:fs");
 const wait = require("./publish-checkpoints.cjs");
 const sha = "a".repeat(40);
 const buildContext = "03 Checkpoint - E2E / build-123-2";
-const backend = (conclusion, id = 1, head_sha = sha) => ({
+const PUSH_SUITE = 10;
+const PR_SUITE = 20;
+const backend = (conclusion, id = 1, head_sha = sha, suite = PUSH_SUITE) => ({
   name: "01 Checkpoint - Backend",
   id,
   head_sha,
   status: "completed",
   conclusion,
+  check_suite: { id: suite },
 });
+const workflowRuns = {
+  async listWorkflowRunsForRepo(request) {
+    assert.equal(request.head_sha, sha);
+    return {
+      data: {
+        workflow_runs: [
+          { event: "push", check_suite_id: PUSH_SUITE },
+          { event: "pull_request", check_suite_id: PR_SUITE },
+        ],
+      },
+    };
+  },
+};
 
 async function run(checks, state = "success", context = buildContext) {
   let clock = 0;
@@ -23,6 +39,7 @@ async function run(checks, state = "success", context = buildContext) {
     core: { info() {} },
     github: {
       rest: {
+        actions: workflowRuns,
         repos: {
           async listCommitStatusesForRef(request) {
             assert.equal(request.ref, sha);
@@ -102,6 +119,81 @@ test("another build or attempt cannot authorize publishing rebuilt images", asyn
     );
   }
 });
+test("a pull request run on the same commit cannot block or authorize publication", async () => {
+  // PR #4772 (develop -> main) has develop as its head, so its pull_request
+  // backend run shares the candidate sha; when the PR moved on, that run
+  // failed and the gate refused the push's deployment (2026-10-20).
+  await run([backend("success", 1), backend("failure", 2, sha, PR_SUITE)]);
+  await assert.rejects(
+    run([
+      { ...backend(null, 1), status: "in_progress" },
+      backend("failure", 2, sha, PR_SUITE),
+    ]),
+    /Timed out/,
+  );
+  await assert.rejects(
+    run([backend("success", 2, sha, PR_SUITE)]),
+    /Timed out/,
+  );
+});
+test("a GitHub API timeout is retried, a refused request is not", async () => {
+  // Run 39466371613 ended with "We couldn't respond to your request in time".
+  const flaky = (status) => {
+    let calls = 0;
+    return {
+      async listWorkflowRunsForRepo(request) {
+        calls++;
+        if (calls === 1) {
+          throw Object.assign(new Error("We couldn't respond in time"), {
+            status,
+          });
+        }
+        return workflowRuns.listWorkflowRunsForRepo(request);
+      },
+    };
+  };
+  const attempt = (actions) => {
+    let clock = 0;
+    return wait({
+      owner: "test",
+      repo: "test",
+      sha,
+      buildRunId: 123,
+      buildRunAttempt: 2,
+      core: { info() {} },
+      github: {
+        rest: {
+          actions,
+          repos: {
+            async listCommitStatusesForRef() {
+              return { data: [{ context: buildContext, state: "success" }] };
+            },
+          },
+          checks: {
+            async listForRef(request) {
+              return {
+                data: {
+                  check_runs: [
+                    { ...backend("success"), name: request.check_name },
+                  ],
+                },
+              };
+            },
+          },
+        },
+      },
+      timeoutMs: 5,
+      pollMs: 1,
+      now: () => clock,
+      sleep: async () => {
+        clock++;
+      },
+    });
+  };
+  await attempt(flaky(504));
+  await attempt(flaky(undefined));
+  await assert.rejects(attempt(flaky(403)), /couldn't respond/);
+});
 test("a missing source build identity fails closed", async () => {
   await assert.rejects(wait({ sha }), /requires the source build/);
 });
@@ -121,6 +213,7 @@ test("the default wait outlasts a backend suite that finishes 70 minutes after E
     core: { info() {} },
     github: {
       rest: {
+        actions: workflowRuns,
         repos: {
           async listCommitStatusesForRef() {
             return { data: [{ context: buildContext, state: "success" }] };

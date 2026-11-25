@@ -34,6 +34,7 @@ import {
 } from "../../common/CustomNotification";
 import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 import { getAcceptanceGate, getEnforcement } from "../api/sampleAcceptanceApi";
+import { orderSavedMessage } from "../orderSavedMessage";
 
 /**
  * OrderQA - Step 4: QA Review
@@ -194,7 +195,10 @@ const OrderQA = () => {
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "save.order.success.msg" }),
+        message: orderSavedMessage(
+          intl,
+          labNumber || orderData?.sampleOrderItems?.labNo,
+        ),
       });
       setNotificationVisible(true);
       return true;
@@ -591,7 +595,7 @@ const OrderQA = () => {
                 );
               })()}
             </AccordionItem>
-          ) : (
+          ) : orderData?.sampleOrderItems?.isEQASample ? null : (
             <AccordionItem
               title={intl.formatMessage({
                 id: "qa.summary.patient",

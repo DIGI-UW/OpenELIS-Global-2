@@ -20,18 +20,20 @@ import {
   getFromOpenElisServer,
   putToOpenElisServer,
 } from "../../../utils/Utils";
+import TerminologySourceInput, {
+  sourceTooLong,
+} from "./TerminologySourceInput";
 
 /**
  * OGC-224 — Panel editor · Terminology (FRS v2.2).
  *
  * The same multi-source mapper as tests/sample types (Source / Code /
- * Relationship; LOINC / SNOMED / CIEL / OCL / WHONET), persisted through
+ * Relationship; a source in any system), persisted through
  * GET/PUT /rest/test-catalog/panels/{id}/terminology. The LOINC mapping is
  * the panel's PRIMARY identifier (tagged) — there is no separate panel code —
  * and it stays denormalized on panel.loinc, which FHIR intake uses as a live
  * e-order routing key.
  */
-const SOURCES = ["LOINC", "SNOMED", "CIEL", "OCL", "WHONET"];
 const RELATIONSHIPS = ["SAME_AS", "BROADER_THAN", "NARROWER_THAN"];
 const SOURCE_TAG = {
   LOINC: "blue",
@@ -49,6 +51,11 @@ export const primaryLoincIndex = (mappings) =>
     (m) =>
       m.source === "LOINC" && (!m.relationship || m.relationship === "SAME_AS"),
   );
+
+// panel_terminology_mapping.code holds 80 characters; a LOINC is at most 10
+// and the primary one routes e-orders (OGC-1456).
+const CODE_MAX_LENGTH = 80;
+const LOINC_MAX_LENGTH = 10;
 
 const PanelTerminologySection = ({ panel, onSaved }) => {
   const intl = useIntl();
@@ -134,6 +141,25 @@ const PanelTerminologySection = ({ panel, onSaved }) => {
       });
     }
     const complete = all.filter((m) => m.source && m.code);
+    const misfit = complete.find(
+      (m) =>
+        m.code.trim().length > CODE_MAX_LENGTH ||
+        (m.source === "LOINC" && m.code.trim().length > LOINC_MAX_LENGTH),
+    );
+    if (misfit) {
+      setSaveError(
+        intl.formatMessage(
+          {
+            id:
+              misfit.code.trim().length > CODE_MAX_LENGTH
+                ? "label.panel.terminology.codeTooLong"
+                : "label.panel.terminology.loincTooLong",
+          },
+          { code: misfit.code.trim(), max: CODE_MAX_LENGTH },
+        ),
+      );
+      return;
+    }
     const payload = {
       panelId,
       mappings: complete.map((m) => ({
@@ -204,13 +230,17 @@ const PanelTerminologySection = ({ panel, onSaved }) => {
       )}
 
       {saveError && (
-        <InlineNotification
-          kind="error"
-          lowContrast
-          onCloseButtonClick={() => setSaveError(null)}
-          title={intl.formatMessage({ id: "label.panel.section.terminology" })}
-          subtitle={saveError}
-        />
+        <div data-testid="panel-terminology-save-error">
+          <InlineNotification
+            kind="error"
+            lowContrast
+            onCloseButtonClick={() => setSaveError(null)}
+            title={intl.formatMessage({
+              id: "label.panel.section.terminology",
+            })}
+            subtitle={saveError}
+          />
+        </div>
       )}
 
       {mappings.length === 0 ? (
@@ -248,19 +278,11 @@ const PanelTerminologySection = ({ panel, onSaved }) => {
                 >
                   <TableCell>
                     {editing ? (
-                      <Select
+                      <TerminologySourceInput
                         id={`panel-mapping-source-${i}`}
-                        labelText=""
                         value={m.source || ""}
-                        onChange={(e) =>
-                          updateMapping(i, { source: e.target.value })
-                        }
-                      >
-                        <SelectItem value="" text="" />
-                        {SOURCES.map((s) => (
-                          <SelectItem key={s} value={s} text={s} />
-                        ))}
-                      </Select>
+                        onChange={(source) => updateMapping(i, { source })}
+                      />
                     ) : (
                       <>
                         <Tag type={SOURCE_TAG[m.source] || "gray"}>
@@ -358,19 +380,14 @@ const PanelTerminologySection = ({ panel, onSaved }) => {
       )}
 
       <Stack gap={4} orientation="horizontal">
-        <Select
+        <TerminologySourceInput
           id="panel-terminology-source"
-          labelText={intl.formatMessage({
+          titleText={intl.formatMessage({
             id: "label.testCatalog.terminology.source",
           })}
           value={draft.source}
-          onChange={(e) => setDraft({ ...draft, source: e.target.value })}
-        >
-          <SelectItem value="" text="" />
-          {SOURCES.map((s) => (
-            <SelectItem key={s} value={s} text={s} />
-          ))}
-        </Select>
+          onChange={(source) => setDraft({ ...draft, source })}
+        />
         <TextInput
           id="panel-terminology-code"
           labelText={intl.formatMessage({
@@ -408,7 +425,15 @@ const PanelTerminologySection = ({ panel, onSaved }) => {
         </Button>
       </Stack>
 
-      <Button kind="primary" onClick={handleSave} disabled={saving}>
+      <Button
+        kind="primary"
+        onClick={handleSave}
+        disabled={
+          saving ||
+          sourceTooLong(draft.source) ||
+          mappings.some((m) => sourceTooLong(m.source))
+        }
+      >
         <FormattedMessage id="label.button.save" />
       </Button>
     </Stack>

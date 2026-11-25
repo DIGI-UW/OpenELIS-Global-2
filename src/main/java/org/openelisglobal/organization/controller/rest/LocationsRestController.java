@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.organization.locations.LocationsApi;
 import org.openelisglobal.organization.locations.LocationsApi.ActiveRequest;
 import org.openelisglobal.organization.locations.LocationsApi.ActiveResult;
@@ -27,7 +29,10 @@ import org.openelisglobal.organization.locations.LocationsConflictException;
 import org.openelisglobal.organization.locations.LocationsNotFoundException;
 import org.openelisglobal.organization.locations.LocationsService;
 import org.openelisglobal.organization.locations.LocationsValidationException;
+import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.organization.valueholder.Organization;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -56,6 +61,46 @@ public class LocationsRestController extends BaseRestController {
     @Autowired
     private LocationsService locationsService;
 
+    @Autowired
+    private OrganizationService organizationService;
+
+    @Lazy
+    @Autowired
+    private FhirTransformService fhirTransformService;
+
+    @Autowired(required = false)
+    private DisplayListService displayListService;
+
+    /**
+     * Organization-backed pick lists (reference labs, referring clinics, health
+     * regions) are cached; reload them after a save so the change is offered at
+     * once, not after a restart.
+     */
+    private void refreshOrganizationLists() {
+        DisplayListService lists = displayListService != null ? displayListService : DisplayListService.getInstance();
+        if (lists != null) {
+            lists.refreshOrganizationLists();
+        }
+    }
+
+    /**
+     * Writes a saved organization, with its site Location, to the FHIR store, as
+     * the older Organization Management page did, so the store does not keep a
+     * renamed or deactivated organization (OGC-1399). Runs after the save has
+     * committed; a store that cannot be reached does not undo the save.
+     */
+    private void publish(String organizationId) {
+        try {
+            Organization organization = organizationService.get(organizationId);
+            if (organization != null) {
+                fhirTransformService.transformPersistOrganization(organization);
+            }
+        } catch (Exception e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "publish",
+                    "organization " + organizationId + " was not written to the FHIR store: " + e.getMessage());
+        }
+    }
+
     @GetMapping(value = "/organizations", produces = MediaType.APPLICATION_JSON_VALUE)
     public Page list(@RequestParam(defaultValue = LocationsApi.VIEW_ORGANIZATIONS) String view,
             @RequestParam(required = false) String q, @RequestParam(required = false) List<String> type,
@@ -81,16 +126,22 @@ public class LocationsRestController extends BaseRestController {
                 body.streetAddress(), body.city(), body.state(), body.zipCode(), body.gpsLatitude(),
                 body.gpsLongitude(), body.contactName(), body.phone(), body.fax(), body.email(), body.internetAddress(),
                 body.identifiers(), body.referral(), body.site(), body.serviceType(), null), getSysUserId(request));
+        publish(result.detail().row().id());
+        refreshOrganizationLists();
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
     @PutMapping(value = "/organizations/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public SaveResult update(@PathVariable String id, @RequestBody SaveRequest body, HttpServletRequest request) {
-        return locationsService.save(new SaveRequest(id, body.kind(), body.name(), body.shortName(), body.typeIds(),
-                body.categoryId(), body.ownershipId(), body.description(), body.parentId(), body.streetAddress(),
-                body.city(), body.state(), body.zipCode(), body.gpsLatitude(), body.gpsLongitude(), body.contactName(),
-                body.phone(), body.fax(), body.email(), body.internetAddress(), body.identifiers(), body.referral(),
-                body.site(), body.serviceType(), body.lastupdated()), getSysUserId(request));
+        SaveResult result = locationsService.save(new SaveRequest(id, body.kind(), body.name(), body.shortName(),
+                body.typeIds(), body.categoryId(), body.ownershipId(), body.description(), body.parentId(),
+                body.streetAddress(), body.city(), body.state(), body.zipCode(), body.gpsLatitude(),
+                body.gpsLongitude(), body.contactName(), body.phone(), body.fax(), body.email(), body.internetAddress(),
+                body.identifiers(), body.referral(), body.site(), body.serviceType(), body.lastupdated()),
+                getSysUserId(request));
+        publish(result.detail().row().id());
+        refreshOrganizationLists();
+        return result;
     }
 
     @GetMapping(value = "/organizations/{id}/usage", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -100,7 +151,10 @@ public class LocationsRestController extends BaseRestController {
 
     @PostMapping(value = "/organizations/active", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ActiveResult setActive(@RequestBody ActiveRequest body, HttpServletRequest request) {
-        return locationsService.setActive(body, getSysUserId(request));
+        ActiveResult result = locationsService.setActive(body, getSysUserId(request));
+        result.changed().forEach(this::publish);
+        refreshOrganizationLists();
+        return result;
     }
 
     @GetMapping(value = "/organizations/{id}/wards", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -115,22 +169,30 @@ public class LocationsRestController extends BaseRestController {
                 id, new WardRequest(null, body.name(), body.code(), body.serviceType(), body.contactName(),
                         body.phone(), body.email(), body.gpsLatitude(), body.gpsLongitude(), null),
                 getSysUserId(request));
+        publish(ward.id());
+        refreshOrganizationLists();
         return ResponseEntity.status(HttpStatus.CREATED).body(ward);
     }
 
     @PutMapping(value = "/organizations/{id}/wards/{wardId}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public Ward updateWard(@PathVariable String id, @PathVariable String wardId, @RequestBody WardRequest body,
             HttpServletRequest request) {
-        return locationsService.saveWard(id,
+        Ward ward = locationsService.saveWard(id,
                 new WardRequest(wardId, body.name(), body.code(), body.serviceType(), body.contactName(), body.phone(),
                         body.email(), body.gpsLatitude(), body.gpsLongitude(), body.lastupdated()),
                 getSysUserId(request));
+        publish(ward.id());
+        refreshOrganizationLists();
+        return ward;
     }
 
     @PostMapping(value = "/wards/{wardId}/move", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public Ward moveWard(@PathVariable String wardId, @RequestBody Map<String, String> body,
             HttpServletRequest request) {
-        return locationsService.moveWard(wardId, body.get("parentId"), getSysUserId(request));
+        Ward ward = locationsService.moveWard(wardId, body.get("parentId"), getSysUserId(request));
+        publish(ward.id());
+        refreshOrganizationLists();
+        return ward;
     }
 
     @GetMapping(value = "/organizations/{id}/history", produces = MediaType.APPLICATION_JSON_VALUE)

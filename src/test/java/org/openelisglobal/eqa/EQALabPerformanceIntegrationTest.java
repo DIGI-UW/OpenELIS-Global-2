@@ -72,6 +72,26 @@ public class EQALabPerformanceIntegrationTest extends EQASpineTestBase {
     }
 
     @Test
+    public void acceptanceRateBetweenTwoDatesCountsOnlyResultsScoredInside() {
+        EQAProgram scheme = insertScheme("Perf scheme dated", EQASchemeType.INTERNATIONAL_PT, "NHLS");
+        EQACycle recent = cycleEnding(scheme, 1, LocalDate.now().minusMonths(2));
+        scored(recent, "ACCEPTABLE", LocalDate.now().minusMonths(2));
+        scored(recent, "UNACCEPTABLE", LocalDate.now().minusMonths(2));
+        EQACycle old = cycleEnding(scheme, 2, LocalDate.now().minusMonths(18));
+        scored(old, "UNACCEPTABLE", LocalDate.now().minusMonths(18));
+        Long draft = insertParticipantResult(recent, roundsByCycle.get(recent.getId()), ENROLLMENT, freshAnalyte(),
+                EQASubmissionStatus.DRAFT, "99");
+        setScore(draft, "UNACCEPTABLE", LocalDate.now().minusMonths(1));
+
+        assertEquals(Integer.valueOf(50),
+                labPerformanceService.getAcceptanceRate(LocalDate.now().minusMonths(3), LocalDate.now()));
+        assertEquals(Integer.valueOf(0), labPerformanceService.getAcceptanceRate(LocalDate.now().minusMonths(20),
+                LocalDate.now().minusMonths(15)));
+        assertNull(labPerformanceService.getAcceptanceRate(LocalDate.now().minusMonths(12),
+                LocalDate.now().minusMonths(6)));
+    }
+
+    @Test
     public void aResultOlderThanTheWindowDropsOutOfTheRateAndIntoTheComparison() {
         EQAProgram scheme = insertScheme("Perf scheme aged", EQASchemeType.INTERNATIONAL_PT, "NHLS");
         EQACycle recent = cycleEnding(scheme, 1, LocalDate.now().minusMonths(3));

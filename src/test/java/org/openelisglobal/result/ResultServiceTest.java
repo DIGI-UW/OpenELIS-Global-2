@@ -120,7 +120,50 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getResultValue_stillPadsPlainDecimals() {
         assertEquals("12.50", resultService.getResultValue(numericResult("12.5", 2), ",", false, false));
-        assertEquals("12", resultService.getResultValue(numericResult("12.5", 0), ",", false, false));
+    }
+
+    /**
+     * OGC-1544: a value is shown rounded half up to the test's decimal places, in
+     * every formatter, and the stored value is not changed by showing it.
+     */
+    @Test
+    public void getResultValue_roundsHalfUpToTheConfiguredPlaces() {
+        assertReported("1", "0.9", 0);
+        assertReported("1.0", "0.95", 1);
+        assertReported("70", "69.9", 0);
+        assertReported("13", "12.5", 0);
+        assertReported("12.35", "12.345", 2);
+        assertReported("-1", "-0.5", 0);
+        assertReported("0", "0.4", 0);
+    }
+
+    @Test
+    public void getResultValue_keepsTheStoredValue() {
+        Result result = numericResult("0.9", 0);
+
+        resultService.getResultValue(result, ",", false, false);
+
+        assertEquals("0.9", result.getValue());
+    }
+
+    @Test
+    public void getResultValue_padsButNeverRoundsAValueBehindAComparator() {
+        assertReported("<0.55", "<0.55", 0);
+        assertReported("<5.00", "<5", 2);
+        assertReported(">10.0", ">10", 1);
+    }
+
+    @Test
+    public void getResultValue_showsAValueWithNoPlacesConfiguredAsStored() {
+        assertReported("12", "12", -1);
+        assertReported("12.345", "12.345", -1);
+    }
+
+    private void assertReported(String expected, String stored, int places) {
+        assertEquals(expected, resultService.getResultValue(numericResult(stored, places), ",", false, false));
+        assertEquals(expected,
+                resultService.getResultValueForDisplay(numericResult(stored, places), ",", false, false));
+        assertEquals(expected, resultService.getSimpleResultValue(numericResult(stored, places)));
     }
 
     private Result numericResult(String value, int significantDigits) {

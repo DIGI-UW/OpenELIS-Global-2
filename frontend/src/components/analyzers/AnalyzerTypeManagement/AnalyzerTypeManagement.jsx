@@ -285,12 +285,19 @@ const AnalyzerTypeManagement = () => {
     }
     const percent = Math.round((summary.mapped / summary.total) * 100);
     if (summary.excluded > 0) {
+      // A deliberate exclusion is a decision, so the figure is rows decided.
+      const decided = summary.mapped + summary.excluded;
       return intl.formatMessage(
-        { id: "analyzerType.mapping.countWithExcluded" },
         {
+          id:
+            decided === summary.total
+              ? "analyzerType.mapping.allDecided"
+              : "analyzerType.mapping.countWithExcluded",
+        },
+        {
+          decided,
           mapped: summary.mapped,
           total: summary.total,
-          percent,
           excluded: summary.excluded,
         },
       );
@@ -556,6 +563,29 @@ const AnalyzerTypeManagement = () => {
               })}
               onActionButtonClick={retryLoad}
             />
+          )}
+
+          {catalog?.issues?.length > 0 && (
+            <div className="analyzer-type-page__catalog-issues">
+              <InlineNotification
+                kind="warning"
+                lowContrast
+                hideCloseButton
+                title={intl.formatMessage({
+                  id: "analyzerType.notification.catalogIssues",
+                })}
+                subtitle={intl.formatMessage({
+                  id: "analyzerType.notification.catalogIssues.subtitle",
+                })}
+              />
+              <ul>
+                {catalog.issues.map((issue) => (
+                  <li key={issue.source}>
+                    <code>{issue.source}</code>: {issue.reason}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
           {loading ? (

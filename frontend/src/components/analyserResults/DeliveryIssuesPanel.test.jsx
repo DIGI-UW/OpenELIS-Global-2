@@ -56,6 +56,7 @@ const unrecognized = {
   analyzerId: null,
   analyzerName: null,
   sourceId: "192.168.158.1",
+  sender: "CPHL^GeneXpert^6.2",
   protocol: "ASTM",
   attempts: 0,
   receivedAt: "2026-09-24T03:00:00Z",
@@ -226,5 +227,15 @@ describe("DeliveryIssuesPanel", () => {
         screen.queryByText("The Bridge has no undelivered results."),
       ).not.toBeInTheDocument(),
     );
+  });
+
+  it("names the sender field of a result from an instrument it does not know", async () => {
+    respondWith([unrecognized]);
+    renderPanel();
+
+    expect(
+      await screen.findByRole("columnheader", { name: "Sender" }),
+    ).toBeVisible();
+    expect(screen.getByText("CPHL^GeneXpert^6.2")).toBeVisible();
   });
 });

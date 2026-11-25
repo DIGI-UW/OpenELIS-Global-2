@@ -25,11 +25,18 @@ import {
   Button,
   OverflowMenu,
   OverflowMenuItem,
+  ActionableNotification,
+  FilterableMultiSelect,
+  Checkbox,
+  Modal,
+  NumberInput,
+  Pagination,
 } from "@carbon/react";
-import { ArrowUp, ArrowDown, Subtract } from "@carbon/icons-react";
+import { ArrowUp, ArrowDown, Subtract, Add } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   InventoryBoardAPI,
+  InventoryCountAPI,
   InventoryItemAPI,
   InventoryLotAPI,
 } from "./InventoryService";
@@ -40,10 +47,18 @@ import LotAdjustmentModal from "./LotAdjustmentModal";
 import DisposeLotModal from "./DisposeLotModal";
 import UpdateQCStatusModal from "./UpdateQCStatusModal";
 import InventoryItemForm from "./InventoryItemForm";
+import ManageTagsModal from "./ManageTagsModal";
+import ImportItemsModal from "./ImportItemsModal";
+import QuickReceiveModal from "./QuickReceiveModal";
 import QuickLogUsageModal from "./QuickLogUsageModal";
+import ReorderSuggestionsModal, {
+  isSuggested,
+} from "./ReorderSuggestionsModal";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import "./InventoryItemsBoard.css";
+
+const BANNER_NAMES = 5;
 
 /** Must match WINDOW_DAYS server side. */
 const USAGE_WINDOW_DAYS = 30;
@@ -103,6 +118,8 @@ const compare = (a, b) => {
   return String(a).localeCompare(String(b));
 };
 
+const PAGE_SIZES = [25, 50, 100];
+
 const InventoryItemsBoard = () => {
   const intl = useIntl();
   const [rows, setRows] = useState([]);
@@ -112,8 +129,19 @@ const InventoryItemsBoard = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
+  const [tagFilter, setTagFilter] = useState([]);
+  const [activeTags, setActiveTags] = useState([]);
+  const [manageTagsOpen, setManageTagsOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [showDeactivated, setShowDeactivated] = useState(false);
+  const [countMode, setCountMode] = useState(false);
+  // Keyed by lot id. A blank or absent entry means not counted, not zero.
+  const [counts, setCounts] = useState({});
+  const [countSaving, setCountSaving] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [sort, setSort] = useState({ key: null, ascending: true });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [detailLot, setDetailLot] = useState(null);
 
   const [action, setAction] = useState(null);
@@ -131,14 +159,19 @@ const InventoryItemsBoard = () => {
 
   const refresh = useCallback(
     () =>
-      Promise.all([InventoryBoardAPI.get(), InventoryLotAPI.getAll()])
-        .then(([board, allLots]) => {
+      Promise.all([
+        InventoryBoardAPI.get(showDeactivated),
+        InventoryLotAPI.getAll(),
+        InventoryItemAPI.getTags().catch(() => []),
+      ])
+        .then(([board, allLots, tags]) => {
           setRows(Array.isArray(board) ? board : []);
           setLots(Array.isArray(allLots) ? allLots : []);
+          setActiveTags(Array.isArray(tags) ? tags : []);
           setError(null);
         })
         .catch((err) => setError(err.message)),
-    [],
+    [showDeactivated],
   );
 
   useEffect(() => {
@@ -157,11 +190,135 @@ const InventoryItemsBoard = () => {
     });
   };
 
+  const countableLots = (row) =>
+    (lotsByItem.get(row.itemId) || []).filter(
+      (lot) =>
+        !locationFilter || lot.location?.hierarchicalPath === locationFilter,
+    );
+
+  // Includes the expired and QC-failed lots that row.onHand leaves out.
+  const expectedFor = (row) =>
+    countableLots(row).reduce(
+      (total, lot) => total + (lot.currentQuantity || 0),
+      0,
+    );
+
+  const countedEntries = () =>
+    Object.entries(counts)
+      .filter(([, value]) => value !== "" && value != null)
+      .map(([lotId, value]) => ({
+        lotId: Number(lotId),
+        countedQuantity: Number(value),
+      }));
+
+  const setCount = (lotId, value) =>
+    setCounts((prev) => ({ ...prev, [lotId]: value }));
+
+  const leaveCountMode = () => {
+    setCountMode(false);
+    setCounts({});
+  };
+
+  const confirmCount = async () => {
+    const entries = countedEntries();
+    if (entries.length === 0) return;
+    setCountSaving(true);
+    try {
+      const result = await InventoryCountAPI.record(entries);
+      leaveCountMode();
+      refresh();
+      notify({
+        kind: NotificationKinds.success,
+        title: intl.formatMessage({ id: "notification.success" }),
+        message: intl.formatMessage(
+          { id: "inventory.count.done" },
+          { adjusted: result.adjusted, confirmed: result.confirmed },
+        ),
+      });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setCountSaving(false);
+    }
+  };
+
+  const renderCountEntry = (inputId, key, expected, units, label) => {
+    const raw = counts[key];
+    const entered = raw !== "" && raw != null;
+    const difference = entered ? Number(raw) - expected : null;
+    return (
+      <div className="board-count-entry">
+        <NumberInput
+          id={inputId}
+          size="sm"
+          hideLabel
+          label={label}
+          value={raw ?? ""}
+          onChange={(event, { value }) => setCount(key, value)}
+          min={0}
+          allowEmpty
+        />
+        <span className="board-count-expected">
+          <FormattedMessage
+            id="inventory.count.expected"
+            values={{ expected: intl.formatNumber(expected), units }}
+          />
+        </span>
+        {difference !== null && difference !== 0 && (
+          <Tag size="sm" type={difference > 0 ? "blue" : "red"}>
+            {difference > 0 ? "+" : ""}
+            {intl.formatNumber(difference)}
+          </Tag>
+        )}
+        {difference === 0 && (
+          <Tag size="sm" type="green">
+            <FormattedMessage id="inventory.count.matches" />
+          </Tag>
+        )}
+      </div>
+    );
+  };
+
+  const restoreItem = async (row) => {
+    try {
+      await InventoryItemAPI.activate(row.itemId);
+      refresh();
+      notify({
+        kind: NotificationKinds.success,
+        title: intl.formatMessage({ id: "notification.success" }),
+        message: intl.formatMessage(
+          { id: "inventory.item.reactivated" },
+          { item: row.name },
+        ),
+      });
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const retireItem = async (row) => {
+    try {
+      await InventoryItemAPI.deactivate(row.itemId);
+      setAction(null);
+      refresh();
+      notify({
+        kind: NotificationKinds.success,
+        title: intl.formatMessage({ id: "notification.success" }),
+        message: intl.formatMessage(
+          { id: "inventory.item.deactivated.success" },
+          { item: row.name },
+        ),
+      });
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   // A board row carries itemId and only some item fields; the editor needs the full item.
   const openItemEditor = async (row) => {
     try {
       const item = await InventoryItemAPI.getById(row.itemId);
-      setAction({ kind: "editItem", item });
+      setAction({ kind: "editItem", item, row });
     } catch (err) {
       notify({
         kind: NotificationKinds.error,
@@ -191,11 +348,29 @@ const InventoryItemsBoard = () => {
     return [...paths].sort();
   }, [lots]);
 
+  // A retired tag stays on its rows and in search; it only stops being offered here
+  const tagOptions = useMemo(() => {
+    const retired = new Set(activeTags);
+    const names = new Set();
+    rows.forEach((row) =>
+      (row.tags || []).forEach((tag) => {
+        if (retired.size === 0 || retired.has(tag)) names.add(tag);
+      }),
+    );
+    return [...names].sort((a, b) => a.localeCompare(b));
+  }, [rows, activeTags]);
+
   const visibleRows = useMemo(() => {
     const term = search.trim().toLowerCase();
     const matched = rows.filter((row) => {
       const itemLots = lotsByItem.get(row.itemId) || [];
       if (statusFilter && row.status !== statusFilter) return false;
+      if (
+        tagFilter.length > 0 &&
+        !tagFilter.some((tag) => row.tags?.includes(tag))
+      ) {
+        return false;
+      }
       if (
         locationFilter &&
         !itemLots.some(
@@ -208,6 +383,7 @@ const InventoryItemsBoard = () => {
       return (
         row.name?.toLowerCase().includes(term) ||
         row.code?.toLowerCase().includes(term) ||
+        row.tags?.some((tag) => tag.toLowerCase().includes(term)) ||
         itemLots.some(
           (lot) =>
             lot.lotNumber?.toLowerCase().includes(term) ||
@@ -224,7 +400,18 @@ const InventoryItemsBoard = () => {
       if (left == null || right == null) return compare(left, right);
       return sort.ascending ? compare(left, right) : compare(right, left);
     });
-  }, [rows, lotsByItem, search, statusFilter, locationFilter, sort]);
+  }, [rows, lotsByItem, search, statusFilter, locationFilter, tagFilter, sort]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter, locationFilter, tagFilter, sort]);
+
+  // A stock-take covers everything in scope, so count mode shows every row.
+  const paged = !countMode && visibleRows.length > PAGE_SIZES[0];
+  const currentPage = Math.min(page, Math.ceil(visibleRows.length / pageSize));
+  const pagedRows = paged
+    ? visibleRows.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+    : visibleRows;
 
   const toggleSort = (key) =>
     setSort((current) =>
@@ -242,7 +429,7 @@ const InventoryItemsBoard = () => {
       onClick={() => toggleSort(key)}
       {...extraProps}
     >
-      <FormattedMessage id={labelId} />
+      {intl.formatMessage({ id: labelId })}
     </TableHeader>
   );
 
@@ -473,7 +660,7 @@ const InventoryItemsBoard = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {itemLots.map((lot) => (
+            {(countMode ? countableLots(row) : itemLots).map((lot) => (
               <TableRow key={lot.id}>
                 <TableCell>
                   <Button
@@ -496,7 +683,22 @@ const InventoryItemsBoard = () => {
                   {renderExpiryTag(lot)}
                 </TableCell>
                 <TableCell>
-                  {intl.formatNumber(lot.currentQuantity)} {row.units}
+                  {countMode ? (
+                    renderCountEntry(
+                      `count-${lot.id}`,
+                      lot.id,
+                      lot.currentQuantity || 0,
+                      row.units,
+                      intl.formatMessage(
+                        { id: "inventory.count.countOf" },
+                        { item: lot.lotNumber },
+                      ),
+                    )
+                  ) : (
+                    <>
+                      {intl.formatNumber(lot.currentQuantity)} {row.units}
+                    </>
+                  )}
                 </TableCell>
                 <TableCell>
                   {labelFor(intl, "lot.status.", lot.status)}
@@ -564,6 +766,12 @@ const InventoryItemsBoard = () => {
     );
   };
 
+  // Items have no criticality flag: "critical" means REORDER_NOW and not yet marked ordered.
+  const unaddressedCritical = rows.filter(
+    (row) => row.status === "REORDER_NOW" && !row.orderedOn,
+  );
+  const suggestionCount = rows.filter(isSuggested).length;
+
   if (loading) {
     return (
       <Loading
@@ -589,13 +797,45 @@ const InventoryItemsBoard = () => {
         />
       )}
 
+      {unaddressedCritical.length > 0 && (
+        <ActionableNotification
+          kind="error"
+          lowContrast
+          inline
+          hideCloseButton
+          // Carbon's default role="alertdialog" traps focus on the banner.
+          role="status"
+          className="board-critical-banner"
+          title={intl.formatMessage({ id: "inventory.reorderStatus.now" })}
+          subtitle={[
+            ...unaddressedCritical
+              .slice(0, BANNER_NAMES)
+              .map((row) => row.name),
+            ...(unaddressedCritical.length > BANNER_NAMES
+              ? [
+                  intl.formatMessage(
+                    { id: "inventory.board.andMore" },
+                    { count: unaddressedCritical.length - BANNER_NAMES },
+                  ),
+                ]
+              : []),
+          ].join(" · ")}
+          actionButtonLabel={intl.formatMessage({
+            id: "inventory.reorder.reviewAndOrder",
+          })}
+          onActionButtonClick={() => setAction({ kind: "suggestions" })}
+        />
+      )}
+
       <div className="board-toolbar">
         <Search
           id="inventory-board-search"
           size="lg"
-          labelText={intl.formatMessage({ id: "inventory.search.placeholder" })}
+          labelText={intl.formatMessage({
+            id: "inventory.search.placeholder.board",
+          })}
           placeholder={intl.formatMessage({
-            id: "inventory.search.placeholder",
+            id: "inventory.search.placeholder.board",
           })}
           value={search}
           onChange={(event) => setSearch(event.target.value)}
@@ -632,6 +872,53 @@ const InventoryItemsBoard = () => {
             <SelectItem key={path} value={path} text={path} />
           ))}
         </Select>
+        <div className="board-tag-filter">
+          <FilterableMultiSelect
+            id="inventory-board-tag-filter"
+            titleText={<FormattedMessage id="inventory.filter.tags" />}
+            placeholder={intl.formatMessage({ id: "inventory.filter.tags" })}
+            items={tagOptions}
+            itemToString={(item) => item || ""}
+            selectedItems={tagFilter}
+            onChange={({ selectedItems }) => setTagFilter(selectedItems || [])}
+            size="lg"
+          />
+        </div>
+        <Button
+          kind="primary"
+          size="lg"
+          className="board-new-item"
+          renderIcon={Add}
+          onClick={() => setAction({ kind: "newItem" })}
+        >
+          <FormattedMessage id="inventory.item.new" />
+        </Button>
+        <Button
+          kind={countMode ? "primary" : "tertiary"}
+          size="lg"
+          className="board-count-mode"
+          onClick={() => (countMode ? leaveCountMode() : setCountMode(true))}
+        >
+          <FormattedMessage
+            id={countMode ? "inventory.count.leave" : "inventory.count.enter"}
+          />
+        </Button>
+        <Button
+          kind="tertiary"
+          size="lg"
+          className="board-manage-tags"
+          onClick={() => setManageTagsOpen(true)}
+        >
+          <FormattedMessage id="inventory.tags.manage" />
+        </Button>
+        <Button
+          kind="tertiary"
+          size="lg"
+          className="board-import-items"
+          onClick={() => setImportOpen(true)}
+        >
+          <FormattedMessage id="inventory.import.button" />
+        </Button>
         <Button
           kind="tertiary"
           size="lg"
@@ -640,7 +927,84 @@ const InventoryItemsBoard = () => {
         >
           <FormattedMessage id="inventory.logUsage.button" />
         </Button>
+        <Button
+          kind="tertiary"
+          size="lg"
+          className="board-suggestions-button"
+          onClick={() => setAction({ kind: "suggestions" })}
+        >
+          <FormattedMessage id="inventory.reorder.suggestions" />
+          {suggestionCount > 0 ? ` (${suggestionCount})` : ""}
+        </Button>
+        <Checkbox
+          id="board-show-deactivated"
+          className="board-show-deactivated"
+          labelText={intl.formatMessage({
+            id: "inventory.item.showDeactivated",
+          })}
+          checked={showDeactivated}
+          onChange={(_, { checked }) => setShowDeactivated(checked)}
+        />
       </div>
+
+      {/* Outside the toolbar: as a flex child the chips would wrap into the controls */}
+      {tagFilter.length > 0 && (
+        <div className="board-tag-chips">
+          {tagFilter.map((tag) => (
+            <Tag
+              key={tag}
+              type="cool-gray"
+              filter
+              onClose={() =>
+                setTagFilter(tagFilter.filter((kept) => kept !== tag))
+              }
+              title={intl.formatMessage(
+                { id: "inventory.item.tags.remove" },
+                { tag },
+              )}
+            >
+              {tag}
+            </Tag>
+          ))}
+          <Button kind="ghost" size="sm" onClick={() => setTagFilter([])}>
+            <FormattedMessage id="inventory.filter.tags.clear" />
+          </Button>
+        </div>
+      )}
+
+      {countMode && (
+        <div className="board-count-bar">
+          <p className="board-count-scope">
+            <FormattedMessage
+              id={
+                locationFilter
+                  ? "inventory.count.scoped"
+                  : "inventory.count.unscoped"
+              }
+              values={{ location: locationFilter }}
+            />
+          </p>
+          <div className="board-count-actions">
+            <span className="board-count-tally">
+              <FormattedMessage
+                id="inventory.count.tally"
+                values={{ counted: countedEntries().length }}
+              />
+            </span>
+            <Button
+              kind="primary"
+              size="md"
+              disabled={countSaving || countedEntries().length === 0}
+              onClick={confirmCount}
+            >
+              <FormattedMessage id="inventory.count.confirm" />
+            </Button>
+            <Button kind="ghost" size="md" onClick={leaveCountMode}>
+              <FormattedMessage id="button.cancel" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       <TableContainer>
         <Table size="md" useZebraStyles={false}>
@@ -653,6 +1017,7 @@ const InventoryItemsBoard = () => {
               {sortableHeader("runOutEarly", "inventory.board.column.runsOut")}
               {sortableHeader("orderByDate", "inventory.orderBy.label")}
               {sortableHeader("status", "common.status")}
+              {sortableHeader("lastCountedOn", "inventory.count.column")}
               <TableHeader>
                 <span className="board-visually-hidden">
                   <FormattedMessage id="common.actions" />
@@ -663,7 +1028,7 @@ const InventoryItemsBoard = () => {
           <TableBody>
             {visibleRows.length === 0 && !error && (
               <TableRow>
-                <TableCell colSpan={8}>
+                <TableCell colSpan={9}>
                   <p className="board-empty">
                     <FormattedMessage
                       id={
@@ -676,7 +1041,7 @@ const InventoryItemsBoard = () => {
                 </TableCell>
               </TableRow>
             )}
-            {visibleRows.map((row) => {
+            {pagedRows.map((row) => {
               const isOpen = expandedId === row.itemId;
               const statusTag = STATUS_TAGS[row.status] || STATUS_TAGS.ADEQUATE;
               return (
@@ -688,15 +1053,51 @@ const InventoryItemsBoard = () => {
                   >
                     <TableCell>
                       <div className="board-item-name">{row.name}</div>
-                      <div className="board-subline">
-                        {row.code}
-                        {row.itemType &&
-                          ` · ${labelFor(intl, "inventory.itemType.", row.itemType)}`}
-                      </div>
+                      <div className="board-subline">{row.code}</div>
+                      {row.tags?.length > 0 && (
+                        <div className="board-item-tags">
+                          {row.tags.map((tag) => (
+                            <Tag key={tag} type="cool-gray" size="sm">
+                              {tag}
+                            </Tag>
+                          ))}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
-                      {intl.formatNumber(row.onHand)}{" "}
-                      <span className="board-units">{row.units}</span>
+                      {countMode ? (
+                        countableLots(row).length === 1 ? (
+                          renderCountEntry(
+                            `count-item-${row.itemId}`,
+                            countableLots(row)[0].id,
+                            countableLots(row)[0].currentQuantity || 0,
+                            row.units,
+                            intl.formatMessage(
+                              { id: "inventory.count.countOf" },
+                              { item: row.name },
+                            ),
+                          )
+                        ) : (
+                          <span className="board-muted">
+                            <FormattedMessage
+                              id={
+                                countableLots(row).length === 0
+                                  ? "inventory.count.nothingHere"
+                                  : "inventory.count.perLot"
+                              }
+                              values={{
+                                expected: intl.formatNumber(expectedFor(row)),
+                                units: row.units,
+                              }}
+                            />
+                          </span>
+                        )
+                      ) : (
+                        <>
+                          {intl.formatNumber(row.onHand)}{" "}
+                          <span className="board-units">{row.units}</span>
+                        </>
+                      )}
                     </TableCell>
                     <TableCell>{renderTrend(row.trendPercent)}</TableCell>
                     <TableCell>{renderRunsOut(row)}</TableCell>
@@ -705,6 +1106,30 @@ const InventoryItemsBoard = () => {
                       <Tag type={statusTag.type}>
                         <FormattedMessage id={statusTag.label} />
                       </Tag>
+                      {row.orderedOn && (
+                        <Tag type="teal" title={row.orderNote || undefined}>
+                          <FormattedMessage id="inventory.reorder.onOrder" />
+                          {row.orderExpectedDate &&
+                            ` · ${formatDay(row.orderExpectedDate)}`}
+                        </Tag>
+                      )}
+                      {row.active === false && (
+                        <Tag type="gray">
+                          <FormattedMessage id="inventory.item.deactivated" />
+                        </Tag>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {row.lastCountedOn ? (
+                        intl.formatDate(parseBoardDate(row.lastCountedOn), {
+                          month: "short",
+                          day: "numeric",
+                        })
+                      ) : (
+                        <span className="board-muted">
+                          <FormattedMessage id="inventory.count.neverCounted" />
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell className="board-actions-cell">
                       <OverflowMenu
@@ -733,11 +1158,25 @@ const InventoryItemsBoard = () => {
                           })}
                           onClick={() => openItemEditor(row)}
                         />
+                        <OverflowMenuItem
+                          isDelete={row.active !== false}
+                          itemText={intl.formatMessage({
+                            id:
+                              row.active === false
+                                ? "inventory.item.reactivate"
+                                : "inventory.item.deactivate",
+                          })}
+                          onClick={() =>
+                            row.active === false
+                              ? restoreItem(row)
+                              : setAction({ kind: "deactivateItem", row })
+                          }
+                        />
                       </OverflowMenu>
                     </TableCell>
                   </TableExpandRow>
                   {isOpen && (
-                    <TableExpandedRow colSpan={8}>
+                    <TableExpandedRow colSpan={9}>
                       {renderExpansion(row)}
                     </TableExpandedRow>
                   )}
@@ -747,6 +1186,33 @@ const InventoryItemsBoard = () => {
           </TableBody>
         </Table>
       </TableContainer>
+      {paged && (
+        <Pagination
+          page={currentPage}
+          pageSize={pageSize}
+          pageSizes={PAGE_SIZES}
+          totalItems={visibleRows.length}
+          onChange={({ page: nextPage, pageSize: nextSize }) => {
+            setPage(nextPage);
+            setPageSize(nextSize);
+          }}
+          forwardText={intl.formatMessage({ id: "pagination.forward" })}
+          backwardText={intl.formatMessage({ id: "pagination.backward" })}
+          itemsPerPageText={intl.formatMessage({
+            id: "pagination.items-per-page",
+          })}
+          pageNumberText={intl.formatMessage({ id: "pagination.page-number" })}
+          itemRangeText={(min, max, total) =>
+            intl.formatMessage(
+              { id: "pagination.item-range" },
+              { min, max, total },
+            )
+          }
+          pageRangeText={(current, total) =>
+            intl.formatMessage({ id: "pagination.page-range" }, { total })
+          }
+        />
+      )}
 
       <LotDetailsPanel
         open={detailLot !== null}
@@ -756,12 +1222,24 @@ const InventoryItemsBoard = () => {
 
       {/* Mounted only while active: these modals seed form state once and never reset it. */}
       {action?.kind === "receive" && (
-        <LotEntryModal
+        <QuickReceiveModal
           open
-          lot={null}
-          item={{ id: action.row.itemId }}
+          items={rows}
+          initialItemId={action.row?.itemId ?? null}
           onClose={closeAction}
-          onSave={() => onActionSaved("lot.save.success")}
+          onSave={(received) => {
+            setAction(null);
+            refresh();
+            notify({
+              kind: NotificationKinds.success,
+              title: intl.formatMessage({ id: "notification.success" }),
+              message: intl.formatMessage(
+                { id: "inventory.receive.success" },
+                { quantity: received.quantity, units: received.units },
+              ),
+            });
+          }}
+          onDefineNew={(upc) => setAction({ kind: "newItem", upc })}
         />
       )}
       {action?.kind === "editLot" && (
@@ -800,6 +1278,11 @@ const InventoryItemsBoard = () => {
         <InventoryItemForm
           open
           item={action.item}
+          observedLeadTime={
+            action.row?.leadTimeTier === "OBSERVED"
+              ? action.row.leadTimeDays
+              : null
+          }
           onClose={closeAction}
           onSave={() => onActionSaved("catalog.item.save.success")}
         />
@@ -811,6 +1294,96 @@ const InventoryItemsBoard = () => {
           initialItemId={action.row?.itemId ?? null}
           onClose={closeAction}
           onSave={() => onActionSaved("usage.record.success")}
+        />
+      )}
+
+      {action?.kind === "newItem" && (
+        <InventoryItemForm
+          open
+          item={null}
+          initialUpc={action.upc ?? null}
+          onClose={closeAction}
+          onSave={() => onActionSaved("inventory.item.created")}
+        />
+      )}
+
+      {action?.kind === "deactivateItem" && (
+        <Modal
+          open
+          danger
+          modalHeading={intl.formatMessage({
+            id: "inventory.item.deactivate.confirm.title",
+          })}
+          primaryButtonText={intl.formatMessage({
+            id: "inventory.item.deactivate",
+          })}
+          secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
+          onRequestClose={closeAction}
+          onSecondarySubmit={closeAction}
+          onRequestSubmit={() => retireItem(action.row)}
+          size="sm"
+        >
+          <p>
+            <FormattedMessage
+              id="inventory.item.deactivate.confirm"
+              values={{ item: action.row.name }}
+            />
+          </p>
+          <ul className="board-deactivate-implications">
+            <li>
+              <FormattedMessage id="inventory.item.deactivate.implication.hidden" />
+            </li>
+            <li>
+              <FormattedMessage id="inventory.item.deactivate.implication.stock" />
+            </li>
+            <li>
+              <FormattedMessage id="inventory.item.deactivate.implication.reversible" />
+            </li>
+          </ul>
+        </Modal>
+      )}
+
+      {manageTagsOpen && (
+        <ManageTagsModal
+          open
+          onClose={() => setManageTagsOpen(false)}
+          onSave={() => {
+            setTagFilter([]);
+            refresh();
+          }}
+        />
+      )}
+
+      {importOpen && (
+        <ImportItemsModal
+          open
+          onClose={() => setImportOpen(false)}
+          onImported={refresh}
+        />
+      )}
+
+      {action?.kind === "suggestions" && (
+        <ReorderSuggestionsModal
+          open
+          rows={rows}
+          onClose={closeAction}
+          onMarked={(count, outcome) => {
+            setAction(null);
+            refresh();
+            notify({
+              kind: NotificationKinds.success,
+              title: intl.formatMessage({ id: "notification.success" }),
+              message: intl.formatMessage(
+                {
+                  id:
+                    outcome === "cleared"
+                      ? "inventory.reorder.cleared"
+                      : "inventory.reorder.marked",
+                },
+                { count },
+              ),
+            });
+          }}
         />
       )}
 
