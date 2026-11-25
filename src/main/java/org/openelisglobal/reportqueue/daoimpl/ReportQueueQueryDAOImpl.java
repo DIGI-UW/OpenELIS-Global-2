@@ -86,7 +86,15 @@ public class ReportQueueQueryDAOImpl implements ReportQueueQueryDAO {
                         JOIN clinlims.sample_item si3 ON si3.id = a3.sampitem_id
                         WHERE si3.samp_id = sc.sample_id AND a3.status_id = :finalized
                           AND NOT EXISTS (SELECT 1 FROM clinlims.report_version_item i2
-                                          WHERE i2.report_version_id = lv.id AND i2.analysis_id = a3.id))) AS added
+                                          WHERE i2.report_version_id = lv.id AND i2.analysis_id = a3.id))) AS added,
+                     EXISTS (SELECT 1 FROM clinlims.micro_report_version mv
+                             JOIN clinlims.micro_case mc ON mc.id = mv.case_id
+                             WHERE mc.sample_id = sc.sample_id AND mv.structured_content IS NOT NULL
+                               AND mv.released_at > lv.issued_at) AS micro_newer,
+                     EXISTS (SELECT 1 FROM clinlims.micro_report_version mv
+                             JOIN clinlims.micro_case mc ON mc.id = mv.case_id
+                             WHERE mc.sample_id = sc.sample_id AND mv.structured_content IS NOT NULL
+                               AND mv.released_at > lv.issued_at AND mv.release_type = 'AMENDED') AS micro_amended
               FROM scope sc
               LEFT JOIN lastv lv ON lv.sample_id = sc.sample_id
             ),
@@ -94,10 +102,13 @@ public class ReportQueueQueryDAOImpl implements ReportQueueQueryDAO {
               SELECT st.*,
                      (st.version_id IS NULL
                       OR (st.legacy AND st.latest_release > st.issued_at)
-                      OR (NOT st.awaiting_validation AND (st.added OR st.changed_or_removed))) AS unprinted,
-                     (st.version_amended OR (NOT st.awaiting_validation AND st.changed_or_removed)
+                      OR (NOT st.awaiting_validation AND (st.added OR st.changed_or_removed OR st.micro_newer))) AS unprinted,
+                     (st.version_amended OR (NOT st.awaiting_validation AND (st.changed_or_removed OR st.micro_amended))
                       OR (st.legacy AND st.any_corrected)) AS amended,
-                     (st.released_count < st.total_count) AS partial
+                     (st.released_count < st.total_count OR EXISTS (
+                        SELECT 1 FROM clinlims.micro_case mo
+                        WHERE mo.sample_id = st.sample_id AND mo.status = 'ACTIVE'
+                          AND mo.final_release_state IN ('NOT_READY', 'PRELIMINARY_RELEASED'))) AS partial
               FROM state st
             )
             """;
@@ -295,7 +306,7 @@ public class ReportQueueQueryDAOImpl implements ReportQueueQueryDAO {
               SELECT DISTINCT ON (a.id) si.samp_id, a.id AS analysis_id, a.test_id, si.typeosamp_id,
                      (SELECT sh.patient_id FROM clinlims.sample_human sh WHERE sh.samp_id = si.samp_id
                         ORDER BY sh.id LIMIT 1) AS patient_id,
-                     tr.component_id, r.value, r.result_type
+                     tr.component_id, r.value, r.result_type, r.reporting_decimal_places
               FROM clinlims.result r
               JOIN clinlims.analysis a ON a.id = r.analysis_id
               JOIN clinlims.sample_item si ON si.id = a.sampitem_id
@@ -326,6 +337,7 @@ public class ReportQueueQueryDAOImpl implements ReportQueueQueryDAO {
                 record.setPatientId(idOrNull(c[4]));
                 record.setComponentId(idOrNull(c[5]));
                 record.setValue((String) c[6]);
+                record.setReportingDecimalPlaces(c[8] == null ? -1 : ((Number) c[8]).intValue());
                 records.add(record);
             }
             return records;

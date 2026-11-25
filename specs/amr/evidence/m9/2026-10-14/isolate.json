@@ -1,0 +1,68 @@
+{
+  "isolates": [
+    {
+      "id": "1c30372d-c831-4a60-98c2-b8c8825bd402",
+      "label": "ISO-1",
+      "cultureId": "ec53f2ce-258c-4b5c-b8b7-901509603a14",
+      "cultureLabel": "UX-M9-ISOLATE",
+      "sourceSampleItemId": "56",
+      "sampleItemId": "60",
+      "sampleItemLabel": "UATMICROFBBD14160C-ISO-1",
+      "gramStain": "Synthetic Gram-negative rods",
+      "colonyMorphology": "Synthetic smooth colonies",
+      "significance": "UNKNOWN",
+      "organismId": "c4cc5dfc-5e44-4b49-b3d0-6ad6be18a14d",
+      "organismName": "Escherichia coli (UAT)",
+      "status": "FINAL",
+      "method": "UAT micro culture",
+      "confidence": 95.0,
+      "identifiedAt": 1792019700000,
+      "createdBy": "1",
+      "createdAt": 1792019721006,
+      "received": false,
+      "mismatch": false,
+      "canIdentify": false,
+      "canReidentify": true,
+      "canAcknowledge": false,
+      "version": "2026-10-15 02:16:09.641",
+      "history": [
+        {
+          "id": "4cbb9a9f-02c7-485a-a10e-5debb982e308",
+          "organismId": "c4cc5dfc-5e44-4b49-b3d0-6ad6be18a14d",
+          "organismName": "Escherichia coli (UAT)",
+          "status": "PRELIMINARY",
+          "method": "UAT micro culture",
+          "confidence": 95.0,
+          "identifiedAt": 1792019700000,
+          "by": "1",
+          "at": 1792019738714,
+          "reason": "Identification updated"
+        },
+        {
+          "id": "e996b9e3-33e2-4521-b0a2-5c8b3d471cbf",
+          "organismId": "c4cc5dfc-5e44-4b49-b3d0-6ad6be18a14d",
+          "organismName": "Escherichia coli (UAT)",
+          "status": "FINAL",
+          "method": "UAT micro culture",
+          "confidence": 95.0,
+          "identifiedAt": 1792019700000,
+          "by": "1",
+          "at": 1792019748515,
+          "reason": "Synthetic UX audit confirmation"
+        }
+      ]
+    }
+  ],
+  "referrals": [
+    {
+      "id": "4",
+      "sampleItemId": "60",
+      "testName": "UAT Gram stain FBBD14160C",
+      "organizationName": "UAT reference FBBD14160C",
+      "status": "DRAFT",
+      "sentAt": 1792011600000,
+      "transportDetails": "Synthetic UX audit referral only"
+    }
+  ],
+  "referred": true
+}

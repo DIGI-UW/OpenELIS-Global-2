@@ -13,9 +13,11 @@ import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.Test;
+import org.openelisglobal.IsolatedDatabase;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.MountableFile;
 
+@IsolatedDatabase
 public class MicrobiologyM9LiquibaseRollbackTest {
 
     @Test
@@ -36,7 +38,16 @@ public class MicrobiologyM9LiquibaseRollbackTest {
                 ClassLoaderResourceAccessor resources = new ClassLoaderResourceAccessor();
 
                 Liquibase fullChangelog = new Liquibase("liquibase/base-changelog.xml", resources, database);
-                fullChangelog.update(new Contexts("test"));
+                var contexts = new Contexts("test");
+                var pending = fullChangelog.listUnrunChangeSets(contexts, new liquibase.LabelExpression());
+                int beforePanelCleanup = 0;
+                while (beforePanelCleanup < pending.size()
+                        && !pending.get(beforePanelCleanup).getId().equals("155-amr-v3-panel-report-cleanup"))
+                    beforePanelCleanup++;
+                assertTrue("The panel report cleanup is registered", beforePanelCleanup < pending.size());
+                // Validate the historic migration against the schema it supported. M8
+                // separately verifies retirement of the culture-setup table.
+                fullChangelog.update(beforePanelCleanup, contexts, new liquibase.LabelExpression());
                 assertM9SchemaPresent(connection);
 
                 Liquibase m9Changelog = new Liquibase("liquibase/microbiology-m9-rollback.xml", resources, database);

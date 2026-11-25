@@ -107,7 +107,7 @@ public class TATReportServiceTest {
         when(sample.getReceivedTimestamp()).thenReturn(received);
         when(sample.getEnteredDate()).thenReturn(received != null ? new java.sql.Date(received.getTime()) : null);
 
-        return new Object[] { analysis, sample, sampleItem };
+        return new Object[] { analysis, sample, sampleItem, null };
     }
 
     private void stubQueryResults(List<Object[]> rows) {
@@ -597,8 +597,8 @@ public class TATReportServiceTest {
         ArgumentCaptor<String> hqlCaptor = ArgumentCaptor.forClass(String.class);
         org.mockito.Mockito.verify(session).createQuery(hqlCaptor.capture());
         String hql = hqlCaptor.getValue();
-        Assert.assertTrue("HQL should contain SampleOrganization EXISTS subquery when orderingSiteId is set",
-                hql.contains("SampleOrganization"));
+        Assert.assertTrue("HQL should contain the SampleOrganization EXISTS filter when orderingSiteId is set",
+                hql.contains("EXISTS (SELECT 1 FROM SampleOrganization"));
     }
 
     @Test
@@ -611,7 +611,7 @@ public class TATReportServiceTest {
         ArgumentCaptor<String> hqlCaptor = ArgumentCaptor.forClass(String.class);
         org.mockito.Mockito.verify(session).createQuery(hqlCaptor.capture());
         String hql = hqlCaptor.getValue();
-        Assert.assertFalse("HQL should NOT contain SampleOrganization when orderingSiteId is null",
-                hql.contains("SampleOrganization"));
+        Assert.assertFalse("HQL should NOT contain the SampleOrganization EXISTS filter when orderingSiteId is null",
+                hql.contains("EXISTS (SELECT 1 FROM SampleOrganization"));
     }
 }

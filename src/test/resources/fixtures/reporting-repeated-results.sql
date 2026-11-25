@@ -83,7 +83,7 @@ BEGIN
       '47900000-0000-4000-8000-000000000006'::uuid] LOOP
         IF NOT EXISTS (SELECT 1 FROM result WHERE fhir_uuid = result_uuid) THEN
             INSERT INTO result (id, fhir_uuid, analysis_id, sort_order, is_reportable, result_type,
-              value, significant_digits, "grouping", lastupdated)
+              value, reporting_decimal_places, "grouping", lastupdated)
               VALUES (nextval('result_seq'), result_uuid, analysis_id_value, 1, 'Y', 'N', '450',
                 0, 0, timestamp '2026-05-05 10:00:00');
         END IF;
@@ -138,7 +138,7 @@ BEGIN
         END IF;
         IF NOT EXISTS (SELECT 1 FROM result WHERE fhir_uuid = result_uuid) THEN
             INSERT INTO result (id, fhir_uuid, analysis_id, sort_order, is_reportable, result_type,
-              value, significant_digits, "grouping", lastupdated)
+              value, reporting_decimal_places, "grouping", lastupdated)
               VALUES (nextval('result_seq'), result_uuid, analysis_id_value, 1, 'Y', 'N', '450',
                 0, 0, timestamp '2026-05-06 14:00:00');
         END IF;

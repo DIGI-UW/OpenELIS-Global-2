@@ -24,9 +24,16 @@ public class ResultLimitRangeDigitsTest {
     }
 
     @Test
+    public void displayedBoundsKeepEveryStoredDigitEvenWhenResultsUseWholeNumbers() {
+        ResultLimitServiceImpl service = new ResultLimitServiceImpl();
+        assertEquals("0.123456 - 0.654321", service.getDisplayNormalRange(0.123456, 0.654321, "0", " - "));
+    }
+
+    @Test
     public void openEndedAndUnsetDigitsAreLeftAlone() {
         assertEquals("0", ResultLimitServiceImpl.rangeDigits("0", Double.NEGATIVE_INFINITY, 5));
         assertEquals("-1", ResultLimitServiceImpl.rangeDigits("-1", 0.7));
-        assertEquals("4", ResultLimitServiceImpl.rangeDigits("0", 0.1 + 0.2));
+        assertEquals("17", ResultLimitServiceImpl.rangeDigits("0", 0.1 + 0.2));
+        assertEquals("6", ResultLimitServiceImpl.rangeDigits("0", 0.123456));
     }
 }

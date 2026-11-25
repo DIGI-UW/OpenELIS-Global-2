@@ -77,11 +77,7 @@ const percent = (value) =>
  * it (Recent Cycles). Both views read one rollup, so the KPI row cannot
  * disagree with the table under it.
  */
-/**
- * The KPI block both exports carry above their rows. These are the numbers being
- * attested for ISO 15189 §7.7.2, so a file that omitted them would invite a
- * screenshot beside it — which is what this export exists to replace.
- */
+/** Both exports carry the KPIs: they are the figures attested for ISO 15189:2022 §7.3.7.3. */
 const kpiLines = (kpis, labelOf) => [
   [
     labelOf("acceptance", "Acceptance rate (12 mo)"),
@@ -268,7 +264,7 @@ const LabPerformancePage = ({ view = "coverage" }) => {
                   )
                 : t(
                     "eqa.labperf.coverage.subtitle",
-                    "Accreditation snapshot: lab-wide KPIs, then EQA coverage by section across each scheme's last four cycles. Sections with no active PT are candidates for ISO 15189 §7.7.2 alternative assessment.",
+                    "Accreditation snapshot: lab-wide KPIs, then EQA coverage by section across each scheme's last four cycles. Sections with no active PT are candidates for ISO 15189:2022 §7.3.7.3 alternative assessment.",
                   )}
             </p>
           </Section>
@@ -371,7 +367,10 @@ const LabPerformancePage = ({ view = "coverage" }) => {
                   {kpis.uncoveredTestCount ?? 0}
                 </p>
                 <span style={hintStyle}>
-                  {t("eqa.labperf.kpi.uncovered.hint", "§7.7.2 candidates")}
+                  {t(
+                    "eqa.labperf.kpi.uncovered.hint",
+                    "ISO 15189:2022 §7.3.7.3 candidates",
+                  )}
                 </span>
               </Tile>
             </Column>
@@ -493,7 +492,7 @@ const LabPerformancePage = ({ view = "coverage" }) => {
                   )}
                   subtitle={t(
                     "eqa.labperf.gapBody",
-                    "{tests} — no active EQA enrollment, so ISO 15189 §7.7.2 alternative assessment is required.",
+                    "{tests} — no active EQA enrollment, so ISO 15189:2022 §7.3.7.3 alternative assessment is required.",
                     { tests: gaps.map((gap) => gap.testName).join(", ") },
                   )}
                   style={{ marginTop: "1rem", maxWidth: "100%" }}

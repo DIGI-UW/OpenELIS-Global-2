@@ -150,7 +150,7 @@
         jQuery("#testActivate").show();
         jQuery("#sortOrderList ul.sortable").each(function(){
             activateTestList.append("<br />");
-            activateTestList.append( jQuery(this).val());
+            activateTestList.append(document.createTextNode(jQuery(this).val()));
             activateTestList.append("<br />");
             sortOrder = 0;
             jQuery(this).find("li").each(function(){
@@ -158,7 +158,7 @@
                 jsonBlob.id = jQuery(this).val();
                 jsonBlob.activated = jQuery(this).hasClass("altered");
                 if( jsonBlob.activated){
-                    activateTestList.append("&nbsp;&nbsp;&nbsp;&nbsp;" + jQuery(this).text() );
+                    activateTestList.append(document.createTextNode("\u00a0\u00a0\u00a0\u00a0" + jQuery(this).text()));
                     activateTestList.append("<br />");
                 }
                 jsonBlob.sortOrder = sortOrder++;
@@ -179,7 +179,7 @@
                 jsonBlob.id = jQuery(this).val();
                 jsonBlob.activated = jQuery(this).hasClass("altered");
                 if( jsonBlob.activated){
-                    activateSampleList.append( jQuery(this).text() );
+                    activateSampleList.append(document.createTextNode(jQuery(this).text()));
                     activateSampleList.append("<br />");
                 }
                 jsonBlob.sortOrder = sortOrder++;
@@ -202,14 +202,14 @@
 
             if (deactivatedTests.length > 0) {
                 deactivateTestList.append("<br />");
-                deactivateTestList.append(sampleType.text());
+                deactivateTestList.append(document.createTextNode(sampleType.text()));
 
                 deactivateTestList.append("<br />");
                 deactivatedTests.each(function () {
                     jsonBlob = {};
                     jsonBlob.id = jQuery(this).val();
                     jsonObj.deactivateTest[jsonObj.deactivateTest.length] = jsonBlob;
-                    deactivateTestList.append("&nbsp;&nbsp;&nbsp;&nbsp;" + jQuery(this).siblings("span").text());
+                    deactivateTestList.append(document.createTextNode("\u00a0\u00a0\u00a0\u00a0" + jQuery(this).siblings("span").text()));
                     deactivateTestList.append("<br />");
                 });
 
@@ -218,7 +218,7 @@
                     jsonBlob.id = sampleType.find("input").val();
                     jsonObj.deactivateSample[jsonObj.deactivateSample.length] = jsonBlob;
                     jQuery("#sampleTypeDeactivate").show();
-                    deactivateSampleList.append(sampleType.text());
+                    deactivateSampleList.append(document.createTextNode(sampleType.text()));
                     deactivateSampleList.append("<br/>");
                 }
             }
@@ -348,7 +348,7 @@
         span = jQuery(document.createElement("span"));
         span.addClass("ui-icon ui-icon-arrowthick-2-n-s");
         LI.append(span);
-        LI.append(name);
+        LI.append(document.createTextNode(name));
 
         return LI;
     }

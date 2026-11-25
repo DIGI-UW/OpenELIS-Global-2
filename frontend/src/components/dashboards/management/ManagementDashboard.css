@@ -81,3 +81,26 @@
     display: none;
   }
 }
+
+.mgmt-meter {
+  block-size: 0.5rem;
+  background: var(--cds-layer-accent-01, #e0e0e0);
+}
+
+.mgmt-meter span {
+  display: block;
+  block-size: 100%;
+  background: var(--cds-interactive, #0f62fe);
+}
+
+.mgmt-meter--green span {
+  background: var(--qa-green);
+}
+
+.mgmt-meter--amber span {
+  background: var(--qa-amber);
+}
+
+.mgmt-meter--red span {
+  background: var(--qa-red);
+}

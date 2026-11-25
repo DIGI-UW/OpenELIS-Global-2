@@ -11,6 +11,7 @@ import { useHistory, useLocation } from "react-router-dom";
 import {
   Button,
   Checkbox,
+  CopyButton,
   FilterableMultiSelect,
   InlineNotification,
   Link,
@@ -45,6 +46,7 @@ import LocationComboBox from "./LocationComboBox";
 import RecordForm from "./RecordForm";
 import {
   getOrganization,
+  getThisLaboratory,
   getUsage,
   listIdentifierCollisions,
   listOrganizations,
@@ -156,6 +158,7 @@ const OrganizationsView = ({ view, lists }) => {
   const searchTimer = useRef(null);
   const formDirty = useRef(false);
   const [collisions, setCollisions] = useState([]);
+  const [thisLab, setThisLab] = useState(null);
   const [savedCount, setSavedCount] = useState(0);
   const [wardMatchClosed, setWardMatchClosed] = useState(null);
   const isSites = view === "sites";
@@ -226,6 +229,16 @@ const OrganizationsView = ({ view, lists }) => {
         ),
       )
       .catch(() => setCollisions([]));
+  }, [isSites, savedCount]);
+
+  useEffect(() => {
+    if (isSites) {
+      setThisLab(null);
+      return;
+    }
+    getThisLaboratory().then((found) =>
+      setThisLab(found && found.id ? found : null),
+    );
   }, [isSites, savedCount]);
 
   useEffect(() => {
@@ -484,6 +497,60 @@ const OrganizationsView = ({ view, lists }) => {
 
   return (
     <div data-testid={`locations-${view}`}>
+      {thisLab && (
+        <Tile className="locationsThisLab" data-testid="locations-this-lab">
+          <h5>
+            <FormattedMessage id="label.locations.thisLab.title" />
+          </h5>
+          <p className="locationsThisLabHelp">
+            <FormattedMessage id="help.locations.thisLab" />
+          </p>
+          <dl>
+            <div>
+              <dt>
+                <FormattedMessage id="label.locations.thisLab.name" />
+              </dt>
+              <dd data-testid="locations-this-lab-name">{thisLab.name}</dd>
+            </div>
+            <div>
+              <dt>
+                <FormattedMessage id="label.locations.thisLab.fhirId" />
+              </dt>
+              <dd>
+                <code data-testid="locations-this-lab-fhir-id">
+                  {thisLab.fhirId}
+                </code>
+                <CopyButton
+                  iconDescription={intl.formatMessage({
+                    id: "label.locations.thisLab.copyFhirId",
+                  })}
+                  feedback={intl.formatMessage({
+                    id: "label.locations.thisLab.copied",
+                  })}
+                  onClick={() =>
+                    navigator.clipboard &&
+                    navigator.clipboard.writeText(thisLab.fhirId)
+                  }
+                />
+              </dd>
+            </div>
+            <div>
+              <dt>
+                <FormattedMessage id="label.locations.thisLab.recordId" />
+              </dt>
+              <dd data-testid="locations-this-lab-record-id">{thisLab.id}</dd>
+            </div>
+          </dl>
+          <Button
+            kind="tertiary"
+            size="sm"
+            data-testid="locations-this-lab-open"
+            onClick={() => openOrClose(thisLab.id, false)}
+          >
+            <FormattedMessage id="button.locations.thisLab.open" />
+          </Button>
+        </Tile>
+      )}
       {collisions.length > 0 && (
         <div className="locationsCollisions">
           <InlineNotification
@@ -952,6 +1019,15 @@ const OrganizationsView = ({ view, lists }) => {
                     />
                     <TableCell>
                       {row.name}{" "}
+                      {thisLab && row.id === thisLab.id && (
+                        <Tag
+                          type="teal"
+                          size="sm"
+                          data-testid="locations-this-lab-tag"
+                        >
+                          <FormattedMessage id="label.locations.thisLab.title" />
+                        </Tag>
+                      )}
                       {row.registry && (
                         <Tag
                           type="cyan"

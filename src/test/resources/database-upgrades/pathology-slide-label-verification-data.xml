@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet
+        id="fixture-pathology-slide-label-verification-data" author="openelis">
+        <comment>A deployment that cut a slide before label verification
+            existed: one block and one slide under it. Nobody scanned the
+            slide, so it must come out of the upgrade unverified; 008 has no
+            backfill, and this slide guards against one being added later.</comment>
+        <sql>
+            INSERT INTO clinlims.sample
+            (id, accession_number, entered_date, received_date, lastupdated)
+            VALUES
+            (990501, 'SLV26000000001', now(), now(), now());
+        </sql>
+        <sql>
+            INSERT INTO clinlims.pathology_sample
+            (id, sample_id, status, last_updated)
+            VALUES
+            (990501, 990501, 'MICROTOMY', now());
+        </sql>
+        <sql>
+            INSERT INTO clinlims.pathology_block
+            (id, pathology_sample_id, designation, barcode, cassette_state, active,
+            last_updated)
+            VALUES
+            (990511, 990501, 'A1', 'SLV26000000001.A1', 'BLOCK', true, now());
+        </sql>
+        <sql>
+            INSERT INTO clinlims.pathology_slide
+            (id, pathology_sample_id, block_id, designation, barcode, active,
+            last_updated)
+            VALUES
+            (990521, 990501, 990511, '1', 'SLV26000000001.A1.1', true, now());
+        </sql>
+    </changeSet>
+</databaseChangeLog>

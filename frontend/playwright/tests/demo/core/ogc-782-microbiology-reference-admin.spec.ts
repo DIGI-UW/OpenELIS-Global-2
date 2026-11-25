@@ -121,7 +121,6 @@ test.describe("OGC-782 M3 reference administration demo", () => {
       await expect(panelDialog).toContainText(
         "Saving creates a new panel version",
       );
-      await panelDialog.getByLabel("Tier").first().selectOption("2");
       await demo.evidence("ogc-782-m3-03-panel-version-editor", {
         locator: panelDialog,
       });
@@ -182,9 +181,9 @@ test.describe("OGC-782 M3 reference administration demo", () => {
         .toUpperCase()}`;
       const csv = [
         "publisher,version,organism_or_group,antibiotic_whonet_code,method,specimen_type_id,breakpoint_type,susceptible_value,intermediate_lower_value,intermediate_upper_value,resistant_value,units",
-        `CLSI,${importVersion},group:UAT_SYNTHETIC,REFUAT,MIC,,MIC,1,2,2,4,synthetic-mg/L`,
-        `CLSI,${importVersion},Unknown organism,REFUAT,MIC,,MIC,1,2,2,4,synthetic-mg/L`,
-        `CLSI,${importVersion},group:UAT_SYNTHETIC,REFUAT,MIC,,MIC,not-a-number,2,2,4,synthetic-mg/L`,
+        `CLSI,${importVersion},group:UAT_SYNTHETIC,REFUAT,MIC,,MIC,1,2,2,4,mg/L`,
+        `CLSI,${importVersion},Unknown organism,REFUAT,MIC,,MIC,1,2,2,4,mg/L`,
+        `CLSI,${importVersion},group:UAT_SYNTHETIC,REFUAT,MIC,,MIC,not-a-number,2,2,4,mg/L`,
       ].join("\n");
       await page.getByRole("button", { name: "Import CSV" }).click();
       await page.locator('input[type="file"]').setInputFiles({

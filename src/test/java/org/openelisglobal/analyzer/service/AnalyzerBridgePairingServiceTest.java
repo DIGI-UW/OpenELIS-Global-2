@@ -82,8 +82,100 @@ public class AnalyzerBridgePairingServiceTest {
 
         String storedKey = stored.get().getClientPrivateKey();
 
-        assertFalse(storedKey.startsWith("MI"));
+        assertThrows(java.security.GeneralSecurityException.class,
+                () -> BridgeTls.privateKey(java.util.Base64.getDecoder().decode(storedKey)));
         BridgeTls.privateKey(java.util.Base64.getDecoder().decode(encryptor.decrypt(storedKey)));
+    }
+
+    /**
+     * A pairing stored under another installation key (one from before the install
+     * key, not yet upgraded) cannot be read. Every Bridge call used to answer a
+     * bare 500; it now reads as not paired.
+     */
+    @Test
+    public void aPairingThisInstallationCannotDecryptReadsAsNotPaired() {
+        service("").pair(CODE, "7");
+        AES256TextEncryptor otherKey = new AES256TextEncryptor();
+        otherKey.setPassword(java.util.UUID.randomUUID().toString());
+
+        AnalyzerBridgePairingService reinstalled = new AnalyzerBridgePairingServiceImpl(dao, otherKey,
+                bridge.url() + "/", "", "", "");
+
+        assertTrue(reinstalled.getPairedBridge().isEmpty());
+        assertFalse(reinstalled.getStatus().paired());
+    }
+
+    /**
+     * An unreadable stored key cannot pair on its own, so the page must not say it
+     * will, and it says the key is the problem.
+     */
+    @Test
+    public void anUnreadableKeyIsReportedAndDoesNotPairOnItsOwn() {
+        service("").pair(CODE, "7");
+        AES256TextEncryptor otherKey = new AES256TextEncryptor();
+        otherKey.setPassword(java.util.UUID.randomUUID().toString());
+
+        AnalyzerBridgePairingService.Status status = new AnalyzerBridgePairingServiceImpl(dao, otherKey,
+                bridge.url() + "/", CODE, "", "").getStatus();
+
+        assertFalse(status.clientKeyReadable());
+        assertFalse(status.pairsAutomatically());
+        assertTrue(service(CODE).getStatus().clientKeyReadable());
+    }
+
+    /**
+     * Another installation's key sometimes decrypts without an error into text that
+     * is no key at all, about one time in two hundred and fifty; that key is as
+     * unreadable as one that does not decrypt, never an IllegalArgumentException.
+     */
+    @Test
+    public void aKeyThatDecryptsToSomethingElseIsUnreadableToo() {
+        service("").pair(CODE, "7");
+        stored.get().setClientPrivateKey(encryptor.encrypt("?not a key?"));
+        bridge.forget();
+
+        assertFalse(service(CODE).getStatus().clientKeyReadable());
+        assertThrows(BridgePairingException.class, () -> service("").pair("WRONG", "8"));
+    }
+
+    /**
+     * Pairing again with a new code from the Bridge replaces a key this
+     * installation cannot read, where every attempt used to fail with the key error
+     * until the row was deleted by hand.
+     */
+    @Test
+    public void aNewCodeReplacesAKeyThisInstallationCannotRead() {
+        service("").pair(CODE, "7");
+        String unreadableKey = stored.get().getClientPrivateKey();
+        AES256TextEncryptor otherKey = new AES256TextEncryptor();
+        otherKey.setPassword(java.util.UUID.randomUUID().toString());
+        AnalyzerBridgePairingService reinstalled = new AnalyzerBridgePairingServiceImpl(dao, otherKey,
+                bridge.url() + "/", "", "", "");
+        bridge.forget();
+
+        AnalyzerBridgePairingService.Status status = reinstalled.pair(CODE, "8");
+
+        assertTrue(status.paired());
+        assertTrue(status.clientKeyReadable());
+        assertEquals(status.clientCertificateSha256(), bridge.pairedClient());
+        assertFalse(unreadableKey.equals(stored.get().getClientPrivateKey()));
+        assertTrue(reinstalled.getPairedBridge().isPresent());
+    }
+
+    @Test
+    public void aRefusedCodeLeavesAnUnreadableKeyAsItWas() {
+        service("").pair(CODE, "7");
+        String unreadableKey = stored.get().getClientPrivateKey();
+        AES256TextEncryptor otherKey = new AES256TextEncryptor();
+        otherKey.setPassword(java.util.UUID.randomUUID().toString());
+        AnalyzerBridgePairingService reinstalled = new AnalyzerBridgePairingServiceImpl(dao, otherKey,
+                bridge.url() + "/", "", "", "");
+        bridge.forget();
+
+        assertThrows(BridgePairingException.class, () -> reinstalled.pair("WRONG", "8"));
+
+        assertEquals(unreadableKey, stored.get().getClientPrivateKey());
+        assertEquals(unreadableKey, dao.findCurrent().orElseThrow().getClientPrivateKey());
     }
 
     @Test
@@ -292,8 +384,13 @@ public class AnalyzerBridgePairingServiceTest {
         }
     }
 
+    /**
+     * OGC-1546: an unreachable Bridge is reported as such, so the Analyzers page
+     * can say so instead of showing it paired, and the pin is kept and not
+     * re-paired.
+     */
     @Test
-    public void anUnreachableBridgeKeepsThePinAndIsNotCalledStale() {
+    public void anUnreachableBridgeKeepsThePinAndIsReportedUnreachable() {
         AnalyzerBridgePairingService pairing = service(CODE);
         pairing.pairWithConfiguredCode();
         String pinned = stored.get().getBridgeCertificateSha256();
@@ -302,8 +399,39 @@ public class AnalyzerBridgePairingServiceTest {
         pairing.pairWithConfiguredCode();
 
         assertTrue(pairing.getStatus().paired());
-        assertNull(pairing.getStatus().pinCheck());
+        assertEquals(AnalyzerBridgePairingService.PinCheck.UNREACHABLE, pairing.getStatus().pinCheck());
         assertEquals(pinned, stored.get().getBridgeCertificateSha256());
+        assertEquals(1, bridge.pairingAttempts.get());
+    }
+
+    /**
+     * OGC-1546: a Bridge that takes the request and never answers is as unreachable
+     * as one that refuses it.
+     */
+    @Test
+    public void aBridgeThatNeverAnswersIsReportedUnreachable() {
+        AnalyzerBridgePairingService pairing = service(CODE);
+        pairing.pairWithConfiguredCode();
+        bridge.stallStateAnswers();
+
+        assertEquals(AnalyzerBridgePairingService.PinCheck.UNREACHABLE, pairing.getStatus().pinCheck());
+    }
+
+    /**
+     * OGC-1546: a site that was paired and later had its Bridge address removed
+     * still gets its status, so the page can say no address is configured; the pin
+     * check used to fail on the empty address and answer 500.
+     */
+    @Test
+    public void aStoredPinWithTheBridgeUrlRemovedIsReportedWithoutAPinCheck() {
+        service(CODE).pairWithConfiguredCode();
+        AnalyzerBridgePairingService withoutUrl = new AnalyzerBridgePairingServiceImpl(dao, encryptor, "", CODE, "",
+                "");
+
+        AnalyzerBridgePairingService.Status status = withoutUrl.getStatus();
+
+        assertEquals("", status.bridgeUrl());
+        assertNull(status.pinCheck());
     }
 
     @Test

@@ -62,6 +62,12 @@ public class UnassignedSampleItemServiceImpl implements UnassignedSampleItemServ
 
     @Override
     @Transactional(readOnly = true)
+    public List<SampleItemDTO> getUnassignedByDestinationFacility(String facilityId) {
+        return getAllUnassigned().stream().filter(item -> facilityId.equals(item.getDestinationFacilityId())).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public boolean isAlreadyAssigned(String sampleItemId) {
         try {
             return boxSampleItemDAO.existsBySampleItemId(sampleItemId);

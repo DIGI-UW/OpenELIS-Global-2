@@ -86,7 +86,7 @@ export default {
       shadowResultValue: "",
       showSampleDetails: "",
       siblingReflexKey: "",
-      significantDigits: "",
+      reportingDecimalPlaces: "",
       expandedUncertainty: "",
       coverageFactor: "",
       technician: "",

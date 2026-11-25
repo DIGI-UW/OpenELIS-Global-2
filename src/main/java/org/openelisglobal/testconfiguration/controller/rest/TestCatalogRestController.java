@@ -116,16 +116,16 @@ public class TestCatalogRestController extends BaseController {
             if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(resultType)) {
                 List<TestResult> testResults = testService.getPossibleTestResults(test);
                 if (testResults.size() > 0) {
-                    catalog.setSignificantDigits(
-                            testService.getPossibleTestResults(test).get(0).getSignificantDigits());
+                    catalog.setReportingDecimalPlaces(
+                            testService.getPossibleTestResults(test).get(0).getReportingDecimalPlaces());
                 } else {
                     LogEvent.logWarn(this.getClass().getSimpleName(), "createTestList",
                             "test that doesn't have an active test result found. Possibly issue with data in"
                                     + " database");
-                    catalog.setSignificantDigits("0");
+                    catalog.setReportingDecimalPlaces("");
                 }
                 catalog.setHasLimitValues(true);
-                catalog.setResultLimits(getResultLimits(test, catalog.getSignificantDigits()));
+                catalog.setResultLimits(getResultLimits(test, catalog.getReportingDecimalPlaces()));
             }
             catalog.setHasDictionaryValues(
                     TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(catalog.getResultType()));
@@ -227,7 +227,7 @@ public class TestCatalogRestController extends BaseController {
         return null;
     }
 
-    private List<ResultLimitBean> getResultLimits(Test test, String significantDigits) {
+    private List<ResultLimitBean> getResultLimits(Test test, String reportingDecimalPlaces) {
         List<ResultLimitBean> limitBeans = new ArrayList<>();
 
         List<ResultLimit> resultLimitList = SpringContext.getBean(ResultLimitService.class).getResultLimits(test);
@@ -242,13 +242,13 @@ public class TestCatalogRestController extends BaseController {
         for (ResultLimit limit : resultLimitList) {
             ResultLimitBean bean = new ResultLimitBean();
             bean.setNormalRange(SpringContext.getBean(ResultLimitService.class).getDisplayReferenceRange(limit,
-                    significantDigits, "-"));
+                    reportingDecimalPlaces, "-"));
             bean.setValidRange(SpringContext.getBean(ResultLimitService.class).getDisplayValidRange(limit,
-                    significantDigits, "-"));
+                    reportingDecimalPlaces, "-"));
             bean.setReportingRange(SpringContext.getBean(ResultLimitService.class).getDisplayReportingRange(limit,
-                    significantDigits, "-"));
+                    reportingDecimalPlaces, "-"));
             bean.setCriticalRange(SpringContext.getBean(ResultLimitService.class).getDisplayCriticalRange(limit,
-                    significantDigits, "-"));
+                    reportingDecimalPlaces, "-"));
             bean.setGender(limit.getGender());
             bean.setAgeRange(SpringContext.getBean(ResultLimitService.class).getDisplayAgeRange(limit, "-"));
             limitBeans.add(bean);

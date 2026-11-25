@@ -145,7 +145,7 @@ public class TestReflexCalcRestControllerIntegrationTest extends BaseWebContextS
     }
 
     private void cleanup() {
-        jdbc.update("DELETE FROM clinlims.calculation_operation WHERE id = ?", OPERATION_ID);
+        jdbc.update("DELETE FROM clinlims.calculation_operation WHERE calculation_id = ?", CALCULATION_ID);
         jdbc.update("DELETE FROM clinlims.calculation WHERE id = ?", CALCULATION_ID);
         jdbc.update("DELETE FROM clinlims.reflex_rule_action WHERE id = ?", REFLEX_ACTION_ID);
         jdbc.update("DELETE FROM clinlims.reflex_rule WHERE id = ?", REFLEX_RULE_ID);
@@ -242,6 +242,20 @@ public class TestReflexCalcRestControllerIntegrationTest extends BaseWebContextS
         assertTrue("names the component: " + formula, formula.contains(COMPONENT_LABEL));
         assertFalse("and does not read as arithmetic on a test id: " + formula,
                 formula.startsWith(String.valueOf(TEST_ID)));
+    }
+
+    @Test
+    public void calculationFormula_readsACodedAnswerByName() {
+        seedCalculation();
+        jdbc.update(
+                "INSERT INTO clinlims.calculation_operation (id, type, operation_order, value, calculation_id)"
+                        + " VALUES (?, 'MATH_FUNCTION', 1, '==', ?), (?, 'ANSWER', 2, ?, ?)",
+                OPERATION_ID + 100, CALCULATION_ID, OPERATION_ID + 101, String.valueOf(DICT_ID), CALCULATION_ID);
+
+        String formula = controller.get(String.valueOf(TEST_ID)).calculatedBy.get(0).formula;
+
+        assertTrue("names the answer: " + formula, formula.contains(DICT_ENTRY));
+        assertFalse("not its id: " + formula, formula.contains(String.valueOf(DICT_ID)));
     }
 
     /** Where the calculation writes, to the same three axes. */

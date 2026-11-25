@@ -23,7 +23,7 @@ import java.util.List;
 import net.sf.jasperreports.engine.JRException;
 import org.openelisglobal.reports.action.implementation.reportBeans.WHONETCSVRoutineColumnBuilder;
 
-public abstract class WHONETCSVRoutineSampleExportReport extends WHONETCSVRoutineExportReport {
+public abstract class WHONETCSVRoutineSampleExportReport extends CSVExportReport {
 
     protected String lowDateStr;
     protected String highDateStr;

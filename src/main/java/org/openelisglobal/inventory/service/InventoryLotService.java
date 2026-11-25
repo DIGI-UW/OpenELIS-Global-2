@@ -39,6 +39,12 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
     List<InventoryLot> getExpiredActiveLots();
 
     /**
+     * ACTIVE or IN_USE lots with stock whose effective expiry is past or within
+     * daysAhead.
+     */
+    List<InventoryLot> getStockedLotsExpiringWithin(int daysAhead);
+
+    /**
      * Get lot by lot number
      */
     InventoryLot getByLotNumber(String lotNumber);

@@ -10,6 +10,12 @@ public interface SiteInformationService extends BaseObjectService<SiteInformatio
 
     SiteInformation getSiteInformationByName(String siteName);
 
+    /**
+     * Whether the setting changed after the version a page loaded (its lastupdated,
+     * in epoch milliseconds). A missing version or setting counts as unchanged.
+     */
+    boolean changedSince(String id, Long loadedVersion);
+
     List<SiteInformation> getAllSiteInformation();
 
     int getCountForDomainName(String domainName);

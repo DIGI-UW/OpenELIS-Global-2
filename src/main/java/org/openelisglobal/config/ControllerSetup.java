@@ -11,8 +11,10 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.propertyeditor.CaseInsensitiveEnumPropertyEditor;
 import org.openelisglobal.externalconnections.valueholder.ExternalConnection.AuthType;
 import org.openelisglobal.externalconnections.valueholder.ExternalConnection.ProgrammedConnection;
+import org.openelisglobal.program.service.InvalidClinicalAttachmentException;
 import org.springframework.beans.propertyeditors.StringTrimmerEditor;
 import org.springframework.beans.propertyeditors.URIEditor;
+import org.springframework.context.MessageSource;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
@@ -37,6 +39,16 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 @ControllerAdvice
 public class ControllerSetup extends ResponseEntityExceptionHandler {
 
+    /**
+     * Keeps the reason a ResponseStatusException or other ErrorResponse carries in
+     * its problem detail. The site's message source answers an unknown code with
+     * the code itself, so resolving the "problemDetail.*" codes through it replaced
+     * every reason with a message code, and no such keys exist to translate.
+     */
+    @Override
+    public void setMessageSource(MessageSource messageSource) {
+    }
+
     @InitBinder
     public void initBinder(WebDataBinder binder) {
         binder.setAutoGrowCollectionLimit(2048);
@@ -58,6 +70,13 @@ public class ControllerSetup extends ResponseEntityExceptionHandler {
         LogEvent.logDebug(this.getClass().getName(), "handleAccessDenied", ex.getMessage());
         return new ResponseEntity<>(buildGenericErrorBody(HttpStatus.FORBIDDEN), new HttpHeaders(),
                 HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(InvalidClinicalAttachmentException.class)
+    protected ResponseEntity<Object> handleInvalidClinicalAttachment(InvalidClinicalAttachmentException ex) {
+        Map<String, Object> body = buildGenericErrorBody(HttpStatus.BAD_REQUEST);
+        body.put("messageKey", "clinicalAttachment.uploadHint");
+        return ResponseEntity.badRequest().body(body);
     }
 
     @ExceptionHandler(value = { RuntimeException.class })

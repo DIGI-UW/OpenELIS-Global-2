@@ -6,7 +6,8 @@
  */
 import React from "react";
 import { vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../languages/en.json";
@@ -39,7 +40,7 @@ vi.mock("../patient/SearchPatientForm", () => ({
 import { getFromOpenElisServer } from "../utils/Utils";
 
 const UNITS = [
-  { id: "7", value: "Biochemistry" },
+  { id: "7", value: "Biochimie" },
   { id: "9", value: "Hematology" },
 ];
 
@@ -88,7 +89,9 @@ describe("Validation one-page search (OGC-1418)", () => {
 
     expect(screen.getByTestId("validation-search-area")).toBeInTheDocument();
     expect(document.querySelector("#validationSearch")).not.toBeNull();
-    expect(screen.getByLabelText("Lab Unit")).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: "Lab Unit" }),
+    ).toBeInTheDocument();
     expect(
       document.querySelector('label[for="validationFromDate"]'),
     ).not.toBeNull();
@@ -101,13 +104,18 @@ describe("Validation one-page search (OGC-1418)", () => {
     expect(queueCalls()).toHaveLength(0);
   });
 
-  it("lists only the Lab Units the user validates", () => {
+  it("lists only the Lab Units the user validates, narrowed to what is typed", async () => {
     renderAt("/validation");
+    const unit = screen.getByRole("combobox", { name: "Lab Unit" });
+    const options = () =>
+      within(document.getElementById(unit.getAttribute("aria-controls")))
+        .queryAllByRole("option")
+        .map((option) => option.textContent);
 
-    const options = [...screen.getByLabelText("Lab Unit").options]
-      .map((option) => option.textContent)
-      .filter(Boolean);
-    expect(options).toEqual(["Biochemistry", "Hematology"]);
+    await userEvent.click(unit);
+    expect(options()).toEqual(["Biochimie", "Hematology"]);
+    await userEvent.type(unit, "HÉMA");
+    expect(options()).toEqual(["Hematology"]);
     expect(getFromOpenElisServer.mock.calls[0][0]).toBe(
       "/rest/user-test-sections/Validation",
     );
@@ -122,15 +130,17 @@ describe("Validation one-page search (OGC-1418)", () => {
       labNumberTo: "ACC1",
     });
     expect(window.location.search).toBe("?labNumber=ACC1");
-    expect(screen.getByLabelText("Lab Unit").value).toBe("");
+    expect(screen.getByRole("combobox", { name: "Lab Unit" })).toHaveValue("");
   });
 
-  it("combines Lab Unit and a lab number range, keeps both in the address, and keeps the unit when the box is cleared", () => {
+  it("combines Lab Unit and a lab number range, keeps both in the address, and keeps the unit when the box is cleared", async () => {
     const { setParams } = renderAt("/validation");
 
-    fireEvent.change(screen.getByLabelText("Lab Unit"), {
-      target: { value: "7" },
-    });
+    await userEvent.type(
+      screen.getByRole("combobox", { name: "Lab Unit" }),
+      "bioch",
+    );
+    await userEvent.click(screen.getByRole("option", { name: "Biochimie" }));
     expect(lastQueueParams()).toMatchObject({
       testSectionId: "7",
       labNumberFrom: "",

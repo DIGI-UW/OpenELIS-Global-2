@@ -512,8 +512,9 @@ export const postToOpenElisServerJsonResponse = <
             statusText: response.statusText,
           }));
       }
-      // For successful responses, parse JSON normally
-      return response.json();
+      // A 2xx with no body (201 or 204 from .build()) is a success, not a
+      // network error: it answers an empty object.
+      return response.text().then((raw) => (raw ? JSON.parse(raw) : {}));
     })
     .then((json) => {
       callback(json as T, extraParams);
@@ -694,15 +695,20 @@ export const putToOpenElisServerJsonResponse = <TExtra = unknown>(
   })
     .then(handleSessionError)
     .then((response) => {
+      // An empty body, on a refusal or on a 2xx, is parsed as an empty object
+      // so the HTTP status reaches the caller instead of a parse error.
+      const parsed = response
+        .text()
+        .then((raw) => (raw ? JSON.parse(raw) : {}));
       if (!response.ok) {
-        return response.json().then((errorJson) => ({
+        return parsed.then((errorJson) => ({
           ...errorJson,
           status: response.status,
           statusCode: response.status,
           statusText: response.statusText,
         }));
       }
-      return response.json();
+      return parsed;
     })
     .then((json) => {
       callback(json, extraParams);
@@ -1039,3 +1045,15 @@ export const toBase64 = (file: Blob): Promise<string> =>
     reader.onload = () => resolve(reader.result as string);
     reader.onerror = reject;
   });
+
+export const csvCell = (value: unknown): string =>
+  `"${String(value ?? "").replace(/"/g, '""')}"`;
+
+export const downloadBlob = (blob: Blob, filename: string) => {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+};
