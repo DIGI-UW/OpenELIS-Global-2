@@ -2,13 +2,13 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   Button,
   DataTableSkeleton,
-  DatePicker,
   DatePickerInput,
   Dropdown,
   Modal,
   Pagination,
   Search,
 } from "@carbon/react";
+import { DatePicker } from "../../common/DatePicker";
 import { Download, DocumentPdf } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import config from "../../../config.json";

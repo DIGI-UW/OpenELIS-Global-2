@@ -247,6 +247,7 @@ const ParticipantRow = ({ row, t }) => {
                   <TableHeader>
                     {t("eqa.report.table.analyte", "Analyte")}
                   </TableHeader>
+                  <TableHeader>{t("common.sample", "Sample")}</TableHeader>
                   <TableHeader>
                     {t("eqa.report.table.reported", "Reported")}
                   </TableHeader>
@@ -272,6 +273,7 @@ const ParticipantRow = ({ row, t }) => {
                         )}
                       </TableCell>
                       <TableCell>{analyte.test || "—"}</TableCell>
+                      <TableCell>{analyte.sampleCode || ""}</TableCell>
                       <TableCell>{analyte.reported ?? "—"}</TableCell>
                       <TableCell>{analyte.zScore ?? "—"}</TableCell>
                       <TableCell>

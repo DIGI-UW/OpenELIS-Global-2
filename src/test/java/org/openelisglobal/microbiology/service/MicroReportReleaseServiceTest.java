@@ -115,6 +115,9 @@ public class MicroReportReleaseServiceTest {
             assertEquals(MicroCaseFinalReleaseState.PRELIMINARY_RELEASED.name(), released.getFinalReleaseState());
             verify(reportVersionService).recordPreliminary(org.mockito.ArgumentMatchers.eq(microCase.getId()),
                     any(MicroReportProjectionResult.class), org.mockito.ArgumentMatchers.eq("1"));
+            verify(activityDAO).insert(
+                    org.mockito.ArgumentMatchers.argThat(activity -> microCase.getId().equals(activity.getCaseId())
+                            && activity.getNote().startsWith("Partial report released")));
         }
     }
 

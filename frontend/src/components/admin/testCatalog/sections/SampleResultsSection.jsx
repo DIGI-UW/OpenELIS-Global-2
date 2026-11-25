@@ -577,6 +577,7 @@ const SampleResultsSection = ({ testId }) => {
                   resultType: c.resultType,
                   sortOrder: c.options.length + 1,
                   normal: false,
+                  critical: false,
                   qualifiable: false,
                 },
               ],
@@ -607,6 +608,7 @@ const SampleResultsSection = ({ testId }) => {
                   resultType: c.resultType,
                   sortOrder: c.options.length + 1,
                   normal: false,
+                  critical: false,
                   qualifiable: false,
                 },
               ],
@@ -1389,6 +1391,9 @@ const SampleResultsSection = ({ testId }) => {
                               <FormattedMessage id="label.testCatalog.sampleResults.option.normal" />
                             </TableHeader>
                             <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.option.critical" />
+                            </TableHeader>
+                            <TableHeader>
                               <FormattedMessage id="label.testCatalog.sampleResults.option.qualifiable" />
                             </TableHeader>
                             <TableHeader>
@@ -1438,6 +1443,18 @@ const SampleResultsSection = ({ testId }) => {
                                   checked={!!o.normal}
                                   onChange={(_e, { checked }) =>
                                     markNormal(ci, oi, checked)
+                                  }
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Checkbox
+                                  id={`opt-critical-${ci}-${oi}`}
+                                  labelText=""
+                                  checked={!!o.critical}
+                                  onChange={(_e, { checked }) =>
+                                    patchChild(ci, "options", oi, {
+                                      critical: checked,
+                                    })
                                   }
                                 />
                               </TableCell>

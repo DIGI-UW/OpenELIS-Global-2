@@ -6,6 +6,10 @@
   "additionalProperties": false,
   "required": ["schemaVersion", "id", "kind", "name", "version", "requires"],
   "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Optional link to this schema, for editors that validate the manifest as it is typed"
+    },
     "schemaVersion": { "type": "integer", "const": 1 },
     "id": {
       "type": "string",

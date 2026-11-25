@@ -3,7 +3,6 @@ import { format, parse } from "date-fns";
 import { labNow } from "../../utils/labClock";
 import {
   Button,
-  DatePicker,
   DatePickerInput,
   Select,
   SelectItem,
@@ -12,6 +11,7 @@ import {
   Tag,
   Tile,
 } from "@carbon/react";
+import { DatePicker } from "../../common/DatePicker";
 import { Warning, CheckmarkFilled } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -361,6 +361,7 @@ const InlineNceForm = ({
           parseDate={siteDate.parseDate}
           id="inline-nce-date-picker"
           datePickerType="single"
+          invalid={!!errors.dateOfEvent}
           value={
             nceForm.dateOfEvent
               ? parse(nceForm.dateOfEvent, "MM/dd/yyyy", labNow())
@@ -368,10 +369,10 @@ const InlineNceForm = ({
           }
           maxDate={labNow().setHours(23, 59, 59, 999)}
           onChange={(dates) => {
-            if (dates && dates[0]) {
-              const formatted = format(new Date(dates[0]), "MM/dd/yyyy");
-              handleFormChange("dateOfEvent", formatted);
-            }
+            handleFormChange(
+              "dateOfEvent",
+              dates && dates[0] ? format(new Date(dates[0]), "MM/dd/yyyy") : "",
+            );
           }}
         >
           <DatePickerInput
@@ -387,7 +388,6 @@ const InlineNceForm = ({
                 <RequiredMarker />
               </>
             }
-            invalid={!!errors.dateOfEvent}
             invalidText={errors.dateOfEvent}
           />
         </DatePicker>

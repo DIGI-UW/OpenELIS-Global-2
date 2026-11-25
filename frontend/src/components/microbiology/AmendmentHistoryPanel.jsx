@@ -8,9 +8,9 @@ import {
   StructuredListRow,
   StructuredListWrapper,
   Tag,
-  TextArea,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
+import MacroTextArea from "../common/textMacro/MacroTextArea";
 import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
 import MicrobiologyService from "./MicrobiologyService";
 import { MicrobiologyReportBlock } from "./CaseReportWorkspace";
@@ -107,6 +107,7 @@ const AmendmentHistoryPanel = ({
   const versionNumberFor = (versionId) =>
     reportVersions.find((version) => version.id === versionId)?.versionNumber;
 
+  // i18n-keys: microbiology.m6.release.*
   return (
     <section
       className="microbiology-card"
@@ -157,8 +158,9 @@ const AmendmentHistoryPanel = ({
 
       {canAmend && (finalReleased || amendmentOpen) && (
         <div className="microbiology-amendment-actions">
-          <TextArea
+          <MacroTextArea
             id="microbiology-amendment-reason"
+            context="MICROBIOLOGY_AMENDMENT_REASON"
             labelText={intl.formatMessage({
               id: amendmentOpen
                 ? "microbiology.amendment.cancelReason"
@@ -314,7 +316,9 @@ const AmendmentHistoryPanel = ({
                     <Tag
                       type={version.releaseType === "FINAL" ? "blue" : "purple"}
                     >
-                      {formatMicrobiologyEnum(version.releaseType, intl)}
+                      {intl.formatMessage({
+                        id: `microbiology.m6.release.${version.releaseType}`,
+                      })}
                     </Tag>
                   </div>
                   {version.report ? (

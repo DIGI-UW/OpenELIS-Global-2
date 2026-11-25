@@ -6,6 +6,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +15,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
 import org.openelisglobal.eqa.service.EQAIntakeValue;
+import org.openelisglobal.eqa.service.EQAPerformanceReportPDFService;
 import org.openelisglobal.eqa.service.EQAProviderScoringService;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQAPanel;
@@ -21,6 +23,7 @@ import org.openelisglobal.eqa.valueholder.EQAPanelSample;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.openelisglobal.eqa.valueholder.EQASubmissionMethod;
+import org.openelisglobal.testsupport.PdfText;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -53,6 +56,8 @@ public class EQAProviderTargetToleranceIntegrationTest extends EQASpineTestBase 
     private EQAProviderScoringService scoringService;
     @Autowired
     private EQAPanelSampleDAO eqaPanelSampleDAO;
+    @Autowired
+    private EQAPerformanceReportPDFService reportService;
 
     private EQACycle cycle;
     private EQAPanel panel;
@@ -96,6 +101,7 @@ public class EQAProviderTargetToleranceIntegrationTest extends EQASpineTestBase 
     @Override
     protected void cleanEqaTables() {
         if (jdbc != null) {
+            jdbc.update("DELETE FROM clinlims.eqa_program_enrollment WHERE id = 99930");
             jdbc.update("DELETE FROM clinlims.eqa_result");
             jdbc.update("DELETE FROM clinlims.eqa_distribution WHERE cycle_id IS NOT NULL");
         }
@@ -296,6 +302,49 @@ public class EQAProviderTargetToleranceIntegrationTest extends EQASpineTestBase 
         scoringService.scoreCycle(cycle.getId(), USER);
         assertEquals(List.of("T01|260.00000|250.00000|ACCEPTABLE", "T02|950.00000|900.00000|ACCEPTABLE"),
                 storedCd4(FIRST_ORG));
+    }
+
+    /**
+     * OGC-1666: the provider's copy of the report, the scores CSV and the
+     * participant's cycle history list two samples of one test in sample order, the
+     * numbers in a code compared as numbers, and each report row names its sample.
+     */
+    @Test
+    public void theReportTheCsvAndTheHistoryListSamplesInSampleOrder() throws IOException {
+        sealTargetFor(ANALYTE_CD4, "S-10", "900", new BigDecimal("720"), new BigDecimal("1080"));
+        sealTargetFor(ANALYTE_CD4, "S-2", "250", new BigDecimal("200"), new BigDecimal("300"));
+        Map<String, Long> samples = new java.util.HashMap<>();
+        jdbc.query("SELECT id, sample_code FROM clinlims.eqa_panel_sample WHERE panel_id = ?", rs -> {
+            samples.put(rs.getString("sample_code"), rs.getLong("id"));
+        }, panel.getId());
+        scoringService
+                .takeIn(cycle.getId(), FIRST_ORG,
+                        List.of(new EQAIntakeValue(TEST_CD4, samples.get("S-10"), "950"),
+                                new EQAIntakeValue(TEST_CD4, samples.get("S-2"), "260")),
+                        EQASubmissionMethod.MANUAL, USER);
+        scoringService.scoreCycle(cycle.getId(), USER);
+
+        String report = PdfText.of(reportService.generateParticipantPerformanceReport(cycle.getId(), FIRST_ORG));
+        assertTrue("the sample column follows the round: " + report, report.contains("Round Sample Analyte"));
+        assertTrue("S-2 before S-10: " + report, report.indexOf("S-2 ") < report.indexOf("S-10 "));
+
+        List<String> csv = List.of(scoringService.buildScoreCsv(cycle.getId(), FIRST_ORG).split("\n"));
+        assertEquals(List.of("S-2", "S-10"),
+                csv.subList(1, csv.size()).stream().map(line -> line.substring(line.lastIndexOf(',') + 1)).toList());
+
+        jdbc.update(
+                "INSERT INTO clinlims.eqa_program_enrollment"
+                        + " (id, eqa_program_id, organization_id, enrollment_date, status, sys_user_id, lastupdated)"
+                        + " VALUES (?, ?, ?, now(), 'Active', ?, now())",
+                99930, cycle.getScheme().getId(), FIRST_ORG, USER);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> history = (List<Map<String, Object>>) scoringService
+                .getParticipantPerformance(cycle.getScheme().getId()).stream()
+                .filter(row -> Long.valueOf(FIRST_ORG).equals(((Number) row.get("organizationId")).longValue()))
+                .findFirst().orElseThrow().get("cycles");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> analytes = (List<Map<String, Object>>) history.get(0).get("analytes");
+        assertEquals(List.of("S-2", "S-10"), analytes.stream().map(row -> row.get("sampleCode")).toList());
     }
 
     // ---- helpers ----

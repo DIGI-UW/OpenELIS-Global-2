@@ -14,6 +14,7 @@ import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
 import { InventoryItemAPI } from "./InventoryService";
 import { useIsMounted } from "./useIsMounted";
+import { RequiredMarker } from "../common/RequiredMarker";
 
 // Same rule as the server's CodeGenerator.toCode; it does not truncate, the
 // server does, so a code that grows on upper-casing (e.g. ß to SS) is cut there.
@@ -77,6 +78,7 @@ const InventoryItemForm = ({
   const isMounted = useIsMounted();
 
   const [error, setError] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [tagSuggestions, setTagSuggestions] = useState([]);
   const [tagDraft, setTagDraft] = useState("");
 
@@ -124,6 +126,9 @@ const InventoryItemForm = ({
 
   // Handle input changes
   const handleChange = (field, value) => {
+    if (fieldErrors[field]) {
+      setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
     // Convert empty string or NaN to 0 for numeric fields
     // The optional numbers stay blank; a 0 there is rejected by the server.
     const numericFields = ["lowStockThreshold"];
@@ -174,11 +179,17 @@ const InventoryItemForm = ({
 
   // Validate form
   const validate = () => {
-    if (!formData.name?.trim()) {
-      setError(intl.formatMessage({ id: "catalog.item.error.nameRequired" }));
-      return false;
+    const errors = {};
+    for (const [field, id] of [
+      ["name", "catalog.item.error.nameRequired"],
+      ["units", "catalog.item.error.unitsRequired"],
+    ]) {
+      if (!formData[field]?.trim()) {
+        errors[field] = intl.formatMessage({ id });
+      }
     }
-    return true;
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   // Handle save
@@ -196,14 +207,14 @@ const InventoryItemForm = ({
     try {
       // Build sanitized data with only type-relevant fields
       const sanitizedData = {
-        name: formData.name,
+        name: formData.name.trim(),
         tags: typedTags,
         microbiologyMedium: !!formData.microbiologyMedium,
         usualAtmosphereId: item?.usualAtmosphereId ?? null,
         usualTemperature: item?.usualTemperature ?? null,
         category: formData.category,
         manufacturer: formData.manufacturer,
-        units: formData.units,
+        units: formData.units.trim(),
         lowStockThreshold: Number(formData.lowStockThreshold) || 0,
         // Blank stays null, not zero, so the learned lead time can take over.
         leadTimeDays:
@@ -278,10 +289,17 @@ const InventoryItemForm = ({
 
         <TextInput
           id="name"
-          labelText={<FormattedMessage id="catalog.item.name" />}
+          labelText={
+            <>
+              <FormattedMessage id="catalog.item.name" />
+              <RequiredMarker />
+            </>
+          }
           value={formData.name}
           onChange={(e) => handleChange("name", e.target.value)}
           required
+          invalid={!!fieldErrors.name}
+          invalidText={fieldErrors.name}
         />
 
         <TextInput
@@ -400,10 +418,21 @@ const InventoryItemForm = ({
           />
           <TextInput
             id="units"
-            labelText={<FormattedMessage id="catalog.item.units" />}
+            labelText={
+              <>
+                <FormattedMessage id="catalog.item.units" />
+                <RequiredMarker />
+              </>
+            }
             value={formData.units}
             onChange={(e) => handleChange("units", e.target.value)}
-            placeholder="e.g., mL, tests, kits"
+            required
+            invalid={!!fieldErrors.units}
+            invalidText={fieldErrors.units}
+            maxLength={50}
+            placeholder={intl.formatMessage({
+              id: "catalog.item.units.placeholder",
+            })}
           />
         </div>
 
@@ -495,7 +524,9 @@ const InventoryItemForm = ({
           labelText={<FormattedMessage id="catalog.item.storageRequirements" />}
           value={formData.storageRequirements}
           onChange={(e) => handleChange("storageRequirements", e.target.value)}
-          placeholder="e.g., Store at 2-8°C, protect from light"
+          placeholder={intl.formatMessage({
+            id: "catalog.item.storageRequirements.placeholder",
+          })}
         />
 
         <TextInput
@@ -503,7 +534,9 @@ const InventoryItemForm = ({
           labelText={<FormattedMessage id="catalog.item.compatibleAnalyzers" />}
           value={formData.compatibleAnalyzers}
           onChange={(e) => handleChange("compatibleAnalyzers", e.target.value)}
-          placeholder="e.g., GeneXpert, Cobas"
+          placeholder={intl.formatMessage({
+            id: "catalog.item.compatibleAnalyzers.placeholder",
+          })}
         />
 
         <NumberInput
