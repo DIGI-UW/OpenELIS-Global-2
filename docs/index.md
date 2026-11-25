@@ -38,8 +38,9 @@ how to deploy, installation of software, setup of a bulid server, etc)
 
 ## Upgrades
 
-- [Upgrade from 1.x to 2.x](upgrade1to2.md)
-- [2.7 Upgrade Guide](27upgrade.md)
+- [Current upgrade procedure](upgrade.md)
+- [Historical 1.x to 2.x migration](upgrade1to2.md)
+- [Historical 2.7 migration](27upgrade.md)
 
 ## Additional Resources
 
@@ -48,4 +49,4 @@ how to deploy, installation of software, setup of a bulid server, etc)
 - [Entity Relationship Diagram](entity%20relation%20diagram.md)
 - [Direct FHIR Communication](directFHIRCommunication.md)
 - [Deploy with OpenMRS](deployomrs.md)
-- [Certificate Setup Report](certificate-setup-report.md)
+- [Installation keys and certificates](install.md#keys-and-existing-installations)

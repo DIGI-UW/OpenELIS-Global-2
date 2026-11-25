@@ -14,14 +14,12 @@ nav:
     - About: about.md
     - Install OpenELIS Global: install.md
     - Upgrade to the Newest Version: upgrade.md
-    - Upgrade from 2.x to 2.7: 27upgrade.md
     - Deploy:
        - Technical Requirements for Deployment: implementation.md 
        - Implementation Best Practices: implementation-bestpract.md
        - Configure the property files to connect to the Consolidated Server: server-property.md
        - OpenMRS Interoperability: deployomrs.md
        - Backup Configuration: backups.md
-       - Update From OpenELIS Global 1.x to 2.x: upgrade1to2.md
        - Password Migration: password.md
        - Examples of FHIR messages used: messages.md
        - Deploy Consolidated Server: csbuild.md
@@ -40,6 +38,9 @@ nav:
           - Pairing with the Analyzer Bridge: analyzers/bridge-pairing.md
           - Pre-Bridge analyzer settings: analyzers/pre-bridge-settings-export.md
     - Interacting with the co-resident FHIR store: directFHIRCommunication.md
+    - Historical migrations:
+       - 1.x to 2.x: upgrade1to2.md
+       - 2.7: 27upgrade.md
     - Troubleshooting: troubleshooting.md
     - Security:
         - Security Documentation: security/index.md
