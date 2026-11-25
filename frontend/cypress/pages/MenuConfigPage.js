@@ -2,11 +2,6 @@ class MenuConfigPage {
   constructor() {
     this.selectors = {
       menuButton: "[data-cy='menuButton']",
-      nonConformMenu: "#menu_nonconformity",
-      nonConformCheck: "Non-Conformity Menu Active",
-      nonConformReport: "#menu_non_conforming_report",
-      nonConformView: "#menu_non_conforming_view",
-      correctiveAction: "#menu_non_conforming_corrective_actions",
       patientMenu: "#menu_patient",
       addEditPatient: "#menu_patient_add_or_edit",
       patientHistory: "#menu_patienthistory",
@@ -57,27 +52,6 @@ class MenuConfigPage {
 
   validateToggleStatus(value) {
     cy.contains(this.selectors.toggleText, value);
-  }
-
-  uncheckNonConform() {
-    cy.contains(".cds--checkbox-label-text", this.selectors.nonConformCheck)
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
-  }
-
-  validateNonConformOff() {
-    cy.get(this.selectors.nonConformMenu).should("not.exist");
-  }
-
-  validateNonConformOn() {
-    cy.get(this.selectors.nonConformMenu)
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
-    cy.get(this.selectors.nonConformReport).should("exist");
-    cy.get(this.selectors.nonConformView).should("exist");
-    cy.get(this.selectors.correctiveAction).should("exist");
   }
 
   uncheckPatientMenu() {
@@ -149,10 +123,6 @@ class MenuConfigPage {
       addEditPatient: "#menu_patient_add_or_edit_checkbox",
       patientHistory: "#menu_patienthistory_checkbox",
       studyPatient: "#menu_patient_create_checkbox",
-      nonConform: "#menu_nonconformity_checkbox",
-      reportNCE: "#menu_non_conforming_report_checkbox",
-      viewNCE: "#menu_non_conforming_view_checkbox",
-      correctiveAction: "#menu_non_conforming_corrective_actions_checkbox",
       workplan: "#menu_workplan_checkbox",
       pathology: "#menu_pathology_checkbox",
     };
