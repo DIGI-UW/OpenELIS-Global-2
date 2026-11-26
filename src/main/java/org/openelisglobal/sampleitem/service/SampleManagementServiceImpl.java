@@ -98,8 +98,8 @@ public class SampleManagementServiceImpl implements SampleManagementService {
             List<String> sampleItemIds = sampleItems.stream().map(SampleItem::getId).collect(Collectors.toList());
             sampleItems = sampleItemDAO.getSampleItemsWithHierarchy(sampleItemIds);
         }
-        LogEvent.logDebug(this.getClass().getSimpleName(), "searchByAccessionNumber",
-                "Retrieved2 " + sampleItems.size() + " sample items for accession number " + accessionNumber);
+        LogEvent.logDebug(this.getClass().getSimpleName(), "searchByAccessionNumber", "Loaded the hierarchy of "
+                + sampleItems.size() + " sample items for accession number " + accessionNumber);
         // Step 5: Convert entities to DTOs WITHIN transaction boundary
         List<SampleItemDTO> dtos = sampleItems.stream().map(item -> convertToDTO(item, includeTests))
                 .collect(Collectors.toList());
