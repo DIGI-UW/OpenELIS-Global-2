@@ -41,6 +41,7 @@ import QuestionnaireResponse from "../common/QuestionnaireResponse";
 import "./../pathology/PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
+import { buildSpecimenPrintLabels } from "../barcodeWorkflow/specimenPrintLabels";
 import LabelVerificationTag from "../pathology/LabelVerificationTag";
 import {
   activeRows,
@@ -168,13 +169,10 @@ function ImmunohistochemistryCaseView() {
           accessionNumber,
         )}&type=order&quantity=1`,
       },
-      {
-        labelType: "specimen",
-        quantity: 1,
-        printUrl: `/LabelMakerServlet?labNo=${encodeURIComponent(
-          accessionNumber,
-        )}&type=specimen&quantity=1`,
-      },
+      ...buildSpecimenPrintLabels(
+        accessionNumber,
+        immunohistochemistrySampleInfo.sampleItemSortOrders,
+      ),
     ];
 
     return {

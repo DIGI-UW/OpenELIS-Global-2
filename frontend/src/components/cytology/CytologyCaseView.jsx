@@ -39,6 +39,7 @@ import QuestionnaireResponse from "../common/QuestionnaireResponse";
 import "../pathology/PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
+import { buildSpecimenPrintLabels } from "../barcodeWorkflow/specimenPrintLabels";
 let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "cytology.label.dashboard", link: "/CytologyDashboard" },
@@ -167,13 +168,10 @@ function CytologyCaseView() {
           accessionNumber,
         )}&type=order&quantity=1`,
       },
-      {
-        labelType: "specimen",
-        quantity: 1,
-        printUrl: `/LabelMakerServlet?labNo=${encodeURIComponent(
-          accessionNumber,
-        )}&type=specimen&quantity=1`,
-      },
+      ...buildSpecimenPrintLabels(
+        accessionNumber,
+        pathologySampleInfo.sampleItemSortOrders,
+      ),
       {
         labelType: "slide",
         quantity: slideQuantity,

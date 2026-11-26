@@ -142,6 +142,28 @@
         collection_date="2024-06-03 00:00:00.0"
         lastupdated="2023-11-01 12:00:00" />
 
+    <status_of_sample id="9001"
+        description="Sample item received" code="1" status_type="SAMPLE"
+        lastupdated="2024-01-01 10:00:00" name="SampleItemReceived"
+        display_key="status.sample.received" is_active="Y" />
+
+    <localization id="9001" description="sample type" />
+
+    <type_of_sample id="1" description="whole blood"
+        domain="H" lastupdated="2023-11-01 12:00:00" local_abbrev="blood"
+        is_active="true" sort_order="4" name_localization_id="9001"
+        display_key="sample.type.Blood" />
+
+    <!-- inserted out of order: the case view lists sort orders ascending -->
+    <sample_item id="9002" samp_id="1" sort_order="2"
+        external_id="12345-2" typeosamp_id="1"
+        collection_date="2024-06-03 00:00:00.0" quantity="1.0"
+        status_id="9001" lastupdated="2024-06-03 00:00:00.0" />
+    <sample_item id="9001" samp_id="1" sort_order="1"
+        external_id="12345-1" typeosamp_id="1"
+        collection_date="2024-06-03 00:00:00.0" quantity="1.0"
+        status_id="9001" lastupdated="2024-06-03 00:00:00.0" />
+
     <sample_human id="1" patient_id="1" samp_id="1"
         lastupdated="2024-01-01 00:00:00" />
     <sample_human id="2" patient_id="2" samp_id="2"

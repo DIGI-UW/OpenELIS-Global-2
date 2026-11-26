@@ -96,6 +96,20 @@ public class CytologyDisplayServiceIntegrationTest extends BaseWebContextSensiti
     }
 
     @Test
+    public void convertToCaseDisplayItem_withSampleItems_shouldListTheirSortOrdersAscending() {
+        CytologyCaseViewDisplayItem item = cytologyDisplayService.convertToCaseDisplayItem(1);
+
+        assertEquals(List.of("1", "2"), item.getSampleItemSortOrders());
+    }
+
+    @Test
+    public void convertToCaseDisplayItem_withoutSampleItems_shouldListNoSortOrders() {
+        CytologyCaseViewDisplayItem item = cytologyDisplayService.convertToCaseDisplayItem(2);
+
+        assertTrue(item.getSampleItemSortOrders().isEmpty());
+    }
+
+    @Test
     public void convertToCaseDisplayItem_withTextDiagnosis_shouldMapTextResults() {
         CytologyCaseViewDisplayItem item = cytologyDisplayService.convertToCaseDisplayItem(2);
 
