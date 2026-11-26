@@ -7,7 +7,10 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+import org.hibernate.ObjectNotFoundException;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.rest.util.DashboardPage;
 import org.openelisglobal.common.rest.util.DashboardPaging;
@@ -17,11 +20,14 @@ import org.openelisglobal.program.service.ImmunohistochemistrySampleService;
 import org.openelisglobal.program.service.ProgramSampleLabUnitScope;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistryCaseViewDisplayItem;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistryDisplayItem;
+import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistrySample;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistrySample.ImmunohistochemistryStatus;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -170,5 +176,23 @@ public class ImmunohistochemistryController extends BaseRestController {
         immunohistochemistrySampleService.updateWithFormValues(immunohistochemistrySampleId, form);
 
         return form;
+    }
+
+    /**
+     * An immunohistochemistry case id nothing carries is not found, not a server
+     * error. Any other missing row (a user id posted with a save, for one) says
+     * nothing about the case, so it stays the server error the application answers
+     * for any unexpected failure; a handler declared here is the only one Spring
+     * tries, so it is answered here rather than rethrown.
+     */
+    @ExceptionHandler(ObjectNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> notFound(ObjectNotFoundException e) {
+        if (ImmunohistochemistrySample.class.getName().equals(e.getEntityName())) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "No immunohistochemistry case with id " + e.getIdentifier()));
+        }
+        LogEvent.logError(e);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("status",
+                HttpStatus.INTERNAL_SERVER_ERROR.value(), "error", HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase()));
     }
 }

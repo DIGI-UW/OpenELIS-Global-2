@@ -128,3 +128,8 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* Gives up the grid's full width so the band's shared margin stays on the page. */
+.case-view-order-band.cds--css-grid {
+  inline-size: auto;
+}

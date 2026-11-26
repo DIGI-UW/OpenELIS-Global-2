@@ -1038,7 +1038,7 @@ function ImmunohistochemistryCaseView() {
         </Column>
       </Grid>
       <Stack gap={4}>
-        <Grid fullWidth={true} className="orderLegendBody">
+        <Grid fullWidth={true} className="orderLegendBody case-view-order-band">
           {notificationVisible === true ? <AlertDialog /> : ""}
           {loading && <Loading description="Loading Dasboard..." />}
 
