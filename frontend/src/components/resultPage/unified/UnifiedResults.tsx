@@ -1637,6 +1637,18 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
   const statusName = (statusId?: string): string =>
     statusOptions.find((s) => s.id === statusId)?.value || statusId || "";
 
+  const finalizedStatusId = statusOptions.find((s) =>
+    s.value.toLowerCase().includes("final"),
+  )?.id;
+
+  const isRowFinalized = (row: WorklistRow): boolean => {
+    if (!row.analysisStatusId) return false;
+    if (finalizedStatusId) {
+      return row.analysisStatusId === finalizedStatusId;
+    }
+    return String(row.analysisStatusId) === "6";
+  };
+
   /** Carbon tag color per status name — never conveys status by color alone. */
   const statusTagType = (statusId?: string): string => {
     const name = statusName(statusId).toLowerCase();
@@ -2229,6 +2241,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                               row={row}
                               domain={domain}
                               editable={isRowEditable(state)}
+                              attachmentsEditable={!isRowFinalized(row)}
                               editing={isModifyingSavedResult(state)}
                               inRun={state === "WAITING"}
                               testSectionId={selectedLabUnit || undefined}
