@@ -75,6 +75,43 @@ public class ResultRun extends BaseObject<Long> {
     @Column(name = "completed_at")
     private Timestamp completedAt;
 
+    /** The workplan batch this run is (FR-B2, FR-G4); null for other sources. */
+    @Column(name = "batch_workplan_id")
+    private Long batchWorkplanId;
+
+    /** The reagent lot the run's values were produced with (FR-E3). */
+    @Column(name = "reagent_lot_id")
+    private Long reagentLotId;
+
+    /** A run of one's analysis (FR-B3); null for other sources. */
+    @Column(name = "analysis_id", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String analysisId;
+
+    public String getAnalysisId() {
+        return analysisId;
+    }
+
+    public void setAnalysisId(String analysisId) {
+        this.analysisId = analysisId;
+    }
+
+    public Long getBatchWorkplanId() {
+        return batchWorkplanId;
+    }
+
+    public void setBatchWorkplanId(Long batchWorkplanId) {
+        this.batchWorkplanId = batchWorkplanId;
+    }
+
+    public Long getReagentLotId() {
+        return reagentLotId;
+    }
+
+    public void setReagentLotId(Long reagentLotId) {
+        this.reagentLotId = reagentLotId;
+    }
+
     @Override
     public Long getId() {
         return id;

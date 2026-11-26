@@ -15,14 +15,17 @@ import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.qc.form.BenchQCCaptureForm;
+import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.resultrun.form.ResultRunChip;
 import org.openelisglobal.resultrun.form.ResultRunHeader;
 import org.openelisglobal.resultrun.form.ResultRunListResponse;
 import org.openelisglobal.resultrun.form.ResultRunRowsPage;
 import org.openelisglobal.resultrun.form.ResultRunSelection;
 import org.openelisglobal.resultrun.form.ResultRunSelectionSummary;
+import org.openelisglobal.resultrun.form.RunLotOptions;
 import org.openelisglobal.resultrun.form.RunOrderMatch;
 import org.openelisglobal.resultrun.form.RunViewer;
+import org.openelisglobal.resultrun.form.WaitingRun;
 import org.openelisglobal.resultrun.service.ResultRunService;
 import org.openelisglobal.resultrun.service.RunExceptionService;
 import org.openelisglobal.resultrun.service.RunQcService;
@@ -37,6 +40,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -163,6 +167,78 @@ public class ResultRunRestController extends BaseRestController {
             return ResponseEntity.badRequest().body(Map.of("message", message));
         }
         return ResponseEntity.ok(runQcService.qcBlock(id));
+    }
+
+    /**
+     * A control recorded on a row: its id, the run it is on, and the row's hold
+     * after it, null once the run no longer holds the row's test.
+     */
+    public record RowControl(String id, Long runId, WaitingRun waitingRun) {
+    }
+
+    /**
+     * A control recorded on a row in no run (FR-B3, FR-D7): it opens the row's run
+     * of one and is recorded on it. Answers with the control's id and run, and the
+     * row's hold after it, so the worklist holds or releases the row at once.
+     */
+    @PostMapping(value = "/of-analysis/{analysisId}/controls", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> recordRowControl(HttpServletRequest request, @PathVariable String analysisId,
+            @RequestBody BenchQCCaptureForm capture) {
+        try {
+            QCResult control = resultRunService.recordRowControl(analysisId, capture, viewer(request),
+                    getSysUserId(request));
+            WaitingRun held = runQcService.holdCauses(control.getRunId()).containsKey(control.getTestId())
+                    ? resultRunService.heldRun(control.getRunId(), control.getTestId())
+                    : null;
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(new RowControl(control.getId(), control.getRunId(), held));
+        } catch (IllegalArgumentException e) {
+            String message = e.getMessage() == null ? "Invalid control result" : e.getMessage();
+            return ResponseEntity.badRequest().body(Map.of("message", message));
+        }
+    }
+
+    /** The reagent lots a workplan run may record (FR-E3). */
+    @GetMapping(value = "/{id}/lot-options", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<RunLotOptions> lotOptions(HttpServletRequest request, @PathVariable Long id) {
+        return resultRunService.lotOptions(id, viewer(request)).map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /** The reagent lot the page records on a workplan run (FR-E3). */
+    public record RunLot(Long reagentId, Long reagentLotId) {
+    }
+
+    /**
+     * Records the reagent lot an open workplan run uses, on the run and its batch
+     * (FR-E3), and answers with the run's header.
+     */
+    @PutMapping(value = "/{id}/reagent-lot", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> setReagentLot(HttpServletRequest request, @PathVariable Long id, @RequestBody RunLot lot) {
+        try {
+            return resultRunService
+                    .setReagentLot(id, lot == null ? null : lot.reagentId(), lot == null ? null : lot.reagentLotId(),
+                            viewer(request), getSysUserId(request))
+                    .<ResponseEntity<?>>map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            String message = e.getMessage() == null ? "Invalid reagent lot" : e.getMessage();
+            return ResponseEntity.badRequest().body(Map.of("message", message));
+        }
+    }
+
+    /**
+     * Marks an open workplan run complete with its batch (FR-E5) and answers with
+     * the run's header.
+     */
+    @PostMapping(value = "/{id}/complete", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> markComplete(HttpServletRequest request, @PathVariable Long id) {
+        try {
+            return resultRunService.markComplete(id, viewer(request), getSysUserId(request))
+                    .<ResponseEntity<?>>map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            String message = e.getMessage() == null ? "This run cannot be marked complete" : e.getMessage();
+            return ResponseEntity.badRequest().body(Map.of("message", message));
+        }
     }
 
     /** The earlier run the page confirms this run retests (FR-C5). */

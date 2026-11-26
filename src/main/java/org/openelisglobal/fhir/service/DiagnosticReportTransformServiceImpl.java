@@ -12,7 +12,10 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
+import org.openelisglobal.note.service.NoteService;
+import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
@@ -22,6 +25,7 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class DiagnosticReportTransformServiceImpl implements DiagnosticReportTransformService {
@@ -42,13 +46,17 @@ public class DiagnosticReportTransformServiceImpl implements DiagnosticReportTra
     private FhirCommonTransformService common;
     @Autowired
     private TerminologyTransformService terminologyTransformService;
+    @Autowired
+    private NoteService noteService;
 
     @Override
+    @Transactional(readOnly = true)
     public DiagnosticReport transformResultToDiagnosticReport(String analysisId) {
         return transformResultToDiagnosticReport(analysisService.get(analysisId));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public DiagnosticReport transformResultToDiagnosticReport(Analysis analysis) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformResultToDiagnosticReport",
                 "transformResultToDiagnosticReport called");
@@ -91,6 +99,29 @@ public class DiagnosticReportTransformServiceImpl implements DiagnosticReportTra
         }
         diagnosticReport.setCode(terminologyTransformService.transformTestToCodeableConcept(test.getId(),
                 sampleItem != null ? sampleItem.getTypeOfSampleId() : null));
+
+        List<Note> allNotes = noteService.getNotes(analysis);
+        if (allNotes != null) {
+            Note latestInterpretation = null;
+            for (Note note : allNotes) {
+                if (note != null && Note.EXTERNAL.equals(note.getNoteType())
+                        && "Interpretation".equalsIgnoreCase(note.getSubject())
+                        && GenericValidator.isBlankOrNull(note.getTestResultComponentId())) {
+                    if (latestInterpretation == null) {
+                        latestInterpretation = note;
+                    } else if (note.getLastupdated() != null && latestInterpretation.getLastupdated() != null) {
+                        if (!note.getLastupdated().before(latestInterpretation.getLastupdated())) {
+                            latestInterpretation = note;
+                        }
+                    } else {
+                        latestInterpretation = note;
+                    }
+                }
+            }
+            if (latestInterpretation != null && !GenericValidator.isBlankOrNull(latestInterpretation.getText())) {
+                diagnosticReport.setConclusion(latestInterpretation.getText().trim());
+            }
+        }
 
         return diagnosticReport;
     }

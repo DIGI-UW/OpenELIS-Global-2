@@ -64,6 +64,7 @@ import org.openelisglobal.qaevent.valueholder.NceCategory;
 import org.openelisglobal.qaevent.valueholder.NceSpecimen;
 import org.openelisglobal.qc.service.QCControlLotService;
 import org.openelisglobal.qc.valueholder.QCControlLot;
+import org.openelisglobal.resultrun.service.ResultRunService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.systemuser.service.SystemUserService;
@@ -74,6 +75,7 @@ import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testreagentlink.service.TestReagentLinkService;
 import org.openelisglobal.testreagentlink.valueholder.TestReagentLink;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -113,6 +115,7 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
     private final NceCategoryService nceCategoryService;
     private final NceTypeService nceTypeService;
     private final NceSpecimenService nceSpecimenService;
+    private final ResultRunService resultRunService;
 
     public BatchWorkplanServiceImpl(BatchWorkplanDAO batchWorkplanDAO, BatchWorkplanItemDAO batchWorkplanItemDAO,
             AnalysisService analysisService, IStatusService statusService, UserService userService,
@@ -120,8 +123,8 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
             TestReagentLinkService testReagentLinkService, InventoryItemService inventoryItemService,
             InventoryLotService inventoryLotService, AnalyzerService analyzerService, NCEventService ncEventService,
             SystemUserService systemUserService, QCControlLotService controlLotService,
-            NceCategoryService nceCategoryService, NceTypeService nceTypeService,
-            NceSpecimenService nceSpecimenService) {
+            NceCategoryService nceCategoryService, NceTypeService nceTypeService, NceSpecimenService nceSpecimenService,
+            @Lazy ResultRunService resultRunService) {
         this.batchWorkplanDAO = batchWorkplanDAO;
         this.batchWorkplanItemDAO = batchWorkplanItemDAO;
         this.analysisService = analysisService;
@@ -139,12 +142,13 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
         this.nceCategoryService = nceCategoryService;
         this.nceTypeService = nceTypeService;
         this.nceSpecimenService = nceSpecimenService;
+        this.resultRunService = resultRunService;
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<PendingBatchTestResponse> getPendingTests(Integer limit, String sysUserId) {
-        Set<String> assignedAnalysisIds = batchWorkplanItemDAO.getAnalysisIdsInStatuses(unarchivedStatuses());
+        Set<String> assignedAnalysisIds = batchWorkplanItemDAO.getAnalysisIdsInStatuses(holdingStatuses());
         List<String> visibleTestIds = userService.getUserTestIdsForLabUnitRoles(sysUserId, Constants.ROLE_RESULTS);
         // Both exclusions are in the query, so the row cap is the last thing applied
         // and a page full of already-batched or out-of-unit work cannot squeeze the
@@ -159,7 +163,7 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
     @Override
     @Transactional(readOnly = true)
     public PendingTestsPageResponse getPendingTestsPage(PendingTestsQuery query, String sysUserId) {
-        Set<String> assignedAnalysisIds = batchWorkplanItemDAO.getAnalysisIdsInStatuses(unarchivedStatuses());
+        Set<String> assignedAnalysisIds = batchWorkplanItemDAO.getAnalysisIdsInStatuses(holdingStatuses());
         List<String> visibleTestIds = userService.getUserTestIdsForLabUnitRoles(sysUserId, Constants.ROLE_RESULTS);
         List<String> statusIds = workplanPendingStatusIds();
         List<String> pageIds = batchWorkplanDAO.getPendingAnalysisIds(statusIds, visibleTestIds, assignedAnalysisIds,
@@ -223,7 +227,7 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
         }
         validateName(request.getName());
 
-        Set<String> alreadyAssigned = batchWorkplanItemDAO.getExistingAnalysisIds(analysisIds, unarchivedStatuses());
+        Set<String> alreadyAssigned = batchWorkplanItemDAO.getExistingAnalysisIds(analysisIds, holdingStatuses());
         if (!alreadyAssigned.isEmpty()) {
             throw new IllegalArgumentException(
                     "Already in an open batch: " + labNumbersAndTests(new ArrayList<>(alreadyAssigned)));
@@ -291,7 +295,7 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
                     .collect(Collectors.toList());
             if (!added.isEmpty()) {
                 Set<String> elsewhere = batchWorkplanItemDAO.getExistingAnalysisIdsOutsideBatch(added,
-                        unarchivedStatuses(), batch.getId());
+                        holdingStatuses(), batch.getId());
                 if (!elsewhere.isEmpty()) {
                     throw new IllegalArgumentException(
                             "Already in an open batch: " + labNumbersAndTests(new ArrayList<>(elsewhere)));
@@ -333,7 +337,90 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
     public BatchSetupOptionsResponse getSetupOptions(Long id, String sysUserId) {
         BatchWorkplan batch = requireOwnBatch(id, sysUserId);
         List<BatchTestRef> tests = testsOf(batch);
+        return new BatchSetupOptionsResponse(reagentOptions(tests), instrumentOptions(tests));
+    }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<ReagentOptionResponse> runReagentOptions(Long id) {
+        return reagentOptions(testsOf(requireBatch(id)));
+    }
+
+    @Override
+    public BatchWorkplanResponse batchFromWorklist(List<String> analysisIds, String sysUserId) {
+        List<String> ids = cleanIds(analysisIds == null ? List.of() : analysisIds);
+        if (ids.size() < 2) {
+            throw new IllegalArgumentException("Select two or more pending rows of one test to batch them");
+        }
+        List<Analysis> analyses = analysisService.getAnalysesByIdsWithDetails(ids);
+        if (analyses.stream().anyMatch(analysis -> analysis.getTest() == null)
+                || analyses.stream().map(analysis -> analysis.getTest().getId()).distinct().count() != 1) {
+            throw new IllegalArgumentException("Rows of different tests cannot be batched together");
+        }
+        BatchWorkplanRequest request = new BatchWorkplanRequest();
+        request.setAnalysisIds(ids);
+        BatchWorkplan batch = requireOwnBatch(createBatch(request, sysUserId).getId(), sysUserId);
+        Timestamp now = Timestamp.from(Instant.now());
+        batch.setStatus(BatchWorkplanStatus.ACTIVE);
+        batch.setActivatedAt(now);
+        batch.setGeneratedAt(now);
+        batch.setGeneratedByUserId(requireUserId(sysUserId));
+        stampUpdate(batch, sysUserId);
+        BatchWorkplan released = batchWorkplanDAO.update(batch);
+        openRunOf(released, sysUserId);
+        return toBatchResponse(released);
+    }
+
+    @Override
+    public void setRunReagentLot(Long id, Long reagentId, Long reagentLotId, String sysUserId) {
+        BatchWorkplan batch = requireBatch(id);
+        requireUsableLinkedLot(testsOf(batch), reagentId, reagentLotId);
+        batch.setReagentId(reagentId);
+        batch.setReagentLotId(reagentLotId);
+        stampUpdate(batch, sysUserId);
+        batchWorkplanDAO.update(batch);
+    }
+
+    @Override
+    public void completeFromRun(Long id, String sysUserId) {
+        BatchWorkplan batch = requireBatch(id);
+        if (batch.getStatus() == BatchWorkplanStatus.DRAFT) {
+            throw new IllegalArgumentException(
+                    "This batch is back in setup on the Workplan page; release it again before marking its run complete");
+        }
+        if (batch.getStatus() == BatchWorkplanStatus.ACTIVE) {
+            batch.setStatus(BatchWorkplanStatus.COMPLETED);
+            batch.setCompletedAt(Timestamp.from(Instant.now()));
+            batch.setUpdatedByUserId(requireUserId(sysUserId));
+            batch.setSysUserId(sysUserId);
+            batchWorkplanDAO.update(batch);
+        }
+        resultRunService.completeWorkplanRun(id, sysUserId);
+    }
+
+    private BatchWorkplan requireBatch(Long id) {
+        return (id == null ? Optional.<BatchWorkplan>empty() : batchWorkplanDAO.getWithItems(id))
+                .orElseThrow(() -> new BatchWorkplanNotFoundException(id));
+    }
+
+    private void requireUsableLinkedLot(List<BatchTestRef> tests, Long reagentId, Long reagentLotId) {
+        if (reagentId == null || reagentLotId == null) {
+            throw new IllegalArgumentException("Select a reagent and a reagent lot");
+        }
+        boolean linked = tests.stream()
+                .anyMatch(test -> testReagentLinkService.getByTestIdAndReagentId(test.testId(), reagentId) != null);
+        if (!linked) {
+            throw new IllegalArgumentException("The reagent is not linked to any test in this batch");
+        }
+        boolean usable = inventoryLotService.getAvailableLotsByItemFEFO(reagentId).stream()
+                .anyMatch(lot -> reagentLotId.equals(lot.getId()));
+        if (!usable) {
+            throw new IllegalArgumentException(
+                    "This lot is expired, used up, not QC-passed or not a lot of the selected reagent");
+        }
+    }
+
+    private List<ReagentOptionResponse> reagentOptions(List<BatchTestRef> tests) {
         Map<Long, List<String>> testNamesByReagent = new LinkedHashMap<>();
         for (BatchTestRef test : tests) {
             for (TestReagentLink link : testReagentLinkService.getByTestId(test.testId())) {
@@ -352,28 +439,18 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
             reagents.add(new ReagentOptionResponse(item.getId(), item.getName(), item.getUnits(), entry.getValue(),
                     lotOptions(item)));
         }
-        return new BatchSetupOptionsResponse(reagents, instrumentOptions(tests));
+        return reagents;
     }
 
     @Override
     public BatchWorkplanResponse assignReagent(Long id, BatchReagentRequest request, String sysUserId) {
         BatchWorkplan batch = requireOwnBatch(id, sysUserId);
         requireDraft(batch);
-        if (request == null || request.reagentId() == null || request.reagentLotId() == null) {
+        if (request == null) {
             throw new IllegalArgumentException("Select a reagent and a reagent lot");
         }
         List<BatchTestRef> tests = testsOf(batch);
-        boolean linked = tests.stream().anyMatch(
-                test -> testReagentLinkService.getByTestIdAndReagentId(test.testId(), request.reagentId()) != null);
-        if (!linked) {
-            throw new IllegalArgumentException("The reagent is not linked to any test in this batch");
-        }
-        boolean usable = inventoryLotService.getAvailableLotsByItemFEFO(request.reagentId()).stream()
-                .anyMatch(lot -> request.reagentLotId().equals(lot.getId()));
-        if (!usable) {
-            throw new IllegalArgumentException(
-                    "This lot is expired, used up, not QC-passed or not a lot of the selected reagent");
-        }
+        requireUsableLinkedLot(tests, request.reagentId(), request.reagentLotId());
         String instrumentId = StringUtils.trimToNull(request.instrumentId());
         if (instrumentId != null
                 && instrumentOptions(tests).stream().noneMatch(option -> option.id().equals(instrumentId))) {
@@ -455,7 +532,23 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
         batch.setGeneratedAt(now);
         batch.setGeneratedByUserId(actorId);
         stampUpdate(batch, sysUserId);
-        return toBatchResponse(batchWorkplanDAO.update(batch));
+        BatchWorkplan released = batchWorkplanDAO.update(batch);
+        openRunOf(released, sysUserId);
+        return toBatchResponse(released);
+    }
+
+    /**
+     * OGC-1200 FR-B2, FR-G4: the released batch is a run, with the batch's lab
+     * unit, instrument, reagent lot and owner, so its results, controls and holds
+     * are the run's.
+     */
+    private void openRunOf(BatchWorkplan batch, String sysUserId) {
+        resultRunService.openWorkplanRun(batch.getId(),
+                batch.getTestSectionId() == null ? null : String.valueOf(batch.getTestSectionId()),
+                batch.getInstrumentId() == null ? null : String.valueOf(batch.getInstrumentId()),
+                batch.getReagentLotId(),
+                batch.getCreatedByUserId() == null ? null : userDisplayName(String.valueOf(batch.getCreatedByUserId())),
+                sysUserId);
     }
 
     @Override
@@ -497,6 +590,7 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
                     batch.setCompletedAt(Timestamp.from(now));
                     stampUpdate(batch, sysUserId);
                     batchWorkplanDAO.update(batch);
+                    resultRunService.completeWorkplanRun(batch.getId(), sysUserId);
                     changed++;
                 }
             } else if (batch.getStatus() == BatchWorkplanStatus.COMPLETED && batch.getCompletedAt() != null
@@ -525,6 +619,13 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
         Integer actorId = requireUserId(sysUserId);
         BatchWorkplan batch = requireOwnBatch(id, sysUserId);
         BatchWorkplanStatus currentStatus = batch.getStatus();
+        if (nextStatus == BatchWorkplanStatus.COMPLETED || nextStatus == BatchWorkplanStatus.ARCHIVED) {
+            resultRunService.holdingBatchRun(batch.getId()).ifPresent(run -> {
+                throw new IllegalArgumentException(run.getLabel()
+                        + " holds a test of this batch for QC: record the test's control on the run, or decide the"
+                        + " test there (Retest, Reject or Accept despite), before the batch is completed or archived");
+            });
+        }
         if (!currentStatus.canTransitionTo(nextStatus)) {
             throw new IllegalArgumentException(
                     "Cannot transition batch workplan from " + currentStatus + " to " + nextStatus);
@@ -539,13 +640,18 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
             // of the earlier release; the batch itself is no longer released.
             batch.setGeneratedAt(null);
             batch.setGeneratedByUserId(null);
+            resultRunService.closeDecidedWorkplanRun(batch.getId(), sysUserId);
         } else if (nextStatus == BatchWorkplanStatus.COMPLETED) {
             batch.setCompletedAt(now);
         } else if (nextStatus == BatchWorkplanStatus.ARCHIVED) {
             batch.setArchivedAt(now);
         }
 
-        return toBatchResponse(batchWorkplanDAO.update(batch));
+        BatchWorkplan changed = batchWorkplanDAO.update(batch);
+        if (nextStatus == BatchWorkplanStatus.COMPLETED || nextStatus == BatchWorkplanStatus.ARCHIVED) {
+            resultRunService.completeWorkplanRun(changed.getId(), sysUserId);
+        }
+        return toBatchResponse(changed);
     }
 
     /**
@@ -843,6 +949,15 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
         return Arrays.asList(BatchWorkplanStatus.DRAFT, BatchWorkplanStatus.ACTIVE, BatchWorkplanStatus.COMPLETED);
     }
 
+    /**
+     * The batches whose analyses are still their work. A completed batch's work is
+     * over, so an analysis it left without a result is pending again, for a new
+     * batch on the Workplan page or Batch these on the worklist (OGC-1200 FR-B4).
+     */
+    private List<BatchWorkplanStatus> holdingStatuses() {
+        return Arrays.asList(BatchWorkplanStatus.DRAFT, BatchWorkplanStatus.ACTIVE);
+    }
+
     private int boundLimit(Integer limit) {
         if (limit == null || limit <= 0) {
             return DEFAULT_PENDING_LIMIT;
@@ -924,6 +1039,10 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
             }
         }
         response.setInstrumentId(batch.getInstrumentId());
+        resultRunService.batchRun(batch.getId()).ifPresent(run -> {
+            response.setRunId(run.getId());
+            response.setRunOpen(run.getState().isActive());
+        });
         response.setGeneratedAt(batch.getGeneratedAt());
         response.setGeneratedBy(batch.getGeneratedByUserId() == null ? null
                 : userDisplayName(String.valueOf(batch.getGeneratedByUserId())));
