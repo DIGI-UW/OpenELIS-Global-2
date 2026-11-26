@@ -22,7 +22,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.Date;
 import java.util.HexFormat;
-import java.util.concurrent.atomic.AtomicReference;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
@@ -126,30 +125,23 @@ public final class BridgeTls {
         @Override
         public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
             if (chain == null || chain.length == 0 || !sha256(chain[0]).equalsIgnoreCase(fingerprint)) {
-                throw new CertificateException("The Analyzer Bridge is not the one OpenELIS paired with");
+                throw new PinMismatch();
             }
         }
     }
 
-    /**
-     * Accepts whichever server certificate is presented and remembers it. Used only
-     * to pair, where the Bridge proves itself by accepting the pairing code and
-     * OpenELIS then pins the certificate it saw.
-     */
-    public static final class ObservingServerTrustManager extends ServerOnlyTrustManager {
-
-        private final AtomicReference<X509Certificate> observed = new AtomicReference<>();
-
-        @Override
-        public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
-            if (chain == null || chain.length == 0) {
-                throw new CertificateException("The Analyzer Bridge presented no certificate");
+    static final class PinMismatch extends CertificateException {
+        static boolean caused(Throwable failure) {
+            for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+                if (cause instanceof PinMismatch) {
+                    return true;
+                }
             }
-            observed.set(chain[0]);
+            return false;
         }
 
-        public X509Certificate observed() {
-            return observed.get();
+        private PinMismatch() {
+            super("The Analyzer Bridge certificate does not match the expected fingerprint");
         }
     }
 

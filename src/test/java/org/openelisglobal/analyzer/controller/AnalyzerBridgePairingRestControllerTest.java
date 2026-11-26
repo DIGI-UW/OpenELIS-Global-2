@@ -44,7 +44,7 @@ public class AnalyzerBridgePairingRestControllerTest extends SecuritySliceMockMv
         org.mockito.Mockito.reset(pairing);
         when(pairing.getStatus()).thenReturn(new AnalyzerBridgePairingService.Status("https://bridge:8443", true,
                 "ab".repeat(32), "cd".repeat(32), Instant.parse("2026-10-08T12:00:00Z"), false,
-                AnalyzerBridgePairingService.PinCheck.OTHER_CERTIFICATE, true));
+                AnalyzerBridgePairingService.PinCheck.OTHER_CERTIFICATE, true, false));
     }
 
     @Test
@@ -62,22 +62,23 @@ public class AnalyzerBridgePairingRestControllerTest extends SecuritySliceMockMv
         mockMvc.perform(post(PAIRING).with(user("analyzer").roles("ANALYSER_IMPORT"))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"code\":\"ABCD\"}"))
                 .andExpect(status().isForbidden());
-        verify(pairing, never()).pair(any(), any());
+        verify(pairing, never()).pair(any(), any(), any());
     }
 
     @Test
     public void globalAdminPairsWithTheCode() throws Exception {
         AnalyzerBridgePairingService.Status paired = pairing.getStatus();
-        when(pairing.pair(eq("ABCD-EFGH"), eq("1"))).thenReturn(paired);
+        when(pairing.pair(eq("ABCD-EFGH"), eq("ab".repeat(32)), eq("1"))).thenReturn(paired);
 
-        mockMvc.perform(post(PAIRING).with(user("admin").roles("GLOBAL_ADMIN", "ADMIN"))
-                .contentType(MediaType.APPLICATION_JSON).content("{\"code\":\"ABCD-EFGH\"}")).andExpect(status().isOk())
-                .andExpect(jsonPath("$.paired").value(true));
+        mockMvc.perform(
+                post(PAIRING).with(user("admin").roles("GLOBAL_ADMIN", "ADMIN")).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"ABCD-EFGH\",\"fingerprint\":\"" + "ab".repeat(32) + "\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.paired").value(true));
     }
 
     @Test
     public void aRefusedPairingNamesTheReason() throws Exception {
-        when(pairing.pair(any(), any()))
+        when(pairing.pair(any(), any(), any()))
                 .thenThrow(new BridgePairingException("analyzer.bridgePairing.error.wrongCode"));
 
         mockMvc.perform(post(PAIRING).with(user("admin").roles("GLOBAL_ADMIN", "ADMIN"))
@@ -88,7 +89,7 @@ public class AnalyzerBridgePairingRestControllerTest extends SecuritySliceMockMv
 
     @Test
     public void anUnreachableBridgeIsAGatewayError() throws Exception {
-        when(pairing.pair(any(), any()))
+        when(pairing.pair(any(), any(), any()))
                 .thenThrow(new BridgePairingException("analyzer.bridgePairing.error.unreachable"));
 
         mockMvc.perform(post(PAIRING).with(user("admin").roles("GLOBAL_ADMIN", "ADMIN"))

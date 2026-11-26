@@ -100,7 +100,7 @@ public class AnalyzerBridgeIngressSecurityTest extends SecuritySliceMockMvcTest 
                 }
 
                 @Override
-                public Status pair(String code, String sysUserId) {
+                public Status pair(String code, String fingerprint, String sysUserId) {
                     throw new UnsupportedOperationException();
                 }
 

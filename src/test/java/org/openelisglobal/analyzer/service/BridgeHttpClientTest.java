@@ -19,6 +19,8 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerBridgePairing;
 
 public class BridgeHttpClientTest {
 
+    @org.junit.Rule
+    public org.junit.rules.TemporaryFolder folder = new org.junit.rules.TemporaryFolder();
     private FakeBridge bridge;
     private AnalyzerBridgePairingService pairing;
     private AnalyzerBridgePairingDAO dao;
@@ -40,7 +42,7 @@ public class BridgeHttpClientTest {
         encryptor = new AES256TextEncryptor();
         encryptor.setPassword(java.util.UUID.randomUUID().toString());
         bridge = new FakeBridge("CODE");
-        pairing = new AnalyzerBridgePairingServiceImpl(dao, encryptor, bridge.url(), "", "", "");
+        pairing = new AnalyzerBridgePairingServiceImpl(dao, encryptor, bridge.url(), "", "", "", "");
     }
 
     @After
@@ -60,8 +62,10 @@ public class BridgeHttpClientTest {
 
     @Test
     public void aConfiguredCodePairsOnTheFirstCall() throws Exception {
-        BridgeHttpClient client = new BridgeHttpClient(
-                new AnalyzerBridgePairingServiceImpl(dao, encryptor, bridge.url(), "CODE", "", ""));
+        java.nio.file.Path certificate = folder.newFile("bridge.crt").toPath();
+        java.nio.file.Files.writeString(certificate, BridgeTls.pem(bridge.identity.certificate()));
+        BridgeHttpClient client = new BridgeHttpClient(new AnalyzerBridgePairingServiceImpl(dao, encryptor,
+                bridge.url(), "CODE", certificate.toString(), "", ""));
 
         BridgeHttpClient.BridgeResponse response = client.get(bridge.url() + "/api/ping", Duration.ofSeconds(5));
 
@@ -70,7 +74,7 @@ public class BridgeHttpClientTest {
 
     @Test
     public void thePairedBridgeIsCalledWithTheCertificateAndNoPassword() throws Exception {
-        pairing.pair("CODE", "7");
+        pairing.pair("CODE", BridgeTls.sha256(bridge.identity.certificate()), "7");
         BridgeHttpClient client = new BridgeHttpClient(pairing);
 
         BridgeHttpClient.BridgeResponse response = client.get(bridge.url() + "/api/ping", Duration.ofSeconds(5));

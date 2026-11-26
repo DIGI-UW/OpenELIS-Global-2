@@ -22,6 +22,7 @@ services:
         read_only: true
         volume:
           nocopy: true
+      - bridge-public:/data/bridge-public
       - analyzer-imports:/data/analyzer-imports
       # FILE state store, delivery outbox, and the Bridge's own key pair and
       # pairing record; the outbox holds results OpenELIS has not accepted yet,
@@ -32,6 +33,7 @@ services:
       - SERVER_SSL_KEY_STORE_PASSWORD=${SSL_KEYSTORE_PASSWORD:-kspass}
       # OpenELIS pairs with this code on startup. Without one, the Bridge logs a
       # generated code for a Global Admin to enter on the Analyzers page.
+      - BRIDGE_PAIRING_CERTIFICATE_FILE=/data/bridge-public/bridge.crt
       - BRIDGE_PAIRING_CODE=${ANALYZER_BRIDGE_PAIRING_CODE:-}
       - BRIDGE_FILE_ENABLED=true
       - BRIDGE_FILE_STATE_STORE_PATH=/data/openelis-analyzer-bridge/state.db
@@ -86,11 +88,14 @@ services:
   oe.openelis.org:
     environment:
       - ANALYZER_BRIDGE_URL=https://bridge.openelis.org:8443
+      - ANALYZER_BRIDGE_PAIRING_CERTIFICATE_FILE=/data/bridge-public/bridge.crt
       - ANALYZER_BRIDGE_PAIRING_CODE=${ANALYZER_BRIDGE_PAIRING_CODE:-}
     volumes:
+      - bridge-public:/data/bridge-public:ro
       # The deployer seeds this persistent directory once; Catalog Import can write to it.
       - ./configuration/backend:/var/lib/openelis-global/configuration/backend
 
 volumes:
   analyzer-imports:
   bridge-state:
+  bridge-public:

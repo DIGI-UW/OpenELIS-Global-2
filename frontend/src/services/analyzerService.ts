@@ -402,6 +402,7 @@ export interface BridgePairingStatus {
   clientCertificateSha256?: string | null;
   pairedAt?: string | null;
   pairsAutomatically: boolean;
+  bundledCertificate: boolean;
   pinCheck?:
     | "MATCHES"
     | "OTHER_CERTIFICATE"
@@ -425,11 +426,12 @@ export const getBridgePairing = (
 
 export const pairBridge = (
   code: string,
+  fingerprint: string,
   callback: (response: BridgePairingResponse | undefined) => void,
 ) => {
   postToOpenElisServerJsonResponse<BridgePairingResponse>(
     "/rest/analyzer/bridge-pairing",
-    JSON.stringify({ code }),
+    JSON.stringify({ code, fingerprint }),
     callback,
   );
 };

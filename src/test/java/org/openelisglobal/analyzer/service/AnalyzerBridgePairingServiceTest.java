@@ -36,6 +36,9 @@ public class AnalyzerBridgePairingServiceTest {
     private AnalyzerBridgePairingDAO dao;
     private AES256TextEncryptor encryptor;
     private FakeBridge bridge;
+    @org.junit.Rule
+    public org.junit.rules.TemporaryFolder folder = new org.junit.rules.TemporaryFolder();
+    private Path certificateFile;
 
     @Before
     public void setUp() throws Exception {
@@ -52,6 +55,8 @@ public class AnalyzerBridgePairingServiceTest {
         encryptor = new AES256TextEncryptor();
         encryptor.setPassword(java.util.UUID.randomUUID().toString());
         bridge = new FakeBridge(CODE);
+        certificateFile = folder.newFile("bridge.crt").toPath();
+        Files.writeString(certificateFile, BridgeTls.pem(bridge.identity.certificate()));
     }
 
     @After
@@ -60,14 +65,15 @@ public class AnalyzerBridgePairingServiceTest {
     }
 
     private AnalyzerBridgePairingServiceImpl service(String configuredCode) {
-        return new AnalyzerBridgePairingServiceImpl(dao, encryptor, bridge.url() + "/", configuredCode, "", "");
+        return new AnalyzerBridgePairingServiceImpl(dao, encryptor, bridge.url() + "/", configuredCode,
+                configuredCode.isEmpty() ? "" : certificateFile.toString(), "", "");
     }
 
     @Test
     public void pairingPinsTheBridgeAndTheBridgePinsOpenElis() {
         AnalyzerBridgePairingService pairing = service("");
 
-        AnalyzerBridgePairingService.Status status = pairing.pair(CODE, "7");
+        AnalyzerBridgePairingService.Status status = pairing.pair(CODE, sha256(bridge.identity.certificate()), "7");
 
         assertTrue(status.paired());
         assertEquals(sha256(bridge.identity.certificate()), status.bridgeCertificateSha256());
@@ -78,7 +84,7 @@ public class AnalyzerBridgePairingServiceTest {
 
     @Test
     public void thePrivateKeyIsStoredEncrypted() throws Exception {
-        service("").pair(CODE, "7");
+        service("").pair(CODE, sha256(bridge.identity.certificate()), "7");
 
         String storedKey = stored.get().getClientPrivateKey();
 
@@ -94,12 +100,12 @@ public class AnalyzerBridgePairingServiceTest {
      */
     @Test
     public void aPairingThisInstallationCannotDecryptReadsAsNotPaired() {
-        service("").pair(CODE, "7");
+        service("").pair(CODE, sha256(bridge.identity.certificate()), "7");
         AES256TextEncryptor otherKey = new AES256TextEncryptor();
         otherKey.setPassword(java.util.UUID.randomUUID().toString());
 
         AnalyzerBridgePairingService reinstalled = new AnalyzerBridgePairingServiceImpl(dao, otherKey,
-                bridge.url() + "/", "", "", "");
+                bridge.url() + "/", "", "", "", "");
 
         assertTrue(reinstalled.getPairedBridge().isEmpty());
         assertFalse(reinstalled.getStatus().paired());
@@ -111,12 +117,12 @@ public class AnalyzerBridgePairingServiceTest {
      */
     @Test
     public void anUnreadableKeyIsReportedAndDoesNotPairOnItsOwn() {
-        service("").pair(CODE, "7");
+        service("").pair(CODE, sha256(bridge.identity.certificate()), "7");
         AES256TextEncryptor otherKey = new AES256TextEncryptor();
         otherKey.setPassword(java.util.UUID.randomUUID().toString());
 
         AnalyzerBridgePairingService.Status status = new AnalyzerBridgePairingServiceImpl(dao, otherKey,
-                bridge.url() + "/", CODE, "", "").getStatus();
+                bridge.url() + "/", CODE, certificateFile.toString(), "", "").getStatus();
 
         assertFalse(status.clientKeyReadable());
         assertFalse(status.pairsAutomatically());
@@ -130,12 +136,13 @@ public class AnalyzerBridgePairingServiceTest {
      */
     @Test
     public void aKeyThatDecryptsToSomethingElseIsUnreadableToo() {
-        service("").pair(CODE, "7");
+        service("").pair(CODE, sha256(bridge.identity.certificate()), "7");
         stored.get().setClientPrivateKey(encryptor.encrypt("?not a key?"));
         bridge.forget();
 
         assertFalse(service(CODE).getStatus().clientKeyReadable());
-        assertThrows(BridgePairingException.class, () -> service("").pair("WRONG", "8"));
+        assertThrows(BridgePairingException.class,
+                () -> service("").pair("WRONG", sha256(bridge.identity.certificate()), "8"));
     }
 
     /**
@@ -145,15 +152,15 @@ public class AnalyzerBridgePairingServiceTest {
      */
     @Test
     public void aNewCodeReplacesAKeyThisInstallationCannotRead() {
-        service("").pair(CODE, "7");
+        service("").pair(CODE, sha256(bridge.identity.certificate()), "7");
         String unreadableKey = stored.get().getClientPrivateKey();
         AES256TextEncryptor otherKey = new AES256TextEncryptor();
         otherKey.setPassword(java.util.UUID.randomUUID().toString());
         AnalyzerBridgePairingService reinstalled = new AnalyzerBridgePairingServiceImpl(dao, otherKey,
-                bridge.url() + "/", "", "", "");
+                bridge.url() + "/", "", "", "", "");
         bridge.forget();
 
-        AnalyzerBridgePairingService.Status status = reinstalled.pair(CODE, "8");
+        AnalyzerBridgePairingService.Status status = reinstalled.pair(CODE, sha256(bridge.identity.certificate()), "8");
 
         assertTrue(status.paired());
         assertTrue(status.clientKeyReadable());
@@ -164,15 +171,16 @@ public class AnalyzerBridgePairingServiceTest {
 
     @Test
     public void aRefusedCodeLeavesAnUnreadableKeyAsItWas() {
-        service("").pair(CODE, "7");
+        service("").pair(CODE, sha256(bridge.identity.certificate()), "7");
         String unreadableKey = stored.get().getClientPrivateKey();
         AES256TextEncryptor otherKey = new AES256TextEncryptor();
         otherKey.setPassword(java.util.UUID.randomUUID().toString());
         AnalyzerBridgePairingService reinstalled = new AnalyzerBridgePairingServiceImpl(dao, otherKey,
-                bridge.url() + "/", "", "", "");
+                bridge.url() + "/", "", "", "", "");
         bridge.forget();
 
-        assertThrows(BridgePairingException.class, () -> reinstalled.pair("WRONG", "8"));
+        assertThrows(BridgePairingException.class,
+                () -> reinstalled.pair("WRONG", sha256(bridge.identity.certificate()), "8"));
 
         assertEquals(unreadableKey, stored.get().getClientPrivateKey());
         assertEquals(unreadableKey, dao.findCurrent().orElseThrow().getClientPrivateKey());
@@ -181,7 +189,7 @@ public class AnalyzerBridgePairingServiceTest {
     @Test
     public void callsAfterPairingTrustOnlyThePairedBridge() throws Exception {
         AnalyzerBridgePairingService pairing = service("");
-        pairing.pair(CODE, "7");
+        pairing.pair(CODE, sha256(bridge.identity.certificate()), "7");
 
         HttpClient client = HttpClient.newBuilder().sslContext(pairing.getPairedBridge().orElseThrow().sslContext())
                 .build();
@@ -201,7 +209,8 @@ public class AnalyzerBridgePairingServiceTest {
     public void aWrongCodeLeavesOpenElisUnpaired() {
         AnalyzerBridgePairingService pairing = service("");
 
-        BridgePairingException error = assertThrows(BridgePairingException.class, () -> pairing.pair("WRONG", "7"));
+        BridgePairingException error = assertThrows(BridgePairingException.class,
+                () -> pairing.pair("WRONG", sha256(bridge.identity.certificate()), "7"));
 
         assertEquals("analyzer.bridgePairing.error.wrongCode", error.getMessage());
         assertFalse(pairing.getStatus().paired());
@@ -213,18 +222,56 @@ public class AnalyzerBridgePairingServiceTest {
         bridge.announce(sha256(BridgeTls.generateIdentity().certificate()));
         AnalyzerBridgePairingService pairing = service("");
 
-        BridgePairingException error = assertThrows(BridgePairingException.class, () -> pairing.pair(CODE, "7"));
+        BridgePairingException error = assertThrows(BridgePairingException.class,
+                () -> pairing.pair(CODE, sha256(bridge.identity.certificate()), "7"));
 
         assertEquals("analyzer.bridgePairing.error.certificateMismatch", error.getMessage());
         assertFalse(pairing.getStatus().paired());
     }
 
     @Test
+    public void remotePairingRequiresTheRightFingerprintBeforeSendingTheCode() throws Exception {
+        AnalyzerBridgePairingService pairing = service("");
+        for (String invalid : new String[] { null, "", "aa", "not a fingerprint" }) {
+            assertEquals("analyzer.bridgePairing.error.fingerprintRequired",
+                    assertThrows(BridgePairingException.class, () -> pairing.pair(CODE, invalid, "7")).getMessage());
+        }
+        String other = sha256(BridgeTls.generateIdentity().certificate());
+        assertEquals("analyzer.bridgePairing.error.certificateMismatch",
+                assertThrows(BridgePairingException.class, () -> pairing.pair(CODE, other, "7")).getMessage());
+        assertEquals(0, bridge.pairingAttempts.get());
+        String display = java.util.HexFormat.ofDelimiter(":").withUpperCase()
+                .formatHex(java.util.HexFormat.of().parseHex(sha256(bridge.identity.certificate())));
+        assertTrue(pairing.pair(CODE, display, "7").paired());
+    }
+
+    @Test
+    public void unavailableBundledCertificateCannotBeOverriddenFromTheForm() throws Exception {
+        Files.delete(certificateFile);
+        AnalyzerBridgePairingService bundled = service(CODE);
+        bundled.pairWithConfiguredCode();
+        assertThrows(BridgePairingException.class,
+                () -> bundled.pair(CODE, sha256(bridge.identity.certificate()), "7"));
+        assertEquals(0, bridge.pairingAttempts.get());
+    }
+
+    @Test
+    public void aPlainHttpAddressCannotReceiveTheCode() {
+        AnalyzerBridgePairingService insecure = new AnalyzerBridgePairingServiceImpl(dao, encryptor,
+                bridge.url().replace("https:", "http:"), CODE, certificateFile.toString(), "", "");
+        insecure.pairWithConfiguredCode();
+        assertEquals("analyzer.bridgePairing.error.notConfigured",
+                assertThrows(BridgePairingException.class, () -> insecure.pair(CODE, null, "7")).getMessage());
+        assertEquals(0, bridge.pairingAttempts.get());
+    }
+
+    @Test
     public void aClosedBridgeSaysSo() {
-        service("").pair(CODE, "7");
+        service("").pair(CODE, sha256(bridge.identity.certificate()), "7");
         stored.set(null);
 
-        BridgePairingException error = assertThrows(BridgePairingException.class, () -> service("").pair(CODE, "7"));
+        BridgePairingException error = assertThrows(BridgePairingException.class,
+                () -> service("").pair(CODE, sha256(bridge.identity.certificate()), "7"));
 
         assertEquals("analyzer.bridgePairing.error.closed", error.getMessage());
     }
@@ -246,12 +293,13 @@ public class AnalyzerBridgePairingServiceTest {
     @Test
     public void aPairingMadeInTheOtherWebContextIsTrustedWithoutARestart() throws Exception {
         AnalyzerBridgePairingService delivery = service("");
-        service("").pair(CODE, "7");
+        service("").pair(CODE, sha256(bridge.identity.certificate()), "7");
         assertTrue(delivery.isPairedBridge(bridge.identity.certificate()));
         delivery.getPairedBridge().orElseThrow();
 
         try (FakeBridge reinstalled = new FakeBridge(CODE)) {
-            new AnalyzerBridgePairingServiceImpl(dao, encryptor, reinstalled.url() + "/", "", "", "").pair(CODE, "7");
+            new AnalyzerBridgePairingServiceImpl(dao, encryptor, reinstalled.url() + "/", "", "", "", "").pair(CODE,
+                    sha256(reinstalled.identity.certificate()), "7");
 
             assertTrue(delivery.isPairedBridge(reinstalled.identity.certificate()));
             assertFalse("the replaced Bridge is no longer trusted",
@@ -271,7 +319,7 @@ public class AnalyzerBridgePairingServiceTest {
         assertEquals("the Bridge keeps its attempts for the code entered on the page", 1, bridge.pairingAttempts.get());
         assertFalse(pairing.getStatus().paired());
         assertFalse("the page asks for the code instead", pairing.getStatus().pairsAutomatically());
-        assertTrue(pairing.pair(CODE, "7").paired());
+        assertTrue(pairing.pair(CODE, sha256(bridge.identity.certificate()), "7").paired());
     }
 
     @Test
@@ -287,8 +335,8 @@ public class AnalyzerBridgePairingServiceTest {
             store.store(out, storeCredential.toCharArray());
         }
 
-        new AnalyzerBridgePairingServiceImpl(dao, encryptor, bridge.url(), "", "file:" + keyStore, storeCredential)
-                .pair(CODE, "7");
+        new AnalyzerBridgePairingServiceImpl(dao, encryptor, bridge.url(), "", "", "file:" + keyStore, storeCredential)
+                .pair(CODE, sha256(bridge.identity.certificate()), "7");
 
         assertEquals(List.of(sha256(served.certificate())), bridge.receivedServerFingerprints);
     }
@@ -296,9 +344,10 @@ public class AnalyzerBridgePairingServiceTest {
     @Test
     public void withoutABridgeUrlThereIsNothingToPairWith() {
         AnalyzerBridgePairingServiceImpl pairing = new AnalyzerBridgePairingServiceImpl(dao, encryptor, "", CODE, "",
-                "");
+                "", "");
 
-        BridgePairingException error = assertThrows(BridgePairingException.class, () -> pairing.pair(CODE, "7"));
+        BridgePairingException error = assertThrows(BridgePairingException.class,
+                () -> pairing.pair(CODE, sha256(bridge.identity.certificate()), "7"));
 
         assertEquals("analyzer.bridgePairing.error.notConfigured", error.getMessage());
         pairing.pairWithConfiguredCode();
@@ -306,15 +355,20 @@ public class AnalyzerBridgePairingServiceTest {
     }
 
     @Test
-    public void theConfiguredCodeReplacesAPinForACertificateTheBridgeNoLongerPresents() throws Exception {
-        service("").pair(CODE, "7");
+    public void certificateReplacementRequiresFreshVerificationAndAnExplicitPairing() throws Exception {
+        service("").pair(CODE, sha256(bridge.identity.certificate()), "7");
 
         try (FakeBridge reinstalled = new FakeBridge(CODE)) {
             AnalyzerBridgePairingService copied = new AnalyzerBridgePairingServiceImpl(dao, encryptor,
-                    reinstalled.url(), CODE, "", "");
+                    reinstalled.url(), CODE, certificateFile.toString(), "", "");
             assertEquals(AnalyzerBridgePairingService.PinCheck.OTHER_CERTIFICATE, copied.getStatus().pinCheck());
 
+            Files.writeString(certificateFile, BridgeTls.pem(reinstalled.identity.certificate()));
             copied.pairWithConfiguredCode();
+            assertEquals(0, reinstalled.pairingAttempts.get());
+            assertEquals(sha256(bridge.identity.certificate()), stored.get().getBridgeCertificateSha256());
+
+            copied.pair(CODE, null, "7");
 
             assertEquals(sha256(reinstalled.identity.certificate()), stored.get().getBridgeCertificateSha256());
             assertTrue("deliveries from the reinstalled Bridge are accepted",
@@ -368,12 +422,12 @@ public class AnalyzerBridgePairingServiceTest {
 
     @Test
     public void withoutAConfiguredCodeAStalePinIsReportedButKept() throws Exception {
-        service("").pair(CODE, "7");
+        service("").pair(CODE, sha256(bridge.identity.certificate()), "7");
         String pinned = stored.get().getBridgeCertificateSha256();
 
         try (FakeBridge reinstalled = new FakeBridge(CODE)) {
             AnalyzerBridgePairingService copied = new AnalyzerBridgePairingServiceImpl(dao, encryptor,
-                    reinstalled.url(), "", "", "");
+                    reinstalled.url(), "", "", "", "");
 
             copied.pairWithConfiguredCode();
 
@@ -425,7 +479,7 @@ public class AnalyzerBridgePairingServiceTest {
     @Test
     public void aStoredPinWithTheBridgeUrlRemovedIsReportedWithoutAPinCheck() {
         service(CODE).pairWithConfiguredCode();
-        AnalyzerBridgePairingService withoutUrl = new AnalyzerBridgePairingServiceImpl(dao, encryptor, "", CODE, "",
+        AnalyzerBridgePairingService withoutUrl = new AnalyzerBridgePairingServiceImpl(dao, encryptor, "", CODE, "", "",
                 "");
 
         AnalyzerBridgePairingService.Status status = withoutUrl.getStatus();

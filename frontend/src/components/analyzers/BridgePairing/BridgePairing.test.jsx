@@ -44,16 +44,27 @@ describe("BridgePairing", () => {
 
   it("asks for the code while the Bridge is unpaired, then shows the pairing", async () => {
     getBridgePairing.mockImplementation((callback) => callback(UNPAIRED));
-    pairBridge.mockImplementation((code, callback) => callback(PAIRED));
+    pairBridge.mockImplementation((code, fingerprint, callback) =>
+      callback(PAIRED),
+    );
     renderPairing();
 
     expect(
       screen.getByText("The Analyzer Bridge is not paired"),
     ).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText("Pairing code"), "ABCD-EFGH");
+    expect(screen.getByTestId("bridge-pairing-submit")).toBeDisabled();
+    await userEvent.type(
+      screen.getByLabelText("Bridge certificate fingerprint"),
+      "ab".repeat(32),
+    );
     await userEvent.click(screen.getByTestId("bridge-pairing-submit"));
 
-    expect(pairBridge).toHaveBeenCalledWith("ABCD-EFGH", expect.any(Function));
+    expect(pairBridge).toHaveBeenCalledWith(
+      "ABCD-EFGH",
+      "ab".repeat(32),
+      expect.any(Function),
+    );
     await waitFor(() =>
       expect(screen.getByTestId("bridge-pairing-paired")).toHaveTextContent(
         "Paired with the Analyzer Bridge",
@@ -79,9 +90,22 @@ describe("BridgePairing", () => {
     expect(screen.getByLabelText("Pairing code")).toBeInTheDocument();
   });
 
+  it("uses the installer certificate for a bundled Bridge", async () => {
+    getBridgePairing.mockImplementation((callback) =>
+      callback({ ...UNPAIRED, bundledCertificate: true }),
+    );
+    renderPairing();
+    expect(
+      screen.queryByLabelText("Bridge certificate fingerprint"),
+    ).not.toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Pairing code"), "CODE");
+    await userEvent.click(screen.getByTestId("bridge-pairing-submit"));
+    expect(pairBridge).toHaveBeenCalledWith("CODE", "", expect.any(Function));
+  });
+
   it("names why the Bridge refused the code", async () => {
     getBridgePairing.mockImplementation((callback) => callback(UNPAIRED));
-    pairBridge.mockImplementation((code, callback) =>
+    pairBridge.mockImplementation((code, fingerprint, callback) =>
       callback({
         errorKey: "analyzer.bridgePairing.error.wrongCode",
         status: 422,
@@ -90,6 +114,11 @@ describe("BridgePairing", () => {
     renderPairing();
 
     await userEvent.type(screen.getByLabelText("Pairing code"), "WRONG");
+    expect(screen.getByTestId("bridge-pairing-submit")).toBeDisabled();
+    await userEvent.type(
+      screen.getByLabelText("Bridge certificate fingerprint"),
+      "ab".repeat(32),
+    );
     await userEvent.click(screen.getByTestId("bridge-pairing-submit"));
 
     expect(await screen.findByTestId("bridge-pairing-error")).toHaveTextContent(

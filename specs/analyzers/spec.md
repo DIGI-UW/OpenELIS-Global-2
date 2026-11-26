@@ -84,7 +84,10 @@ specification is not a claim that the new boundary has shipped.
    units and Bridge connection, exported its old mapping, cleared it, and left
    it inactive until a person sets it up again on a baseline profile.
 9. **OpenELIS and the Bridge trust each other by certificate.** They pair once,
-   with the Bridge's single-use pairing code. Each side then pins the other's
+   with the Bridge's single-use pairing code. Before sending it, OpenELIS verifies
+   the HTTPS certificate against the bundled public certificate or a fingerprint
+   supplied by a Global Admin from the remote Bridge host. A certificate change
+   requires explicit pairing and fresh verification. Each side then pins the other's
    certificate by its SHA-256 fingerprint and accepts only that certificate,
    in both directions: no password, no certificate authority, no host name
    check. `/analyzer/fhir` admits only the paired Bridge and records its

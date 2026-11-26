@@ -22,7 +22,7 @@ public interface AnalyzerBridgePairingService {
      */
     record Status(String bridgeUrl, boolean paired, String bridgeCertificateSha256, String clientCertificateSha256,
             @JsonFormat(shape = JsonFormat.Shape.STRING) Instant pairedAt, boolean pairsAutomatically,
-            PinCheck pinCheck, boolean clientKeyReadable) {
+            PinCheck pinCheck, boolean clientKeyReadable, boolean bundledCertificate) {
     }
 
     /** What the Bridge at the configured address says about the stored pin. */
@@ -48,7 +48,7 @@ public interface AnalyzerBridgePairingService {
      * @throws BridgePairingException with a message key when the Bridge refuses or
      *                                cannot be reached
      */
-    Status pair(String code, String sysUserId);
+    Status pair(String code, String fingerprint, String sysUserId);
 
     Optional<PairedBridge> getPairedBridge();
 
@@ -56,8 +56,8 @@ public interface AnalyzerBridgePairingService {
     boolean isPairedBridge(X509Certificate certificate);
 
     /**
-     * Pairs with the configured code while unpaired, or when the Bridge no longer
-     * matches the stored pin; does nothing otherwise.
+     * Pairs with the configured code while unpaired, or when the same Bridge has
+     * lost its pairing; does nothing otherwise.
      */
     void pairWithConfiguredCode();
 }

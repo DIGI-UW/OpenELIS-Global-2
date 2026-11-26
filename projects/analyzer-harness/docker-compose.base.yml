@@ -60,6 +60,8 @@ services:
       - "8080:8080"
       - "8443:8443"
     environment:
+      # The dev Bridge serves the installation keystore.
+      ANALYZER_BRIDGE_PAIRING_CERTIFICATE_FILE: /etc/openelis-global/server-public.crt
       # Override older bootstrapped common.properties as well as fresh copies.
       SERVER_SSL_KEY_STORE_PASSWORD: ${SSL_KEYSTORE_PASSWORD:-kspass}
       SERVER_SSL_KEY_PASSWORD: ${SSL_KEYSTORE_PASSWORD:-kspass}
