@@ -35,8 +35,55 @@ public interface ResultRunDAO extends BaseDAO<ResultRun, Long> {
      */
     List<String> getBatchAnalysisIdsAwaiting(Long runId, String cancelledStatusId, String testId);
 
+    /**
+     * The open and held runs of one of the analyses (FR-B3), as analysis id, run
+     * id, test id.
+     */
+    List<Object[]> getActiveRunsOfOne(Collection<String> analysisIds);
+
+    /**
+     * The open or held run of one a control recorded on the analysis's row opened.
+     */
+    Optional<ResultRun> findOpenRunOfOne(String analysisId);
+
+    /**
+     * Per analysis, {analysisId, runId, testId, state} of its latest run of one
+     * that later controls and values still belong to: not superseded, and not set
+     * aside by a Retest or Reject decision.
+     */
+    List<Object[]> getReusableRunsOfOne(Collection<String> analysisIds);
+
+    /** The analysis's run of one that later controls and values belong to. */
+    Optional<ResultRun> findReusableRunOfOne(String analysisId);
+
+    /**
+     * Serialises the work that opens or completes an analysis's run of one, until
+     * the transaction ends, so two requests at once cannot open two runs.
+     */
+    void lockRunOfOne(String analysisId);
+
+    /**
+     * Holds the run until the transaction ends, then reads its row again, so two
+     * saves into one run update it one after the other; answers the run as read. An
+     * advisory lock, not a row lock: each save's result already holds the run's row
+     * through its foreign key, and two row locks taken on top of those deadlock.
+     */
+    ResultRun lockForUpdate(ResultRun run);
+
+    /** The run each of the results was recorded in, by result id. */
+    java.util.Map<String, Long> getRunIdsOfResults(Collection<String> resultIds);
+
+    /** The results recorded in a run. */
+    List<org.openelisglobal.result.valueholder.Result> getResultsOfRun(Long runId);
+
     /** How many analyses have a value recorded in the run. */
     int countResultedAnalyses(Long runId);
+
+    /**
+     * Of the given reagent lots, the one most recently recorded on a run other than
+     * this one (FR-E3 "Use last-used lot").
+     */
+    Optional<Long> findLastUsedLot(java.util.Collection<Long> lotIds, Long excludeRunId);
 
     /** The tests of a workplan run's batched analyses. */
     List<String> getBatchTestIds(Long runId);

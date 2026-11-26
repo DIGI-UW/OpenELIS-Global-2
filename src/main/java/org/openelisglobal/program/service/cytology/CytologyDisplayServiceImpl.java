@@ -47,7 +47,7 @@ public class CytologyDisplayServiceImpl implements CytologyDisplayService {
         CytologySample cytologySample = cytologySampleService.get(cytologySampleId);
         CytologyCaseViewDisplayItem displayItem = new CytologyCaseViewDisplayItem();
         displayItem.setStatus(cytologySample.getStatus());
-        displayItem.setRequestDate(cytologySample.getSample().getEnteredDate());
+        displayItem.setRequestDate(DateUtil.convertDateToLocalDate(cytologySample.getSample().getEnteredDate()));
         if (cytologySample.getCytoPathologist() != null) {
             displayItem.setAssignedCytoPathologist(cytologySample.getCytoPathologist().getDisplayName());
             displayItem.setAssignedPathologistId(cytologySample.getCytoPathologist().getId());
@@ -131,7 +131,7 @@ public class CytologyDisplayServiceImpl implements CytologyDisplayService {
         CytologySample cytologySample = cytologySampleService.get(cytologySampleId);
         CytologyDisplayItem displayItem = new CytologyDisplayItem();
         displayItem.setStatus(cytologySample.getStatus());
-        displayItem.setRequestDate(cytologySample.getSample().getEnteredDate());
+        displayItem.setRequestDate(DateUtil.convertDateToLocalDate(cytologySample.getSample().getEnteredDate()));
         if (cytologySample.getCytoPathologist() != null) {
             displayItem.setAssignedCytoPathologist(cytologySample.getCytoPathologist().getDisplayName());
         }

@@ -18,8 +18,10 @@ import java.text.DateFormatSymbols;
 import java.text.ParseException;
 import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.Period;
+import java.time.ZoneId;
 import java.time.chrono.IsoChronology;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -77,6 +79,23 @@ public class DateUtil {
         String stringLocale = ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_LANG_LOCALE);
 
         return convertStringDateToSqlDate(date, stringLocale);
+    }
+
+    /**
+     * The calendar day a date falls on in the server's zone. A field that must
+     * print that day holds the result rather than the date, because the JSON layer
+     * formats a {@code Date} in UTC, which moves local midnight east of Greenwich
+     * onto the day before.
+     *
+     * <p>
+     * Reads the epoch millis rather than calling {@code toInstant()}, which a
+     * {@code java.sql.Date} throws from.
+     */
+    public static LocalDate convertDateToLocalDate(Date date) {
+        if (date == null) {
+            return null;
+        }
+        return Instant.ofEpochMilli(date.getTime()).atZone(ZoneId.systemDefault()).toLocalDate();
     }
 
     public static LocalDate convertStringDateToLocalDate(String date) {
