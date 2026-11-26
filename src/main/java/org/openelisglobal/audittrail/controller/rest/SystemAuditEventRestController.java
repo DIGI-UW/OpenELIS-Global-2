@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.commons.text.StringEscapeUtils;
 import org.openelisglobal.audittrail.service.AuditEntitySnapshotService;
 import org.openelisglobal.audittrail.util.AuditFieldStringifier;
 import org.openelisglobal.audittrail.valueholder.History;
@@ -456,8 +457,9 @@ public class SystemAuditEventRestController {
     }
 
     /**
-     * Parse the XML-encoded changes blob into a map of field name → new value. The
-     * format is: {@code <fieldName>value</fieldName>\n} per changed field.
+     * Parse the XML-encoded changes blob into a map of field name → pre-update
+     * value, decoded. The format is: {@code <fieldName>value</fieldName>\n} per
+     * changed field.
      */
     private Map<String, String> parseChanges(History history) {
         if (history.getChanges() == null || "I".equals(history.getActivity())) {
@@ -486,7 +488,7 @@ public class SystemAuditEventRestController {
                     continue;
                 }
                 String value = xml.substring(openEnd + 1, closeStart);
-                changes.put(tag, value);
+                changes.put(tag, StringEscapeUtils.unescapeXml(value));
                 pos = closeStart + closeTag.length();
             }
             return changes;

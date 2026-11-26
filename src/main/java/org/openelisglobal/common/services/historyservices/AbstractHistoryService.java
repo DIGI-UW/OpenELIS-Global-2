@@ -22,6 +22,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.audittrail.action.workers.AuditTrailItem;
 import org.openelisglobal.audittrail.valueholder.History;
@@ -196,7 +197,7 @@ public abstract class AbstractHistoryService {
             begin += startTag.length();
             int end = changes.indexOf("</" + attribute + ">");
 
-            return changes.substring(begin, end);
+            return StringEscapeUtils.unescapeXml(changes.substring(begin, end));
         }
         return null;
     }
