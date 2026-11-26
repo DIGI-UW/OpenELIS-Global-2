@@ -1,5 +1,6 @@
 package org.openelisglobal.testcalculated.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -14,8 +15,13 @@ import java.util.List;
 import java.util.stream.Stream;
 import org.openelisglobal.common.util.IdValuePair;
 
+/**
+ * {@code scopedSampleTypeId} is derived, so the editor may send back the rule
+ * it was given without the save refusing a field it cannot set.
+ */
 @Entity
 @Table(name = "calculation_operation")
+@JsonIgnoreProperties(value = "scopedSampleTypeId", allowGetters = true)
 public class Operation implements Comparable<Operation> {
 
     // mathematical operands
@@ -143,7 +149,7 @@ public class Operation implements Comparable<Operation> {
 
     public enum OperationType {
         TEST_RESULT("Test Result"), MATH_FUNCTION("Math Function"), INTEGER("Integer"),
-        PATIENT_ATTRIBUTE("Patient Attribute");
+        PATIENT_ATTRIBUTE("Patient Attribute"), ANSWER("Answer");
 
         private String displayName;
 
@@ -161,7 +167,7 @@ public class Operation implements Comparable<Operation> {
     }
 
     public enum PatientAttribute {
-        AGE("Patient Age(Years)"), WEIGHT("Patient Weight(Kg)");
+        AGE("Patient Age(Years)");
 
         private String displayName;
 

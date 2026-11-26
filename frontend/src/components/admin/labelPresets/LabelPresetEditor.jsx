@@ -39,6 +39,9 @@ const EMPTY_FORM = {
   heightMm: 20,
   widthMm: 40,
   barcodeType: "CODE_128",
+  printsPerContainer: false,
+  defaultPerContainer: 0,
+  maxPerContainer: 10,
   printsPerOrder: false,
   printsPerSample: true,
   defaultPerOrder: 0,
@@ -65,6 +68,9 @@ function LabelPresetEditor({ preset, onClose }) {
         heightMm: preset.heightMm ?? 20,
         widthMm: preset.widthMm ?? 40,
         barcodeType: preset.barcodeType ?? "CODE_128",
+        printsPerContainer: preset.printsPerContainer ?? false,
+        defaultPerContainer: preset.defaultPerContainer ?? 0,
+        maxPerContainer: preset.maxPerContainer ?? 10,
         printsPerOrder: preset.printsPerOrder ?? false,
         printsPerSample: preset.printsPerSample ?? true,
         defaultPerOrder: preset.defaultPerOrder ?? 0,
@@ -112,7 +118,11 @@ function LabelPresetEditor({ preset, onClose }) {
         id: "admin.labelPresets.validation.barcodeType.required",
       });
     }
-    if (!form.printsPerOrder && !form.printsPerSample) {
+    if (
+      !form.printsPerOrder &&
+      !form.printsPerSample &&
+      !form.printsPerContainer
+    ) {
       errs.scope = intl.formatMessage({
         id: "admin.labelPresets.validation.scope.required",
       });
@@ -120,6 +130,14 @@ function LabelPresetEditor({ preset, onClose }) {
     if (form.printsPerOrder && form.maxPerOrder < form.defaultPerOrder) {
       errs.maxPerOrder = intl.formatMessage({
         id: "admin.labelPresets.validation.max.lte",
+      });
+    }
+    if (
+      form.defaultPerContainer < 0 ||
+      form.maxPerContainer < form.defaultPerContainer
+    ) {
+      errs.maxPerContainer = intl.formatMessage({
+        id: "admin.labelPresets.validation.maxPerContainer",
       });
     }
     if (form.printsPerSample && form.maxPerSample < form.defaultPerSample) {
@@ -418,6 +436,50 @@ function LabelPresetEditor({ preset, onClose }) {
                           }
                           invalid={!!errors.maxPerSample}
                           invalidText={errors.maxPerSample}
+                        />
+                      </Column>
+                    </Grid>
+                  )}
+                </FormGroup>
+                <FormGroup legendText="" style={{ marginTop: "1rem" }}>
+                  <Checkbox
+                    id="scope-container"
+                    labelText={intl.formatMessage({
+                      id: "admin.labelPresets.scope.container",
+                    })}
+                    checked={form.printsPerContainer}
+                    onChange={(_, { checked }) =>
+                      setField("printsPerContainer", checked)
+                    }
+                  />
+                  {form.printsPerContainer && (
+                    <Grid style={{ marginTop: "0.5rem" }}>
+                      <Column lg={4}>
+                        <NumberInput
+                          id="defaultPerContainer"
+                          label={intl.formatMessage({
+                            id: "admin.labelPresets.field.defaultPerContainer",
+                          })}
+                          value={form.defaultPerContainer}
+                          min={0}
+                          onChange={(e, { value }) =>
+                            setField("defaultPerContainer", value)
+                          }
+                        />
+                      </Column>
+                      <Column lg={4}>
+                        <NumberInput
+                          id="maxPerContainer"
+                          label={intl.formatMessage({
+                            id: "admin.labelPresets.field.maxPerContainer",
+                          })}
+                          value={form.maxPerContainer}
+                          min={0}
+                          onChange={(e, { value }) =>
+                            setField("maxPerContainer", value)
+                          }
+                          invalid={!!errors.maxPerContainer}
+                          invalidText={errors.maxPerContainer}
                         />
                       </Column>
                     </Grid>

@@ -121,6 +121,10 @@ public class MicroReagentLotServiceImpl implements MicroReagentLotService {
         }
         Analysis analysis = requireAnalysis(caseAnalysis.getAnalysisId());
         Test test = requireTest(analysis);
+        if (context == MicroInventoryUsageContext.AST_SETUP
+                && !Boolean.TRUE.equals(test.getAntimicrobialResistance())) {
+            throw new IllegalArgumentException("MICROBIOLOGY_AST_REAGENT_MISMATCH");
+        }
         TestReagentLink reagentLink = reagentLinkService.get(selection.testReagentLinkId());
         if (reagentLink == null || !test.getId().equals(reagentLink.getTestId())) {
             throw new IllegalArgumentException("MICROBIOLOGY_REAGENT_LINK_MISMATCH");
@@ -152,6 +156,7 @@ public class MicroReagentLotServiceImpl implements MicroReagentLotService {
     private MicroReagentRequirementForm toRequirement(MicroCaseAnalysis caseAnalysis, Test test, TestReagentLink link) {
         MicroReagentRequirementForm form = new MicroReagentRequirementForm();
         form.analysisId = caseAnalysis.getAnalysisId();
+        form.astReagent = Boolean.TRUE.equals(test.getAntimicrobialResistance());
         form.testId = test.getId();
         form.testName = test.getName();
         form.linkId = link.getId();

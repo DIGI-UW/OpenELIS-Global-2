@@ -139,8 +139,28 @@ beforeEach(() => {
   postToOpenElisServerFullResponse.mockReset();
   putToOpenElisServerFullResponse.mockReset();
   getFromOpenElisServer.mockImplementation((url, callback) => {
-    if (url.includes("pending-tests")) {
-      callback(pending);
+    if (url.includes("pending-tests/page")) {
+      // The server pages and searches; this mirrors its search for the test.
+      const search = (
+        new URL(url, "http://localhost").searchParams.get("search") || ""
+      ).toLowerCase();
+      const items = pending.filter((test) =>
+        [test.accessionNumber, test.patientName, test.testName]
+          .join(" ")
+          .toLowerCase()
+          .includes(search),
+      );
+      callback({
+        items,
+        total: items.length,
+        tests: [],
+        panels: [],
+        units: [
+          { id: "5", name: "Hematology" },
+          { id: "6", name: "Biochemistry" },
+        ],
+        priorities: ["STAT", "ROUTINE"],
+      });
       return;
     }
     if (url.includes("setup-options")) {
@@ -156,25 +176,120 @@ beforeEach(() => {
 });
 
 describe("BatchWorkplan", () => {
-  it("lists pending tests with patient, panel and priority", () => {
+  it("lists pending tests with patient, panel and priority", async () => {
     renderWithIntl();
 
     expect(screen.getAllByText("Batch Workplan").length).toBeGreaterThan(0);
-    expect(screen.getByText("DEV-001")).toBeInTheDocument();
+    expect(await screen.findByText("DEV-001")).toBeInTheDocument();
     expect(screen.getByText("Doe, Jane")).toBeInTheDocument();
     expect(screen.getByText("CBC")).toBeInTheDocument();
     expect(screen.getByText("STAT (Urgent)")).toBeInTheDocument();
   });
 
-  it("narrows the list as the user searches", () => {
+  it("asks the server for the search and shows what it answers", async () => {
     renderWithIntl();
+    await screen.findByText("DEV-001");
 
     fireEvent.change(screen.getByLabelText("Search"), {
       target: { value: "glucose" },
     });
 
-    expect(screen.queryByText("DEV-001")).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByText("DEV-001")).not.toBeInTheDocument(),
+    );
     expect(screen.getByText("DEV-002")).toBeInTheDocument();
+    expect(
+      getFromOpenElisServer.mock.calls.some(([url]) =>
+        url.startsWith(
+          "/rest/batch-workplans/pending-tests/page?page=1&pageSize=20&search=glucose",
+        ),
+      ),
+    ).toBe(true);
+  });
+
+  it("searches from page 2 with one request for the first page", async () => {
+    const pageOf = getFromOpenElisServer.getMockImplementation();
+    getFromOpenElisServer.mockImplementation((url, callback) =>
+      url.includes("pending-tests/page")
+        ? pageOf(url, (res) => callback({ ...res, total: 45 }))
+        : pageOf(url, callback),
+    );
+    renderWithIntl();
+    await screen.findByText("DEV-001");
+    fireEvent.click(screen.getByRole("button", { name: /next page/i }));
+    await waitFor(() =>
+      expect(
+        getFromOpenElisServer.mock.calls.some(([url]) =>
+          url.includes("page=2&"),
+        ),
+      ).toBe(true),
+    );
+    const before = getFromOpenElisServer.mock.calls.length;
+
+    fireEvent.change(screen.getByLabelText("Search"), {
+      target: { value: "glucose" },
+    });
+
+    await waitFor(() =>
+      expect(screen.queryByText("DEV-001")).not.toBeInTheDocument(),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(
+      getFromOpenElisServer.mock.calls
+        .slice(before)
+        .map(([url]) => url)
+        .filter((url) => url.includes("pending-tests/page")),
+    ).toEqual([
+      "/rest/batch-workplans/pending-tests/page?page=1&pageSize=20&search=glucose",
+    ]);
+  });
+
+  it("asks for each filter change once, from the first page", async () => {
+    renderWithIntl();
+    await screen.findByText("DEV-001");
+    const pageCalls = () =>
+      getFromOpenElisServer.mock.calls
+        .map(([url]) => url)
+        .filter((url) => url.includes("pending-tests/page"));
+    await waitFor(() => expect(pageCalls()).toHaveLength(1));
+
+    fireEvent.click(screen.getByRole("combobox", { name: /Lab Unit/ }));
+    fireEvent.click(await screen.findByRole("option", { name: "Hematology" }));
+
+    await waitFor(() =>
+      expect(
+        pageCalls().filter((url) => url.includes("testSectionId=5")),
+      ).not.toHaveLength(0),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const filtered = pageCalls().slice(1);
+    expect(filtered).toEqual([
+      "/rest/batch-workplans/pending-tests/page?page=1&pageSize=20&testSectionId=5",
+    ]);
+  });
+
+  it("clears the filters with one request that drops the old search", async () => {
+    renderWithIntl();
+    await screen.findByText("DEV-001");
+    fireEvent.change(screen.getByLabelText("Search"), {
+      target: { value: "glucose" },
+    });
+    await waitFor(() =>
+      expect(screen.queryByText("DEV-001")).not.toBeInTheDocument(),
+    );
+    const before = getFromOpenElisServer.mock.calls.length;
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+
+    expect(await screen.findByText("DEV-001")).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const after = getFromOpenElisServer.mock.calls
+      .slice(before)
+      .map(([url]) => url)
+      .filter((url) => url.includes("pending-tests/page"));
+    expect(after).toEqual([
+      "/rest/batch-workplans/pending-tests/page?page=1&pageSize=20",
+    ]);
   });
 
   it("sends the batch name with the selected analyses and opens Batches", async () => {
@@ -187,7 +302,7 @@ describe("BatchWorkplan", () => {
     );
     renderWithIntl();
 
-    fireEvent.click(screen.getByLabelText("Select DEV-001"));
+    fireEvent.click(await screen.findByLabelText("Select DEV-001"));
     fireEvent.change(screen.getByLabelText("Batch name (optional)"), {
       target: { value: "AM run" },
     });
@@ -205,10 +320,10 @@ describe("BatchWorkplan", () => {
     ).toBeInTheDocument();
   });
 
-  it("refuses a batch name over 100 characters before sending it", () => {
+  it("refuses a batch name over 100 characters before sending it", async () => {
     renderWithIntl();
 
-    fireEvent.click(screen.getByLabelText("Select DEV-001"));
+    fireEvent.click(await screen.findByLabelText("Select DEV-001"));
     fireEvent.change(screen.getByLabelText("Batch name (optional)"), {
       target: { value: "x".repeat(101) },
     });
@@ -219,6 +334,15 @@ describe("BatchWorkplan", () => {
     expect(
       screen.getByRole("button", { name: /create batch \(1\)/i }),
     ).toBeDisabled();
+  });
+
+  it("says before creating that a batch holds one lab unit", async () => {
+    renderWithIntl();
+    await screen.findByText("DEV-001");
+
+    expect(
+      screen.getByText("A batch holds the tests of one lab unit."),
+    ).toBeInTheDocument();
   });
 
   it("opens a batch whose QC is overdue and shows its tags", () => {

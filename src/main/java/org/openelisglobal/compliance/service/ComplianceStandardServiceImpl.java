@@ -9,11 +9,13 @@ import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.compliance.dao.ComplianceStandardDAO;
 import org.openelisglobal.compliance.dao.ComplianceThresholdDAO;
 import org.openelisglobal.compliance.dao.ParameterGroupDAO;
+import org.openelisglobal.compliance.form.SuggestedTest;
 import org.openelisglobal.compliance.valueholder.ComplianceStandard;
 import org.openelisglobal.compliance.valueholder.ComplianceStandard.ComplianceStandardStatus;
 import org.openelisglobal.compliance.valueholder.ComplianceThreshold;
 import org.openelisglobal.compliance.valueholder.ComplianceThresholdValueMap;
 import org.openelisglobal.compliance.valueholder.ParameterGroup;
+import org.openelisglobal.test.service.TestServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +47,14 @@ public class ComplianceStandardServiceImpl extends AuditableBaseObjectServiceImp
     // DAOs directly.
     @Autowired
     private ParameterGroupDAO parameterGroupDAO;
+
+    @org.springframework.context.annotation.Lazy
+    @Autowired
+    private org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService;
+
+    @org.springframework.context.annotation.Lazy
+    @Autowired
+    private org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService;
 
     ComplianceStandardServiceImpl() {
         super(ComplianceStandard.class);
@@ -90,6 +100,69 @@ public class ComplianceStandardServiceImpl extends AuditableBaseObjectServiceImp
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getLinkedTests(String standardId) {
         return baseObjectDAO.getLinkedTests(standardId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SuggestedTest> suggestedTests(List<String> standardIds) {
+        List<String> ids = standardIds == null ? List.of()
+                : standardIds.stream().filter(id -> id != null && id.trim().matches("\\d+")).map(String::trim)
+                        .distinct().toList();
+        Map<String, List<ComplianceThreshold>> byTest = new java.util.HashMap<>();
+        Map<String, org.openelisglobal.test.valueholder.Test> tests = new java.util.HashMap<>();
+        for (ComplianceThreshold threshold : baseObjectDAO.getActiveTestThresholds(ids)) {
+            org.openelisglobal.test.valueholder.Test test = threshold.getTest();
+            tests.putIfAbsent(test.getId(), test);
+            byTest.computeIfAbsent(test.getId(), key -> new java.util.ArrayList<>()).add(threshold);
+        }
+        java.util.Comparator<ComplianceThreshold> inSelectionOrder = java.util.Comparator
+                .comparingInt(threshold -> ids.indexOf(threshold.getGroup().getStandard().getId()));
+        List<String> environmentalTypeIds = typeOfSampleService
+                .getTypesForDomain(org.openelisglobal.typeofsample.dao.TypeOfSampleDAO.SampleDomain.ENVIRONMENTAL)
+                .stream().filter(type -> type.getIsActive())
+                .map(org.openelisglobal.typeofsample.valueholder.TypeOfSample::getId).toList();
+        List<SuggestedTest> suggested = new java.util.ArrayList<>();
+        for (Map.Entry<String, List<ComplianceThreshold>> entry : byTest.entrySet()) {
+            org.openelisglobal.test.valueholder.Test test = tests.get(entry.getKey());
+            List<ComplianceThreshold> thresholds = entry.getValue().stream().sorted(inSelectionOrder).toList();
+            Map<String, SuggestedTest.Coverage> coverage = new java.util.LinkedHashMap<>();
+            List<SuggestedTest.Threshold> limits = new java.util.ArrayList<>();
+            for (ComplianceThreshold threshold : thresholds) {
+                ComplianceStandard standard = threshold.getGroup().getStandard();
+                coverage.putIfAbsent(standard.getId(), new SuggestedTest.Coverage(standard.getId(),
+                        standard.getRegulationNumber(), standard.getName()));
+                limits.add(new SuggestedTest.Threshold(standard.getId(), standard.getRegulationNumber(),
+                        threshold.getThresholdType() == null ? null : threshold.getThresholdType().name(),
+                        threshold.getMinValue(), threshold.getMaxValue(), threshold.getTargetValue(),
+                        threshold.getUnits()));
+            }
+            suggested.add(new SuggestedTest(test.getId(), TestServiceImpl.getUserLocalizedTestName(test),
+                    test.getLoinc(), sampleTypeIdsOf(test.getId(), environmentalTypeIds),
+                    List.copyOf(coverage.values()), limits, coverage.size() > 1 && disagree(limits)));
+        }
+        suggested.sort(java.util.Comparator.comparing(SuggestedTest::testName, String.CASE_INSENSITIVE_ORDER)
+                .thenComparing(SuggestedTest::testId));
+        return suggested;
+    }
+
+    /**
+     * The environmental sample types the test runs on, in the order the order entry
+     * lists them; none when the catalog links it to no environmental type.
+     */
+    private List<String> sampleTypeIdsOf(String testId, List<String> environmentalTypeIds) {
+        java.util.Set<String> linked = typeOfSampleTestService.getTypeOfSampleTestsForTest(testId).stream()
+                .map(org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest::getTypeOfSampleId)
+                .collect(java.util.stream.Collectors.toSet());
+        return environmentalTypeIds.stream().filter(linked::contains).toList();
+    }
+
+    private static boolean disagree(List<SuggestedTest.Threshold> limits) {
+        return limits.stream().map(limit -> java.util.Arrays.asList(limit.type(), comparable(limit.min()),
+                comparable(limit.max()), comparable(limit.target()), limit.units())).distinct().count() > 1;
+    }
+
+    private static java.math.BigDecimal comparable(java.math.BigDecimal value) {
+        return value == null ? null : value.stripTrailingZeros();
     }
 
     @Override

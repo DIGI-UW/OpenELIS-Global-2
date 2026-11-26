@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.util.List;
 import org.openelisglobal.microbiology.form.MicroAstOverrideEventForm;
 import org.openelisglobal.microbiology.form.MicroAstSetupForm;
+import org.openelisglobal.microbiology.form.MicroReportingRulePreviewForm;
+import org.openelisglobal.microbiology.form.MicroReportingRulePreviewResultForm;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
@@ -82,13 +84,27 @@ public interface MicroAstService {
 
     MicroAstRun invalidateAndRepeat(String runId, String reason, String analyzerCardId, String performedBy);
 
+    MicroAstRun cancelRun(String runId, String reason, String performedBy);
+
     MicroAstRun selectReportableRun(String runId, String performedBy);
 
     List<MicroAstRun> getRunsForIsolate(String isolateId);
 
     List<MicroAstReading> getReadingsForRun(String runId);
 
+    MicroAstRunAntibiotic setReported(String runId, String antibioticId, boolean reported, String performedBy);
+
+    void resetReportDefaults(String isolateId, String performedBy);
+
+    void reapplyReportingRules(String antibioticId, String performedBy);
+
+    void reapplyRulesForIsolate(String isolateId, String performedBy);
+
+    List<MicroAstReading> latestReadings(String runId);
+
     List<MicroAstRunAntibiotic> getOrderedAntibioticsForRun(String runId);
 
     List<MicroAstPanelAntibiotic> getPanelAntibiotics(String panelId);
+
+    MicroReportingRulePreviewResultForm previewReportingRules(MicroReportingRulePreviewForm request);
 }

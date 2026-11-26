@@ -16,7 +16,6 @@ import org.openelisglobal.qaevent.qiconfig.service.QiConfigService;
 import org.openelisglobal.reports.qi.QiReportSupport;
 import org.openelisglobal.reports.rejection.bean.RejectionTrendResponse;
 import org.openelisglobal.reports.rejection.service.RejectionReportService;
-import org.openelisglobal.test.service.TestSectionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,9 +34,6 @@ public class KpiServiceImpl implements KpiService {
 
     @Autowired
     private KpiDAO kpiDAO;
-
-    @Autowired
-    private TestSectionService testSectionService;
 
     @Autowired
     private RejectionReportService rejectionReportService;
@@ -92,25 +88,13 @@ public class KpiServiceImpl implements KpiService {
 
     @Override
     @Transactional(readOnly = true)
-    public Map<String, BigDecimal> onTimeByLabUnit(ScopeRange scope) {
+    public Map<String, SectionTat> tatBySection(ScopeRange scope) {
         BigDecimal targetHours = tatTargetHours();
-        Map<String, long[]> byUnit = new HashMap<>();
-        if (targetHours != null) {
-            kpiDAO.countOnTimeBySection(scope.from(), scope.to(), targetHours).forEach((section, counts) -> {
-                long[] unit = byUnit.computeIfAbsent(labUnit(section), k -> new long[2]);
-                unit[0] += counts[0];
-                unit[1] += counts[1];
-            });
-        }
-        Map<String, BigDecimal> percents = new HashMap<>();
-        byUnit.forEach((unit, counts) -> percents.put(unit, percent(counts[1], counts[0])));
-        return percents;
-    }
-
-    // Named as on the TAT report and /workload.
-    private String labUnit(String sectionId) {
-        String name = sectionId == null ? null : testSectionService.getTestSectionById(sectionId).getLocalizedName();
-        return name == null || name.isBlank() ? "Unknown" : name;
+        Map<String, SectionTat> bySection = new HashMap<>();
+        kpiDAO.tatBySection(scope.from(), scope.to(), targetHours)
+                .forEach((section, figures) -> bySection.put(section, new SectionTat(figures.medianHours(),
+                        figures.p90Hours(), targetHours == null ? null : onTimePercent(figures))));
+        return bySection;
     }
 
     private BigDecimal tatTargetHours() {

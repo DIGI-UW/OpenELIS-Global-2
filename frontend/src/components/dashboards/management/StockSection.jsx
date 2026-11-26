@@ -9,11 +9,12 @@ import "./StockSection.css";
 
 const METER_TONE = { REORDER_NOW: "red", REORDER_SOON: "amber" };
 
-const Card = ({ titleKey, emptyKey, children }) => (
+const Card = ({ titleKey, emptyKey, notice, children }) => (
   <Tile className="mgmt-stock__card">
     <h4>
       <FormattedMessage id={titleKey} />
     </h4>
+    {notice}
     {React.Children.count(children) > 0 ? (
       children
     ) : (
@@ -50,6 +51,7 @@ const StockSection = ({ features }) => {
         </p>
       );
     }
+    const expiredCount = data.expiring.filter((lot) => lot.expired).length;
     return (
       <div className="mgmt-stock__cards">
         <Card
@@ -96,27 +98,38 @@ const StockSection = ({ features }) => {
         <Card
           titleKey="label.mgmt.stock.expiringIn30"
           emptyKey="label.mgmt.stock.noneExpiring"
+          notice={
+            expiredCount > 0 && (
+              <InlineNotification
+                kind="error"
+                lowContrast
+                hideCloseButton
+                title={intl.formatMessage(
+                  { id: "label.mgmt.stock.expiredInStock" },
+                  { count: expiredCount },
+                )}
+              />
+            )
+          }
         >
-          {data.expiring.map((lot) => (
-            <InlineNotification
-              key={`${lot.name}-${lot.lot}`}
-              kind={lot.expired ? "error" : "warning"}
-              lowContrast
-              hideCloseButton
-              title={intl.formatMessage(
-                {
-                  id: lot.expired
-                    ? "label.mgmt.stock.expired"
-                    : "label.mgmt.stock.expiresIn",
-                },
-                { days: lot.daysLeft },
-              )}
-              subtitle={intl.formatMessage(
-                { id: "label.mgmt.stock.lotRemaining" },
-                { 0: lot.name, 1: lot.lot, 2: number(lot.remaining) },
-              )}
-            />
-          ))}
+          {data.expiring
+            .filter((lot) => !lot.expired)
+            .map((lot) => (
+              <InlineNotification
+                key={`${lot.name}-${lot.lot}`}
+                kind="warning"
+                lowContrast
+                hideCloseButton
+                title={intl.formatMessage(
+                  { id: "label.mgmt.stock.expiresIn" },
+                  { days: lot.daysLeft },
+                )}
+                subtitle={intl.formatMessage(
+                  { id: "label.mgmt.stock.lotRemaining" },
+                  { 0: lot.name, 1: lot.lot, 2: number(lot.remaining) },
+                )}
+              />
+            ))}
         </Card>
         <Card
           titleKey="label.mgmt.stock.reorderAlerts"

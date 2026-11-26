@@ -15,6 +15,7 @@ import org.mockito.AdditionalAnswers;
 import org.mockito.Mockito;
 import org.openelisglobal.program.controller.pathology.PathologyController;
 import org.openelisglobal.program.service.PathologySampleService;
+import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.util.AopTestUtils;
@@ -42,6 +43,9 @@ public class PathologyControllerEmbedTest extends PathologyControllerTestSupport
         // optimistic-lock version, so the application can still update it.
         jdbcTemplate.update("UPDATE clinlims.pathology_block SET cassette_state = 'CASSETTE' WHERE id = ?",
                 LEGACY_BLOCK_ID);
+        // Cassettes are embedded once the case reaches Embedding; the fixture's case
+        // stands at Grossing, and how it got further is not what these tests are about.
+        storeAt(PathologyStatus.EMBEDDING);
     }
 
     @Test
@@ -121,6 +125,36 @@ public class PathologyControllerEmbedTest extends PathologyControllerTestSupport
             ReflectionTestUtils.setField(controller, "pathologySampleService", real);
         }
         assertEquals("the stored row is untouched", "CASSETTE", cassetteStateOf(LEGACY_BLOCK_ID));
+    }
+
+    /**
+     * Cassettes are embedded once the case reaches Embedding; the server holds that
+     * rule, not only the screen.
+     */
+    @Test
+    public void embedBeforeTheCaseReachesEmbedding_answers400WithTheMessageId() throws Exception {
+        storeAt(PathologyStatus.GROSSING);
+
+        MockHttpServletResponse response = postAsTechnician(EMBED_ENDPOINT, null);
+
+        assertEquals("a cassette is not embedded while its case is still at grossing", HttpStatus.BAD_REQUEST.value(),
+                response.getStatus());
+        assertEquals("and the answer carries the message the screen translates", "pathology.error.embedBeforeStage",
+                bodyOf(response).get("messageKey"));
+        assertEquals("the row keeps its state", "CASSETTE", cassetteStateOf(LEGACY_BLOCK_ID));
+    }
+
+    /** A signed-out case's blocks are what its report described. */
+    @Test
+    public void embedOnASignedOutCase_answers400WithTheMessageId() throws Exception {
+        storeAt(PathologyStatus.COMPLETED);
+
+        MockHttpServletResponse response = postAsTechnician(EMBED_ENDPOINT, null);
+
+        assertEquals("a signed-out case's cassette is not embedded", HttpStatus.BAD_REQUEST.value(),
+                response.getStatus());
+        assertEquals("and the answer names why", "pathology.error.caseCompleted", bodyOf(response).get("messageKey"));
+        assertEquals("the row keeps its state", "CASSETTE", cassetteStateOf(LEGACY_BLOCK_ID));
     }
 
     // helpers

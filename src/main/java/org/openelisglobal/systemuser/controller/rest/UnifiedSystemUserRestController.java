@@ -18,6 +18,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
+import org.hibernate.ObjectNotFoundException;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.openelisglobal.common.constants.Constants;
@@ -49,6 +50,8 @@ import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.openelisglobal.userrole.valueholder.LabUnitRoleMap;
 import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
+import org.openelisglobal.validation.constraintvalidator.NameValidator;
+import org.openelisglobal.validation.constraintvalidator.NameValidator.NameType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
@@ -168,7 +171,13 @@ public class UnifiedSystemUserRestController extends BaseController {
 
         setDefaultProperties(form);
         if (!isNew) {
-            setPropertiesForExistingUser(form, id, doFiltering);
+            try {
+                setPropertiesForExistingUser(form, id, doFiltering);
+            } catch (ObjectNotFoundException | IllegalArgumentException | StringIndexOutOfBoundsException e) {
+                // A user id that names no user (a stale or edited link) used to answer
+                // 500 and leave the page an empty form.
+                return ResponseEntity.notFound().build();
+            }
         }
         setupRoles(form, request, doFiltering);
 
@@ -449,6 +458,11 @@ public class UnifiedSystemUserRestController extends BaseController {
         formValidator.validate(form, result);
         Map<String, String> response = new HashMap<>();
 
+        Errors fieldRefusal = fieldRefusal(form, result);
+        if (fieldRefusal.hasErrors()) {
+            return ResponseEntity.badRequest().body(refusalBody(findForward(FWD_FAIL_INSERT), fieldRefusal));
+        }
+
         if (result.hasErrors()) {
             saveErrors(result);
             setupRoles(form, request, doFiltering);
@@ -490,6 +504,57 @@ public class UnifiedSystemUserRestController extends BaseController {
         }
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * The form's field constraints failed (a pattern or a charset the bean
+     * declares). Such a form used to go on to the insert, fail there and answer a
+     * bare 500 with nothing saved (OGC-1593); it is refused here with the reason
+     * the name checks give (characters, a missing login or name, a length), or a
+     * generic one.
+     */
+    private Errors fieldRefusal(UnifiedSystemUserForm form, BindingResult result) {
+        Errors refusal = new BaseErrors();
+        if (result.hasFieldErrors()) {
+            rejectDisallowedCharacters(form, refusal);
+            rejectMissingNames(form, refusal);
+            rejectWhenTooLong(refusal, form.getUserLoginName(), "login.login.name");
+            rejectWhenTooLong(refusal, form.getUserFirstName(), "systemuser.firstName");
+            rejectWhenTooLong(refusal, form.getUserLastName(), "systemuser.lastName");
+            if (!refusal.hasErrors()) {
+                refusal.reject("errors.UpdateException", "errors.UpdateException");
+            }
+        }
+        return refusal;
+    }
+
+    /**
+     * A login or name holding a character outside what the site allows (site
+     * information userNameCharset, firstNameCharset, lastNameCharset) is refused
+     * naming the allowed characters.
+     */
+    private void rejectDisallowedCharacters(UnifiedSystemUserForm form, Errors errors) {
+        if (!NameValidator.usesAllowedCharacters(NameType.USERNAME, form.getUserLoginName())) {
+            errors.reject("errors.loginName.charset",
+                    new Object[] { NameValidator.allowedCharacters(NameType.USERNAME) }, null);
+        }
+        if (!NameValidator.usesAllowedCharacters(NameType.FIRST_NAME, form.getUserFirstName())) {
+            errors.reject("errors.userName.charset",
+                    new Object[] { NameValidator.allowedCharacters(NameType.FIRST_NAME) }, null);
+        } else if (!NameValidator.usesAllowedCharacters(NameType.LAST_NAME, form.getUserLastName())) {
+            errors.reject("errors.userName.charset",
+                    new Object[] { NameValidator.allowedCharacters(NameType.LAST_NAME) }, null);
+        }
+    }
+
+    private void rejectMissingNames(UnifiedSystemUserForm form, Errors errors) {
+        if (GenericValidator.isBlankOrNull(form.getUserLoginName())) {
+            errors.reject("errors.loginName.required", "errors.loginName.required");
+        }
+        if (GenericValidator.isBlankOrNull(form.getUserFirstName())
+                || GenericValidator.isBlankOrNull(form.getUserLastName())) {
+            errors.reject("errors.userName.required", "errors.userName.required");
+        }
     }
 
     /**
@@ -610,9 +675,9 @@ public class UnifiedSystemUserRestController extends BaseController {
         boolean checkForDuplicateName = loginUserIsNew || userNameChanged(loginUserId, form.getUserLoginName());
         // check login name
 
-        if (GenericValidator.isBlankOrNull(form.getUserLoginName())) {
-            errors.reject("errors.loginName.required", "errors.loginName.required");
-        } else if (checkForDuplicateName) {
+        rejectDisallowedCharacters(form, errors);
+        rejectMissingNames(form, errors);
+        if (!GenericValidator.isBlankOrNull(form.getUserLoginName()) && checkForDuplicateName) {
             LoginUser login = loginService.getMatch("loginName", form.getUserLoginName()).orElse(null);
             if (login != null) {
                 errors.reject("errors.loginName.duplicated", new Object[] { form.getUserLoginName() },
@@ -620,11 +685,6 @@ public class UnifiedSystemUserRestController extends BaseController {
             }
         }
 
-        // check first and last name
-        if (GenericValidator.isBlankOrNull(form.getUserFirstName())
-                || GenericValidator.isBlankOrNull(form.getUserLastName())) {
-            errors.reject("errors.userName.required", "errors.userName.required");
-        }
         rejectWhenTooLong(errors, form.getUserLoginName(), "login.login.name");
         rejectWhenTooLong(errors, form.getUserFirstName(), "systemuser.firstName");
         rejectWhenTooLong(errors, form.getUserLastName(), "systemuser.lastName");

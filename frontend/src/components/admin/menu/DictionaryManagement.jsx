@@ -36,6 +36,7 @@ import {
 } from "../../common/CustomNotification";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { RequiredMarker, requiredProps } from "../../common/RequiredMarker";
+import SearchableSelect from "../../common/SearchableSelect";
 import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import "../../Style.css";
 import {
@@ -571,6 +572,8 @@ function DictionaryManagement() {
                     editMode ? handleSubmitModal : handleUpdateModal
                   }
                   primaryButtonDisabled={
+                    !category?.id ||
+                    !isActive?.id ||
                     !String(dictionaryEntry || "").trim() ||
                     !String(localAbbreviation || "").trim() ||
                     String(localAbbreviation).length > 60
@@ -589,26 +592,37 @@ function DictionaryManagement() {
                       marginBottom: "1rem",
                     }}
                   />
-                  <Dropdown
-                    id="description"
-                    label=""
-                    type="default"
-                    items={categoryDescription}
-                    titleText={intl.formatMessage({
-                      id: "dictionary.category.label",
-                    })}
-                    itemToString={(item) => (item ? item.description : "")}
-                    onChange={({ selectedItem }) => {
-                      setCategory(selectedItem);
-                      if (selectedItem?.categoryName !== "Sample Container")
-                        setContainerPopulation("");
-                    }}
-                    selectedItem={category}
-                    size="md"
-                    style={{
-                      marginBottom: "1rem",
-                    }}
-                  />
+                  <div style={{ marginBottom: "1rem" }}>
+                    <SearchableSelect
+                      id="description"
+                      required
+                      labelText={intl.formatMessage({
+                        id: "dictionary.category.label",
+                      })}
+                      options={categoryDescription.map((item) => ({
+                        id: item.id,
+                        value: item.description,
+                      }))}
+                      value={category?.id ?? ""}
+                      invalid={(touched.category || !editMode) && !category?.id}
+                      invalidText={intl.formatMessage({
+                        id: "dictionary.error.categoryRequired",
+                      })}
+                      onChange={(id) => {
+                        const selectedItem =
+                          categoryDescription.find(
+                            (item) => String(item.id) === id,
+                          ) || "";
+                        setCategory(selectedItem);
+                        if (selectedItem?.categoryName !== "Sample Container")
+                          setContainerPopulation("");
+                      }}
+                      onBlur={() =>
+                        setTouched((prev) => ({ ...prev, category: true }))
+                      }
+                      size="md"
+                    />
+                  </div>
                   {category?.categoryName === "Sample Container" && (
                     <Dropdown
                       id="container-population"
@@ -661,9 +675,14 @@ function DictionaryManagement() {
                     type="default"
                     label=""
                     items={yesOrNo}
-                    titleText={intl.formatMessage({
-                      id: "dictionary.category.isActive",
-                    })}
+                    titleText={
+                      <>
+                        {intl.formatMessage({
+                          id: "dictionary.category.isActive",
+                        })}
+                        <RequiredMarker />
+                      </>
+                    }
                     itemToString={(item) => (item ? item.id : "")}
                     onChange={({ selectedItem }) => {
                       setIsActive(selectedItem);

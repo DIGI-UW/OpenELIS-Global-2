@@ -97,17 +97,19 @@ describe("StockSection", () => {
     expect(critical.querySelector(".mgmt-meter--green")).not.toBe(null);
 
     const expiring = card("Expiring in 30 days");
-    expect(within(expiring).getByText("Expired")).toBeInTheDocument();
+    expect(
+      within(expiring)
+        .getByText("1 expired lot is still in stock")
+        .closest(".cds--inline-notification"),
+    ).toHaveClass("cds--inline-notification--error");
     expect(within(expiring).getByText("Expires in 1 day")).toBeInTheDocument();
     expect(
       within(expiring).getByText("Expires in 18 days"),
     ).toBeInTheDocument();
-    expect(expiring).toHaveTextContent(
-      "HIV VL cartridges · Lot HV-099 · 8 remaining",
-    );
+    expect(expiring).not.toHaveTextContent("Lot HV-099");
     expect(
-      expiring.querySelectorAll(".cds--inline-notification--error"),
-    ).toHaveLength(1);
+      expiring.querySelectorAll(".cds--inline-notification--warning"),
+    ).toHaveLength(2);
 
     const reorder = card("Reorder alerts");
     expect(reorder).toHaveTextContent(
@@ -121,6 +123,22 @@ describe("StockSection", () => {
         .getByText("Approaching reorder point")
         .closest(".cds--inline-notification"),
     ).toHaveClass("cds--inline-notification--warning");
+  });
+
+  it("counts expired lots apart from the lots still to expire", async () => {
+    fetchFromOpenElisServer.mockResolvedValue({
+      ...STOCK,
+      expiring: [
+        { ...STOCK.expiring[0] },
+        { ...STOCK.expiring[0], lot: "HV-001", daysLeft: -1005 },
+      ],
+    });
+    render();
+
+    await screen.findByText("2 expired lots are still in stock");
+    const expiring = card("Expiring in 30 days");
+    expect(expiring).toHaveTextContent("2 expired lots are still in stock");
+    expect(expiring).toHaveTextContent("Nothing expires in the next 30 days");
   });
 
   it("explains an inventory with no stock yet", async () => {

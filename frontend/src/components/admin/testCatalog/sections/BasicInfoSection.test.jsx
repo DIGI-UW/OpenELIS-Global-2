@@ -28,7 +28,7 @@ vi.mock("../../../utils/Utils", async (importOriginal) => ({
 
 // ========== IMPORTS ==========
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -872,6 +872,37 @@ describe("BasicInfoSection stale saves (OGC-1376)", () => {
     expect(
       JSON.parse(putToOpenElisServerJsonResponse.mock.calls[0][1]).lastupdated,
     ).toBe("300");
+  });
+
+  it("keeps Save disabled until the activation answers, so a save cannot race it with the old version", async () => {
+    const loaded = getFromOpenElisServer.getMockImplementation();
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      loaded(url, (res) =>
+        cb(
+          url.endsWith("/basic-info")
+            ? { ...res, active: false, lastupdated: "100" }
+            : res,
+        ),
+      ),
+    );
+    let answerActivation;
+    postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) => {
+      answerActivation = () =>
+        cb({ testId: "42", active: true, orderable: true, lastupdated: "300" });
+    });
+    renderSection();
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.click(screen.getByRole("switch", { name: /Active/ }));
+    await waitFor(() =>
+      expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1),
+    );
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+
+    act(() => answerActivation());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled(),
+    );
   });
 
   it("the next save carries the version the last save returned", async () => {

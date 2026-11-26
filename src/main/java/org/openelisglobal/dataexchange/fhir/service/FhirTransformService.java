@@ -37,7 +37,6 @@ import org.openelisglobal.sample.bean.SampleEditItem;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
-import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.test.valueholder.Test;
 
 public interface FhirTransformService {
@@ -53,6 +52,10 @@ public interface FhirTransformService {
             throws FhirTransformationException, FhirPersistanceException;
 
     void transformPersistResultsEntryFhirObjects(ResultsUpdateDataSet actionDataSet)
+            throws FhirTransformationException, FhirPersistanceException;
+
+    void transformPersistResultsEntryFhirObjects(ResultsUpdateDataSet actionDataSet,
+            List<org.hl7.fhir.r4.model.Observation> clearedObservations)
             throws FhirTransformationException, FhirPersistanceException;
 
     Organization transformToOrganization(org.hl7.fhir.r4.model.Organization fhirOrganization)
@@ -111,8 +114,6 @@ public interface FhirTransformService {
 
     org.hl7.fhir.r4.model.Observation transformResultToObservation(org.openelisglobal.result.valueholder.Result result)
             throws FhirTransformationException;
-
-    TestResultItem createResultFromObservation(org.hl7.fhir.r4.model.Observation observation);
 
     DiagnosticReport transformResultToDiagnosticReport(org.openelisglobal.analysis.valueholder.Analysis analysis)
             throws FhirTransformationException;

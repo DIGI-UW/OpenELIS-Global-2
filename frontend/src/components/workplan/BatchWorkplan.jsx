@@ -53,7 +53,7 @@ export default function BatchWorkplan() {
     QC_OVERRIDE_PERMISSION,
   );
 
-  const [pendingTests, setPendingTests] = useState([]);
+  const [pendingRefresh, setPendingRefresh] = useState(0);
   const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState(null);
@@ -69,16 +69,6 @@ export default function BatchWorkplan() {
     ],
     [],
   );
-
-  const loadPendingTests = useCallback((onDone) => {
-    getFromOpenElisServer(
-      `${BATCH_ENDPOINT}/pending-tests?limit=500`,
-      (res) => {
-        setPendingTests(Array.isArray(res) ? res : []);
-        if (onDone) onDone();
-      },
-    );
-  }, []);
 
   const loadBatches = useCallback((onDone) => {
     getFromOpenElisServer(`${BATCH_ENDPOINT}/batches`, (res) => {
@@ -103,16 +93,12 @@ export default function BatchWorkplan() {
     });
   }, []);
 
+  // The Pending Tests panel fetches its own page; a new token asks it to.
   const reload = useCallback(() => {
     setLoading(true);
-    let outstanding = 2;
-    const settle = () => {
-      outstanding -= 1;
-      if (outstanding === 0) setLoading(false);
-    };
-    loadPendingTests(settle);
-    loadBatches(settle);
-  }, [loadBatches, loadPendingTests]);
+    setPendingRefresh((token) => token + 1);
+    loadBatches(() => setLoading(false));
+  }, [loadBatches]);
 
   useEffect(() => {
     reload();
@@ -287,7 +273,7 @@ export default function BatchWorkplan() {
             <TabPanels>
               <TabPanel>
                 <PendingTestsPanel
-                  tests={pendingTests}
+                  refreshToken={pendingRefresh}
                   loading={loading}
                   canCreate
                   onCreateBatch={createBatch}

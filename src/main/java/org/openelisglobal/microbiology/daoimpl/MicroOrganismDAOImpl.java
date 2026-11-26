@@ -6,6 +6,7 @@ import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
+import org.openelisglobal.microbiology.dao.MicroOrganismMatch;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,8 +23,18 @@ public class MicroOrganismDAOImpl extends BaseDAOImpl<MicroOrganism, String> imp
     @Transactional(readOnly = true)
     public List<MicroOrganism> getActiveOrganisms() {
         return entityManager.unwrap(Session.class)
-                .createQuery("from MicroOrganism o where o.isActive = 'Y' order by o.displayName", MicroOrganism.class)
+                .createQuery("select distinct o from MicroOrganism o left join fetch o.labGroups where o.isActive = 'Y'"
+                        + " order by o.displayName", MicroOrganism.class)
                 .list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> getLabGroupNames() {
+        List<String> groups = entityManager.unwrap(Session.class)
+                .createQuery("select distinct g from MicroOrganism o join o.labGroups g", String.class).list();
+        groups.sort(String.CASE_INSENSITIVE_ORDER);
+        return groups;
     }
 
     @Override
@@ -36,6 +47,36 @@ public class MicroOrganismDAOImpl extends BaseDAOImpl<MicroOrganism, String> imp
                 .createQuery("from MicroOrganism o where o.id in (:ids)", MicroOrganism.class);
         query.setParameterList("ids", ids);
         return query.list();
+    }
+
+    private static final String OLDER_NAME = " from MicroWhonetOrganism w where w.taxonomicStatus = 'O'"
+            + " and (lower(w.whonetOrgCode) = lower(o.whonetCode) or lower(w.replacedBy) = lower(o.whonetCode))"
+            + " and (lower(w.organism) like :fragment escape '!' or lower(w.whonetOrgCode) like :prefix escape '!')";
+    private static final String OWN_NAME_OR_CODE = "lower(o.displayName) like :fragment escape '!'"
+            + " or lower(o.whonetCode) like :prefix escape '!'";
+
+    // An exact WHONET code first, then the organisms WHONET marks common, then
+    // names that start with the text.
+    private static final String SEARCH = "select o, case when " + OWN_NAME_OR_CODE + " then 1 else 0 end,"
+            + " (select min(w.organism)" + OLDER_NAME + ")" + " from MicroOrganism o where o.isActive = 'Y'" + " and ("
+            + OWN_NAME_OR_CODE + " or exists (select w.id" + OLDER_NAME + "))"
+            + " order by case when lower(o.whonetCode) = :q then 0 else 1 end,"
+            + " case when exists (select c.id from MicroWhonetOrganism c"
+            + " where lower(c.whonetOrgCode) = lower(o.whonetCode) and c.taxonomicStatus = 'C' and c.common = 'X')"
+            + " then 0 else 1 end,"
+            + " case when lower(o.displayName) like :prefix escape '!' then 0 else 1 end, lower(o.displayName)";
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroOrganismMatch> searchActive(String text, int limit) {
+        String q = text == null ? "" : text.trim().toLowerCase(java.util.Locale.ROOT);
+        String pattern = q.replace("!", "!!").replace("%", "!%").replace("_", "!_");
+        List<Object[]> found = entityManager.unwrap(Session.class).createQuery(SEARCH, Object[].class)
+                .setParameter("q", q).setParameter("fragment", "%" + pattern + "%")
+                .setParameter("prefix", pattern + "%").setMaxResults(limit).list();
+        // An organism found by its own name or code shows no older name.
+        return found.stream().map(row -> new MicroOrganismMatch((MicroOrganism) row[0],
+                ((Number) row[1]).intValue() == 1 ? null : (String) row[2])).toList();
     }
 
     @Override
@@ -54,6 +95,36 @@ public class MicroOrganismDAOImpl extends BaseDAOImpl<MicroOrganism, String> imp
                 "from MicroOrganism o where lower(o.whonetCode) = lower(:whonetCode)", MicroOrganism.class);
         query.setParameter("whonetCode", whonetCode);
         return query.uniqueResultOptional();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<MicroOrganism> findByWhonetName(String name) {
+        List<MicroOrganism> named = entityManager.unwrap(Session.class)
+                .createQuery(
+                        "select distinct o from MicroOrganism o, MicroWhonetOrganism w"
+                                + " where lower(w.organism) = lower(:name)"
+                                + " and lower(o.whonetCode) = lower(coalesce(w.replacedBy, w.whonetOrgCode))",
+                        MicroOrganism.class)
+                .setParameter("name", name).setMaxResults(2).list();
+        return named.size() == 1 ? Optional.of(named.get(0)) : Optional.empty();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroOrganism> getByDefaultAstPanelId(String panelId) {
+        return entityManager.unwrap(Session.class)
+                .createQuery("from MicroOrganism o where o.defaultAstPanelId = :panelId", MicroOrganism.class)
+                .setParameter("panelId", panelId).list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<MicroOrganism> findByReference(String source, String code) {
+        return entityManager.unwrap(Session.class)
+                .createQuery("from MicroOrganism e where e.referenceSource = :source and e.referenceCode = :code",
+                        MicroOrganism.class)
+                .setParameter("source", source).setParameter("code", code).uniqueResultOptional();
     }
 
     @Override

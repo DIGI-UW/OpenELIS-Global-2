@@ -66,10 +66,22 @@ const renderWizard = () => {
   );
 };
 
+const SCHEME_NAMES = {
+  3: "Malaria scheme",
+  4: "HIV scheme",
+  5: "Empty scheme",
+};
+
+const schemeSelector = () =>
+  screen.getByRole("combobox", { name: "In-house scheme" });
+
+const chooseScheme = (schemeId) => {
+  fireEvent.click(schemeSelector());
+  fireEvent.click(screen.getByRole("option", { name: SCHEME_NAMES[schemeId] }));
+};
+
 const pickScheme = (schemeId) => {
-  fireEvent.change(screen.getByLabelText("In-house scheme"), {
-    target: { value: schemeId },
-  });
+  chooseScheme(schemeId);
   fireEvent.change(
     screen.getByLabelText("Unblind date (submission deadline)"),
     { target: { value: "2026-10-31" } },
@@ -125,9 +137,8 @@ describe("BlindingWizard", () => {
       else serve(url, cb);
     });
 
-    const scheme = screen.getByLabelText("In-house scheme");
-    fireEvent.change(scheme, { target: { value: "3" } });
-    fireEvent.change(scheme, { target: { value: "4" } });
+    chooseScheme("3");
+    chooseScheme("4");
     act(() => replies["4"]());
     act(() => replies["3"]());
     pickScheme("4");

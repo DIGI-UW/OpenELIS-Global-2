@@ -2,20 +2,21 @@ import { test, expect } from "../../../helpers/test-base";
 import type { Page } from "@playwright/test";
 import { Sidenav } from "../../../fixtures/sidenav";
 import { seedMicrobiologyWorklistCase } from "../../../helpers/seed-microbiology-data";
+import { openMicrobiologyCaseScope } from "../../../helpers/microbiology-ui";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
-const accordionButton = (page: Page, name: string) =>
-  page
-    .getByTestId("microbiology-case-view")
-    .getByRole("button", { name, exact: true });
-
 const openCaseSection = async (page: Page, name: string, section: string) => {
-  const sectionButton = accordionButton(page, name);
-  await expect(sectionButton).toBeVisible({ timeout: LONG_TIMEOUT });
-  await sectionButton.click();
+  const scopes: Record<string, string> = {
+    "critical-communication": "CRITICAL",
+    reports: "REPORT",
+    timeline: "HISTORY",
+    amendment: "AMENDMENT",
+    isolates: "ISOLATES",
+  };
+  await openMicrobiologyCaseScope(page, scopes[section]);
   await expect
-    .poll(() => new URL(page.url()).searchParams.get("section"))
-    .toBe(section);
+    .poll(() => new URL(page.url()).searchParams.get("scope"))
+    .toBe(scopes[section]);
 };
 
 const waitForWorklistResponse = (
@@ -41,7 +42,7 @@ test.describe("microbiology worklist and critical communication", () => {
     page,
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/Microbiology/worklist", {
+    await page.goto("/Microbiology/worklist?grain=cultures", {
       waitUntil: "domcontentloaded",
     });
     await expect(
@@ -79,12 +80,13 @@ test.describe("microbiology worklist and critical communication", () => {
   }) => {
     const seeded = await seedMicrobiologyWorklistCase(page);
     const query = new URLSearchParams({
+      grain: "cultures",
       q: seeded.caseId,
       sort: "newest",
       pageSize: "10",
     });
     const worklistUrl = `/Microbiology/worklist?${query}`;
-    const caseUrl = `/Microbiology/cases/${seeded.caseId}?${query}&section=setup`;
+    const caseUrl = `/Microbiology/cases/${seeded.caseId}?${query}`;
 
     const initialResponse = waitForWorklistResponse(page, {
       q: seeded.caseId,
@@ -120,17 +122,17 @@ test.describe("microbiology worklist and critical communication", () => {
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(caseUrl);
     await expect(
-      page.getByRole("heading", { name: "Microbiology case" }),
+      page.getByRole("heading", { name: `Case ${seeded.accessionNumber}` }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
   });
 
   test("critical communication raises worklist priority", async ({ page }) => {
     test.setTimeout(120_000);
     const seeded = await seedMicrobiologyWorklistCase(page);
-    const scopedWorklistUrl = `/Microbiology/worklist?q=${encodeURIComponent(
+    const scopedWorklistUrl = `/Microbiology/worklist?grain=cultures&q=${encodeURIComponent(
       seeded.caseId,
     )}&sort=newest`;
-    const scopedCaseUrl = `/Microbiology/cases/${seeded.caseId}?q=${encodeURIComponent(
+    const scopedCaseUrl = `/Microbiology/cases/${seeded.caseId}?grain=cultures&q=${encodeURIComponent(
       seeded.caseId,
     )}&sort=newest`;
 
@@ -148,10 +150,13 @@ test.describe("microbiology worklist and critical communication", () => {
       "/Microbiology/worklist",
     );
     await sidenav.clickMenu("Microbiology worklist");
-    await expect(page).toHaveURL(/\/Microbiology\/worklist$/);
+    await expect(page).toHaveURL(/\/Microbiology\/worklist\?grain=cultures$/);
     await expect(
       page.getByRole("heading", { name: "Microbiology worklist" }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
+    await page.goto("/Microbiology/worklist?grain=cultures", {
+      waitUntil: "domcontentloaded",
+    });
     await expect(
       page.getByTestId("microbiology-worklist-summary-total"),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
@@ -165,14 +170,16 @@ test.describe("microbiology worklist and critical communication", () => {
       sort: "newest",
     });
     await page.getByLabel("Sort", { exact: true }).selectOption("newest");
-    await expect(page).toHaveURL(/\/Microbiology\/worklist\?sort=newest$/);
+    await expect(page).toHaveURL(
+      /\/Microbiology\/worklist\?grain=cultures&sort=newest$/,
+    );
     await sortResponse;
 
-    await page.goto(`/Microbiology/cases/${seeded.caseId}`, {
+    await page.goto(`/Microbiology/cases/${seeded.caseId}?view=workbench`, {
       waitUntil: "domcontentloaded",
     });
     await expect(
-      page.getByRole("heading", { name: "Microbiology case" }),
+      page.getByRole("heading", { name: `Case ${seeded.accessionNumber}` }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
 
     await openCaseSection(
@@ -187,6 +194,12 @@ test.describe("microbiology worklist and critical communication", () => {
     await criticalCommunication
       .getByLabel("Recipient", { exact: true })
       .fill("Provider on call");
+    await criticalCommunication
+      .getByLabel("Call outcome")
+      .selectOption({ label: "Unable to reach" });
+    await expect(
+      criticalCommunication.getByLabel("Follow-up needed"),
+    ).toBeChecked();
     await criticalCommunication
       .getByLabel("Message")
       .fill("Positive blood culture called to provider");
@@ -208,28 +221,37 @@ test.describe("microbiology worklist and critical communication", () => {
 
     await row.getByRole("button", { name: "Row actions" }).click();
     await page.getByRole("menuitem", { name: "Open case" }).click();
-    await expect(page).toHaveURL(`${scopedCaseUrl}&section=setup`);
+    await expect(page).toHaveURL(scopedCaseUrl);
     await expect(
-      page.getByRole("heading", { name: "Microbiology case" }),
+      page.getByRole("heading", { name: `Case ${seeded.accessionNumber}` }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
     await openCaseSection(
       page,
       "Critical communication",
       "critical-communication",
     );
-    await page.getByRole("button", { name: "Acknowledge" }).click();
+    await expect(page.getByRole("button", { name: "Acknowledge" })).toHaveCount(
+      0,
+    );
+    await page.getByRole("button", { name: "Resolve follow-up" }).click();
+    await page
+      .getByLabel("Resolution note")
+      .fill("Reached the ward on the second call");
+    await page.getByRole("button", { name: "Resolve follow-up" }).click();
     await expect(
       page.getByTestId("microbiology-critical-status"),
-    ).toContainText("Acknowledged", { timeout: LONG_TIMEOUT });
+    ).toContainText("Closed", { timeout: LONG_TIMEOUT });
     await openCaseSection(page, "Isolates", "isolates");
-    await expect(page.getByRole("region", { name: "Isolates" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Isolates", exact: true }),
+    ).toBeVisible();
     const restoredWorklistResponse = waitForWorklistResponse(page, {
       q: seeded.caseId,
       sort: "newest",
     });
     await page
-      .getByRole("navigation", { name: "Breadcrumb" })
-      .getByRole("link", { name: "Microbiology worklist" })
+      .getByTestId("microbiology-case-view")
+      .getByRole("link", { name: "Microbiology worklist", exact: true })
       .click();
     await expect(page).toHaveURL(scopedWorklistUrl);
     await restoredWorklistResponse;

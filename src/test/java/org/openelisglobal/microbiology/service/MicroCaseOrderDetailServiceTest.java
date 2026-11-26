@@ -71,7 +71,7 @@ public class MicroCaseOrderDetailServiceTest {
 
         assertEquals("case-1", saved.getCaseId());
         assertEquals("configured-method", saved.getCultureMethodId());
-        assertEquals("CLINICAL_DIAGNOSTIC", saved.getCulturePurpose());
+        assertEquals("DIAGNOSTIC", saved.getCulturePurpose());
         assertEquals("INPATIENT", saved.getPatientOrigin());
         assertEquals(LocalDate.of(2026, 8, 3), saved.getAdmissionDate());
         assertEquals(Integer.valueOf(2), saved.getNumberOfSets());
@@ -105,7 +105,7 @@ public class MicroCaseOrderDetailServiceTest {
 
         assertEquals("detail-1", saved.getId());
         assertEquals("INPATIENT", saved.getPatientOrigin());
-        assertEquals("ACTIVE_SCREENING", saved.getCulturePurpose());
+        assertEquals("SCREENING", saved.getCulturePurpose());
         assertEquals(Integer.valueOf(3), saved.getNumberOfSets());
         verify(orderDetailDAO).update(existing);
         verify(orderDetailDAO, never()).insert(any(MicroCaseOrderDetail.class));
@@ -145,8 +145,8 @@ public class MicroCaseOrderDetailServiceTest {
         verify(activityDAO).insert(activity.capture());
         assertEquals(MicroCaseActivityType.CULTURE_PURPOSE_CHANGED.name(), activity.getValue().getActivityType());
         JsonNode audit = new ObjectMapper().readTree(activity.getValue().getStructuredData());
-        assertEquals("CLINICAL_DIAGNOSTIC", audit.get("fromPurpose").asText());
-        assertEquals("ACTIVE_SCREENING", audit.get("toPurpose").asText());
+        assertEquals("DIAGNOSTIC", audit.get("fromPurpose").asText());
+        assertEquals("SCREENING", audit.get("toPurpose").asText());
         assertEquals("2", activity.getValue().getPerformedBy());
     }
 

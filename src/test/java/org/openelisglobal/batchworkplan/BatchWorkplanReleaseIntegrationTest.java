@@ -64,6 +64,10 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
     @Autowired
     private BatchWorkplanService batchWorkplanService;
     @Autowired
+    private org.openelisglobal.resultrun.service.ResultRunService resultRunService;
+    @Autowired
+    private org.openelisglobal.resultrun.service.RunQcService runQcService;
+    @Autowired
     private BatchWorkplanDAO batchWorkplanDAO;
     @Autowired
     private QCControlLotService controlLotService;
@@ -168,7 +172,8 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
         assertRefused(BatchReleaseRefusedException.Reason.OVERRIDE_NOT_PERMITTED, true, false);
         assertEquals("DRAFT", batchStatus());
 
-        BatchWorkplanResponse released = batchWorkplanService.generate(batchId, true, true, ACTOR);
+        BatchWorkplanResponse released = batchWorkplanService.generate(batchId, true, "Control repeat booked", true,
+                ACTOR);
 
         assertEquals(BatchWorkplanStatus.ACTIVE, released.getStatus());
         assertEquals(1, released.getReleases().size());
@@ -185,6 +190,15 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
                         "SELECT count(*)::int FROM clinlims.batch_workplan_qc_release WHERE batch_workplan_id = ?"
                                 + " AND nce_id IS NOT NULL AND overridden AND qc_status = 'NOT_RUN'",
                         Integer.class, batchId));
+        assertEquals("OGC-1588: the reason is kept with the release", "Control repeat booked",
+                jdbcTemplate.queryForObject(
+                        "SELECT override_reason FROM clinlims.batch_workplan_qc_release WHERE batch_workplan_id = ?",
+                        String.class, batchId));
+        assertEquals("Control repeat booked", released.getReleases().get(0).overrideReason());
+        assertTrue(jdbcTemplate
+                .queryForObject("SELECT description FROM clinlims.nc_event WHERE id = ?", String.class,
+                        released.getReleases().get(0).nceId())
+                .contains("Reason given for the override: Control repeat booked"));
     }
 
     @Test
@@ -192,7 +206,7 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
         recordBenchRun(QCQualitativeOutcome.PASS, LocalDateTime.now().minusMinutes(5));
 
         assertEquals(BatchQcStatus.PASS, batchWorkplanService.getQcStatus(batchId, ACTOR).status());
-        BatchWorkplanResponse released = batchWorkplanService.generate(batchId, false, false, ACTOR);
+        BatchWorkplanResponse released = batchWorkplanService.generate(batchId, false, null, false, ACTOR);
 
         assertEquals(BatchWorkplanStatus.ACTIVE, released.getStatus());
         assertFalse(released.getReleases().get(0).overridden());
@@ -201,6 +215,328 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
                         "SELECT count(*)::int FROM clinlims.nc_event WHERE trigger_source_type = 'WORKPLAN_BATCH'"
                                 + " AND trigger_source_id LIKE ?",
                         Integer.class, batchId + ":%"));
+    }
+
+    /**
+     * OGC-1200 FR-B2, FR-D5, FR-G4: a released batch is a run of the batch's lab
+     * unit, lot and analyses. A control recorded on it holds the batch's test, and
+     * once the test is decided, marking the batch complete completes the run.
+     */
+    @Test
+    public void aReleasedBatchIsARunThatHoldsItsTestOnAFailedControlAndCompletesWithIt() {
+        jdbcTemplate.update("UPDATE clinlims.batch_workplan SET test_section_id = CAST(? AS numeric) WHERE id = ?",
+                testSectionId, batchId);
+        recordBenchRun(QCQualitativeOutcome.PASS, LocalDateTime.now().minusMinutes(5));
+        BatchWorkplanResponse released = batchWorkplanService.generate(batchId, false, null, false, ACTOR);
+
+        Long runId = released.getRunId();
+        assertNotNull("the released batch names its run", runId);
+        java.util.Map<String, Object> run = jdbcTemplate.queryForMap(
+                "SELECT source, state, CAST(test_section_id AS VARCHAR) AS unit, reagent_lot_id, batch_workplan_id,"
+                        + " row_count FROM clinlims.result_run WHERE id = ?",
+                runId);
+        assertEquals("WORKPLAN", run.get("source"));
+        assertEquals("OPEN", run.get("state"));
+        assertEquals(testSectionId, run.get("unit"));
+        assertEquals((Object) batchId, ((Number) run.get("batch_workplan_id")).longValue());
+        assertNotNull(run.get("reagent_lot_id"));
+        assertEquals(1, ((Number) run.get("row_count")).intValue());
+
+        String analysisId = jdbcTemplate.queryForObject(
+                "SELECT CAST(analysis_id AS VARCHAR) FROM clinlims.batch_workplan_item WHERE batch_workplan_id = ?",
+                String.class, batchId);
+        assertEquals(java.util.Map.of(analysisId, runId), resultRunService.activeBatchRunsOf(List.of(analysisId)));
+        org.openelisglobal.resultrun.form.RunViewer unitViewer = new org.openelisglobal.resultrun.form.RunViewer(
+                java.util.Set.of(testId), java.util.Set.of(testSectionId));
+        org.openelisglobal.resultrun.form.ResultRunHeader header = resultRunService.getHeader(runId, unitViewer)
+                .orElseThrow();
+        assertEquals("WORKPLAN", header.source());
+        assertEquals(1, header.total());
+        assertEquals(0, header.dispositioned());
+        assertNotNull("the run reads its reagent lot", header.reagentLot());
+        assertEquals(1,
+                resultRunService.getRows(runId, unitViewer, org.openelisglobal.resultrun.form.ResultRunChip.ALL, 1, 25)
+                        .orElseThrow().totalRows());
+        assertTrue("another lab unit does not see the run",
+                resultRunService.getHeader(runId,
+                        new org.openelisglobal.resultrun.form.RunViewer(java.util.Set.of(), java.util.Set.of("-1")))
+                        .isEmpty());
+
+        org.openelisglobal.result.valueholder.Result entered = new org.openelisglobal.result.valueholder.Result();
+        entered.setAnalysis(analysisService.get(analysisId));
+        resultRunService.recordIntoWorkplanRuns(List.of(entered), ACTOR);
+        assertEquals("a result entered for the batched analysis records into its run", runId, entered.getRunId());
+
+        runQcService.recordControl(runId,
+                new BenchQCCaptureForm(QCSource.MANUAL, testId, testSectionId, benchLot.getId(), null,
+                        new BigDecimal("140"), null, QCQualitativeOutcome.FAIL, null, null,
+                        LocalDateTime.now().minusMinutes(1), "OGC-1200 batch control"),
+                Integer.parseInt(ACTOR));
+        assertEquals("a failed control on the batch's run holds its analyses at entry",
+                java.util.Map.of(analysisId, runId), runQcService.entryHoldingRuns(List.of(analysisId)));
+        assertEquals("HELD",
+                jdbcTemplate.queryForObject("SELECT state FROM clinlims.result_run WHERE id = ?", String.class, runId));
+
+        runQcService.decide(runId, testId, org.openelisglobal.resultrun.valueholder.RunTestAction.ACCEPT_DESPITE,
+                "Control repeated and passed", true, ACTOR);
+        batchWorkplanService.transitionBatch(batchId, BatchWorkplanStatus.COMPLETED, ACTOR);
+        assertEquals("COMPLETE",
+                jdbcTemplate.queryForObject("SELECT state FROM clinlims.result_run WHERE id = ?", String.class, runId));
+        assertTrue(resultRunService.activeBatchRunsOf(List.of(analysisId)).isEmpty());
+    }
+
+    /**
+     * OGC-1200 FR-C5 on a batch run: accepting a held test despite its failed
+     * control names the batch's analyses in the NCE before any value is entered;
+     * taking the batch back to setup closes the decided run, and the re-release
+     * opens a fresh one whose controls cover the batch again.
+     */
+    @Test
+    public void aDecisionOnABatchRunCoversTheBatchAndARereleaseOpensAFreshRun() {
+        Long runId = releaseIntoRun();
+        String analysisId = batchAnalysisId();
+        recordInvalidControl(runId);
+
+        org.openelisglobal.resultrun.valueholder.ResultRunTestDisposition decision = runQcService.decide(runId, testId,
+                org.openelisglobal.resultrun.valueholder.RunTestAction.ACCEPT_DESPITE, "Control repeated and passed",
+                true, ACTOR);
+        assertTrue("the NCE names the batch's analysis",
+                jdbcTemplate.queryForObject("SELECT description FROM clinlims.nc_event WHERE id = ?", String.class,
+                        decision.getNceId()).contains("1 affected result(s)"));
+
+        batchWorkplanService.transitionBatch(batchId, BatchWorkplanStatus.DRAFT, ACTOR);
+        assertEquals("the decided run is closed with the edit", "COMPLETE",
+                jdbcTemplate.queryForObject("SELECT state FROM clinlims.result_run WHERE id = ?", String.class, runId));
+        BatchWorkplanResponse draft = batchWorkplanService.getBatch(batchId, ACTOR);
+        assertEquals(runId, draft.getRunId());
+        assertFalse("the tile records a plain bench control while no run is open", draft.isRunOpen());
+        assertTrue(resultRunService.activeBatchRunsOf(List.of(analysisId)).isEmpty());
+
+        recordBenchRun(QCQualitativeOutcome.PASS, LocalDateTime.now().minusMinutes(1));
+        BatchWorkplanResponse rereleased = batchWorkplanService.generate(batchId, false, null, false, ACTOR);
+
+        Long freshRunId = rereleased.getRunId();
+        assertNotNull(freshRunId);
+        assertFalse("a re-release after a decision opens a fresh run", runId.equals(freshRunId));
+        assertTrue(rereleased.isRunOpen());
+        assertEquals(java.util.Map.of(analysisId, freshRunId), resultRunService.activeBatchRunsOf(List.of(analysisId)));
+        assertFalse("the fresh run's QC is open to a new control", runQcService.hasDecisions(freshRunId));
+        assertEquals("the closed run lists no waiting rows", 0,
+                resultRunService.getHeader(runId, unitViewer()).orElseThrow().chipCounts().all());
+        assertEquals(1, resultRunService.getHeader(freshRunId, unitViewer()).orElseThrow().chipCounts().all());
+    }
+
+    /**
+     * OGC-1200 FR-C5, FR-A3 on a batch run: a Retest decision sets the batch's
+     * analyses aside, and the fresh run the re-release opens retests them, which
+     * supersedes the first run.
+     */
+    @Test
+    public void aRetestedBatchRunIsSupersededByTheFreshRunOfItsRerelease() {
+        Long runId = releaseIntoRun();
+        String analysisId = batchAnalysisId();
+        recordInvalidControl(runId);
+
+        runQcService.decide(runId, testId, org.openelisglobal.resultrun.valueholder.RunTestAction.RETEST, null, false,
+                ACTOR);
+        assertEquals("the batch's analysis is set aside for retest", List.of(analysisId),
+                jdbcTemplate.queryForList("SELECT CAST(rr.analysis_id AS VARCHAR) FROM clinlims.result_run_retest rr"
+                        + " JOIN clinlims.result_run_test_disposition d ON d.id = rr.disposition_id"
+                        + " WHERE d.run_id = ?", String.class, runId));
+
+        batchWorkplanService.transitionBatch(batchId, BatchWorkplanStatus.DRAFT, ACTOR);
+        recordBenchRun(QCQualitativeOutcome.PASS, LocalDateTime.now().minusMinutes(1));
+        Long freshRunId = batchWorkplanService.generate(batchId, false, null, false, ACTOR).getRunId();
+
+        runQcService.confirmRetest(freshRunId, testId, runId, ACTOR);
+        assertEquals("SUPERSEDED",
+                jdbcTemplate.queryForObject("SELECT state FROM clinlims.result_run WHERE id = ?", String.class, runId));
+    }
+
+    /**
+     * OGC-1200 FR-B2 with a batch released more than once: each run owns the
+     * analyses resulted in it and, while it is the batch's open run, those it still
+     * waits for. A value recorded in the first run is neither counted nor set aside
+     * by the run that follows it.
+     */
+    @Test
+    public void eachRunOfABatchCountsAndDecidesOnlyItsOwnAnalyses() {
+        jdbcTemplate.update(
+                "INSERT INTO clinlims.batch_workplan_item (id, batch_workplan_id, analysis_id, sort_order)"
+                        + " VALUES (nextval('clinlims.batch_workplan_item_seq'), ?," + " CAST(? AS numeric), 2)",
+                batchId, createAnalysis());
+        Long firstRunId = releaseIntoRun();
+        String resulted = batchAnalysisIds().get(0);
+        String waiting = batchAnalysisIds().get(1);
+        recordInvalidControl(firstRunId);
+        runQcService.decide(firstRunId, testId, org.openelisglobal.resultrun.valueholder.RunTestAction.ACCEPT_DESPITE,
+                "Control repeated and passed", true, ACTOR);
+        jdbcTemplate.update(
+                "INSERT INTO clinlims.result (id, analysis_id, value, result_type, run_id, lastupdated)"
+                        + " VALUES (nextval('clinlims.result_seq'), CAST(? AS numeric), '81'," + " 'N', ?, now())",
+                resulted, firstRunId);
+
+        batchWorkplanService.transitionBatch(batchId, BatchWorkplanStatus.DRAFT, ACTOR);
+        recordBenchRun(QCQualitativeOutcome.PASS, LocalDateTime.now().minusMinutes(1));
+        Long laterRunId = batchWorkplanService.generate(batchId, false, null, false, ACTOR).getRunId();
+
+        org.openelisglobal.resultrun.form.ResultRunHeader first = resultRunService.getHeader(firstRunId, unitViewer())
+                .orElseThrow();
+        assertEquals("the first run counts the value recorded in it", 1, first.dispositioned());
+        assertEquals(2, first.total());
+        org.openelisglobal.resultrun.form.ResultRunHeader later = resultRunService.getHeader(laterRunId, unitViewer())
+                .orElseThrow();
+        assertEquals("the later run holds only the analysis still waiting", 1, later.total());
+        assertEquals(0, later.dispositioned());
+
+        recordInvalidControl(laterRunId);
+        runQcService.decide(laterRunId, testId, org.openelisglobal.resultrun.valueholder.RunTestAction.RETEST, null,
+                false, ACTOR);
+        assertEquals("the later run sets aside only its own analysis", List.of(waiting),
+                jdbcTemplate.queryForList("SELECT CAST(rr.analysis_id AS VARCHAR) FROM clinlims.result_run_retest rr"
+                        + " JOIN clinlims.result_run_test_disposition d ON d.id = rr.disposition_id"
+                        + " WHERE d.run_id = ?", String.class, laterRunId));
+    }
+
+    /**
+     * OGC-1200 FR-E3 on a batch run: the run lists the usable lots of its tests'
+     * reagents, records the one chosen on it for itself and its batch, offers it as
+     * the last-used lot on the next run, refuses a lot that is not usable, and is
+     * marked complete with its batch.
+     */
+    @Test
+    public void aBatchRunRecordsTheLotChosenOnItAndIsMarkedCompleteThere() {
+        Long runId = releaseIntoRun();
+        org.openelisglobal.resultrun.form.RunLotOptions options = resultRunService.lotOptions(runId, unitViewer())
+                .orElseThrow();
+        assertEquals(reagentLotId, options.currentLotId());
+        InventoryLot second = new InventoryLot();
+        second.setFhirUuid(UUID.randomUUID());
+        second.setInventoryItem(inventoryItemService.get(reagentId));
+        second.setLotNumber("R2-" + UUID.randomUUID().toString().substring(0, 8));
+        second.setInitialQuantity(10.0);
+        second.setCurrentQuantity(10.0);
+        second.setQcStatus(QCStatus.PASSED);
+        second.setStatus(LotStatus.ACTIVE);
+        second.setExpirationDate(Timestamp.valueOf(LocalDateTime.now().plusYears(2)));
+        second.setSysUserId(ACTOR);
+        Long secondLotId = inventoryLotService.insert(second);
+        assertTrue("the run offers its reagent's usable lots",
+                resultRunService.lotOptions(runId, unitViewer()).orElseThrow().reagents().stream()
+                        .filter(reagent -> reagent.id().equals(reagentId)).flatMap(reagent -> reagent.lots().stream())
+                        .anyMatch(lot -> lot.id().equals(secondLotId)));
+
+        assertEquals(second.getLotNumber(), resultRunService
+                .setReagentLot(runId, reagentId, secondLotId, unitViewer(), ACTOR).orElseThrow().reagentLot());
+        assertEquals("the batch records the lot chosen on its run", secondLotId, jdbcTemplate.queryForObject(
+                "SELECT reagent_lot_id FROM clinlims.batch_workplan WHERE id = ?", Long.class, batchId));
+        try {
+            resultRunService.setReagentLot(runId, reagentId, -1L, unitViewer(), ACTOR);
+            fail("a lot that is not usable is refused");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("expired, used up"));
+        }
+
+        batchId = createDraftBatch(createAnalysis());
+        Long nextRunId = releaseIntoRun();
+        assertEquals("the next run offers the lot last used", secondLotId,
+                resultRunService.lotOptions(nextRunId, unitViewer()).orElseThrow().lastUsedLotId());
+
+        assertEquals("COMPLETE", resultRunService.markComplete(nextRunId, unitViewer(), ACTOR).orElseThrow().state());
+        assertEquals("COMPLETED", jdbcTemplate.queryForObject("SELECT status FROM clinlims.batch_workplan WHERE id = ?",
+                String.class, batchId));
+        try {
+            resultRunService.markComplete(nextRunId, unitViewer(), ACTOR);
+            fail("a closed run is not marked complete again");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("no longer open"));
+        }
+    }
+
+    /**
+     * OGC-1200 FR-C4, FR-C5, FR-E5: a run holding a test for QC is not completed,
+     * from the run or from its batch, until the test's control is recorded or the
+     * test is decided; completing it would free the held rows.
+     */
+    @Test
+    public void aHeldBatchRunIsNotCompletedUntilItsTestIsDecided() {
+        Long runId = releaseIntoRun();
+        recordInvalidControl(runId);
+
+        try {
+            resultRunService.markComplete(runId, unitViewer(), ACTOR);
+            fail("a held run is not marked complete");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("holds a test for QC"));
+        }
+        for (BatchWorkplanStatus closing : List.of(BatchWorkplanStatus.COMPLETED, BatchWorkplanStatus.ARCHIVED)) {
+            try {
+                batchWorkplanService.transitionBatch(batchId, closing, ACTOR);
+                fail("a batch whose run holds a test is not " + closing);
+            } catch (IllegalArgumentException expected) {
+                assertTrue(expected.getMessage().contains("holds a test of this batch for QC"));
+            }
+        }
+        assertEquals("HELD",
+                jdbcTemplate.queryForObject("SELECT state FROM clinlims.result_run WHERE id = ?", String.class, runId));
+        assertEquals("ACTIVE", jdbcTemplate.queryForObject("SELECT status FROM clinlims.batch_workplan WHERE id = ?",
+                String.class, batchId));
+
+        runQcService.decide(runId, testId, org.openelisglobal.resultrun.valueholder.RunTestAction.ACCEPT_DESPITE,
+                "Control repeated and passed", true, ACTOR);
+        assertEquals("COMPLETE", resultRunService.markComplete(runId, unitViewer(), ACTOR).orElseThrow().state());
+    }
+
+    /**
+     * OGC-1200 FR-E5: a batch taken back to setup keeps its undecided run open, and
+     * the run is not marked complete until the batch is released again.
+     */
+    @Test
+    public void aBatchBackInSetupIsNotCompletedFromItsRun() {
+        Long runId = releaseIntoRun();
+        batchWorkplanService.transitionBatch(batchId, BatchWorkplanStatus.DRAFT, ACTOR);
+
+        try {
+            resultRunService.markComplete(runId, unitViewer(), ACTOR);
+            fail("the run of a batch back in setup is not marked complete");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("back in setup"));
+        }
+        assertEquals("OPEN",
+                jdbcTemplate.queryForObject("SELECT state FROM clinlims.result_run WHERE id = ?", String.class, runId));
+    }
+
+    private List<String> batchAnalysisIds() {
+        return jdbcTemplate.queryForList("SELECT CAST(analysis_id AS VARCHAR) FROM clinlims.batch_workplan_item"
+                + " WHERE batch_workplan_id = ? ORDER BY sort_order", String.class, batchId);
+    }
+
+    private Long releaseIntoRun() {
+        jdbcTemplate.update("UPDATE clinlims.batch_workplan SET test_section_id = CAST(? AS numeric) WHERE id = ?",
+                testSectionId, batchId);
+        recordBenchRun(QCQualitativeOutcome.PASS, LocalDateTime.now().minusMinutes(5));
+        return batchWorkplanService.generate(batchId, false, null, false, ACTOR).getRunId();
+    }
+
+    private String batchAnalysisId() {
+        return jdbcTemplate.queryForObject(
+                "SELECT CAST(analysis_id AS VARCHAR) FROM clinlims.batch_workplan_item WHERE batch_workplan_id = ?",
+                String.class, batchId);
+    }
+
+    private void recordInvalidControl(Long runId) {
+        runQcService.recordControl(runId,
+                new BenchQCCaptureForm(QCSource.RDT, testId, testSectionId, null, "KIT-OGC1200", null, null,
+                        QCQualitativeOutcome.INVALID, null, null, LocalDateTime.now().minusMinutes(2),
+                        "OGC-1200 batch control"),
+                Integer.parseInt(ACTOR));
+        assertEquals("HELD",
+                jdbcTemplate.queryForObject("SELECT state FROM clinlims.result_run WHERE id = ?", String.class, runId));
+    }
+
+    private org.openelisglobal.resultrun.form.RunViewer unitViewer() {
+        return new org.openelisglobal.resultrun.form.RunViewer(java.util.Set.of(testId),
+                java.util.Set.of(testSectionId));
     }
 
     @Test
@@ -247,7 +583,7 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
         benchLot.setQcFrequencyType(QCFrequencyType.PER_RUN);
         controlLotService.update(benchLot);
         recordBenchRun(QCQualitativeOutcome.PASS, LocalDateTime.now().minusMinutes(5));
-        batchWorkplanService.generate(batchId, false, false, ACTOR);
+        batchWorkplanService.generate(batchId, false, null, false, ACTOR);
 
         Long second = createDraftBatch(createAnalysis());
 
@@ -265,7 +601,8 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
 
     private void assertRefused(BatchReleaseRefusedException.Reason reason, boolean override, boolean mayOverride) {
         try {
-            batchWorkplanService.generate(batchId, override, mayOverride, ACTOR);
+            batchWorkplanService.generate(batchId, override, override ? "Control repeat booked" : null, mayOverride,
+                    ACTOR);
             fail("Expected the release to be refused with " + reason);
         } catch (BatchReleaseRefusedException refused) {
             assertEquals(reason, refused.getReason());

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- Seed Persons -->
+    <person id="987650" first_name="Kilavuz" last_name="Moreaqx"
+        lastupdated="2026-10-01 12:00:00" />
+    <person id="987651" first_name="Agnesz" last_name="Tauvoq"
+        title_code="Dr" lastupdated="2026-10-01 12:00:00" />
+    <person id="987652" first_name="Retired" last_name="Surgeon"
+        title_code="Dr" lastupdated="2026-10-01 12:00:00" />
+    <person id="987653" first_name="John" last_name="Doe"
+        lastupdated="2026-10-01 12:00:00" />
+
+    <!-- Seed Patients -->
+    <patient id="987650" person_id="987650"
+        birth_date="1985-03-02 00:00:00" national_id="PNG8812345"
+        lastupdated="2026-10-01 12:00:00" />
+
+    <!-- Seed Providers -->
+    <provider id="987660" person_id="987651" active="true"
+        lastupdated="2026-10-01 12:00:00" />
+    <provider id="987661" person_id="987652" active="false"
+        lastupdated="2026-10-01 12:00:00" />
+
+    <!-- Seed Organizations -->
+    <organization id="987670" name="Tokaravu Health Centre"
+        code="TKV1" short_name="TKV" city="Port Moresby" is_active="Y"
+        lastupdated="2026-10-01 12:00:00" />
+    <organization id="987671" name="Inactive Clinic"
+        code="INACT1" short_name="INACT" city="Lae" is_active="N"
+        lastupdated="2026-10-01 12:00:00" />
+</dataset>

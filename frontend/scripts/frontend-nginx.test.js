@@ -36,4 +36,17 @@ describe("frontend nginx configuration", () => {
 
     expect(fallbackBlock).toMatch(/try_files \$uri \$uri\/ \/index\.html;/);
   });
+
+  test("lets browsers keep the hashed chunks under /assets/ for a year", () => {
+    const assetsBlock = locationBlock(config, "location /assets/ {");
+
+    expect(assetsBlock).not.toBeNull();
+    expect(assetsBlock).toContain(
+      'add_header Cache-Control "public, max-age=31536000, immutable";',
+    );
+    // A missing chunk answers 404 rather than index.html, and that 404 is
+    // not marked immutable (no "always" on the header).
+    expect(assetsBlock).toContain("try_files $uri =404;");
+    expect(assetsBlock).not.toMatch(/immutable" always;/);
+  });
 });

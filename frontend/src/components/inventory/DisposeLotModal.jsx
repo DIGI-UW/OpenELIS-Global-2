@@ -17,13 +17,16 @@ const DisposeLotModal = ({ open, onClose, onSave, lot }) => {
   const isMounted = useIsMounted();
 
   const disposalReasons = [
-    { id: "EXPIRED", text: "Expired" },
-    { id: "DAMAGED", text: "Damaged" },
-    { id: "CONTAMINATED", text: "Contaminated" },
-    { id: "RECALLED", text: "Manufacturer Recall" },
-    { id: "QC_FAILED", text: "Failed Quality Control" },
-    { id: "OTHER", text: "Other" },
-  ];
+    "EXPIRED",
+    "DAMAGED",
+    "CONTAMINATED",
+    "RECALLED",
+    "QC_FAILED",
+    "OTHER",
+  ].map((id) => ({
+    id,
+    text: intl.formatMessage({ id: `disposal.reason.${id}` }),
+  }));
 
   const [formData, setFormData] = useState({
     reason: "EXPIRED",

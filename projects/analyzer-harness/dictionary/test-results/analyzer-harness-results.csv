@@ -1,4 +1,4 @@
-testName,resultType,resultValue,dictionaryCategory,sortOrder,isQuantifiable,isActive,isNormal,significantDigits,flags,componentCode
+testName,resultType,resultValue,dictionaryCategory,sortOrder,isQuantifiable,isActive,isNormal,reportingDecimalPlaces,flags,componentCode
 SARS-CoV-2 PCR,D,Positive,Analyzer harness answers,1,N,Y,N,,,
 SARS-CoV-2 PCR,D,Negative,Analyzer harness answers,2,N,Y,Y,,,
 SARS-CoV-2 PCR,D,Invalid,Analyzer harness answers,3,N,Y,N,,,

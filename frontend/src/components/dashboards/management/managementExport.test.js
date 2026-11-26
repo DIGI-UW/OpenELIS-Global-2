@@ -65,6 +65,7 @@ describe("management export", () => {
     expect(head).toEqual(["Indicator", "Value", "Prior period"]);
     expect(body).toHaveLength(5);
     expect(body[0]).toEqual(["Total samples", "65", "60"]);
+    expect(body[1]).toEqual(["Median TAT (h)", "20.00", "22.50"]);
     expect(body[2]).toEqual(["On-time completion", "60.66", "—"]);
   });
 
@@ -117,13 +118,15 @@ describe("management export", () => {
       "Section",
       "Last activity",
     ]);
-    expect(body[0]).toEqual([
+    expect(body[0].slice(0, 4)).toEqual([
       "Sysmex XN-550",
       "Quiet",
       "12",
       "Hematology",
-      fourHoursAgo,
     ]);
+    expect(body[0][4]).toMatch(
+      /^[A-Z][a-z]{2} \d{2}, \d{4}, \d{2}:\d{2} [AP]M$/,
+    );
   });
 
   it("flattens the antibiogram to one row per organism and antibiotic", () => {
@@ -211,7 +214,7 @@ describe("management export", () => {
         "2026-12-31",
       ],
       ["Expiring in 30 days", "CBC reagent", "L-02", "3", "Expires in 12 days"],
-      ["Expiring in 30 days", "Saline", "L-03", "1", "Expired"],
+      ["Expired, still in stock", "Saline", "L-03", "1", "Expired"],
       ["Reorder alerts", "Gloves", "—", "2", "Below reorder point"],
     ]);
   });

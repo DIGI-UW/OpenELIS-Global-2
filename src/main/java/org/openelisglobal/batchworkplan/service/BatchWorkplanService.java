@@ -7,6 +7,9 @@ import org.openelisglobal.batchworkplan.form.BatchSetupOptionsResponse;
 import org.openelisglobal.batchworkplan.form.BatchWorkplanRequest;
 import org.openelisglobal.batchworkplan.form.BatchWorkplanResponse;
 import org.openelisglobal.batchworkplan.form.PendingBatchTestResponse;
+import org.openelisglobal.batchworkplan.form.PendingTestsPageResponse;
+import org.openelisglobal.batchworkplan.form.PendingTestsQuery;
+import org.openelisglobal.batchworkplan.form.ReagentOptionResponse;
 import org.openelisglobal.batchworkplan.valueholder.BatchWorkplanStatus;
 
 public interface BatchWorkplanService {
@@ -17,6 +20,13 @@ public interface BatchWorkplanService {
      * which is how every other workplan screen behaves.
      */
     List<PendingBatchTestResponse> getPendingTests(Integer limit, String sysUserId);
+
+    /**
+     * One page of the pending tests the user may work, filtered, searched and
+     * sorted in the query, with the total and the values each filter can take
+     * across the whole pool (OGC-1588: the list used to hold only the 500 oldest).
+     */
+    PendingTestsPageResponse getPendingTestsPage(PendingTestsQuery query, String sysUserId);
 
     /**
      * The caller's own batches that are still work in hand. Archived batches are
@@ -45,6 +55,30 @@ public interface BatchWorkplanService {
     BatchSetupOptionsResponse getSetupOptions(Long id, String sysUserId);
 
     /**
+     * OGC-1200 FR-B4 "Batch these": two or more pending analyses of one test,
+     * picked on the Results worklist, become a batch that is released at once as a
+     * run. The run's controls are its QC and its lot is chosen on it (FR-E3,
+     * FR-G4), so no release QC is taken; rows of different tests are refused.
+     */
+    BatchWorkplanResponse batchFromWorklist(List<String> analysisIds, String sysUserId);
+
+    /**
+     * FR-E3: the reagents linked to the tests of a batch, each with its usable
+     * lots, for the lot chosen on the batch's run. The run's lab unit, not the
+     * batch's owner, decides who may see it.
+     */
+    List<ReagentOptionResponse> runReagentOptions(Long id);
+
+    /** FR-E3: the reagent lot chosen on the batch's run becomes the batch's lot. */
+    void setRunReagentLot(Long id, Long reagentId, Long reagentLotId, String sysUserId);
+
+    /**
+     * FR-E5 Mark complete on the batch's run: the batch is complete, and so is its
+     * run. A batch taken back to setup is refused.
+     */
+    void completeFromRun(Long id, String sysUserId);
+
+    /**
      * Phase 2: the reagent, lot and analyzer a draft batch runs with
      * (FR-RA-001-004). The lot must be one the Results page would offer for that
      * reagent today.
@@ -57,12 +91,14 @@ public interface BatchWorkplanService {
     /**
      * Release a draft batch for printing (FR-WG-001-003). QC Pass releases it. Any
      * other overridable status releases it only when {@code override} is set and
-     * the caller {@code mayOverride}, and then raises an NCE linked to the batch
-     * (FR-NCE-002). No lot, or a retired lot, never releases (BR-012).
+     * the caller {@code mayOverride} and gives a {@code reason}, which is kept with
+     * the release and written on the NCE it raises (FR-NCE-002). No lot, or a
+     * retired lot, never releases (BR-012).
      *
      * @throws BatchReleaseRefusedException when the release is refused
+     * @throws IllegalArgumentException     when an override comes without a reason
      */
-    BatchWorkplanResponse generate(Long id, boolean override, boolean mayOverride, String sysUserId);
+    BatchWorkplanResponse generate(Long id, boolean override, String reason, boolean mayOverride, String sysUserId);
 
     /** Archive every batch the caller still has in hand (FR-BL-009). */
     int archiveAll(String sysUserId);

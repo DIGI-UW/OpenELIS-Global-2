@@ -8,8 +8,10 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import javax.imageio.ImageIO;
 import org.apache.commons.lang3.StringUtils;
@@ -22,6 +24,7 @@ import org.openelisglobal.barcode.labeltype.SlideLabel;
 import org.openelisglobal.barcode.labeltype.SpecimenLabel;
 import org.openelisglobal.barcode.service.BarcodeLabelInfoService;
 import org.openelisglobal.barcode.util.BarcodeConfigUtil;
+import org.openelisglobal.barcode.util.LabelQuantityPolicy;
 import org.openelisglobal.barcode.valueholder.BarcodeLabelInfo;
 import org.openelisglobal.common.exception.LIMSInvalidConfigurationException;
 import org.openelisglobal.common.log.LogEvent;
@@ -31,11 +34,13 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.program.service.PathologySampleService;
+import org.openelisglobal.program.util.DictionaryEntryNames;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
@@ -202,6 +207,14 @@ public class BarcodeLabelMaker {
     public void generatePrePrintLabels(Integer numSetsOfLabels, Integer numOrderLabelsPerSet,
             Integer numSpecimenLabelsPerSet, String facilityName, List<Test> tests, String startingAt)
             throws LIMSInvalidConfigurationException {
+        LabelQuantityPolicy.require(numSetsOfLabels, 1);
+        LabelQuantityPolicy.require(numOrderLabelsPerSet, 0);
+        LabelQuantityPolicy.require(numSpecimenLabelsPerSet, 0);
+        if (numOrderLabelsPerSet == 0 && numSpecimenLabelsPerSet == 0) {
+            LabelQuantityPolicy.require(0, 1);
+        }
+        LabelQuantityPolicy
+                .requireTotal((long) numSetsOfLabels * ((long) numOrderLabelsPerSet + numSpecimenLabelsPerSet));
         IAccessionNumberGenerator accessionValidator = null;
         if (Boolean
                 .valueOf(ConfigurationProperties.getInstance().getPropertyValue(Property.USE_ALT_ACCESSION_PREFIX))) {
@@ -210,22 +223,16 @@ public class BarcodeLabelMaker {
         }
         for (int i = 0; i < numSetsOfLabels; ++i) {
             String accessionNumber = genNextPrePrintedAccessionNumber(accessionValidator, startingAt);
-            OrderLabel orderLabel = new OrderLabel(accessionNumber, facilityName);
-            orderLabel.setNumLabels(numOrderLabelsPerSet);
-            // orderLabel.linkBarcodeLabelInfo();
-            // get sysUserId from login module
-            // orderLabel.setSysUserId(sysUserId);
-            // if (orderLabel.checkIfPrintable() || "true".equals(override)) {
-            labels.add(orderLabel);
-
-            SpecimenLabel specimenLabel = new SpecimenLabel(accessionNumber, facilityName, tests);
-            specimenLabel.setNumLabels(numSpecimenLabelsPerSet);
-            // specimenLabel.linkBarcodeLabelInfo();
-            // get sysUserId from login module
-            // specimenLabel.setSysUserId(sysUserId);
-            // if (specimenLabel.checkIfPrintable() || "true".equals(override)) {
-            labels.add(specimenLabel);
-            // }
+            if (numOrderLabelsPerSet > 0) {
+                OrderLabel orderLabel = new OrderLabel(accessionNumber, facilityName);
+                orderLabel.setNumLabels(numOrderLabelsPerSet);
+                labels.add(orderLabel);
+            }
+            if (numSpecimenLabelsPerSet > 0) {
+                SpecimenLabel specimenLabel = new SpecimenLabel(accessionNumber, facilityName, tests);
+                specimenLabel.setNumLabels(numSpecimenLabelsPerSet);
+                labels.add(specimenLabel);
+            }
         }
     }
 
@@ -376,6 +383,8 @@ public class BarcodeLabelMaker {
         } else if ("slideOrder".equals(type)) {
             Sample sample = sampleService.getSampleByAccessionNumber(labNo);
             List<PathologySample> pathologySamples = pathologySampleService.getAllMatching("sample.id", sample.getId());
+            // slides on one order mostly share a few stains, so each is looked up once
+            Map<String, String> stainNames = new HashMap<>();
             for (PathologySample pathologySample : pathologySamples) {
                 String caseNumber = pathologySample.getId() != null ? String.valueOf(pathologySample.getId()) : "";
                 // slides are lazy and this case was loaded in a transaction that has closed
@@ -385,7 +394,7 @@ public class BarcodeLabelMaker {
                     }
                     String blockId = blockContextFor(slide, pathologySample);
                     SlideLabel label = new SlideLabel(sampleService.getPatient(sample), sample, pathologySample, slide,
-                            labNo, "", blockId, caseNumber);
+                            labNo, stainNameOf(slide, stainNames), blockId, caseNumber);
                     int requestedQuantity = BarcodeConfigUtil.parseIntSafe(quantity, 1);
                     label.setNumLabels(requestedQuantity);
                     label.linkBarcodeLabelInfo();
@@ -478,6 +487,16 @@ public class BarcodeLabelMaker {
     }
 
     /**
+     * The stain a slide carries, by its dictionary name; a slide with no stain, or
+     * one whose entry is gone, prints a blank stain. Names already looked up for
+     * this request are reused from {@code stainNames}.
+     */
+    private String stainNameOf(PathologySlide slide, Map<String, String> stainNames) {
+        return stainNames.computeIfAbsent(slide.getStainId(), stainId -> DictionaryEntryNames
+                .localizedNameOf(SpringContext.getBean(DictionaryService.class), stainId).orElse(""));
+    }
+
+    /**
      * Names the block a slide's label points to: the slide's own recorded block, or
      * the case's first block in use for a slide that never recorded one.
      */
@@ -514,12 +533,22 @@ public class BarcodeLabelMaker {
         return StringUtils.defaultString(patientIdentifier);
     }
 
+    private void validateRenderQuantities() {
+        long total = 0;
+        for (Label label : labels) {
+            LabelQuantityPolicy.require(label.getNumLabels(), 0);
+            total += label.getNumLabels();
+            LabelQuantityPolicy.requireTotal(total);
+        }
+    }
+
     /**
      * Creates a PDF as a stream of all the stored labels
      *
      * @return Stream of all labels that have been generated
      */
     public ByteArrayOutputStream createLabelsAsStream() {
+        validateRenderQuantities();
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
         if (labels.isEmpty()) {
             LogEvent.logError("BarcodeLabelMaker", "createLabelsAsStream", "Labels list is empty!");
@@ -556,6 +585,7 @@ public class BarcodeLabelMaker {
      * @return Stream of all labels that have been generated
      */
     public ByteArrayOutputStream createLabelsAsStreamWithMaximumPrints() {
+        validateRenderQuantities();
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
         if (labels.isEmpty()) {
             return stream;

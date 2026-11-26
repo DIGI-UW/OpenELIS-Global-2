@@ -1,12 +1,14 @@
 package org.openelisglobal.microbiology.form;
 
 public class MicroOrganismAdminForm {
+    public String susceptibilityProtocol = "GENERAL";
     public String id;
     public String displayName;
     public String shortName;
     public String whonetCode;
     public String oclCode;
     public String organismGroup;
+    public String labGroups;
     public String gramStain;
     public String initialSignificance;
     public String defaultAstPanelId;

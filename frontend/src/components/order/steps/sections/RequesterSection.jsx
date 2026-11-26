@@ -19,8 +19,13 @@ import {
   Link,
   Checkbox,
 } from "@carbon/react";
-import { getFromOpenElisServer, toLocalIsoDate } from "../../../utils/Utils";
+import { getFromOpenElisServer } from "../../../utils/Utils";
 import { providerDisplayName } from "../../../provider/providerDisplayName";
+import CustomDatePicker from "../../../common/CustomDatePicker";
+import {
+  formatIsoDateForBackend,
+  formatPickerDateForIso,
+} from "../../dateUtils";
 import { ConfigurationContext } from "../../../layout/Layout";
 import { priorities } from "../../../data/orderOptions";
 import {
@@ -28,7 +33,6 @@ import {
   readRememberedRequester,
   rememberRequester,
 } from "../../rememberedRequester";
-import { labNow } from "../../../utils/labClock";
 import usePossibleMatchCheck from "../../possibleMatches/usePossibleMatchCheck";
 import { RECORD_KIND } from "../../api/orderEntryCleanupApi";
 import { RequiredMarker, requiredProps } from "../../../common/RequiredMarker";
@@ -65,6 +69,7 @@ const RequesterSection = ({
   // strictly against the "true" string rather than treating undefined as
   // restrictive.
   const { configurationProperties } = useContext(ConfigurationContext) || {};
+  const dateLocale = configurationProperties?.DEFAULT_DATE_LOCALE || "en-US";
   const isOrganizationAddNewRestricted =
     configurationProperties?.restrictFreeTextRefSiteEntry === "true";
   const isRequestorAddNewRestricted =
@@ -1035,35 +1040,60 @@ const RequesterSection = ({
         />
       </p>
 
-      {/* Required By — order-level date, not tied to Organization/Site
-          selection; kept outside that subsection so it always renders. */}
+      {/* Required By and Priority are order-level, not tied to the site. */}
       <Grid>
         <Column lg={5} md={4} sm={4}>
-          <div className="cds--form-item">
-            <label htmlFor="requiredBy" className="cds--label">
-              {intl.formatMessage({
-                id: "sample.requiredBy",
-                defaultMessage: "Required By",
-              })}
-            </label>
-            <input
-              id="requiredBy"
-              type="date"
-              className="env-manifest-datetime"
-              min={toLocalIsoDate(labNow())}
-              value={orderData?.sampleOrderItems?.requiredBy || ""}
-              onChange={(e) => {
-                setOrderData((prev) => ({
-                  ...prev,
-                  sampleOrderItems: {
-                    ...prev.sampleOrderItems,
-                    requiredBy: e.target.value,
-                  },
-                }));
-              }}
-              disabled={isReadOnly}
-            />
-          </div>
+          <CustomDatePicker
+            id="requiredBy"
+            labelText={intl.formatMessage({
+              id: "sample.requiredBy",
+              defaultMessage: "Required By",
+            })}
+            value={formatIsoDateForBackend(
+              orderData?.sampleOrderItems?.requiredBy || "",
+              dateLocale,
+            )}
+            updateStateValue
+            disallowPastDate
+            onChange={(value) => {
+              const requiredBy = formatPickerDateForIso(value, dateLocale);
+              if (
+                requiredBy === (orderData?.sampleOrderItems?.requiredBy || "")
+              ) {
+                return;
+              }
+              setOrderData((prev) => ({
+                ...prev,
+                sampleOrderItems: { ...prev.sampleOrderItems, requiredBy },
+              }));
+            }}
+            disabled={isReadOnly}
+          />
+        </Column>
+        <Column lg={5} md={4} sm={4}>
+          <Select
+            id="priority"
+            labelText={intl.formatMessage({
+              id: "order.priority",
+              defaultMessage: "Priority",
+            })}
+            value={orderData?.sampleOrderItems?.priority || "ROUTINE"}
+            onChange={handlePriorityChange}
+            helperText={intl.formatMessage({
+              id: "order.priority.helper",
+              defaultMessage:
+                "ROUTINE: standard turnaround. STAT: process immediately.",
+            })}
+            disabled={isReadOnly}
+          >
+            {priorityOptions.map((opt) => (
+              <SelectItem
+                key={opt.value}
+                value={opt.value}
+                text={intl.formatMessage({ id: opt.labelId })}
+              />
+            ))}
+          </Select>
         </Column>
       </Grid>
 
@@ -1107,31 +1137,6 @@ const RequesterSection = ({
               onChange={(e) => setSiteSearchTerm(e.target.value)}
               disabled={isReadOnly || Boolean(effectiveSelectedSite)}
             />
-          </Column>
-          <Column lg={5} md={4} sm={4}>
-            <Select
-              id="priority"
-              labelText={intl.formatMessage({
-                id: "order.priority",
-                defaultMessage: "Priority",
-              })}
-              value={orderData?.sampleOrderItems?.priority || "ROUTINE"}
-              onChange={handlePriorityChange}
-              helperText={intl.formatMessage({
-                id: "order.priority.helper",
-                defaultMessage:
-                  "ROUTINE: standard turnaround. STAT: process immediately.",
-              })}
-              disabled={isReadOnly}
-            >
-              {priorityOptions.map((opt) => (
-                <SelectItem
-                  key={opt.value}
-                  value={opt.value}
-                  text={intl.formatMessage({ id: opt.labelId })}
-                />
-              ))}
-            </Select>
           </Column>
 
           {/* Search Buttons */}

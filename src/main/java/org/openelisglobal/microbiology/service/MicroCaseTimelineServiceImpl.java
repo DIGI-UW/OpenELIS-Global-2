@@ -24,6 +24,19 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MicroCaseTimelineServiceImpl implements MicroCaseTimelineService {
 
+    @Autowired
+    private MicrobiologyCaseAccessService access;
+
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroCaseInoculationDAO cultures;
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroIsolateDAO isolates;
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO analyses;
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroAstReadingDAO readings;
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroAstRunDAO runs;
     private static final String NOTE_SUBJECT_PREFIX = "MICROBIOLOGY_CASE:";
 
     private final MicroCaseDAO caseDAO;
@@ -63,8 +76,9 @@ public class MicroCaseTimelineServiceImpl implements MicroCaseTimelineService {
         for (MicroCaseActivity activity : activityDAO.getByCaseId(caseId)) {
             timeline.add(toForm(activity, userDisplayById));
         }
-        for (Note note : noteService.getNotesChronologicallyByRefIdAndRefTableAndType(microCase.getSampleItemId(),
-                sampleItemTableId(), List.of(Note.INTERNAL))) {
+        for (Note note : microCase.getSampleItemId() == null ? List.<Note>of()
+                : noteService.getNotesChronologicallyByRefIdAndRefTableAndType(microCase.getSampleItemId(),
+                        sampleItemTableId(), List.of(Note.INTERNAL, Note.EXTERNAL))) {
             if (subject(caseId).equals(note.getSubject())) {
                 timeline.add(toForm(note, caseId, userDisplayById));
             }
@@ -76,16 +90,86 @@ public class MicroCaseTimelineServiceImpl implements MicroCaseTimelineService {
     @Override
     @Transactional
     public MicroCaseActivityForm addNote(String caseId, String text, String performedBy) {
+        return addNote(caseId, text, false, performedBy);
+    }
+
+    @Override
+    @Transactional
+    public MicroCaseActivityForm addNote(String caseId, String text, boolean sendWithResult, String performedBy) {
+        return addNote(caseId, text, sendWithResult, null, null, performedBy);
+    }
+
+    @Override
+    @Transactional
+    public MicroCaseActivityForm addNote(String caseId, String text, boolean sendWithResult, String targetType,
+            String targetId, String performedBy) {
         MicroCaseServiceImpl.requireText(text, "text");
         MicroCaseServiceImpl.requireText(performedBy, "performedBy");
-        MicroCase microCase = requireCase(caseId);
-        Note note = noteService.createSavableNote(binding(microCase), NoteServiceImpl.NoteType.INTERNAL, text.trim(),
+        MicroCase microCase = caseDAO.getForUpdate(caseId);
+        if (microCase == null)
+            throw new IllegalArgumentException("Case not found");
+        if (!access.hasLabUnitRole(performedBy, microCase.getLabUnitId(),
+                org.openelisglobal.common.constants.Constants.ROLE_RESULTS))
+            throw new org.springframework.security.access.AccessDeniedException("Case lab unit access required");
+        MicroCaseMutationGuard.requireMutable(microCase);
+        validateTarget(caseId, targetType, targetId);
+        if (text.trim().length() > 4000)
+            throw new IllegalArgumentException("MICROBIOLOGY_NOTE_TOO_LONG");
+        // Attached notes use case activity metadata; NOTE.SUBJECT is limited to 60
+        // characters.
+        if (microCase.getSampleItemId() == null || targetType != null) {
+            var activity = new MicroCaseActivity();
+            activity.setCaseId(caseId);
+            activity.setActivityType(MicroCaseActivityType.MANUAL_NOTE.name());
+            activity.setNote(text.trim());
+            activity.setStructuredData((sendWithResult ? "SEND_RESULT" : "IN_LAB_ONLY")
+                    + (targetType == null ? "" : ":" + targetType + ":" + targetId));
+            activity.setOccurredAt(MicroCaseServiceImpl.now());
+            activity.setPerformedBy(performedBy);
+            activity.setSysUserId(performedBy);
+            activityDAO.insert(activity);
+            return toForm(activity, new HashMap<>());
+        }
+        Note note = noteService.createSavableNote(binding(microCase),
+                sendWithResult ? NoteServiceImpl.NoteType.EXTERNAL : NoteServiceImpl.NoteType.INTERNAL, text.trim(),
                 subject(caseId), performedBy);
         if (note == null) {
             throw new IllegalArgumentException("MICROBIOLOGY_NOTE_TEXT_REQUIRED");
         }
         noteService.insert(note);
         return toForm(note, caseId, new HashMap<>());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroCaseActivityForm> getReportNotes(String caseId) {
+        return getTimeline(caseId).stream()
+                .filter(f -> "MANUAL_NOTE".equals(f.activityType) && "SEND_RESULT".equals(f.structuredData)).toList();
+    }
+
+    private void validateTarget(String caseId, String type, String id) {
+        if (type == null && id == null)
+            return;
+        if (type == null || id == null || id.isBlank())
+            throw new IllegalArgumentException("MICROBIOLOGY_NOTE_TARGET_INVALID");
+        String owner = switch (type) {
+        case "CULTURE" -> cultures.get(id)
+                .orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_NOTE_TARGET_INVALID")).getCaseId();
+        case "ISOLATE" -> isolates.get(id)
+                .orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_NOTE_TARGET_INVALID")).getCaseId();
+        case "RESULT" -> analyses.getByCaseAndAnalysis(caseId, id) == null ? null : caseId;
+        case "DRUG" -> isolates
+                .get(runs
+                        .get(readings.get(id)
+                                .orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_NOTE_TARGET_INVALID"))
+                                .getAstRunId())
+                        .orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_NOTE_TARGET_INVALID"))
+                        .getIsolateId())
+                .orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_NOTE_TARGET_INVALID")).getCaseId();
+        default -> null;
+        };
+        if (!caseId.equals(owner))
+            throw new IllegalArgumentException("MICROBIOLOGY_NOTE_TARGET_INVALID");
     }
 
     private MicroCase requireCase(String caseId) {
@@ -123,6 +207,14 @@ public class MicroCaseTimelineServiceImpl implements MicroCaseTimelineService {
                 userDisplayById);
         form.note = activity.getNote();
         form.structuredData = activity.getStructuredData();
+        if ("MANUAL_NOTE".equals(form.activityType) && form.structuredData != null) {
+            var parts = form.structuredData.split(":", 3);
+            form.structuredData = parts[0];
+            if (parts.length == 3) {
+                form.targetType = parts[1];
+                form.targetId = parts[2];
+            }
+        }
         return form;
     }
 
@@ -136,6 +228,7 @@ public class MicroCaseTimelineServiceImpl implements MicroCaseTimelineService {
         form.performedByDisplay = MicrobiologyUserDisplayResolver.resolve(systemUserService, form.performedBy,
                 userDisplayById);
         form.note = note.getText();
+        form.structuredData = Note.EXTERNAL.equals(note.getNoteType()) ? "SEND_RESULT" : "IN_LAB_ONLY";
         return form;
     }
 

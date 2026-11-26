@@ -53,6 +53,9 @@ public class AnalyzerResultItem implements Serializable {
     private String redirectReason;
     private AnalyzerResultPlacement placement;
     private String deliveryReceiptId;
+    private Long runId;
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private Long heldRunId;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { AnalyzerResultsForm.AnalyzerResuts.class })
     private String result;
@@ -94,6 +97,7 @@ public class AnalyzerResultItem implements Serializable {
 
     @ValidDate(groups = { AnalyzerResultsForm.AnalyzerResuts.class })
     private String completeDate;
+    private Timestamp completedAt;
 
     private boolean isPositive = false;
     private String duplicateAnalyzerResultId;
@@ -121,7 +125,7 @@ public class AnalyzerResultItem implements Serializable {
     private String selectionTwoText = "";
     private String selectionTwoValue = "";
     private boolean nonconforming = false;
-    private String significantDigits = "";
+    private String reportingDecimalPlaces = "";
     private String importIssueReason;
     private String sourceProfileId;
     private Integer sourceProfileRevision;
@@ -141,12 +145,12 @@ public class AnalyzerResultItem implements Serializable {
     private String assayVersion;
     private String instrumentOperator;
 
-    public String getSignificantDigits() {
-        return significantDigits;
+    public String getReportingDecimalPlaces() {
+        return reportingDecimalPlaces;
     }
 
-    public void setSignificantDigits(String significantDigits) {
-        this.significantDigits = significantDigits;
+    public void setReportingDecimalPlaces(String reportingDecimalPlaces) {
+        this.reportingDecimalPlaces = reportingDecimalPlaces;
     }
 
     private List<Dictionary> dictionaryResultList;
@@ -232,6 +236,32 @@ public class AnalyzerResultItem implements Serializable {
 
     public void setDeliveryReceiptId(String deliveryReceiptId) {
         this.deliveryReceiptId = deliveryReceiptId;
+    }
+
+    /**
+     * OGC-1200: the run the value arrived in, restored from the staged row; never
+     * read from a request.
+     */
+    @JsonIgnore
+    public Long getRunId() {
+        return runId;
+    }
+
+    @JsonIgnore
+    public void setRunId(Long runId) {
+        this.runId = runId;
+    }
+
+    /**
+     * OGC-1200 FR-C4: the run that holds this value because a control for its test
+     * failed there; shown, never read from a request.
+     */
+    public Long getHeldRunId() {
+        return heldRunId;
+    }
+
+    public void setHeldRunId(Long heldRunId) {
+        this.heldRunId = heldRunId;
     }
 
     /**
@@ -398,6 +428,16 @@ public class AnalyzerResultItem implements Serializable {
 
     public String getCompleteDate() {
         return completeDate;
+    }
+
+    @JsonIgnore
+    public Timestamp getCompletedAt() {
+        return completedAt;
+    }
+
+    @JsonIgnore
+    public void setCompletedAt(Timestamp completedAt) {
+        this.completedAt = completedAt;
     }
 
     public void setPositive(boolean isPositive) {

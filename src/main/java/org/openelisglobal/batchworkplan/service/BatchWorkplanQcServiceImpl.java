@@ -142,7 +142,9 @@ public class BatchWorkplanQcServiceImpl implements BatchWorkplanQcService {
         boolean pending = !recent.isEmpty() && RESULT_PENDING.equals(recent.get(0).getResultStatus())
                 && BatchQcEvaluator.LOT_ACTIVE.equals(lot.getStatus());
         Timestamp lastPassingAt = latestAccepted == null ? null : latestAccepted.getRunDateTime();
-        ZonedDateTime nextDue = BatchQcEvaluator.nextDue(lot, lastPassingAt, now);
+        // A failed, violated, overdue or missing run means QC is due now, not when the
+        // last passing run would have run out.
+        ZonedDateTime nextDue = status == BatchQcStatus.PASS ? BatchQcEvaluator.nextDue(lot, lastPassingAt, now) : null;
         boolean bench = StringUtils.isBlank(lot.getInstrumentId());
 
         return new ControlLotQcResponse(lot.getId(), lot.getLotNumber(), lot.getProductName(), lot.getManufacturer(),

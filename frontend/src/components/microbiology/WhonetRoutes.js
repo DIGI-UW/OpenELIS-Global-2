@@ -116,6 +116,11 @@ export const parseWhonetSearch = (search = "", now = labNow()) => {
     origin: repeatedValues(params, "origin"),
     significance:
       significance.length > 0 ? significance : ["CLINICALLY_SIGNIFICANT"],
+    surveyProgramIds: values(params.getAll("surveyProgramIds")),
+    includeEnvironmentalIsolates: enabled(
+      params,
+      "includeEnvironmentalIsolates",
+    ),
     includeScreening: enabled(params, "includeScreening"),
     includeUnspecified: enabled(params, "includeUnspecified"),
     dedup: DEDUP_POLICIES.has(dedup) ? dedup : "FIRST_ISOLATE_7_DAY",
@@ -158,21 +163,38 @@ export const buildWhonetSearch = (state, now = labNow()) => {
   ].forEach((key) => {
     if (state[key] != null) draft.set(key, String(state[key]));
   });
-  ["specimen", "organism", "origin", "significance"].forEach((key) =>
+  [
+    "specimen",
+    "organism",
+    "origin",
+    "significance",
+    "surveyProgramIds",
+  ].forEach((key) =>
     values(state[key]).forEach((value) => draft.append(key, value)),
   );
-  ["includeScreening", "includeUnspecified", "excludeContaminants"].forEach(
-    (key) => draft.set(key, String(Boolean(state[key]))),
-  );
+  [
+    "includeScreening",
+    "includeUnspecified",
+    "includeEnvironmentalIsolates",
+    "excludeContaminants",
+  ].forEach((key) => draft.set(key, String(Boolean(state[key]))));
   const normalized = parseWhonetSearch(draft.toString(), now);
   const params = new URLSearchParams();
   ["from", "to"].forEach((key) => params.set(key, String(normalized[key])));
-  ["specimen", "organism", "origin", "significance"].forEach((key) =>
+  [
+    "specimen",
+    "organism",
+    "origin",
+    "significance",
+    "surveyProgramIds",
+  ].forEach((key) =>
     normalized[key].forEach((value) => params.append(key, value)),
   );
-  ["includeScreening", "includeUnspecified"].forEach((key) =>
-    params.set(key, String(normalized[key])),
-  );
+  [
+    "includeScreening",
+    "includeUnspecified",
+    "includeEnvironmentalIsolates",
+  ].forEach((key) => params.set(key, String(normalized[key])));
   params.set("dedup", String(normalized.dedup));
   params.set("dedupBasis", String(normalized.dedupBasis));
   params.set("dedupScope", String(normalized.dedupScope));
@@ -220,6 +242,8 @@ export const getWhonetMappingRepairUrl = (
   resourceId,
   returnTo = "",
 ) => {
+  if (resource === "patient-origins")
+    return "/MasterListsPage/MicrobiologyReference/patient-origins";
   if (!resourceId) {
     return "";
   }
@@ -247,6 +271,8 @@ export const toWhonetRequest = (state) => ({
   organism: [...state.organism],
   origin: [...state.origin],
   significance: [...state.significance],
+  includeEnvironmentalIsolates: state.includeEnvironmentalIsolates,
+  surveyProgramIds: [...(state.surveyProgramIds || [])],
   includeScreening: state.includeScreening,
   includeUnspecified: state.includeUnspecified,
   dedup: state.dedup,

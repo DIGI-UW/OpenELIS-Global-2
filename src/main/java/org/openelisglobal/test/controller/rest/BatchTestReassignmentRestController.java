@@ -27,6 +27,7 @@ import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.validator.BatchTestReassignmentFormValidator;
 import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -51,6 +52,26 @@ public class BatchTestReassignmentRestController extends BaseController {
     @Autowired
     private FhirTransformService fhirTransformService;
 
+    @Autowired(required = false)
+    private IStatusService statusService;
+
+    @Autowired(required = false)
+    private TestService testService;
+
+    private IStatusService getStatusService() {
+        if (statusService != null) {
+            return statusService;
+        }
+        return SpringContext.getBean(IStatusService.class);
+    }
+
+    private TestService getTestService() {
+        if (testService != null) {
+            return testService;
+        }
+        return SpringContext.getBean(TestService.class);
+    }
+
     @InitBinder
     public void initBinder(WebDataBinder binder) {
         binder.setAllowedFields(ALLOWED_FIELDS);
@@ -69,15 +90,13 @@ public class BatchTestReassignmentRestController extends BaseController {
     }
 
     @PostMapping(value = "/BatchTestReassignment")
-    public BatchTestReassignmentForm showBatchTestReassignmentUpdate(HttpServletRequest request,
+    public ResponseEntity<?> showBatchTestReassignmentUpdate(HttpServletRequest request,
             @RequestBody @Valid BatchTestReassignmentForm form, BindingResult result)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
         formValidator.validate(form, result);
         if (result.hasErrors()) {
-            // saveErrors(result);
-            // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return validationRefusal(result);
         }
         String jsonString = form.getJsonWad();
         // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown",
@@ -91,9 +110,8 @@ public class BatchTestReassignmentRestController extends BaseController {
 
         try {
             analysisService.updateAnalysises(cancelAnalysis, newAnalysis, getSysUserId(request));
-
         } catch (LIMSRuntimeException e) {
-            LogEvent.logError(e);
+            return saveFailure(e);
         }
 
         try {
@@ -113,7 +131,7 @@ public class BatchTestReassignmentRestController extends BaseController {
         if (changeBeans.isEmpty()) {
             // redirectAttributes.addFlashAttribute(FWD_SUCCESS, true);
             // return findForward(FWD_SUCCESS_INSERT, form);
-            return form;
+            return ResponseEntity.ok(form);
         } else {
             form.setSampleList(
                     DisplayListService.getInstance().getList(DisplayListService.ListType.SAMPLE_TYPE_ACTIVE));
@@ -122,7 +140,7 @@ public class BatchTestReassignmentRestController extends BaseController {
             form.setStatusChangedCurrentTest(changedMetaInfo.currentTest);
             form.setStatusChangedNextTest(changedMetaInfo.nextTest);
             // return findForward("resubmit", form);
-            return form;
+            return ResponseEntity.ok(form);
         }
     }
 
@@ -196,7 +214,7 @@ public class BatchTestReassignmentRestController extends BaseController {
 
     private void verifyStatusNotChanged(List<Analysis> changed, List<Analysis> noChanged,
             StatusService.AnalysisStatus status, List<BatchTestStatusChangeBean> changeBeans) {
-        String statusId = SpringContext.getBean(IStatusService.class).getStatusID(status);
+        String statusId = getStatusService().getStatusID(status);
 
         List<Analysis> changedAnalysis = new ArrayList<>();
 
@@ -230,10 +248,9 @@ public class BatchTestReassignmentRestController extends BaseController {
     }
 
     private String getStatusName(String statusId) {
-        StatusService.AnalysisStatus status = SpringContext.getBean(IStatusService.class)
-                .getAnalysisStatusForID(statusId);
+        StatusService.AnalysisStatus status = getStatusService().getAnalysisStatusForID(statusId);
         String name = getStatusName(status);
-        return name == null ? SpringContext.getBean(IStatusService.class).getStatusName(status) : name;
+        return name == null ? getStatusService().getStatusName(status) : name;
     }
 
     private String getStatusName(StatusService.AnalysisStatus status) {
@@ -261,7 +278,7 @@ public class BatchTestReassignmentRestController extends BaseController {
 
         for (Object testIdObject : replacementTestArray) {
             String testId = (String) testIdObject;
-            replacementTestList.add(SpringContext.getBean(TestService.class).get((String) testId));
+            replacementTestList.add(getTestService().get((String) testId));
         }
 
         return replacementTestList;

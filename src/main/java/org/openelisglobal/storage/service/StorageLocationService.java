@@ -195,4 +195,6 @@ public interface StorageLocationService {
     boolean isCodeUniqueForShelf(String code, Integer excludeId);
 
     boolean isCodeUniqueForRack(String code, Integer excludeId);
+
+    long countAllLocations();
 }

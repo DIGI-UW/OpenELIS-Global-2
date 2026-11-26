@@ -64,6 +64,7 @@ vi.mock("../../esignature/ESignatureButton", () => ({
 vi.mock("../../common/PageBreadCrumb", () => ({ default: () => <div /> }));
 
 import UnifiedResults from "./UnifiedResults";
+import { chooseLabUnit } from "./chooseLabUnit.test-utils";
 
 /** A numeric result not yet entered: the row the ticket was reproduced on. */
 const worklistRow = () => ({
@@ -75,7 +76,7 @@ const worklistRow = () => ({
   resultType: "N",
   resultValue: "",
   rawResultValue: "",
-  significantDigits: 0,
+  reportingDecimalPlaces: 0,
   analysisStatusId: "4",
   analysisLastupdated: "1700000000000",
   normalRange: "",
@@ -110,9 +111,7 @@ const renderPage = async () => {
       <UnifiedResults />
     </IntlProvider>,
   );
-  fireEvent.change(screen.getByLabelText(/Lab Unit/i), {
-    target: { value: "165" },
-  });
+  chooseLabUnit("Hematology");
   expect(document.querySelector("tbody tr")).not.toBeNull();
 };
 

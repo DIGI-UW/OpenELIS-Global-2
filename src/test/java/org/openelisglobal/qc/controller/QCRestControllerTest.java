@@ -68,12 +68,22 @@ public class QCRestControllerTest {
 
     @Before
     public void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setMessageConverters(new org.openelisglobal.config.AppConfig().jacksonMessageConverter()).build();
         sampleLot = QCControlLotBuilder.create().withId("lot-1").withLotNumber("LOT-2026-001").withTestId("42")
                 .withInstrumentId("7").asActive().build();
     }
 
     // ==================== Control lot retrieval ====================
+
+    @Test
+    public void chartLotPickerSerializesMappedTestNameWithApplicationConverter() throws Exception {
+        sampleLot.setTestName("HIV-1 Viral Load");
+        when(controlLotService.getActiveControlLotsByInstrument("7")).thenReturn(Arrays.asList(sampleLot));
+
+        mockMvc.perform(get("/rest/qc/controlLots").param("instrumentId", "7")).andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].testName").value("HIV-1 Viral Load"));
+    }
 
     @Test
     public void getAllControlLots_returnsServicePayload() throws Exception {

@@ -22,12 +22,12 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
-import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.paging.PagingUtility;
 import org.openelisglobal.common.provider.validation.AlphanumAccessionValidator;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
@@ -117,7 +117,7 @@ public class LogbookResultsController extends LogbookResultsBaseController {
             "testResult*.analysisMethod", "testResult*.testMethod", "testResult*.testKitInventoryId",
             "testResult*.forceTechApproval", "testResult*.forceTechApprovalNote", "testResult*.lowerNormalRange",
             "testResult*.upperNormalRange", "testResult*.lowerCritical", "testResult*.higherCritical",
-            "testResult*.significantDigits", "testResult*.resultValue", "testResult*.qualifiedResultValue",
+            "testResult*.reportingDecimalPlaces", "testResult*.resultValue", "testResult*.qualifiedResultValue",
             "testResult*.multiSelectResultValues", "testResult*.testMethod", "testResult*.multiSelectResultValues",
             "testResult*.qualifiedResultValue", "testResult*.qualifiedResultValue", "testResult*.shadowReferredOut",
             "testResult*.referredOut", "testResult*.referralReasonId", "testResult*.technician",
@@ -167,7 +167,7 @@ public class LogbookResultsController extends LogbookResultsBaseController {
     private final String REFERRAL_CONFORMATION_ID;
     private static final String REFLEX_ACCESSIONS = "reflex_accessions";
 
-    private LogbookResultsController(ReferralTypeService referralTypeService) {
+    public LogbookResultsController(ReferralTypeService referralTypeService) {
         ReferralType referralType = referralTypeService.getReferralTypeByName("Confirmation");
         if (referralType != null) {
             REFERRAL_CONFORMATION_ID = referralType.getId();
@@ -401,8 +401,7 @@ public class LogbookResultsController extends LogbookResultsBaseController {
         // user
         // ie: empty when another user saved and hasn't reloaded.
 
-        List<Result> checkPagedResults = (List<Result>) request.getSession()
-                .getAttribute(IActionConstants.RESULTS_SESSION_CACHE);
+        List<Result> checkPagedResults = new PagingUtility<Result>().getLoadedPages(request.getSession());
         List<Result> checkResults = (List<Result>) checkPagedResults.get(0);
         if (checkResults.size() == 0) {
             LogEvent.logDebug(this.getClass().getSimpleName(), "LogbookResults()", "Attempted save of stale page.");
@@ -455,34 +454,7 @@ public class LogbookResultsController extends LogbookResultsBaseController {
             }
             List<Analysis> newResultAnalyses = actionDataSet.getNewResults().stream().map(a -> a.result.getAnalysis())
                     .collect(Collectors.toList());
-            List<String> systemUserIds = userRoleService.getUserIdsForRole(Constants.ROLE_VALIDATION);
-            String message = MessageUtil.getMessage("notification.result.stat");
-            StringBuffer sb = new StringBuffer(message);
-            for (String userId : systemUserIds) {
-                List<Analysis> userAnalyses = userService
-                        .filterAnalysesByLabUnitRoles(userId, newResultAnalyses, Constants.ROLE_VALIDATION).stream()
-                        .filter(a -> a.getSampleItem().getSample().getPriority().equals(OrderPriority.STAT))
-                        .collect(Collectors.toList());
-
-                if (userAnalyses != null && !userAnalyses.isEmpty()) {
-                    List<String> userTests = userAnalyses.stream()
-                            .map(a -> AlphanumAccessionValidator
-                                    .convertAlphaNumLabNumForDisplay(a.getSampleItem().getSample().getAccessionNumber())
-                                    + " - " + a.getTest().getLocalizedName())
-                            .collect(Collectors.toList());
-                    String testString = String.join(", ", userTests);
-                    sb.append(testString);
-                    try {
-                        Notification notification = new Notification();
-                        notification.setMessage(sb.toString());
-                        notification.setUser(systemUserService.getUserById(userId));
-                        notification.setCreatedDate(OffsetDateTime.now());
-                        notification.setReadAt(null);
-                        notificationDAO.save(notification);
-                    } catch (Exception e) {
-                    }
-                }
-            }
+            sendStatResultNotifications(newResultAnalyses);
         } catch (LIMSRuntimeException e) {
             String errorMsg;
             if (e.getCause() instanceof StaleObjectStateException) {
@@ -541,6 +513,8 @@ public class LogbookResultsController extends LogbookResultsBaseController {
 
             Analysis analysis = ResultUtil.resolveModifiedAnalysis(actionDataSet, testResultItem.getAnalysisId());
             analysis.setStatusId(getStatusForTestResult(testResultItem, alwaysValidate));
+            actionDataSet.statusDecidedAtEntry(analysis,
+                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
             analysis.setSysUserId(getSysUserId(request));
             if (!GenericValidator.isBlankOrNull(testResultItem.getTestMethod())) {
                 analysis.setMethod(methodService.get(testResultItem.getTestMethod()));
@@ -964,6 +938,43 @@ public class LogbookResultsController extends LogbookResultsBaseController {
             return "resultsLogbookDefinition";
         } else {
             return "PageNotFound";
+        }
+    }
+
+    void sendStatResultNotifications(List<Analysis> newResultAnalyses) {
+        if (newResultAnalyses == null || newResultAnalyses.isEmpty()) {
+            return;
+        }
+        List<String> systemUserIds = userRoleService.getUserIdsForRole(Constants.ROLE_VALIDATION);
+        if (systemUserIds == null || systemUserIds.isEmpty()) {
+            return;
+        }
+        String message = MessageUtil.getMessage("notification.result.stat");
+        String prefix = (message != null && message.endsWith(" ")) ? message : message + " ";
+        for (String userId : systemUserIds) {
+            List<Analysis> userAnalyses = userService
+                    .filterAnalysesByLabUnitRoles(userId, newResultAnalyses, Constants.ROLE_VALIDATION).stream()
+                    .filter(a -> a.getSampleItem() != null && a.getSampleItem().getSample() != null
+                            && OrderPriority.STAT.equals(a.getSampleItem().getSample().getPriority()))
+                    .collect(Collectors.toList());
+
+            if (userAnalyses != null && !userAnalyses.isEmpty()) {
+                List<String> userTests = userAnalyses.stream()
+                        .map(a -> AlphanumAccessionValidator
+                                .convertAlphaNumLabNumForDisplay(a.getSampleItem().getSample().getAccessionNumber())
+                                + " - " + a.getTest().getLocalizedName())
+                        .collect(Collectors.toList());
+                String testString = String.join(", ", userTests);
+                try {
+                    Notification notification = new Notification();
+                    notification.setMessage(prefix + testString);
+                    notification.setUser(systemUserService.getUserById(userId));
+                    notification.setCreatedDate(OffsetDateTime.now());
+                    notification.setReadAt(null);
+                    notificationDAO.save(notification);
+                } catch (Exception e) {
+                }
+            }
         }
     }
 

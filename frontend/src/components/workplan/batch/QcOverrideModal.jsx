@@ -1,27 +1,28 @@
-import React from "react";
-import { Modal } from "@carbon/react";
+import React, { useState } from "react";
+import { Modal, TextArea } from "@carbon/react";
 import { useIntl } from "react-intl";
+import { RequiredMarker, requiredProps } from "../../common/RequiredMarker";
 import { formatDateTime, qcSubjects } from "./batchWorkplanUtils";
 
 /**
  * The QC override dialog (OGC-427 FR-NCE-001/005). Its copy names the failure
  * mode. A blocking status (no control lot, a retired lot) has no proceed
  * button at all; a user without qa.qc.override sees it disabled, with the
- * reason in place of the body's last line.
+ * reason in place of the body's last line. An override needs the user's reason
+ * (OGC-1588), which is kept with the release and written on the NCE.
  */
-export default function QcOverrideModal({
-  open,
-  batch,
-  qc,
-  canOverride,
-  busy,
-  onProceed,
-  onClose,
-}) {
-  const intl = useIntl();
+export default function QcOverrideModal({ open, qc, ...props }) {
   if (!open || !qc) {
     return null;
   }
+  // Mounted only while open, so each opening starts with an empty reason.
+  return <OverrideDialog qc={qc} {...props} />;
+}
+
+function OverrideDialog({ batch, qc, canOverride, busy, onProceed, onClose }) {
+  const intl = useIntl();
+  const [reason, setReason] = useState("");
+  const [tried, setTried] = useState(false);
   const { test, instrument, lot } = qcSubjects(qc);
   const values = {
     test,
@@ -36,6 +37,7 @@ export default function QcOverrideModal({
   const status = qc.status;
   const blocking = qc.blocking;
   const permitted = canOverride && !blocking;
+  const reasonMissing = reason.trim() === "";
 
   return (
     <Modal
@@ -54,7 +56,10 @@ export default function QcOverrideModal({
       })}
       primaryButtonDisabled={!permitted || busy}
       passiveModal={blocking}
-      onRequestSubmit={() => permitted && onProceed()}
+      onRequestSubmit={() => {
+        setTried(true);
+        if (permitted && !reasonMissing) onProceed(reason.trim());
+      }}
       onRequestClose={onClose}
       onSecondarySubmit={onClose}
     >
@@ -72,6 +77,31 @@ export default function QcOverrideModal({
               : "workplan.batch.override.noPermission",
           })}
         </p>
+      )}
+      {permitted && (
+        <TextArea
+          id={`batch-${batch?.id}-override-reason`}
+          labelText={
+            <>
+              {intl.formatMessage({
+                id: "workplan.batch.override.reason.label",
+              })}
+              <RequiredMarker />
+            </>
+          }
+          {...requiredProps()}
+          placeholder={intl.formatMessage({
+            id: "workplan.batch.override.reason.placeholder",
+          })}
+          value={reason}
+          maxCount={1000}
+          enableCounter
+          invalid={tried && reasonMissing}
+          invalidText={intl.formatMessage({
+            id: "workplan.batch.override.reason.required",
+          })}
+          onChange={(event) => setReason(event.target.value)}
+        />
       )}
     </Modal>
   );

@@ -45,7 +45,7 @@ public class ResultCalculationDAOImpl extends BaseDAOImpl<ResultCalculation, Int
     public List<ResultCalculation> getResultCalculationByTest(Test test) {
         try {
 
-            String sql = "from ResultCalculation r JOIN r.test t WHERE t.id = :testId";
+            String sql = "SELECT r from ResultCalculation r JOIN r.test t WHERE t.id = :testId";
             Query<ResultCalculation> query = entityManager.unwrap(Session.class).createQuery(sql,
                     ResultCalculation.class);
             query.setParameter("testId", test.getId());
@@ -78,6 +78,20 @@ public class ResultCalculationDAOImpl extends BaseDAOImpl<ResultCalculation, Int
             }
         } catch (RuntimeException e) {
             handleException(e, "getResultCalculationByPatientAndCalculation");
+        }
+        return Collections.emptyList();
+    }
+
+    @Override
+    public List<ResultCalculation> getResultCalculationsByResultId(String resultId) {
+        try {
+            String sql = "from ResultCalculation r WHERE r.result.id = :resultId";
+            Query<ResultCalculation> query = entityManager.unwrap(Session.class).createQuery(sql,
+                    ResultCalculation.class);
+            query.setParameter("resultId", resultId);
+            return query.list();
+        } catch (RuntimeException e) {
+            handleException(e, "getResultCalculationsByResultId");
         }
         return Collections.emptyList();
     }

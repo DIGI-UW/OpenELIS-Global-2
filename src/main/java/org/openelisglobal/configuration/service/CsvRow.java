@@ -1,5 +1,6 @@
 package org.openelisglobal.configuration.service;
 
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 
@@ -37,6 +38,17 @@ public record CsvRow(Map<String, Integer> columns, String[] values, int lineNumb
 
     public boolean isBlank(String column) {
         return get(column).isEmpty();
+    }
+
+    /** The filled {@code localization:<language>} cells, by language. */
+    public Map<String, String> translations() {
+        Map<String, String> byLanguage = new LinkedHashMap<>();
+        for (String column : columns.keySet()) {
+            if (column.startsWith("localization:") && !isBlank(column)) {
+                byLanguage.put(column.substring("localization:".length()), get(column));
+            }
+        }
+        return byLanguage;
     }
 
     /** A Y/N-style cell; blank falls back to the default. */

@@ -15,11 +15,11 @@ import {
   ModalBody,
   ModalFooter,
   Dropdown,
-  DatePicker,
   DatePickerInput,
   Button,
   InlineNotification,
 } from "@carbon/react";
+import { DatePicker } from "../../common/DatePicker";
 import { Download, DocumentPdf } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import config from "../../../config.json";

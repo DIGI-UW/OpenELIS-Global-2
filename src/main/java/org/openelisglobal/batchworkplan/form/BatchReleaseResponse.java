@@ -8,5 +8,6 @@ import org.openelisglobal.batchworkplan.valueholder.BatchQcStatus;
  * printed workplan show it.
  */
 public record BatchReleaseResponse(String controlLotId, String lotNumber, String testName, BatchQcStatus qcStatus,
-        boolean overridden, Integer nceId, String nceNumber, Timestamp releasedAt, String releasedBy) {
+        boolean overridden, String overrideReason, Integer nceId, String nceNumber, Timestamp releasedAt,
+        String releasedBy) {
 }

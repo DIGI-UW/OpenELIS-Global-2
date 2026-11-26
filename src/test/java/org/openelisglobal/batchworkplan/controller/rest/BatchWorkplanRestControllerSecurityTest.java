@@ -53,7 +53,7 @@ public class BatchWorkplanRestControllerSecurityTest extends SecuritySliceMockMv
     public void resetStub() {
         service = webApplicationContext.getBean(BatchWorkplanService.class);
         org.mockito.Mockito.reset(service);
-        when(service.generate(any(), anyBoolean(), anyBoolean(), any())).thenReturn(new BatchWorkplanResponse());
+        when(service.generate(any(), anyBoolean(), any(), anyBoolean(), any())).thenReturn(new BatchWorkplanResponse());
     }
 
     private UserSessionData sessionUser() {
@@ -73,7 +73,7 @@ public class BatchWorkplanRestControllerSecurityTest extends SecuritySliceMockMv
         mockMvc.perform(post(GENERATE).with(user("tech").roles("RESULTS"))
                 .sessionAttr(IActionConstants.USER_SESSION_DATA, sessionUser()).contentType(MediaType.APPLICATION_JSON)
                 .content(OVERRIDE)).andExpect(status().isOk());
-        verify(service).generate(eq(7L), eq(true), eq(false), any());
+        verify(service).generate(eq(7L), eq(true), any(), eq(false), any());
     }
 
     @Test
@@ -83,14 +83,14 @@ public class BatchWorkplanRestControllerSecurityTest extends SecuritySliceMockMv
                         new SimpleGrantedAuthority("qa.qc.override")))
                 .sessionAttr(IActionConstants.USER_SESSION_DATA, sessionUser()).contentType(MediaType.APPLICATION_JSON)
                 .content(OVERRIDE)).andExpect(status().isOk());
-        verify(service).generate(eq(7L), eq(true), eq(true), any());
+        verify(service).generate(eq(7L), eq(true), any(), eq(true), any());
     }
 
     @Test
     public void aRefusedReleaseAnswersWithTheQcStanding() throws Exception {
         BatchQcStatusResponse qc = new BatchQcStatusResponse(BatchQcStatus.OVERDUE, false, true, false, null, null,
                 List.of(), List.of());
-        when(service.generate(any(), anyBoolean(), anyBoolean(), any()))
+        when(service.generate(any(), anyBoolean(), any(), anyBoolean(), any()))
                 .thenThrow(new BatchReleaseRefusedException(BatchReleaseRefusedException.Reason.OVERRIDE_REQUIRED, qc));
         mockMvc.perform(post(GENERATE).with(user("tech").roles("RESULTS"))
                 .sessionAttr(IActionConstants.USER_SESSION_DATA, sessionUser()).contentType(MediaType.APPLICATION_JSON)
@@ -101,7 +101,7 @@ public class BatchWorkplanRestControllerSecurityTest extends SecuritySliceMockMv
 
     @Test
     public void anOverrideWithoutTheKeyIsForbidden() throws Exception {
-        when(service.generate(any(), anyBoolean(), anyBoolean(), any())).thenThrow(new BatchReleaseRefusedException(
+        when(service.generate(any(), anyBoolean(), any(), anyBoolean(), any())).thenThrow(new BatchReleaseRefusedException(
                 BatchReleaseRefusedException.Reason.OVERRIDE_NOT_PERMITTED, null));
         mockMvc.perform(post(GENERATE).with(user("tech").roles("RESULTS")).sessionAttr(IActionConstants.USER_SESSION_DATA, sessionUser()).contentType(MediaType.APPLICATION_JSON)
                 .content(OVERRIDE)).andExpect(status().isForbidden())
@@ -110,7 +110,7 @@ public class BatchWorkplanRestControllerSecurityTest extends SecuritySliceMockMv
 
     @Test
     public void aReleaseThatLostARaceAnswers409() throws Exception {
-        when(service.generate(any(), anyBoolean(), anyBoolean(), any()))
+        when(service.generate(any(), anyBoolean(), any(), anyBoolean(), any()))
                 .thenThrow(new StaleStateException("Batch update returned unexpected row count"));
         mockMvc.perform(post(GENERATE).with(user("tech").roles("RESULTS"))
                 .sessionAttr(IActionConstants.USER_SESSION_DATA, sessionUser()).contentType(MediaType.APPLICATION_JSON)
@@ -124,6 +124,27 @@ public class BatchWorkplanRestControllerSecurityTest extends SecuritySliceMockMv
         when(service.getBatch(eq(9L), any())).thenThrow(new BatchWorkplanNotFoundException(9L));
         mockMvc.perform(get("/rest/batch-workplans/batches/9").with(user("tech").roles("RESULTS")).sessionAttr(IActionConstants.USER_SESSION_DATA, sessionUser()))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void aBatchIdThatIsNotANumberIsNotFound() throws Exception {
+        mockMvc.perform(get("/rest/batch-workplans/batches/abc").with(user("tech").roles("RESULTS"))
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, sessionUser())).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Batch workplan not found: abc"));
+        mockMvc.perform(post("/rest/batch-workplans/batches/abc/generate").with(user("tech").roles("RESULTS"))
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, sessionUser()).contentType(MediaType.APPLICATION_JSON)
+                .content("{}")).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Batch workplan not found: abc"));
+    }
+
+    @Test
+    public void aPagingValueThatIsNotANumberNamesTheParameter() throws Exception {
+        mockMvc.perform(get("/rest/batch-workplans/pending-tests/page?pageSize=x").with(user("tech").roles("RESULTS"))
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, sessionUser())).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("pageSize must be a whole number: x"));
+        mockMvc.perform(get("/rest/batch-workplans/pending-tests?limit=ten").with(user("tech").roles("RESULTS"))
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, sessionUser())).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("limit must be a whole number: ten"));
     }
 
     @Test
