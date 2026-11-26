@@ -101,15 +101,6 @@ public class SampleEntryByProjectController extends BaseSampleEntryController {
     @Autowired
     private FhirUtil fhirUtil;
 
-    private Task task = null;
-    private Practitioner requesterPerson = null;
-    private Practitioner collector = null;
-    private org.hl7.fhir.r4.model.Organization referringOrganization = null;
-    private Location location = null;
-    private ServiceRequest serviceRequest = null;
-    private Specimen specimen = null;
-    private Patient fhirPatient = null;
-    private Encounter encounter = null;
     private static String OPENMRS_SYSTEM_URL = "https://openmrs.org";
     public static final String REFERRING_ORG_TYPE = "referring clinic";
     public static final String ARV_ORG_TYPE = "ARV Service Loc";
@@ -184,6 +175,15 @@ public class SampleEntryByProjectController extends BaseSampleEntryController {
                     form.setElectronicOrder(eOrder);
                     IGenericClient localFhirClient = fhirUtil.getLocalFhirClient();
                     IGenericClient remoteFhirClient = fhirUtil.getFhirClient(defaultRemoteServer);
+                    ServiceRequest serviceRequest = null;
+                    Specimen specimen = null;
+                    Patient fhirPatient = null;
+                    Encounter encounter = null;
+                    Task task = null;
+                    org.hl7.fhir.r4.model.Organization referringOrganization = null;
+                    Location location = null;
+                    Practitioner requesterPerson = null;
+                    Practitioner collector = null;
                     for (String remotePath : fhirConfig.getRemoteStorePaths()) {
                         Bundle srBundle = (Bundle) localFhirClient.search().forResource(ServiceRequest.class)
                                 .where(ServiceRequest.RES_ID.exactly().code(externalOrderNumber))
@@ -219,15 +219,25 @@ public class SampleEntryByProjectController extends BaseSampleEntryController {
                     } else {
                         LogEvent.logDebug(this.getClass().getName(), "processRequest", "no matching serviceRequest");
                     }
-                    fhirPatient = FhirUtil.refersToPatient(serviceRequest.getSubject()) ? localFhirClient.read() //
-                            .resource(Patient.class) //
-                            .withId(serviceRequest.getSubject().getReferenceElement().getIdPart()) //
-                            .execute() : null;
-                    encounter = remoteFhirClient.read().resource(Encounter.class)
-                            .withId(serviceRequest.getEncounter().getReferenceElement().getIdPart()).execute();
+                    fhirPatient = (serviceRequest != null && FhirUtil.refersToPatient(serviceRequest.getSubject()))
+                            ? localFhirClient.read() //
+                                    .resource(Patient.class) //
+                                    .withId(serviceRequest.getSubject().getReferenceElement().getIdPart()) //
+                                    .execute()
+                            : null;
+                    if (serviceRequest != null && serviceRequest.getEncounter() != null
+                            && serviceRequest.getEncounter().getReferenceElement() != null && !GenericValidator
+                                    .isBlankOrNull(serviceRequest.getEncounter().getReferenceElement().getIdPart())) {
+                        encounter = remoteFhirClient.read().resource(Encounter.class)
+                                .withId(serviceRequest.getEncounter().getReferenceElement().getIdPart()).execute();
+                    }
                     if (ObjectUtils.isEmpty(encounter)) {
-                        LogEvent.logDebug(this.getClass().getName(), "processRequest", "Not found matching Ecounter "
-                                + serviceRequest.getEncounter().getReferenceElement().getIdPart());
+                        LogEvent.logDebug(this.getClass().getName(), "processRequest",
+                                "Not found matching Ecounter " + (serviceRequest != null
+                                        && serviceRequest.getEncounter() != null
+                                        && serviceRequest.getEncounter().getReferenceElement() != null
+                                                ? serviceRequest.getEncounter().getReferenceElement().getIdPart()
+                                                : ""));
                     }
 
                     if (fhirPatient != null) {
@@ -236,15 +246,17 @@ public class SampleEntryByProjectController extends BaseSampleEntryController {
                     } else {
                         LogEvent.logDebug(this.getClass().getName(), "processRequest", "no matching patient");
                     }
-                    task = fhirPersistanceService.getTaskBasedOnServiceRequest(externalOrderNumber).orElseThrow();
+                    task = fhirPersistanceService.getTaskBasedOnServiceRequest(externalOrderNumber).orElse(null);
                     if (task != null) {
                         LogEvent.logDebug(this.getClass().getName(), "processRequest",
                                 "found matching task " + task.getIdElement().getIdPart());
                     } else {
                         LogEvent.logDebug(this.getClass().getName(), "processRequest", "no matching task");
                     }
-                    if (!GenericValidator.isBlankOrNull(
-                            task.getRestriction().getRecipientFirstRep().getReferenceElement().getIdPart())) {
+                    if (task != null && task.getRestriction() != null
+                            && !task.getRestriction().getRecipientFirstRep().isEmpty()
+                            && !GenericValidator.isBlankOrNull(
+                                    task.getRestriction().getRecipientFirstRep().getReferenceElement().getIdPart())) {
                         referringOrganization = localFhirClient.read() //
                                 .resource(org.hl7.fhir.r4.model.Organization.class) //
                                 .withId(task.getRestriction().getRecipientFirstRep().getReferenceElement().getIdPart()) //
@@ -256,7 +268,7 @@ public class SampleEntryByProjectController extends BaseSampleEntryController {
                             LogEvent.logDebug(this.getClass().getName(), "processRequest", "no matching organization");
                         }
                     }
-                    if (!GenericValidator.isBlankOrNull(
+                    if (serviceRequest != null && !GenericValidator.isBlankOrNull(
                             serviceRequest.getLocationReferenceFirstRep().getReferenceElement().getIdPart())) {
                         location = localFhirClient.read() //
                                 .resource(Location.class) //
@@ -269,9 +281,11 @@ public class SampleEntryByProjectController extends BaseSampleEntryController {
                             LogEvent.logDebug(this.getClass().getName(), "processRequest", "no matching location");
                         }
                     }
-                    if (!GenericValidator.isBlankOrNull(serviceRequest.getRequester().getReferenceElement().getIdPart())
-                            && serviceRequest.getRequester().getReference()
-                                    .contains(ResourceType.Practitioner.toString())) {
+                    if (serviceRequest != null && serviceRequest.getRequester() != null
+                            && !GenericValidator
+                                    .isBlankOrNull(serviceRequest.getRequester().getReferenceElement().getIdPart())
+                            && serviceRequest.getRequester().getReference() != null && serviceRequest.getRequester()
+                                    .getReference().contains(ResourceType.Practitioner.toString())) {
                         requesterPerson = localFhirClient.read() //
                                 .resource(Practitioner.class) //
                                 .withId(serviceRequest.getRequester().getReferenceElement().getIdPart()) //
@@ -299,7 +313,7 @@ public class SampleEntryByProjectController extends BaseSampleEntryController {
                         }
                     }
                     if (fhirPatient != null) {
-                        loadDataInForm(form);
+                        loadDataInForm(form, fhirPatient, task, encounter, requesterPerson);
                     }
                 }
             }
@@ -308,11 +322,17 @@ public class SampleEntryByProjectController extends BaseSampleEntryController {
         }
     }
 
-    private void loadDataInForm(SampleEntryByProjectForm form) {
+    void loadDataInForm(SampleEntryByProjectForm form, Patient fhirPatient, Task task, Encounter encounter,
+            Practitioner requesterPerson) {
         ProjectData projectData = new ProjectData();
         ObservationData observationData = new ObservationData();
-        form.setBirthDateForDisplay(DateUtil.formatDateAsText(fhirPatient.getBirthDate()));
-        form.setGender(fhirPatient.getGender().getDisplay().substring(0, 1).toUpperCase());
+        if (fhirPatient.getBirthDate() != null) {
+            form.setBirthDateForDisplay(DateUtil.formatDateAsText(fhirPatient.getBirthDate()));
+        }
+        if (fhirPatient.getGender() != null && fhirPatient.getGender().getDisplay() != null
+                && !fhirPatient.getGender().getDisplay().isEmpty()) {
+            form.setGender(fhirPatient.getGender().getDisplay().substring(0, 1).toUpperCase());
+        }
         if (ObjectUtils.isNotEmpty(fhirPatient.getIdElement())) {
             form.setPatientFhirUuid(fhirPatient.getIdElement().getIdPart());
         }
@@ -367,302 +387,317 @@ public class SampleEntryByProjectController extends BaseSampleEntryController {
                 }
             }
         }
-        for (ParameterComponent parameter : task.getInput()) {
+        if (task != null && task.getInput() != null) {
+            for (ParameterComponent parameter : task.getInput()) {
 
-            if (parameter.getType().getCodingFirstRep().getCode().equals("160533AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // currentARVTreatment
-                if (ObjectUtils.isNotEmpty(parameter.getValue())) {
-                    Dictionary dict = dictionaryService
-                            .getDictionaryByDictEntry("Demographic Response Yes (in Yes or No)");
-                    if (ObjectUtils.isNotEmpty(dict)) {
-                        observationData.setCurrentARVTreatment(dict.getId());
-                    }
-                }
-            }
-            if (parameter.getType().getCodingFirstRep().getCode().equals("CI0050002AAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vlReasonForRequest
-                if (ObjectUtils.isNotEmpty(parameter.getValue())) {
-                    if (parameter.getValue() instanceof StringType) {
-                        StringType vlReasonType = (StringType) parameter.getValue();
-                        Dictionary dict = null;
-                        switch (vlReasonType.getValue().trim()) {
-                        case "Charge Virale de controle":
-                            dict = dictionaryService.getDictionaryByDictEntry("VL under ARV control");
-                            break;
-                        case "Echec Virologique":
-                            dict = dictionaryService.getDictionaryByDictEntry("Virological Failure");
-                            break;
-                        case "Echec immunologique":
-                            dict = dictionaryService.getDictionaryByDictEntry("Immunological Failure");
-                            break;
-                        case "Echec clinique":
-                        case "GB J0":
-                            dict = dictionaryService.getDictionaryByDictEntry("Clinical Failure");
-                            break;
-                        default:
-                            break;
-                        }
+                if (parameter.getType().getCodingFirstRep().getCode().equals("160533AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // currentARVTreatment
+                    if (ObjectUtils.isNotEmpty(parameter.getValue())) {
+                        Dictionary dict = dictionaryService
+                                .getDictionaryByDictEntry("Demographic Response Yes (in Yes or No)");
                         if (ObjectUtils.isNotEmpty(dict)) {
-                            observationData.setVlReasonForRequest(dict.getId());
+                            observationData.setCurrentARVTreatment(dict.getId());
                         }
                     }
                 }
-            }
+                if (parameter.getType().getCodingFirstRep().getCode().equals("CI0050002AAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vlReasonForRequest
+                    if (ObjectUtils.isNotEmpty(parameter.getValue())) {
+                        if (parameter.getValue() instanceof StringType) {
+                            StringType vlReasonType = (StringType) parameter.getValue();
+                            Dictionary dict = null;
+                            switch (vlReasonType.getValue().trim()) {
+                            case "Charge Virale de controle":
+                                dict = dictionaryService.getDictionaryByDictEntry("VL under ARV control");
+                                break;
+                            case "Echec Virologique":
+                                dict = dictionaryService.getDictionaryByDictEntry("Virological Failure");
+                                break;
+                            case "Echec immunologique":
+                                dict = dictionaryService.getDictionaryByDictEntry("Immunological Failure");
+                                break;
+                            case "Echec clinique":
+                            case "GB J0":
+                                dict = dictionaryService.getDictionaryByDictEntry("Clinical Failure");
+                                break;
+                            default:
+                                break;
+                            }
+                            if (ObjectUtils.isNotEmpty(dict)) {
+                                observationData.setVlReasonForRequest(dict.getId());
+                            }
+                        }
+                    }
+                }
 
-            if (ObjectUtils.isNotEmpty(encounter)) { // nameofsampler
-                List<EncounterParticipantComponent> participants = encounter.getParticipant();
-                if (ObjectUtils.isNotEmpty(participants)) {
-                    if (ObjectUtils.isNotEmpty(participants.get(1))) { // get the second one for Sampler
-                        String samplerReference = participants.get(1).getIndividual().getReference();
-                        Practitioner sampler = fhirUtil.getLocalFhirClient().read().resource(Practitioner.class)
-                                .withId(samplerReference).execute();
-                        sampler.getName().forEach(humanName -> {
-                            String lastName = humanName.getFamily();
-                            String firstName = String.join("", humanName.getGiven().stream().map(e -> e.asStringValue())
-                                    .collect(Collectors.toList()));
-                            observationData.setNameOfSampler(lastName + " " + firstName);
-                        });
-                    }
-                }
-            }
-            if (ObjectUtils.isNotEmpty(encounter)) { // get Collection Date
-                Period period = encounter.getPeriod();
-                if (ObjectUtils.isNotEmpty(period)) {
-                    DateTimeType collectionDateType = period.getStartElement();
-                    if (ObjectUtils.isNotEmpty(collectionDateType))
-                        form.setInterviewDate(DateUtil.formatDateAsText(collectionDateType.getValue()));
-                }
-            }
-            if (parameter.getType().getCodingFirstRep().getCode().equals("CI0050001AAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vlOtherReasonForRequest
-                if (ObjectUtils.isNotEmpty(parameter.getValue())) {
-                    if (parameter.getValue() instanceof StringType) {
-                        StringType vlOtherReasonForRequestType = (StringType) parameter.getValue();
-                        observationData.setVlOtherReasonForRequest(vlOtherReasonForRequestType.getValue());
-                    }
-                }
-            }
-            if (parameter.getType().getCodingFirstRep().getCode().equals("CI0050007AAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // sampleType
-                if (ObjectUtils.isNotEmpty(parameter.getValue())) {
-                    if (parameter.getValue() instanceof StringType) {
-                        StringType sampleTypeType = (StringType) parameter.getValue();
-                        if (sampleTypeType.getValue().equalsIgnoreCase("Plasma")) {
-                            projectData.setEdtaTubeTaken(true);
-                        } else if (sampleTypeType.getValue().equalsIgnoreCase("DBS")) {
-                            projectData.setdbsvlTaken(true);
-                        } else if (sampleTypeType.getValue().equalsIgnoreCase("PSC")) {
-                            projectData.setPscvlTaken(true);
+                if (ObjectUtils.isNotEmpty(encounter)) { // nameofsampler
+                    List<EncounterParticipantComponent> participants = encounter.getParticipant();
+                    if (ObjectUtils.isNotEmpty(participants) && participants.size() > 1
+                            && ObjectUtils.isNotEmpty(participants.get(1))) { // get the second one for Sampler
+                        if (participants.get(1).getIndividual() != null
+                                && participants.get(1).getIndividual().getReference() != null) {
+                            String samplerReference = participants.get(1).getIndividual().getReference();
+                            Practitioner sampler = fhirUtil.getLocalFhirClient().read().resource(Practitioner.class)
+                                    .withId(samplerReference).execute();
+                            if (sampler != null && sampler.getName() != null) {
+                                sampler.getName().forEach(humanName -> {
+                                    String lastName = humanName.getFamily() != null ? humanName.getFamily() : "";
+                                    String firstName = humanName.getGiven() != null
+                                            ? String.join("", humanName.getGiven().stream().map(e -> e.asStringValue())
+                                                    .collect(Collectors.toList()))
+                                            : "";
+                                    observationData.setNameOfSampler(lastName + " " + firstName);
+                                });
+                            }
                         }
                     }
                 }
-            }
-            if (parameter.getType().getCodingFirstRep().getCode().equals("166073AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // arvTreatmentRegime
-                if (ObjectUtils.isNotEmpty(parameter.getValue())) {
-                    if (parameter.getValue() instanceof StringType) {
-                        StringType arvTreatmentRegimeType = (StringType) parameter.getValue();
-                        Dictionary dict = null;
-                        if (arvTreatmentRegimeType.getValue().equalsIgnoreCase("Première")) {
-                            dict = dictionaryService.getDictionaryByDictEntry("1st Line");
-                        } else if (arvTreatmentRegimeType.getValue().equalsIgnoreCase("Deuxième")) {
-                            dict = dictionaryService.getDictionaryByDictEntry("2nd Line");
-                        } else if (arvTreatmentRegimeType.getValue().equalsIgnoreCase("Troisième")) {
-                            dict = dictionaryService.getDictionaryByDictEntry("3rd Line");
-                        }
-                        if (ObjectUtils.isNotEmpty(dict)) {
-                            observationData.setArvTreatmentRegime(dict.getId());
+                if (ObjectUtils.isNotEmpty(encounter)) { // get Collection Date
+                    Period period = encounter.getPeriod();
+                    if (ObjectUtils.isNotEmpty(period)) {
+                        DateTimeType collectionDateType = period.getStartElement();
+                        if (ObjectUtils.isNotEmpty(collectionDateType))
+                            form.setInterviewDate(DateUtil.formatDateAsText(collectionDateType.getValue()));
+                    }
+                }
+                if (parameter.getType().getCodingFirstRep().getCode().equals("CI0050001AAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vlOtherReasonForRequest
+                    if (ObjectUtils.isNotEmpty(parameter.getValue())) {
+                        if (parameter.getValue() instanceof StringType) {
+                            StringType vlOtherReasonForRequestType = (StringType) parameter.getValue();
+                            observationData.setVlOtherReasonForRequest(vlOtherReasonForRequestType.getValue());
                         }
                     }
                 }
-            }
-            if (parameter.getType().getCodingFirstRep().getCode().equals("164792AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vl.initcd4Percent
-                if (ObjectUtils.isNotEmpty(parameter.getValue())) {
-                    if (parameter.getValue() instanceof DecimalType) {
-                        DecimalType initcd4PercentType = (DecimalType) parameter.getValue();
-                        observationData.setInitcd4Percent(initcd4PercentType.getValue().toString());
-                    }
-                }
-            }
-            if (parameter.getType().getCodingFirstRep().getCode().equals("730AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vl.demandcd4Percent
-                if (ObjectUtils.isNotEmpty(parameter.getValue())) {
-                    if (parameter.getValue() instanceof DecimalType) {
-                        DecimalType demandcd4PercentType = (DecimalType) parameter.getValue();
-                        observationData.setDemandcd4Percent(demandcd4PercentType.getValue().toString());
-                    }
-                }
-            }
-            if (parameter.getType().getCodingFirstRep().getCode().equals("CI0050030AAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vl.priorVLValue
-                if (ObjectUtils.isNotEmpty(parameter.getValue())) {
-                    if (parameter.getValue() instanceof StringType) {
-                        StringType priorVLValueType = (StringType) parameter.getValue();
-                        observationData.setPriorVLValue(priorVLValueType.getValue().toString());
-                    }
-                }
-            }
-            if (parameter.getType().getCodingFirstRep().getCode().equals("CI0030001AAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vl.hivStatus
-                if (ObjectUtils.isNotEmpty(parameter.getValue())) {
-                    if (parameter.getValue() instanceof StringType) {
-                        StringType hivStatusType = (StringType) parameter.getValue();
-                        Dictionary dict = null;
-                        if (hivStatusType.getValue().equalsIgnoreCase("VIH-1")) {
-                            dict = dictionaryService.getDictionaryByDictEntry("HIV Status HIV-1 infection");
-                        } else if (hivStatusType.getValue().equalsIgnoreCase("VIH-1+2")) {
-                            dict = dictionaryService.getDictionaryByDictEntry("HIV Status HIV-1 and HIV-2");
-                        } else if (hivStatusType.getValue().equalsIgnoreCase("VIH-2")) {
-                            dict = dictionaryService.getDictionaryByDictEntry("HIV Status HIV-2 infection");
-                        }
-                        if (ObjectUtils.isNotEmpty(dict)) {
-                            observationData.setHivStatus(dict.getId());
+                if (parameter.getType().getCodingFirstRep().getCode().equals("CI0050007AAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // sampleType
+                    if (ObjectUtils.isNotEmpty(parameter.getValue())) {
+                        if (parameter.getValue() instanceof StringType) {
+                            StringType sampleTypeType = (StringType) parameter.getValue();
+                            if (sampleTypeType.getValue().equalsIgnoreCase("Plasma")) {
+                                projectData.setEdtaTubeTaken(true);
+                            } else if (sampleTypeType.getValue().equalsIgnoreCase("DBS")) {
+                                projectData.setdbsvlTaken(true);
+                            } else if (sampleTypeType.getValue().equalsIgnoreCase("PSC")) {
+                                projectData.setPscvlTaken(true);
+                            }
                         }
                     }
                 }
-            }
-            if (parameter.getType().getCodingFirstRep().getCode().equals("159599AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vl.arvTreatmentInitDate
-                if (ObjectUtils.isNotEmpty(parameter.getValue())) {
-                    if (parameter.getValue() instanceof DateTimeType) {
-                        DateTimeType dateValue = (DateTimeType) parameter.getValue();
-                        observationData.setArvTreatmentInitDate(DateUtil.formatDateAsText(dateValue.getValue()));
-                    }
-                }
-            }
-            if (parameter.getType().getCodingFirstRep().getCode().equals("160103AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vl.demandcd4Date
-                if (ObjectUtils.isNotEmpty(parameter.getValue())) {
-                    if (parameter.getValue() instanceof DateTimeType) {
-                        DateTimeType dateValue = (DateTimeType) parameter.getValue();
-                        if (ObjectUtils.isNotEmpty(dateValue))
-                            observationData.setDemandcd4Date(DateUtil.formatDateAsText(dateValue.getValue()));
-                    }
-                }
-            }
-            if (parameter.getType().getCodingFirstRep().getCode().equals("163281AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vl.priorVLDate
-                if (ObjectUtils.isNotEmpty(parameter.getValue())) {
-                    if (parameter.getValue() instanceof DateTimeType) {
-                        DateTimeType dateValue = (DateTimeType) parameter.getValue();
-                        if (ObjectUtils.isNotEmpty(dateValue))
-                            observationData.setPriorVLDate(DateUtil.formatDateAsText(dateValue.getValue()));
-                    }
-                }
-            }
-            if (parameter.getType().getCodingFirstRep().getCode().equals("CI0050020AAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vl.priorVLLab
-                if (ObjectUtils.isNotEmpty(parameter.getValue())) {
-                    if (parameter.getValue() instanceof StringType) {
-                        StringType priorVLLab = (StringType) parameter.getValue();
-                        observationData.setPriorVLLab(priorVLLab.getValueAsString());
-                    }
-                }
-            }
-            if (parameter.getType().getCodingFirstRep().getCode().equals("164429AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vl.initcd4Count
-                if (ObjectUtils.isNotEmpty(parameter.getValue())) {
-                    if (parameter.getValue() instanceof DecimalType) {
-                        DecimalType initcd4CountType = (DecimalType) parameter.getValue();
-                        observationData.setInitcd4Count(initcd4CountType.getValue().toString());
-                    }
-                }
-            }
-            if (parameter.getType().getCodingFirstRep().getCode().equals("5497AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vl.demandcd4Count
-                if (ObjectUtils.isNotEmpty(parameter.getValue())) {
-                    if (parameter.getValue() instanceof DecimalType) {
-                        DecimalType demandcd4CountType = (DecimalType) parameter.getValue();
-                        observationData.setDemandcd4Count(demandcd4CountType.getValue().toString());
-                    }
-                }
-            }
-            if (parameter.getType().getCodingFirstRep().getCode().equals("159376AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vl.initcd4Date
-                if (ObjectUtils.isNotEmpty(parameter.getValue())) {
-                    if (parameter.getValue() instanceof DateTimeType) {
-                        DateTimeType dateValue = (DateTimeType) parameter.getValue();
-                        if (ObjectUtils.isNotEmpty(dateValue))
-                            observationData.setInitcd4Date(DateUtil.formatDateAsText(dateValue.getValue()));
-                    }
-                }
-            }
-            if (parameter.getType().getCodingFirstRep().getCode().equals("CI0050004AAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vl.vlBenefit
-                if (ObjectUtils.isNotEmpty(parameter.getValue())) {
-                    if (parameter.getValue() instanceof StringType) {
-                        StringType vlBenefitType = (StringType) parameter.getValue();
-                        Dictionary dict = null;
-                        if (vlBenefitType.getValue().equalsIgnoreCase("Oui")
-                                || vlBenefitType.getValue().equalsIgnoreCase("Yes")) {
-                            dict = dictionaryService
-                                    .getDictionaryByDictEntry("Demographic Response Yes (in Yes or No)");
-                        } else if (vlBenefitType.getValue().equalsIgnoreCase("Non")
-                                || vlBenefitType.getValue().equalsIgnoreCase("No")) {
-                            dict = dictionaryService.getDictionaryByDictEntry("Demographic Response No (in Yes or No)");
-                        }
-                        if (ObjectUtils.isNotEmpty(dict)) {
-                            observationData.setVlBenefit(dict.getId());
+                if (parameter.getType().getCodingFirstRep().getCode().equals("166073AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // arvTreatmentRegime
+                    if (ObjectUtils.isNotEmpty(parameter.getValue())) {
+                        if (parameter.getValue() instanceof StringType) {
+                            StringType arvTreatmentRegimeType = (StringType) parameter.getValue();
+                            Dictionary dict = null;
+                            if (arvTreatmentRegimeType.getValue().equalsIgnoreCase("Première")) {
+                                dict = dictionaryService.getDictionaryByDictEntry("1st Line");
+                            } else if (arvTreatmentRegimeType.getValue().equalsIgnoreCase("Deuxième")) {
+                                dict = dictionaryService.getDictionaryByDictEntry("2nd Line");
+                            } else if (arvTreatmentRegimeType.getValue().equalsIgnoreCase("Troisième")) {
+                                dict = dictionaryService.getDictionaryByDictEntry("3rd Line");
+                            }
+                            if (ObjectUtils.isNotEmpty(dict)) {
+                                observationData.setArvTreatmentRegime(dict.getId());
+                            }
                         }
                     }
                 }
-            }
-            if (parameter.getType().getCodingFirstRep().getCode().equals("162240AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // ARV
-                // Treatment
-                if (ObjectUtils.isNotEmpty(parameter.getValue())) {
-                    if (parameter.getValue() instanceof StringType) {
-                        StringType regimenType = (StringType) parameter.getValue();
-                        String regimen = regimenType.getValue();
-                        String[] regimenParts = regimen.split(" ");
-                        for (int i = 0; i < regimenParts.length && i < 3; i++) {
-                            observationData.setCurrentARVTreatmentINNs(i, regimenParts[i].trim());
+                if (parameter.getType().getCodingFirstRep().getCode().equals("164792AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vl.initcd4Percent
+                    if (ObjectUtils.isNotEmpty(parameter.getValue())) {
+                        if (parameter.getValue() instanceof DecimalType) {
+                            DecimalType initcd4PercentType = (DecimalType) parameter.getValue();
+                            observationData.setInitcd4Percent(initcd4PercentType.getValue().toString());
                         }
                     }
                 }
-            }
-            if (parameter.getType().getCodingFirstRep().getCode().equals("5272AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // Pregnancy
-                if (ObjectUtils.isNotEmpty(parameter.getValue())) {
-                    if (parameter.getValue() instanceof StringType) {
-                        StringType vlPregnancyType = (StringType) parameter.getValue();
-                        Dictionary dict = null;
-                        if (vlPregnancyType.getValue().equalsIgnoreCase("Oui")
-                                || vlPregnancyType.getValue().equalsIgnoreCase("Yes")) {
-                            dict = dictionaryService
-                                    .getDictionaryByDictEntry("Demographic Response Yes (in Yes or No)");
-                        } else if (vlPregnancyType.getValue().equalsIgnoreCase("Non")
-                                || vlPregnancyType.getValue().equalsIgnoreCase("No")) {
-                            dict = dictionaryService.getDictionaryByDictEntry("Demographic Response No (in Yes or No)");
-                        }
-                        if (ObjectUtils.isNotEmpty(dict)) {
-                            observationData.setVlPregnancy(dict.getId());
+                if (parameter.getType().getCodingFirstRep().getCode().equals("730AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vl.demandcd4Percent
+                    if (ObjectUtils.isNotEmpty(parameter.getValue())) {
+                        if (parameter.getValue() instanceof DecimalType) {
+                            DecimalType demandcd4PercentType = (DecimalType) parameter.getValue();
+                            observationData.setDemandcd4Percent(demandcd4PercentType.getValue().toString());
                         }
                     }
                 }
-            }
+                if (parameter.getType().getCodingFirstRep().getCode().equals("CI0050030AAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vl.priorVLValue
+                    if (ObjectUtils.isNotEmpty(parameter.getValue())) {
+                        if (parameter.getValue() instanceof StringType) {
+                            StringType priorVLValueType = (StringType) parameter.getValue();
+                            observationData.setPriorVLValue(priorVLValueType.getValue().toString());
+                        }
+                    }
+                }
+                if (parameter.getType().getCodingFirstRep().getCode().equals("CI0030001AAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vl.hivStatus
+                    if (ObjectUtils.isNotEmpty(parameter.getValue())) {
+                        if (parameter.getValue() instanceof StringType) {
+                            StringType hivStatusType = (StringType) parameter.getValue();
+                            Dictionary dict = null;
+                            if (hivStatusType.getValue().equalsIgnoreCase("VIH-1")) {
+                                dict = dictionaryService.getDictionaryByDictEntry("HIV Status HIV-1 infection");
+                            } else if (hivStatusType.getValue().equalsIgnoreCase("VIH-1+2")) {
+                                dict = dictionaryService.getDictionaryByDictEntry("HIV Status HIV-1 and HIV-2");
+                            } else if (hivStatusType.getValue().equalsIgnoreCase("VIH-2")) {
+                                dict = dictionaryService.getDictionaryByDictEntry("HIV Status HIV-2 infection");
+                            }
+                            if (ObjectUtils.isNotEmpty(dict)) {
+                                observationData.setHivStatus(dict.getId());
+                            }
+                        }
+                    }
+                }
+                if (parameter.getType().getCodingFirstRep().getCode().equals("159599AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vl.arvTreatmentInitDate
+                    if (ObjectUtils.isNotEmpty(parameter.getValue())) {
+                        if (parameter.getValue() instanceof DateTimeType) {
+                            DateTimeType dateValue = (DateTimeType) parameter.getValue();
+                            observationData.setArvTreatmentInitDate(DateUtil.formatDateAsText(dateValue.getValue()));
+                        }
+                    }
+                }
+                if (parameter.getType().getCodingFirstRep().getCode().equals("160103AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vl.demandcd4Date
+                    if (ObjectUtils.isNotEmpty(parameter.getValue())) {
+                        if (parameter.getValue() instanceof DateTimeType) {
+                            DateTimeType dateValue = (DateTimeType) parameter.getValue();
+                            if (ObjectUtils.isNotEmpty(dateValue))
+                                observationData.setDemandcd4Date(DateUtil.formatDateAsText(dateValue.getValue()));
+                        }
+                    }
+                }
+                if (parameter.getType().getCodingFirstRep().getCode().equals("163281AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vl.priorVLDate
+                    if (ObjectUtils.isNotEmpty(parameter.getValue())) {
+                        if (parameter.getValue() instanceof DateTimeType) {
+                            DateTimeType dateValue = (DateTimeType) parameter.getValue();
+                            if (ObjectUtils.isNotEmpty(dateValue))
+                                observationData.setPriorVLDate(DateUtil.formatDateAsText(dateValue.getValue()));
+                        }
+                    }
+                }
+                if (parameter.getType().getCodingFirstRep().getCode().equals("CI0050020AAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vl.priorVLLab
+                    if (ObjectUtils.isNotEmpty(parameter.getValue())) {
+                        if (parameter.getValue() instanceof StringType) {
+                            StringType priorVLLab = (StringType) parameter.getValue();
+                            observationData.setPriorVLLab(priorVLLab.getValueAsString());
+                        }
+                    }
+                }
+                if (parameter.getType().getCodingFirstRep().getCode().equals("164429AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vl.initcd4Count
+                    if (ObjectUtils.isNotEmpty(parameter.getValue())) {
+                        if (parameter.getValue() instanceof DecimalType) {
+                            DecimalType initcd4CountType = (DecimalType) parameter.getValue();
+                            observationData.setInitcd4Count(initcd4CountType.getValue().toString());
+                        }
+                    }
+                }
+                if (parameter.getType().getCodingFirstRep().getCode().equals("5497AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vl.demandcd4Count
+                    if (ObjectUtils.isNotEmpty(parameter.getValue())) {
+                        if (parameter.getValue() instanceof DecimalType) {
+                            DecimalType demandcd4CountType = (DecimalType) parameter.getValue();
+                            observationData.setDemandcd4Count(demandcd4CountType.getValue().toString());
+                        }
+                    }
+                }
+                if (parameter.getType().getCodingFirstRep().getCode().equals("159376AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vl.initcd4Date
+                    if (ObjectUtils.isNotEmpty(parameter.getValue())) {
+                        if (parameter.getValue() instanceof DateTimeType) {
+                            DateTimeType dateValue = (DateTimeType) parameter.getValue();
+                            if (ObjectUtils.isNotEmpty(dateValue))
+                                observationData.setInitcd4Date(DateUtil.formatDateAsText(dateValue.getValue()));
+                        }
+                    }
+                }
+                if (parameter.getType().getCodingFirstRep().getCode().equals("CI0050004AAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // vl.vlBenefit
+                    if (ObjectUtils.isNotEmpty(parameter.getValue())) {
+                        if (parameter.getValue() instanceof StringType) {
+                            StringType vlBenefitType = (StringType) parameter.getValue();
+                            Dictionary dict = null;
+                            if (vlBenefitType.getValue().equalsIgnoreCase("Oui")
+                                    || vlBenefitType.getValue().equalsIgnoreCase("Yes")) {
+                                dict = dictionaryService
+                                        .getDictionaryByDictEntry("Demographic Response Yes (in Yes or No)");
+                            } else if (vlBenefitType.getValue().equalsIgnoreCase("Non")
+                                    || vlBenefitType.getValue().equalsIgnoreCase("No")) {
+                                dict = dictionaryService
+                                        .getDictionaryByDictEntry("Demographic Response No (in Yes or No)");
+                            }
+                            if (ObjectUtils.isNotEmpty(dict)) {
+                                observationData.setVlBenefit(dict.getId());
+                            }
+                        }
+                    }
+                }
+                if (parameter.getType().getCodingFirstRep().getCode().equals("162240AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // ARV
+                    // Treatment
+                    if (ObjectUtils.isNotEmpty(parameter.getValue())) {
+                        if (parameter.getValue() instanceof StringType) {
+                            StringType regimenType = (StringType) parameter.getValue();
+                            String regimen = regimenType.getValue();
+                            String[] regimenParts = regimen.split(" ");
+                            for (int i = 0; i < regimenParts.length && i < 3; i++) {
+                                observationData.setCurrentARVTreatmentINNs(i, regimenParts[i].trim());
+                            }
+                        }
+                    }
+                }
+                if (parameter.getType().getCodingFirstRep().getCode().equals("5272AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // Pregnancy
+                    if (ObjectUtils.isNotEmpty(parameter.getValue())) {
+                        if (parameter.getValue() instanceof StringType) {
+                            StringType vlPregnancyType = (StringType) parameter.getValue();
+                            Dictionary dict = null;
+                            if (vlPregnancyType.getValue().equalsIgnoreCase("Oui")
+                                    || vlPregnancyType.getValue().equalsIgnoreCase("Yes")) {
+                                dict = dictionaryService
+                                        .getDictionaryByDictEntry("Demographic Response Yes (in Yes or No)");
+                            } else if (vlPregnancyType.getValue().equalsIgnoreCase("Non")
+                                    || vlPregnancyType.getValue().equalsIgnoreCase("No")) {
+                                dict = dictionaryService
+                                        .getDictionaryByDictEntry("Demographic Response No (in Yes or No)");
+                            }
+                            if (ObjectUtils.isNotEmpty(dict)) {
+                                observationData.setVlPregnancy(dict.getId());
+                            }
+                        }
+                    }
+                }
 
-            if (parameter.getType().getCodingFirstRep().getCode().equals("5632AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // Breastfeeding
-                if (ObjectUtils.isNotEmpty(parameter.getValue())) {
-                    if (parameter.getValue() instanceof StringType) {
-                        StringType vlBreastFeedingType = (StringType) parameter.getValue();
-                        Dictionary dict = null;
-                        if (vlBreastFeedingType.getValue().equalsIgnoreCase("Oui")
-                                || vlBreastFeedingType.getValue().equalsIgnoreCase("Yes")) {
-                            dict = dictionaryService
-                                    .getDictionaryByDictEntry("Demographic Response Yes (in Yes or No)");
-                        } else if (vlBreastFeedingType.getValue().equalsIgnoreCase("Non")
-                                || vlBreastFeedingType.getValue().equalsIgnoreCase("No")) {
-                            dict = dictionaryService.getDictionaryByDictEntry("Demographic Response No (in Yes or No)");
-                        }
-                        if (ObjectUtils.isNotEmpty(dict)) {
-                            observationData.setVlSuckle(dict.getId());
+                if (parameter.getType().getCodingFirstRep().getCode().equals("5632AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // Breastfeeding
+                    if (ObjectUtils.isNotEmpty(parameter.getValue())) {
+                        if (parameter.getValue() instanceof StringType) {
+                            StringType vlBreastFeedingType = (StringType) parameter.getValue();
+                            Dictionary dict = null;
+                            if (vlBreastFeedingType.getValue().equalsIgnoreCase("Oui")
+                                    || vlBreastFeedingType.getValue().equalsIgnoreCase("Yes")) {
+                                dict = dictionaryService
+                                        .getDictionaryByDictEntry("Demographic Response Yes (in Yes or No)");
+                            } else if (vlBreastFeedingType.getValue().equalsIgnoreCase("Non")
+                                    || vlBreastFeedingType.getValue().equalsIgnoreCase("No")) {
+                                dict = dictionaryService
+                                        .getDictionaryByDictEntry("Demographic Response No (in Yes or No)");
+                            }
+                            if (ObjectUtils.isNotEmpty(dict)) {
+                                observationData.setVlSuckle(dict.getId());
+                            }
                         }
                     }
                 }
-            }
-            // CI0050006AAAAAAAAAAAAAAAAAAAAAAAAAAA Heure de prélèvement
-            if (parameter.getType().getCodingFirstRep().getCode().equals("CI0050006AAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // Heure
-                // de
-                // prélèvement
-                if (ObjectUtils.isNotEmpty(parameter.getValue())) {
-                    if (parameter.getValue() instanceof DateTimeType) {
-                        DateTimeType dateValue = (DateTimeType) parameter.getValue();
-                        if (ObjectUtils.isNotEmpty(dateValue))
-                            form.setInterviewTime(DateUtil.formatTimeAsText(dateValue.getValue()));
+                // CI0050006AAAAAAAAAAAAAAAAAAAAAAAAAAA Heure de prélèvement
+                if (parameter.getType().getCodingFirstRep().getCode().equals("CI0050006AAAAAAAAAAAAAAAAAAAAAAAAAAA")) { // Heure
+                    // de
+                    // prélèvement
+                    if (ObjectUtils.isNotEmpty(parameter.getValue())) {
+                        if (parameter.getValue() instanceof DateTimeType) {
+                            DateTimeType dateValue = (DateTimeType) parameter.getValue();
+                            if (ObjectUtils.isNotEmpty(dateValue))
+                                form.setInterviewTime(DateUtil.formatTimeAsText(dateValue.getValue()));
+                        }
                     }
                 }
             }
         }
 
-        requesterPerson.getName().forEach(humanName -> {
-            String lastName = humanName.getFamily();
-            String firstName = String.join("",
-                    humanName.getGiven().stream().map(e -> e.asStringValue()).collect(Collectors.toList()));
-            observationData.setNameOfDoctor(lastName + " " + firstName);
-        });
+        if (requesterPerson != null && requesterPerson.getName() != null) {
+            requesterPerson.getName().forEach(humanName -> {
+                String lastName = humanName.getFamily() != null ? humanName.getFamily() : "";
+                String firstName = humanName.getGiven() != null
+                        ? String.join("",
+                                humanName.getGiven().stream().map(e -> e.asStringValue()).collect(Collectors.toList()))
+                        : "";
+                observationData.setNameOfDoctor(lastName + " " + firstName);
+            });
+        }
 
         projectData.setViralLoadTest(true);
         form.setProjectData(projectData);

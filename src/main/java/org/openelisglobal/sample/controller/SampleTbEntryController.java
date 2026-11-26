@@ -10,12 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.ObjectUtils;
-import org.hl7.fhir.r4.model.Location;
-import org.hl7.fhir.r4.model.Patient;
-import org.hl7.fhir.r4.model.Practitioner;
-import org.hl7.fhir.r4.model.ServiceRequest;
-import org.hl7.fhir.r4.model.Specimen;
-import org.hl7.fhir.r4.model.Task;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.services.DisplayListService;
@@ -82,15 +76,6 @@ public class SampleTbEntryController extends BaseSampleEntryController {
 
     @Autowired
     private PanelItemService panelItemService;
-
-    private Task task = null;
-    private Practitioner requesterPerson = null;
-    private Practitioner collector = null;
-    private org.hl7.fhir.r4.model.Organization referringOrganization = null;
-    private Location location = null;
-    private ServiceRequest serviceRequest = null;
-    private Specimen specimen = null;
-    private Patient fhirPatient = null;
 
     private static final String[] ALLOWED_FIELDS = new String[] {};
 
