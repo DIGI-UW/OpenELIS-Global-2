@@ -22,6 +22,7 @@ import {
   TextArea,
   FilterableMultiSelect,
   Link,
+  InlineNotification,
 } from "@carbon/react";
 import { Launch, Subtract, ArrowLeft, ArrowRight } from "@carbon/react/icons";
 import {
@@ -78,6 +79,7 @@ function ImmunohistochemistryCaseView() {
   const [technicianUsers, setTechnicianUsers] = useState([]);
   const [pathologistUsers, setPathologistUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [loadingReport, setLoadingReport] = useState(false);
   const [intensityList, setIntensityList] = useState([]);
   const [cerbB2PatternList, setCerbB2PatternList] = useState([]);
@@ -928,6 +930,11 @@ function ImmunohistochemistryCaseView() {
   };
 
   const setInitialImmunohistochemistrySampleInfo = (e) => {
+    if (!e) {
+      setLoadFailed(true);
+      setLoading(false);
+      return;
+    }
     if (
       hasRole(userSessionDetails, "Pathologist") &&
       !e.assignedPathologistId &&
@@ -980,6 +987,33 @@ function ImmunohistochemistryCaseView() {
       componentMounted.current = false;
     };
   }, []);
+
+  if (loadFailed) {
+    return (
+      <>
+        <PageBreadCrumb breadcrumbs={breadcrumbs} />
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
+            <Section>
+              <Section>
+                <Heading>
+                  <FormattedMessage id="immunohistochemistry.label.title" />
+                </Heading>
+              </Section>
+            </Section>
+          </Column>
+          <Column lg={16} md={8} sm={4}>
+            <InlineNotification
+              kind="error"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({ id: "caseView.error.loadFailed" })}
+            />
+          </Column>
+        </Grid>
+      </>
+    );
+  }
 
   return (
     <>
