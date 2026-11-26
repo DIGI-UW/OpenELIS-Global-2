@@ -1,6 +1,8 @@
 package org.openelisglobal.common.rest;
 
 import java.sql.Date;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.Map;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.util.ControllerUtills;
@@ -66,8 +68,8 @@ public class BaseRestController extends ControllerUtills implements IActionConst
             return null;
         }
         try {
-            return Date.valueOf(value.trim());
-        } catch (IllegalArgumentException e) {
+            return Date.valueOf(LocalDate.parse(value.trim()));
+        } catch (DateTimeParseException e) {
             throw new IllegalArgumentException(key + " must be an ISO date (yyyy-MM-dd)");
         }
     }

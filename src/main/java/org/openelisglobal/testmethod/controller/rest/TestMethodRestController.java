@@ -5,6 +5,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import java.sql.Date;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.log.LogEvent;
@@ -75,8 +77,8 @@ public class TestMethodRestController extends BaseController {
             HttpServletRequest request) {
         java.sql.Date effectiveDate;
         try {
-            effectiveDate = Date.valueOf(req.effectiveDate);
-        } catch (IllegalArgumentException e) {
+            effectiveDate = Date.valueOf(LocalDate.parse(req.effectiveDate));
+        } catch (DateTimeParseException | IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body("effectiveDate must be yyyy-MM-dd");
         }
         // testId/methodId map to numeric(10) columns via LIMSStringNumberUserType,
@@ -128,8 +130,8 @@ public class TestMethodRestController extends BaseController {
         data.code = req.code;
         data.isDefault = req.isDefault;
         try {
-            data.effectiveDate = Date.valueOf(req.effectiveDate);
-        } catch (IllegalArgumentException e) {
+            data.effectiveDate = Date.valueOf(LocalDate.parse(req.effectiveDate));
+        } catch (DateTimeParseException | IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body("effectiveDate must be yyyy-MM-dd");
         }
         data.sysUserId = getSysUserId(request);
@@ -188,8 +190,8 @@ public class TestMethodRestController extends BaseController {
         java.sql.Date effectiveDate = existing.getEffectiveDate();
         if (req.effectiveDate != null && !req.effectiveDate.isBlank()) {
             try {
-                effectiveDate = Date.valueOf(req.effectiveDate);
-            } catch (IllegalArgumentException e) {
+                effectiveDate = Date.valueOf(LocalDate.parse(req.effectiveDate));
+            } catch (DateTimeParseException | IllegalArgumentException e) {
                 return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body("effectiveDate must be yyyy-MM-dd");
             }
         }
