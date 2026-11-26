@@ -32,6 +32,19 @@ public class ChangePasswordLoginControllerTest extends BaseWebContextSensitiveTe
 
     @Before
     public void loadUsers() throws Exception {
+        // The production SQL seed provides *NameCharset site_information rows
+        // that NameValidator.refreshConfiguration() reads to build username/name
+        // regexes. In the test container these rows may be missing or truncated
+        // by a prior fixture, causing @ValidName to reject "admin" with code
+        // "ValidName" instead of letting the password check run. Seed the same
+        // values production uses so the @Valid gate passes identically.
+        ensureSiteInformation("userNameCharset", "0-9a-z .'_@-");
+        ensureSiteInformation("firstNameCharset", "0-9a-z .'_@-");
+        ensureSiteInformation("lastNameCharset", "0-9a-z .'_@-");
+
+        // Force the validator static regexes to re-read the rows we just ensured.
+        new org.openelisglobal.validation.constraintvalidator.NameValidator().refreshConfiguration();
+
         executeDataSetWithStateManagement("testdata/system-user.xml");
     }
 
