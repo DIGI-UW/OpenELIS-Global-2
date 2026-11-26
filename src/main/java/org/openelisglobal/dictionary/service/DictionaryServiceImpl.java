@@ -111,7 +111,39 @@ public class DictionaryServiceImpl extends AuditableBaseObjectServiceImpl<Dictio
         if (isDictionaryFrozenCheckRequired && isDictionaryFrozen(dictionary)) {
             throw new LIMSFrozenRecordException("Dictionary Entry is referenced " + dictionary.getDictEntry());
         }
+        syncEnglishLabelOnRename(dictionary);
         super.update(dictionary);
+    }
+
+    /**
+     * Pickers read the English label, so a renamed entry carries its new name there
+     * too. Other languages are left alone, and a save that keeps the name leaves an
+     * English label set elsewhere as it is.
+     */
+    private void syncEnglishLabelOnRename(Dictionary dictionary) {
+        if (dictionary.getId() == null || dictionary.getDictEntry() == null) {
+            return;
+        }
+        Dictionary stored = getBaseObjectDAO().get(dictionary.getId()).orElse(null);
+        if (stored == null) {
+            return;
+        }
+        getBaseObjectDAO().evict(stored);
+        if (dictionary.getDictEntry().equals(stored.getDictEntry())) {
+            return;
+        }
+        Localization label = stored.getLocalizedDictionaryName();
+        if (label == null) {
+            label = createLocalizationForDictionary(dictionary);
+            label.setSysUserId(dictionary.getSysUserId());
+            localizationService.insert(label);
+        } else {
+            label = localizationService.get(label.getId());
+            label.setLocalizedValue("en", dictionary.getDictEntry());
+            label.setSysUserId(dictionary.getSysUserId());
+            label = localizationService.update(label);
+        }
+        dictionary.setLocalizedDictionaryName(label);
     }
 
     @Override
