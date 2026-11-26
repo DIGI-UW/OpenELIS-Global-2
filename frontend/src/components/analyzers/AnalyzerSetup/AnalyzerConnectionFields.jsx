@@ -118,6 +118,11 @@ export const serializeConnectionValues = (
       if (field.inputKind === "SECRET" && !changedSecrets.has(field.key)) {
         return;
       }
+      // Omitted settings are preserved on update. Send an intentional clear of saved text.
+      if (value === "" && field.inputKind === "TEXT" && field.currentValue) {
+        serialized[field.key] = "";
+        return;
+      }
       if (value === null || value === undefined || value === "") {
         return;
       }
