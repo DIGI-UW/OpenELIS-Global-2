@@ -22,6 +22,7 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService;
+import org.openelisglobal.common.util.BoundedDecimal;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.dao.SampleItemDAO;
@@ -124,7 +125,11 @@ public class SampleManagementServiceImpl implements SampleManagementService {
             numberOfAliquots = 1;
         }
 
-        // Step 2: Validate quantity to transfer is positive
+        // Step 2: Validate quantity to transfer is positive and of a size that can
+        // be divided and stored without expanding an exponent into digits
+        if (totalQuantityToTransfer == null || !BoundedDecimal.isBounded(totalQuantityToTransfer)) {
+            throw new IllegalArgumentException("Quantity to transfer must be a plain decimal");
+        }
         if (totalQuantityToTransfer.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Quantity to transfer must be greater than 0");
         }
