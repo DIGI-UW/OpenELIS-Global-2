@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v7
         with:
           node-version: "22"
@@ -21,3 +23,4 @@ jobs:
       - run: node --test .github/scripts/publish-checkpoints.test.cjs .github/scripts/publish-source.test.cjs .github/scripts/publish-release-manifest.test.cjs
       - run: python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v
       - run: python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
+      - run: python3 .github/scripts/check-liquibase-changelogs.py
