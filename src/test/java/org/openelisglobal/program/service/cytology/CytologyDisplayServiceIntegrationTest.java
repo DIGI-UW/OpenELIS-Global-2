@@ -6,6 +6,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
@@ -43,7 +44,7 @@ public class CytologyDisplayServiceIntegrationTest extends BaseWebContextSensiti
         CytologyCaseViewDisplayItem item = cytologyDisplayService.convertToCaseDisplayItem(1);
 
         assertEquals(CytologyStatus.READY_FOR_CYTOPATHOLOGIST, item.getStatus());
-        assertEquals("2024-06-03", item.getRequestDate().toString().substring(0, 10));
+        assertEquals(LocalDate.of(2024, 6, 3), item.getRequestDate());
         assertEquals("Smith,Sarah", item.getAssignedCytoPathologist());
         assertEquals("2", item.getAssignedPathologistId());
         assertEquals("Doe,John", item.getAssignedTechnician());
@@ -203,7 +204,7 @@ public class CytologyDisplayServiceIntegrationTest extends BaseWebContextSensiti
         CytologyDisplayItem item = cytologyDisplayService.convertToDisplayItem(1);
 
         assertEquals(CytologyStatus.READY_FOR_CYTOPATHOLOGIST, item.getStatus());
-        assertEquals("2024-06-03", item.getRequestDate().toString().substring(0, 10));
+        assertEquals(LocalDate.of(2024, 6, 3), item.getRequestDate());
         assertEquals("Smith,Sarah", item.getAssignedCytoPathologist());
         assertEquals("Doe,John", item.getAssignedTechnician());
         assertEquals("Jane", item.getFirstName());

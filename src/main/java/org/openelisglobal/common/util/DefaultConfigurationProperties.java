@@ -407,6 +407,7 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.PATHOLOGY_STAGE_COVERSLIPPING_ENABLED, "true");
         properties.setPropertyValue(Property.PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED, "true");
         properties.setPropertyValue(Property.PATHOLOGY_SCAN_VERIFICATION_REQUIRED, "true");
+        properties.setPropertyValue(Property.PATHOLOGY_PRIOR_RESULTS_ROWS, "5");
 
         // The scheme a deployment falls back to when it has configured none: parts
         // lettered A, B, C, a block named for its part and its number, a slide named

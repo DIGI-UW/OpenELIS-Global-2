@@ -92,8 +92,65 @@ public interface ResultRunService extends BaseObjectService<ResultRun, Long> {
      */
     void closeDecidedWorkplanRun(Long batchWorkplanId, String sysUserId);
 
+    /**
+     * FR-B3: a result saved on a row in no run is a run of one. The updater, run in
+     * the save's transaction, completes the analysis's open run of one (opened by a
+     * control recorded on the row) or creates one, carrying the row's lab unit, the
+     * user and the reagent lot consumed for the analysis, and records the result
+     * into it. Only a first value makes a run; an edit of a stored result does not.
+     */
+    org.openelisglobal.common.services.registration.interfaces.IResultUpdate recordRunsOfOne(String sysUserId);
+
+    /**
+     * FR-B3, FR-D7: a control recorded in the Reagents, QC and Controls section of
+     * a row in no run opens the row's run of one and is recorded on it, so its
+     * verdict covers the row and a failure holds it; the save then completes the
+     * run. A row already in a run, or one whose result is stored, is refused.
+     */
+    org.openelisglobal.qc.valueholder.QCResult recordRowControl(String analysisId,
+            org.openelisglobal.qc.form.BenchQCCaptureForm capture, RunViewer viewer, String sysUserId);
+
+    /**
+     * FR-C7, FR-H4: a first value about to be saved on a row in no run, whose test
+     * requires a control on every run and holds when it is missing, makes the row's
+     * run of one, held for the missing control, so the save is refused like any
+     * held row's until a control is recorded or the test is decided.
+     */
+    void holdRunsOfOneMissingControl(Collection<String> analysisIds, String sysUserId);
+
+    /** The run each of the results was recorded in, by result id (FR-D6, FR-D7). */
+    Map<String, Long> runsOfResults(Collection<String> resultIds);
+
     /** The run a workplan batch is, once released: its latest. */
     Optional<ResultRun> batchRun(Long batchWorkplanId);
+
+    /**
+     * The batch's run while it is open and holds a test for QC (FR-C4): neither it
+     * nor its batch may be completed or archived until the test's control is
+     * recorded or the test is decided (FR-C5), or the hold would free its rows.
+     */
+    Optional<ResultRun> holdingBatchRun(Long batchWorkplanId);
+
+    /**
+     * FR-E3: the reagent lots a workplan run may record, the one it records, and
+     * the last one recorded on another run; empty when the viewer cannot see it.
+     */
+    Optional<org.openelisglobal.resultrun.form.RunLotOptions> lotOptions(Long runId, RunViewer viewer);
+
+    /**
+     * FR-E3: records the reagent lot an open workplan run uses, on the run and on
+     * its batch, and answers with the run's header; empty when the viewer cannot
+     * see it. A closed run, or one that is not a batch's, is refused.
+     */
+    Optional<ResultRunHeader> setReagentLot(Long runId, Long reagentId, Long reagentLotId, RunViewer viewer,
+            String sysUserId);
+
+    /**
+     * FR-E5 Mark complete: completes an open workplan run with its batch, and
+     * answers with the run's header; empty when the viewer cannot see it. A run
+     * that holds a test, or whose batch is back in setup, is refused.
+     */
+    Optional<ResultRunHeader> markComplete(Long runId, RunViewer viewer, String sysUserId);
 
     /**
      * For analyses batched in an open or held workplan run: analysis id to run id,

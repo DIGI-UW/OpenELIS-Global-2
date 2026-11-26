@@ -83,6 +83,19 @@ public class ResultRun extends BaseObject<Long> {
     @Column(name = "reagent_lot_id")
     private Long reagentLotId;
 
+    /** A run of one's analysis (FR-B3); null for other sources. */
+    @Column(name = "analysis_id", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String analysisId;
+
+    public String getAnalysisId() {
+        return analysisId;
+    }
+
+    public void setAnalysisId(String analysisId) {
+        this.analysisId = analysisId;
+    }
+
     public Long getBatchWorkplanId() {
         return batchWorkplanId;
     }

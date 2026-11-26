@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import { csrfToken } from "./api-session";
 
 /**
@@ -24,8 +24,23 @@ export interface ProgramOrderConfig {
   sampleType: string;
   /** Test name on that sample type; the first test when omitted. */
   test?: string;
-  /** Per-run unique patient name, so the case can be found and told apart. */
-  patient: { firstName: string; lastName: string };
+  /**
+   * Per-run unique patient name, so the case can be found and told apart. A new
+   * patient is created from it; leave it out only with existingPatientCaseId.
+   */
+  patient?: { firstName: string; lastName: string };
+  /**
+   * The id of a pathology case of a patient already on the stack. The order is
+   * then placed for that patient, as Add Order does once a patient is picked
+   * from the search, and no patient is created. Absent, a new patient is
+   * created as before.
+   */
+  existingPatientCaseId?: string;
+  /**
+   * The provider row's own id, taken from the same provider search row as
+   * providerPersonId. Absent, providerPersonId is sent in its place.
+   */
+  providerId?: string;
   providerPersonId?: string;
   referringSiteId?: string;
 }
@@ -107,6 +122,70 @@ async function serverDates(page: Page) {
   };
 }
 
+/**
+ * The patient id of a pathology case, read from the case view's answer, which
+ * carries it as `patientPK`. Throws when the case answers without one.
+ */
+async function patientPkOfCase(page: Page, caseId: string): Promise<string> {
+  const view = await getJson<{ patientPK?: string | number | null }>(
+    page,
+    `/rest/pathology/caseView/${caseId}`,
+  );
+  const patientPK = view.patientPK == null ? "" : String(view.patientPK);
+  if (!patientPK) {
+    throw new Error(`Case ${caseId} answered with no patientPK`);
+  }
+  return patientPK;
+}
+
+/**
+ * The patient block Add Order sends for a patient picked from the search: the
+ * patient's stored details, as /rest/patient-details answers them, marked to
+ * be left as they are. The order is validated against the whole block, so the
+ * id and the status alone are refused for a blank birth date, sex and id.
+ */
+export async function existingPatientProperties(
+  page: Page,
+  caseId: string,
+): Promise<Record<string, unknown>> {
+  const patientPK = await patientPkOfCase(page, caseId);
+  const details = await getJson<Record<string, unknown>>(
+    page,
+    `/rest/patient-details?patientID=${encodeURIComponent(patientPK)}`,
+  );
+  return { ...details, patientPK, patientUpdateStatus: "NO_ACTION" };
+}
+
+/**
+ * The patient block of the order form: a new patient to add, or the patient of
+ * an earlier case left as it is (the shape Add Order sends for a picked one).
+ */
+async function patientPropertiesFor(
+  page: Page,
+  config: ProgramOrderConfig,
+  birthDate: string,
+  uniqueId: string,
+) {
+  if (config.existingPatientCaseId) {
+    return existingPatientProperties(page, config.existingPatientCaseId);
+  }
+  if (!config.patient) {
+    throw new Error(
+      "createProgramOrder needs a patient or an existingPatientCaseId",
+    );
+  }
+  return {
+    patientPK: "",
+    patientUpdateStatus: "ADD",
+    firstName: config.patient.firstName,
+    lastName: config.patient.lastName,
+    gender: "F",
+    birthDateForDisplay: birthDate,
+    nationalId: uniqueId,
+    subjectNumber: uniqueId,
+  };
+}
+
 export async function createProgramOrder(
   page: Page,
   config: ProgramOrderConfig,
@@ -163,16 +242,12 @@ export async function createProgramOrder(
       `storageLocationId='' storageLocationType='' storagePositionCoordinate='' ` +
       `gpsLatitude='' gpsLongitude='' gpsAccuracy='' gpsCaptureMethod='' ` +
       `numOrderLabels='1' numSpecimenLabels='1'/></samples>`,
-    patientProperties: {
-      patientPK: "",
-      patientUpdateStatus: "ADD",
-      firstName: config.patient.firstName,
-      lastName: config.patient.lastName,
-      gender: "F",
-      birthDateForDisplay: birthDate,
-      nationalId: uniqueId,
-      subjectNumber: uniqueId,
-    },
+    patientProperties: await patientPropertiesFor(
+      page,
+      config,
+      birthDate,
+      uniqueId,
+    ),
     sampleOrderItems: {
       newRequesterName: "",
       orderTypes: [],
@@ -189,7 +264,7 @@ export async function createProgramOrder(
       referringSiteDepartmentId: "",
       referringSiteCode: "",
       referringSiteName: "",
-      providerId: providerPersonId,
+      providerId: config.providerId ?? providerPersonId,
       providerPersonId,
       providerFirstName: "",
       providerLastName: "",
@@ -234,4 +309,62 @@ export async function createProgramOrder(
     );
   }
   return { labNo, programId: program.id, testName: test.name };
+}
+
+/**
+ * Where each bench's dashboard lists a case, and the field its row carries the
+ * case id in. The cytology row names its case id pathologySampleId.
+ */
+const BENCH_DASHBOARDS = {
+  immunohistochemistry: {
+    statuses: ["IN_PROGRESS", "READY_PATHOLOGIST", "COMPLETED"],
+    idField: "immunohistochemistrySampleId",
+  },
+  cytology: {
+    statuses: [
+      "PREPARING_SLIDES",
+      "SCREENING",
+      "READY_FOR_CYTOPATHOLOGIST",
+      "COMPLETED",
+    ],
+    idField: "pathologySampleId",
+  },
+} as const;
+
+/**
+ * The id of the immunohistochemistry or cytology case an order created, read
+ * from that bench's dashboard by the order's lab number. Polled, since the
+ * dashboard is a separate request that a busy stack can answer before the
+ * order's own response is written out.
+ */
+export async function programCaseIdOf(
+  page: Page,
+  bench: keyof typeof BENCH_DASHBOARDS,
+  labNo: string,
+): Promise<string> {
+  const { statuses, idField } = BENCH_DASHBOARDS[bench];
+  const query =
+    statuses.map((status) => `statuses=${status}`).join("&") +
+    `&searchTerm=${encodeURIComponent(labNo)}`;
+  let caseId = "";
+  await expect
+    .poll(
+      async () => {
+        const { items } = await getJson<{
+          items?: Record<string, string | number | null | undefined>[];
+        }>(page, `/rest/${bench}/dashboard?${query}`);
+        const id = (items ?? []).find((item) => item.labNumber === labNo)?.[
+          idField
+        ];
+        caseId = id == null ? "" : String(id);
+        return caseId;
+      },
+      {
+        message: `The ${bench} dashboard never listed a case for ${labNo}`,
+        intervals: [500],
+        timeout: 10_000,
+      },
+    )
+    .not.toBe("");
+  return caseId;
 }
