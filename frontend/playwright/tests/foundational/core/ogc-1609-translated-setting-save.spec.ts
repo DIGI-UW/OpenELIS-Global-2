@@ -50,8 +50,14 @@ async function writeBanner(page: Page, banner: BannerText) {
           credentials: "include",
         })
       ).json();
-      form.localization.english = banner.english;
-      form.localization.french = banner.french;
+      const values = form.localization.values;
+      form.localization = {
+        values: {
+          ...values,
+          en: { ...values.en, value: banner.english },
+          fr: { ...values.fr, value: banner.french },
+        },
+      };
       const res = await fetch(`${api}/rest/SiteInformation?ID=${banner.id}`, {
         method: "POST",
         credentials: "include",
@@ -62,7 +68,7 @@ async function writeBanner(page: Page, banner: BannerText) {
     },
     { api: API, banner },
   );
-  expect(status, "the record the screen was served saves back").toBe(200);
+  expect(status, "the original translations are restored").toBe(200);
 }
 
 test.describe("OGC-1609 translated setting save", () => {
