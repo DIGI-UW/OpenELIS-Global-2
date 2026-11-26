@@ -1820,7 +1820,7 @@
   "caseView.badge.deactivated": "Deactivated",
   "caseView.badge.notApplicable": "N/A",
   "caseView.badge.readOnly": "Read only",
-  "caseView.error.loadFailed": "This case could not be loaded. Check the link or go back to the dashboard.",
+  "caseView.error.loadFailed": "This case could not be opened. Go back to the dashboard and open it from the list.",
   "caseView.label.assignedStaff": "{role}: {name}",
   "caseView.label.caseProgress": "Case progress",
   "caseView.label.caseSummary": "Case summary",

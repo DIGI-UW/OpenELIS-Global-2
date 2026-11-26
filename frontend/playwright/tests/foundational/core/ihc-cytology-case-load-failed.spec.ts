@@ -21,7 +21,7 @@ import { NAV_TIMEOUT } from "../../../helpers/timeouts";
 
 // Repeated once from en.json (caseView.error.loadFailed).
 const LOAD_FAILED_NOTICE =
-  "This case could not be loaded. Check the link or go back to the dashboard.";
+  "This case could not be opened. Go back to the dashboard and open it from the list.";
 
 const UNKNOWN_CASE_ID = "424242";
 
