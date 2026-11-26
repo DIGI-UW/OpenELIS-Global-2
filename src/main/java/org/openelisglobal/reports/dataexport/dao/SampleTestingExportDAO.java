@@ -56,7 +56,7 @@ public interface SampleTestingExportDAO extends BaseDAO<Result, String> {
     String program(String sampleId);
 
     /** The lab units of the specimen's tests (OGC-1655). */
-    List<org.openelisglobal.test.valueholder.TestSection> labUnits(String specimenId);
+    List<org.openelisglobal.test.valueholder.TestSection> labUnits(String specimenId, List<String> labSectionIds);
 
     List<String> qualifiers(String resultId);
 

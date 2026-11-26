@@ -217,7 +217,7 @@ public class SampleTestingSource implements ReportingSource {
                             observationFields.putAll(locations.forSample(specimen.getSample(), locationCache));
                             if (orderFieldsSelected) {
                                 observationFields.putAll(orderFields(specimen.getSample().getId(), specimenId, zone,
-                                        request.userLocale()));
+                                        request.userLocale(), request.filterSpec().labSectionIds()));
                             }
                         }
                         if (!Objects.equals(sampleId, specimen.getSample().getId())) {
@@ -378,12 +378,13 @@ public class SampleTestingSource implements ReportingSource {
         return ages;
     }
 
-    private Map<String, String> orderFields(String sampleId, String specimenId, ZoneId zone, Locale locale) {
+    private Map<String, String> orderFields(String sampleId, String specimenId, ZoneId zone, Locale locale,
+            List<String> labSectionIds) {
         Map<String, String> fields = new LinkedHashMap<>();
         fields.put("enteredDate", timestamp(dao.enteredAt(sampleId), zone));
         fields.put("program", dao.program(sampleId));
-        fields.put("labUnit", dao.labUnits(specimenId).stream().map(unit -> ExportTestNames.sectionName(unit, locale))
-                .sorted().collect(Collectors.joining("; ")));
+        fields.put("labUnit", dao.labUnits(specimenId, labSectionIds).stream()
+                .map(unit -> ExportTestNames.sectionName(unit, locale)).sorted().collect(Collectors.joining("; ")));
         return fields;
     }
 

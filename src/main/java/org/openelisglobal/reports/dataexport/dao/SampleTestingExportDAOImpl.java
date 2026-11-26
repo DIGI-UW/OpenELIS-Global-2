@@ -150,11 +150,11 @@ public class SampleTestingExportDAOImpl extends BaseDAOImpl<Result, String> impl
     }
 
     @Override
-    public List<TestSection> labUnits(String specimenId) {
+    public List<TestSection> labUnits(String specimenId, List<String> labSectionIds) {
         return entityManager
-                .createQuery("select distinct ts from Analysis a join a.testSection ts where a.sampleItem.id = :item",
-                        TestSection.class)
-                .setParameter("item", specimenId).getResultList();
+                .createQuery("select distinct ts from Analysis a join a.testSection ts where a.sampleItem.id = :item "
+                        + "and ts.id in :sections", TestSection.class)
+                .setParameter("item", specimenId).setParameter("sections", labSectionIds).getResultList();
     }
 
     @Override

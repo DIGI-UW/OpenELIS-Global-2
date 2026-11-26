@@ -499,6 +499,48 @@ public class SampleTestingMappingIntegrationTest extends BaseWebContextSensitive
         return source.catalog().stream().filter(field -> field.id().equals(id)).findFirst().orElseThrow().label();
     }
 
+    @Test
+    public void labUnitsIncludeOnlyTheExportScopeForASpecimenWithTestsInMultipleSections() throws Exception {
+        Analysis first = analyses.get("1");
+        Analysis second = analyses.get("2");
+        second.setSampleItem(first.getSampleItem());
+        String status = statuses.getStatusID(AnalysisStatus.Finalized);
+        first.setStatusId(status);
+        second.setStatusId(status);
+        analyses.update(first);
+        analyses.update(second);
+        reading(first, options.get("1"), "85.0");
+        reading(second, options.get("2"), "14.5");
+        entityManager.flush();
+
+        var fields = source.catalog().stream().filter(field -> field.id().equals("labUnit")).toList();
+        ReportSourceConfig definition = new ReportSourceConfig("SAMPLE_TESTING", 1, "Sample & Testing",
+                "SAMPLE_TESTING", "collectionDate", List.of("RESULT_LIST"), List.of("labUnit"), List.of(),
+                List.of("testIds"), Map.of("RESULT_LIST", List.of("labUnit")));
+        String firstSection = first.getTestSection().getId();
+        String secondSection = second.getTestSection().getId();
+        List<List<String>> scopes = List.of(List.of(firstSection), List.of(secondSection),
+                List.of(firstSection, secondSection));
+        List<String> expected = List.of("Test Localization 1", "Test Localization 2",
+                "Test Localization 1; Test Localization 2");
+
+        for (int i = 0; i < scopes.size(); i++) {
+            ExportFilter filter = new ExportFilter("2023-11-15", "2023-11-15", scopes.get(i), List.of(),
+                    List.of("FINALIZED"));
+            StringWriter csv = new StringWriter();
+            assertEquals(scopes.get(i).size(), source.write(csv,
+                    new ExportSnapshot(definition, "RESULT_LIST", fields, filter, "UTC", List.of(status), "en")));
+            try (var parsed = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).build()
+                    .parse(new StringReader(csv.toString().substring(1)))) {
+                var rows = parsed.getRecords();
+                assertEquals(scopes.get(i).size(), rows.size());
+                for (var row : rows) {
+                    assertEquals(expected.get(i), row.get("Lab Unit"));
+                }
+            }
+        }
+    }
+
     /**
      * OGC-1655: the Routine sample fields. Date Entered is when the order was
      * entered, with its time; Program is the order's program answer; Lab Unit names
