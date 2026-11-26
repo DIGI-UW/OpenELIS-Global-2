@@ -1,5 +1,6 @@
 package org.openelisglobal.login.form;
 
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.validation.annotations.Password;
@@ -12,20 +13,33 @@ public class ChangePasswordLoginForm extends BaseForm {
     @ValidName(nameType = NameType.USERNAME, message = "username is invalid")
     private String loginName = "";
 
-    // in validator
+    // Current password
     @Password
     private String password;
 
-    // in validator
+    // New password
     @Password
     private String newPassword;
 
-    // in validator
+    // Confirm new password
     @Password
     private String confirmPassword;
 
     public ChangePasswordLoginForm() {
         setFormName("changePasswordLoginForm");
+    }
+
+    // Ensure new password matches confirmation
+    @AssertTrue(message = "New password and confirmation password do not match")
+    public boolean isNewPasswordConfirmed() {
+        if (isEmpty(newPassword) || isEmpty(confirmPassword)) {
+            return true;
+        }
+        return newPassword.equals(confirmPassword);
+    }
+
+    private static boolean isEmpty(String value) {
+        return value == null || value.isEmpty();
     }
 
     public String getLoginName() {
