@@ -1,0 +1,328 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- * The contents of this file are subject to the Mozilla Public License
+    * Version 1.1 (the "License"); you may not use this file except in * compliance
+    with the License. You may obtain a copy of the License at * http://www.mozilla.org/MPL/
+    * * Software distributed under the License is distributed on an "AS IS" *
+    basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the *
+    License for the specific language governing rights and limitations under
+    * the License. * * The Original Code is OpenELIS code. * * Copyright (C)
+    ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
+<!-- Anatomic-pathology cases for the prior results panel. Patient 1 owns
+    orders 101 to 114, patient 2 owns order 201, and order 301 has no sample_human
+    row at all. An order has at most one sample_human row (the schema keeps samp_id
+    unique). Order 111 holds a plain program_sample, a program that is not anatomic
+    pathology. Case ids are distinct across the four case tables, and every child
+    row carries last_updated, the row's optimistic-lock version. The dataset
+    leaves out dictionary, type_of_sample, localization and sample_item on purpose:
+    a table named in a dataset is emptied, and through localization so are test,
+    test_section and panel, for every later test class in the Surefire fork.
+    The dictionary entries 9001 (Adenocarcinoma, active), 9002 (Old term, inactive)
+    and 9003 (HSIL, active) and the sample items are inserted by the test setup
+    and removed after it. Stored conclusions: case 11 holds the codes 9001 and
+    9002 in that row order, then a text; case 17 holds a code with no dictionary
+    entry (99999) and a text; case 14 holds a blank text only. Patient 3 owns
+    orders 401 to 405, so the lists of patients 1 and 2 are unchanged: case 23
+    is on screen and its earlier cytology cases are 35 (unsatisfactory, negative
+    flag left at its default), 36 (unsatisfactory, no diagnosis row), 37 (no
+    diagnosis row, no adequacy) and 38 (satisfactory, negative). -->
+
+<dataset>
+    <person id="1" last_name="Okello" first_name="Grace"
+        lastupdated="2024-06-03 12:00:00" />
+    <person id="2" last_name="Abwot" first_name="Denis"
+        lastupdated="2024-06-03 12:00:00" />
+
+    <person id="3" last_name="Nakato" first_name="Ruth"
+        lastupdated="2024-06-03 12:00:00" />
+
+    <patient id="1" person_id="1" gender="F"
+        birth_date="1988-04-11 00:00:00" is_merged="0"
+        lastupdated="2024-06-03 12:00:00" />
+    <patient id="2" person_id="2" gender="M"
+        birth_date="1975-09-02 00:00:00" is_merged="0"
+        lastupdated="2024-06-03 12:00:00" />
+    <patient id="3" person_id="3" gender="F"
+        birth_date="1990-02-14 00:00:00" is_merged="0"
+        lastupdated="2024-06-03 12:00:00" />
+
+    <program id="1" lastupdated="2024-06-10 12:00:00.0"
+        code="PROG001" name="Prior Results Program" manually_changed="false" />
+
+    <sample id="101" accession_number="PR-0101"
+        received_date="2026-01-10 00:00:00.0"
+        entered_date="2026-01-10 00:00:00.0"
+        collection_date="2026-01-10 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="102" accession_number="PR-0102"
+        received_date="2026-02-10 00:00:00.0"
+        entered_date="2026-02-10 00:00:00.0"
+        collection_date="2026-02-10 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="103" accession_number="PR-0103"
+        received_date="2026-03-10 00:00:00.0"
+        entered_date="2026-03-10 00:00:00.0"
+        collection_date="2026-03-10 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="104" accession_number="PR-0104"
+        received_date="2026-03-10 00:00:00.0"
+        entered_date="2026-03-10 00:00:00.0"
+        collection_date="2026-03-10 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="105" accession_number="PR-0105"
+        received_date="2026-04-10 00:00:00.0"
+        entered_date="2026-04-10 00:00:00.0"
+        collection_date="2026-04-10 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="106" accession_number="PR-0106"
+        received_date="2026-05-10 00:00:00.0"
+        entered_date="2026-05-10 00:00:00.0"
+        collection_date="2026-05-10 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="107" accession_number="PR-0107"
+        received_date="2026-06-10 00:00:00.0"
+        entered_date="2026-06-10 00:00:00.0"
+        collection_date="2026-06-10 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="108" accession_number="PR-0108"
+        received_date="2026-07-10 00:00:00.0"
+        entered_date="2026-07-10 00:00:00.0"
+        collection_date="2026-07-10 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="109" accession_number="PR-0109"
+        received_date="2026-08-10 00:00:00.0"
+        entered_date="2026-08-10 00:00:00.0"
+        collection_date="2026-08-10 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="110" accession_number="PR-0110"
+        received_date="2026-09-10 00:00:00.0"
+        entered_date="2026-09-10 00:00:00.0"
+        collection_date="2026-09-10 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="111" accession_number="PR-0111"
+        received_date="2026-01-05 00:00:00.0"
+        entered_date="2026-01-05 00:00:00.0"
+        collection_date="2026-01-05 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="112" accession_number="PR-0112"
+        received_date="2026-01-20 00:00:00.0"
+        entered_date="2026-01-20 00:00:00.0"
+        collection_date="2026-01-20 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="113" accession_number="PR-0113"
+        received_date="2026-01-15 00:00:00.0"
+        entered_date="2026-01-15 00:00:00.0"
+        collection_date="2026-01-15 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="114" accession_number="PR-0114"
+        received_date="2026-07-20 00:00:00.0"
+        entered_date="2026-07-20 00:00:00.0"
+        collection_date="2026-07-20 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="201" accession_number="PR-0201"
+        received_date="2026-01-10 00:00:00.0"
+        entered_date="2026-01-10 00:00:00.0"
+        collection_date="2026-01-10 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="301" accession_number="PR-0301"
+        received_date="2026-01-10 00:00:00.0"
+        entered_date="2026-01-10 00:00:00.0"
+        collection_date="2026-01-10 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <sample id="401" accession_number="PR-0401"
+        received_date="2026-02-01 00:00:00.0"
+        entered_date="2026-02-01 00:00:00.0"
+        collection_date="2026-02-01 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="402" accession_number="PR-0402"
+        received_date="2026-03-01 00:00:00.0"
+        entered_date="2026-03-01 00:00:00.0"
+        collection_date="2026-03-01 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="403" accession_number="PR-0403"
+        received_date="2026-04-01 00:00:00.0"
+        entered_date="2026-04-01 00:00:00.0"
+        collection_date="2026-04-01 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="404" accession_number="PR-0404"
+        received_date="2026-05-01 00:00:00.0"
+        entered_date="2026-05-01 00:00:00.0"
+        collection_date="2026-05-01 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="405" accession_number="PR-0405"
+        received_date="2026-06-01 00:00:00.0"
+        entered_date="2026-06-01 00:00:00.0"
+        collection_date="2026-06-01 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <sample_human id="101" samp_id="101" patient_id="1"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample_human id="102" samp_id="102" patient_id="1"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample_human id="103" samp_id="103" patient_id="1"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample_human id="104" samp_id="104" patient_id="1"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample_human id="105" samp_id="105" patient_id="1"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample_human id="106" samp_id="106" patient_id="1"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample_human id="107" samp_id="107" patient_id="1"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample_human id="108" samp_id="108" patient_id="1"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample_human id="109" samp_id="109" patient_id="1"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample_human id="110" samp_id="110" patient_id="1"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample_human id="111" samp_id="111" patient_id="1"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample_human id="112" samp_id="112" patient_id="1"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample_human id="113" samp_id="113" patient_id="1"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample_human id="114" samp_id="114" patient_id="1"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample_human id="201" samp_id="201" patient_id="2"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample_human id="401" samp_id="401" patient_id="3"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample_human id="402" samp_id="402" patient_id="3"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample_human id="403" samp_id="403" patient_id="3"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample_human id="404" samp_id="404" patient_id="3"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample_human id="405" samp_id="405" patient_id="3"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <program_sample id="41" program_id="1" sample_id="111"
+        last_updated="2026-01-01 12:00:00.0" />
+
+    <pathology_sample id="11"
+        last_updated="2026-01-01 12:00:00.0" program_id="1" sample_id="101"
+        status="COMPLETED" />
+    <pathology_sample id="12"
+        last_updated="2026-01-01 12:00:00.0" program_id="1" sample_id="102"
+        status="COMPLETED" />
+    <pathology_sample id="13"
+        last_updated="2026-01-01 12:00:00.0" program_id="1" sample_id="103"
+        status="MICROTOMY" />
+    <pathology_sample id="14"
+        last_updated="2026-01-01 12:00:00.0" program_id="1" sample_id="108"
+        status="COMPLETED" />
+    <pathology_sample id="15"
+        last_updated="2026-01-01 12:00:00.0" program_id="1" sample_id="109"
+        status="GROSSING" />
+    <pathology_sample id="16"
+        last_updated="2026-01-01 12:00:00.0" program_id="1" sample_id="110"
+        status="GROSSING" />
+    <pathology_sample id="17"
+        last_updated="2026-01-01 12:00:00.0" program_id="1" sample_id="112"
+        status="COMPLETED" />
+    <pathology_sample id="18"
+        last_updated="2026-01-01 12:00:00.0" program_id="1" sample_id="201"
+        status="COMPLETED" />
+    <pathology_sample id="19"
+        last_updated="2026-01-01 12:00:00.0" program_id="1" sample_id="301"
+        status="GROSSING" />
+    <pathology_sample id="20"
+        last_updated="2026-01-01 12:00:00.0" program_id="1" sample_id="113"
+        status="GROSSING" />
+    <pathology_sample id="23"
+        last_updated="2026-01-01 12:00:00.0" program_id="1" sample_id="405"
+        status="GROSSING" />
+
+    <immunohistochemistry_sample id="21"
+        last_updated="2026-01-01 12:00:00.0" program_id="1" sample_id="101"
+        status="IN_PROGRESS" pathology_sample_id="11" />
+    <immunohistochemistry_sample id="22"
+        last_updated="2026-01-01 12:00:00.0" program_id="1" sample_id="107"
+        status="COMPLETED" />
+
+    <cytology_diagnosis id="31"
+        negative_diagnosis="true" last_updated="2026-01-01 12:00:00.0" />
+    <cytology_diagnosis id="32"
+        negative_diagnosis="false" last_updated="2026-01-01 12:00:00.0" />
+    <cytology_diagnosis id="33"
+        negative_diagnosis="true" last_updated="2026-01-01 12:00:00.0" />
+    <cytology_diagnosis id="34"
+        negative_diagnosis="false" last_updated="2026-01-01 12:00:00.0" />
+    <cytology_diagnosis id="35"
+        negative_diagnosis="true" last_updated="2026-01-01 12:00:00.0" />
+    <cytology_diagnosis id="38"
+        negative_diagnosis="true" last_updated="2026-01-01 12:00:00.0" />
+
+    <cytology_specimen_adequacy id="35"
+        result_type="DICTIONARY" satisfaction="UN_SATISFACTORY_FOR_EVALUATION"
+        last_updated="2026-01-01 12:00:00.0" />
+    <cytology_specimen_adequacy id="36"
+        result_type="DICTIONARY" satisfaction="UN_SATISFACTORY_FOR_EVALUATION"
+        last_updated="2026-01-01 12:00:00.0" />
+    <cytology_specimen_adequacy id="38"
+        result_type="DICTIONARY" satisfaction="SATISFACTORY_FOR_EVALUATION"
+        last_updated="2026-01-01 12:00:00.0" />
+
+    <cytology_sample id="31"
+        last_updated="2026-01-01 12:00:00.0" program_id="1" sample_id="104"
+        status="COMPLETED" cytology_diagnosis_id="31" />
+    <cytology_sample id="32"
+        last_updated="2026-01-01 12:00:00.0" program_id="1" sample_id="105"
+        status="COMPLETED" cytology_diagnosis_id="32" />
+    <cytology_sample id="33"
+        last_updated="2026-01-01 12:00:00.0" program_id="1" sample_id="106"
+        status="SCREENING" cytology_diagnosis_id="33" />
+    <cytology_sample id="34"
+        last_updated="2026-01-01 12:00:00.0" program_id="1" sample_id="114"
+        status="COMPLETED" cytology_diagnosis_id="34" />
+    <cytology_sample id="35"
+        last_updated="2026-01-01 12:00:00.0" program_id="1" sample_id="401"
+        status="COMPLETED" cytology_diagnosis_id="35"
+        specimen_adequacy_id="35" />
+    <cytology_sample id="36"
+        last_updated="2026-01-01 12:00:00.0" program_id="1" sample_id="402"
+        status="COMPLETED" specimen_adequacy_id="36" />
+    <cytology_sample id="37"
+        last_updated="2026-01-01 12:00:00.0" program_id="1" sample_id="403"
+        status="COMPLETED" />
+    <cytology_sample id="38"
+        last_updated="2026-01-01 12:00:00.0" program_id="1" sample_id="404"
+        status="COMPLETED" cytology_diagnosis_id="38"
+        specimen_adequacy_id="38" />
+
+    <cytology_diagnosis_result_map id="31"
+        category="EPITHELIAL_CELL_ABNORMALITY" result_type="DICTIONARY"
+        results="9003" cytology_diagnosis_id="32"
+        last_updated="2026-01-01 12:00:00.0" />
+    <cytology_diagnosis_result_map id="32"
+        category="OTHER" result_type="TEXT" results="text note"
+        cytology_diagnosis_id="32" last_updated="2026-01-01 12:00:00.0" />
+
+    <pathology_conclusion id="501"
+        pathology_sample_id="11" last_updated="2026-01-01 12:00:00.0"
+        type="DICTIONARY" value="9001" />
+    <pathology_conclusion id="502"
+        pathology_sample_id="11" last_updated="2026-01-01 12:00:00.0"
+        type="DICTIONARY" value="9002" />
+    <pathology_conclusion id="503"
+        pathology_sample_id="11" last_updated="2026-01-01 12:00:00.0"
+        type="TEXT" value="kept as text" />
+    <pathology_conclusion id="504"
+        pathology_sample_id="12" last_updated="2026-01-01 12:00:00.0"
+        type="TEXT" value="Chronic gastritis" />
+    <pathology_conclusion id="505"
+        pathology_sample_id="13" last_updated="2026-01-01 12:00:00.0"
+        type="TEXT" value="draft, not reported" />
+    <pathology_conclusion id="506"
+        pathology_sample_id="14" last_updated="2026-01-01 12:00:00.0"
+        type="TEXT" value=" " />
+    <pathology_conclusion id="507"
+        pathology_sample_id="17" last_updated="2026-01-01 12:00:00.0"
+        type="DICTIONARY" value="99999" />
+    <pathology_conclusion id="508"
+        pathology_sample_id="17" last_updated="2026-01-01 12:00:00.0"
+        type="TEXT" value="unknown code kept" />
+    <pathology_conclusion id="509"
+        pathology_sample_id="18" last_updated="2026-01-01 12:00:00.0"
+        type="TEXT" value="other patient" />
+</dataset>

@@ -705,4 +705,144 @@ describe("OGC-1200 slice 2: chips, paging and selection", () => {
       expect(screen.queryByTestId("embedded-entry")).not.toBeInTheDocument();
     });
   });
+
+  describe("slice 9a: a workplan batch's run", () => {
+    const BATCH = {
+      ...HEADER,
+      source: "WORKPLAN",
+      analyzerId: null,
+      analyzerName: null,
+      method: null,
+      rawAvailable: false,
+      reagentLot: "LOT-A1",
+      batchWorkplanId: 12,
+    };
+    const BATCH_ROWS = {
+      ...ROWS,
+      totalRows: 1,
+      rows: [
+        {
+          id: "A900",
+          accessionNumber: "DEV0126000000000900",
+          testName: "Amylase",
+          value: null,
+          control: false,
+          duplicate: false,
+          testId: "516",
+          componentId: null,
+        },
+      ],
+    };
+
+    it("shows the batch's lot and a way back to the batch, and no analyzer import link or bulk selection", () => {
+      wire(BATCH, BATCH_ROWS);
+      renderRun();
+
+      const settings = screen.getByTestId("run-settings");
+      expect(settings).toHaveTextContent("Workplan batch");
+      expect(settings).toHaveTextContent("LOT-A1");
+      expect(screen.getByTestId("run-batch-link")).toHaveAttribute(
+        "href",
+        "/Workplan",
+      );
+      expect(
+        screen.queryByText("Accept these results on the analyzer import page"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText(/Select the value of/),
+      ).not.toBeInTheDocument();
+    });
+
+    it("marks an open batch run complete from its header", () => {
+      let state = "OPEN";
+      utilsMock.getFromOpenElisServer.mockImplementation(
+        (endPoint: string, callback: (response: unknown) => void) => {
+          if (endPoint === "/rest/result-runs/7")
+            return callback({ ...BATCH, state });
+          if (endPoint.startsWith("/rest/result-runs/7/rows"))
+            return callback(BATCH_ROWS);
+          if (endPoint.startsWith("/rest/result-runs"))
+            return callback({ open: 1, held: 0, runs: [] });
+          return callback(undefined);
+        },
+      );
+      utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+        (_url: string, _body: string, callback: (r: unknown) => void) => {
+          state = "COMPLETE";
+          callback({ ...BATCH, state });
+        },
+      );
+      renderRun();
+
+      expect(screen.getByTestId("run-lot-none")).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId("run-mark-complete"));
+
+      expect(utilsMock.postToOpenElisServerJsonResponse.mock.calls[0][0]).toBe(
+        "/rest/result-runs/7/complete",
+      );
+      expect(screen.getByTestId("run-settings")).toHaveTextContent("Complete");
+      expect(screen.queryByTestId("run-mark-complete")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("run-lot-none")).not.toBeInTheDocument();
+    });
+
+    it("offers no Mark complete on a batch run that holds a test", () => {
+      wire({ ...BATCH, state: "HELD" }, BATCH_ROWS);
+      renderRun();
+
+      expect(screen.queryByTestId("run-mark-complete")).not.toBeInTheDocument();
+      expect(screen.getByTestId("run-lot-none")).toBeInTheDocument();
+    });
+
+    it("shows a run of one with its lot and its one row, opened for entry with no staged value", () => {
+      wire(
+        { ...BATCH, source: "RESULT_ENTRY", batchWorkplanId: null },
+        BATCH_ROWS,
+      );
+      renderRun();
+
+      const settings = screen.getByTestId("run-settings");
+      expect(settings).toHaveTextContent("Manual entry");
+      expect(settings).toHaveTextContent("LOT-A1");
+      expect(settings).not.toHaveTextContent("Method");
+      expect(screen.queryByTestId("run-batch-link")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("run-mark-complete")).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText(/Select the value of/),
+      ).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId("run-row-expand-A900"));
+      expect(screen.getByTestId("embedded-entry")).not.toHaveAttribute(
+        "data-run-row",
+      );
+      expect(screen.getByTestId("run-row-provenance")).toHaveTextContent(
+        "From RUN-7, a manual entry: Amylase. Reagent lot LOT-A1.",
+      );
+    });
+
+    it("offers no lot choice or Mark complete on an analyzer run", () => {
+      wire(HEADER);
+      renderRun();
+
+      expect(screen.queryByTestId("run-mark-complete")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("run-lot-none")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("run-lot-picker")).not.toBeInTheDocument();
+    });
+
+    it("opens a waiting analysis for entry with no staged value, under the batch and its lot", () => {
+      wire(BATCH, BATCH_ROWS);
+      renderRun();
+
+      fireEvent.click(screen.getByTestId("run-row-expand-A900"));
+
+      const entry = screen.getByTestId("embedded-entry");
+      expect(entry).toHaveAttribute("data-accession", "DEV0126000000000900");
+      expect(entry).not.toHaveAttribute("data-run-row");
+      expect(entry).toHaveAttribute("data-test", "516");
+      const provenance = screen.getByTestId("run-row-provenance");
+      expect(provenance).toHaveTextContent(
+        "From RUN-7, a workplan batch: Amylase. Reagent lot LOT-A1.",
+      );
+      expect(provenance).not.toHaveTextContent("analyzer");
+    });
+  });
 });

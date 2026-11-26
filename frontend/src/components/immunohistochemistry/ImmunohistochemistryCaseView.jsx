@@ -36,6 +36,7 @@ import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import UnifiedResults from "../resultPage/unified/UnifiedResults";
 import { FormattedMessage, useIntl } from "react-intl";
 import PatientHeader from "../common/PatientHeader";
+import PriorResultsPanel from "../common/PriorResultsPanel";
 import QuestionnaireResponse from "../common/QuestionnaireResponse";
 import "./../pathology/PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
@@ -1017,6 +1018,10 @@ function ImmunohistochemistryCaseView() {
               >
                 {" "}
               </PatientHeader>
+              <PriorResultsPanel
+                bench="immunohistochemistry"
+                caseId={immunohistochemistrySampleId}
+              />
             </Section>
           </Section>
           <Section>
