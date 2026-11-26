@@ -20,6 +20,7 @@ import {
   RadioButtonGroup,
   RadioButton,
   InlineLoading,
+  InlineNotification,
 } from "@carbon/react";
 import { Launch, Subtract } from "@carbon/react/icons";
 import {
@@ -87,6 +88,7 @@ function CytologyCaseView() {
   const [technicianUsers, setTechnicianUsers] = useState([]);
   const [pathologistUsers, setPathologistUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [loadingReport, setLoadingReport] = useState(false);
   const [reportTypes, setReportTypes] = useState([]);
   const [slidesToAdd, setSlidesToAdd] = useState(1);
@@ -327,6 +329,11 @@ function CytologyCaseView() {
   };
 
   const setInitialPathologySampleInfo = (e) => {
+    if (!e) {
+      setLoadFailed(true);
+      setLoading(false);
+      return;
+    }
     if (
       hasRole(userSessionDetails, "Cytopathologist") &&
       !e.assignedPathologistId &&
@@ -420,6 +427,33 @@ function CytologyCaseView() {
       componentMounted.current = false;
     };
   }, []);
+
+  if (loadFailed) {
+    return (
+      <>
+        <PageBreadCrumb breadcrumbs={breadcrumbs} />
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
+            <Section>
+              <Section>
+                <Heading>
+                  <FormattedMessage id="cytology.label.title" />
+                </Heading>
+              </Section>
+            </Section>
+          </Column>
+          <Column lg={16} md={8} sm={4}>
+            <InlineNotification
+              kind="error"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({ id: "caseView.error.loadFailed" })}
+            />
+          </Column>
+        </Grid>
+      </>
+    );
+  }
 
   return (
     <>
