@@ -9,6 +9,7 @@ import java.util.List;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.URLUtil;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.login.valueholder.UserSessionData;
@@ -46,7 +47,7 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
             throws IOException {
-        String path = request.getRequestURI().substring(request.getContextPath().length());
+        String path = URLUtil.getRequestPath(request);
         Errors errors = new BaseErrors();
         if (!hasPermission(errors, request, path)) {
             LogEvent.logInfo("ModuleAuthenticationInterceptor", "preHandle()",
