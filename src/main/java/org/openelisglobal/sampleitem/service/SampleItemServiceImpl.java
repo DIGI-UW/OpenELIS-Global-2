@@ -91,6 +91,15 @@ public class SampleItemServiceImpl extends AuditableBaseObjectServiceImpl<Sample
 
     @Override
     @Transactional(readOnly = true)
+    public SampleItem getStoredCopy(String sampleItemId) {
+        SampleItem storedState = new SampleItem();
+        storedState.setId(sampleItemId);
+        getBaseObjectDAO().getData(storedState);
+        return storedState;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<SampleItem> getSampleItemsBySampleIdAndType(String sampleId, TypeOfSample typeOfSample) {
         return getBaseObjectDAO().getSampleItemsBySampleIdAndType(sampleId, typeOfSample);
     }

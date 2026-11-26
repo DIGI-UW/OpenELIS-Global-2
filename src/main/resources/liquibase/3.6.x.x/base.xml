@@ -82,6 +82,8 @@
   <include relativeToChangelogFile="true" file="048-result-run-batch.xml"/>
   <include relativeToChangelogFile="true" file="049-result-run-of-one.xml"/>
   <include relativeToChangelogFile="true" file="050-inventory-usage-fractional.xml"/>
+  <!-- OGC-1681: a cancelled sample item's status reads Cancelled, not Entered -->
+  <include relativeToChangelogFile="true" file="051-sample-canceled-display-key.xml"/>
 
   <!-- Read-only FHIR interface: explicit resource-type reader permissions -->
   <include relativeToChangelogFile="true" file="027-fhir-read-permissions.xml"/>

@@ -220,11 +220,14 @@ public class ResampleServiceTest extends BaseWebContextSensitiveTest {
     public void resample_rejectsTheFailedSpecimenButNotTheWholeOrder() {
         String itemId = firstItemId();
         String parentStatusBefore = sampleService.get(ORIGINAL_SAMPLE_ID).getStatusId();
+        clearSampleItemHistory(itemId);
 
         resampleService.resample(itemId, REASON, TEST_USER_ID);
 
         SampleItem rejectedItem = sampleItemService.get(itemId);
         assertTrue("the failed specimen is flagged rejected", rejectedItem.isRejected());
+        assertTrue("the rejection is in the audit trail",
+                sampleItemUpdateHistory(itemId).contains("<rejected>false</rejected>"));
         List<Analysis> itemAnalyses = analysisService.getAnalysesBySampleItem(rejectedItem);
         assertEquals("the specimen has its one analysis", 1, itemAnalyses.size());
         assertEquals("the rejected specimen's analysis is canceled", statusService.getStatusID(AnalysisStatus.Canceled),
@@ -468,6 +471,7 @@ public class ResampleServiceTest extends BaseWebContextSensitiveTest {
                 .thenReturn(List.of(new IdValuePair("9501", "Specimen leaked")));
         makeOriginalAnEqaSample();
         String itemId = firstItemId();
+        clearSampleItemHistory(itemId);
 
         resampleService.reject(itemId, "9501", "box crushed", 1);
 
@@ -477,5 +481,22 @@ public class ResampleServiceTest extends BaseWebContextSensitiveTest {
         List<Note> notes = noteService.getNotes(rejected);
         assertTrue("the reason and comment are the rejection note",
                 notes.stream().anyMatch(note -> "Specimen leaked | box crushed".equals(note.getText())));
+        assertTrue("the rejection is in the audit trail",
+                sampleItemUpdateHistory(itemId).contains("<rejected>false</rejected>"));
+    }
+
+    private void clearSampleItemHistory(String sampleItemId) {
+        jdbcTemplate.update(
+                "DELETE FROM clinlims.history WHERE reference_id = ? AND reference_table ="
+                        + " (SELECT id FROM clinlims.reference_tables WHERE upper(name) = 'SAMPLE_ITEM')",
+                Integer.valueOf(sampleItemId));
+    }
+
+    private String sampleItemUpdateHistory(String sampleItemId) {
+        return String.join("\n", jdbcTemplate.queryForList(
+                "SELECT convert_from(h.changes, 'UTF8') FROM clinlims.history h JOIN clinlims.reference_tables r"
+                        + " ON r.id = h.reference_table WHERE upper(r.name) = 'SAMPLE_ITEM' AND h.reference_id = ?"
+                        + " AND h.activity = 'U'",
+                String.class, Integer.valueOf(sampleItemId)));
     }
 }

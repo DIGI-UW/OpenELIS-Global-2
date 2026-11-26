@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.audittrail.action.workers.AuditTrailItem;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.services.IStatusService;
@@ -28,51 +29,81 @@ import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
 
+/**
+ * The order audit trail's sample item rows: each item's status and remaining
+ * quantity changes, the old value read from the history row and the new one
+ * from the next row, or from the item as it is now for the latest change.
+ */
 public class SampleHistoryService extends AbstractHistoryService {
 
     protected ReferenceTablesService referenceTablesService = SpringContext.getBean(ReferenceTablesService.class);
     protected SampleItemService sampleItemService = SpringContext.getBean(SampleItemService.class);
     protected HistoryService historyService = SpringContext.getBean(HistoryService.class);
 
-    private static String SAMPLE_ITEM_TABLE_ID;
+    private final String sampleItemTableId;
+    private final List<SampleItem> sampleItems;
+    private final String statusLabel = MessageUtil.getMessage("auditTrail.sampleItem.status");
+    private final String remainingQuantityLabel = MessageUtil.getMessage("auditTrail.sampleItem.remainingQuantity");
 
     public SampleHistoryService(Sample sample) {
-        SAMPLE_ITEM_TABLE_ID = referenceTablesService.getReferenceTableByName("SAMPLE_ITEM").getId();
-        setUpForSample(sample);
+        sampleItemTableId = referenceTablesService.getReferenceTableByName("SAMPLE_ITEM").getId();
+        sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());
     }
 
-    @SuppressWarnings("unchecked")
-    private void setUpForSample(Sample sample) {
-        List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());
-
-        History searchHistory = new History();
-        searchHistory.setReferenceTable(SAMPLE_ITEM_TABLE_ID);
-        historyList = new ArrayList<History>();
-
+    @Override
+    public List<AuditTrailItem> getAuditTrailItems() {
+        List<AuditTrailItem> items = new ArrayList<>();
         for (SampleItem item : sampleItems) {
+            History searchHistory = new History();
+            searchHistory.setReferenceTable(sampleItemTableId);
             searchHistory.setReferenceId(item.getId());
-            historyList.addAll(historyService.getHistoryByRefIdAndRefTableId(searchHistory));
+            historyList = new ArrayList<>(historyService.getHistoryByRefIdAndRefTableId(searchHistory));
+            identifier = itemIdentifier(item);
+            newValueMap = new HashMap<>();
+            newValueMap.put(statusLabel, statusName(item.getStatusId()));
+            newValueMap.put(remainingQuantityLabel,
+                    item.getRemainingQuantity() == null ? "" : item.getRemainingQuantity().toPlainString());
+            items.addAll(super.getAuditTrailItems());
         }
-
-        newValueMap = new HashMap<String, String>();
+        return items;
     }
 
     @Override
     protected void addInsertion(History history, List<AuditTrailItem> items) {
-        identifier = sampleItemService.getData(history.getReferenceId()).getTypeOfSample().getDescription();
         items.add(getCoreTrail(history));
     }
 
     @Override
     protected void getObservableChanges(History history, Map<String, String> changeMap, String changes) {
-        SampleItem item = sampleItemService.getData(history.getReferenceId());
-        String statusId = item.getStatusId();
+        String statusId = extractSimple(changes, "statusId");
         if (statusId != null) {
-            identifier = item.getTypeOfSample().getDescription();
-            newValueMap.put(STATUS_ATTRIBUTE,
-                    SpringContext.getBean(IStatusService.class).getStatusNameFromId(statusId));
-            changeMap.put(STATUS_ATTRIBUTE, "");
+            changeMap.put(statusLabel, statusName(statusId));
         }
+        String remainingQuantity = extractSimple(changes, "remainingQuantity");
+        if (remainingQuantity != null) {
+            changeMap.put(remainingQuantityLabel, remainingQuantity);
+        }
+    }
+
+    private static String itemIdentifier(SampleItem item) {
+        String type = item.getTypeOfSample() == null ? "" : item.getTypeOfSample().getDescription();
+        if (GenericValidator.isBlankOrNull(item.getExternalId())) {
+            return type;
+        }
+        return GenericValidator.isBlankOrNull(type) ? item.getExternalId() : type + " (" + item.getExternalId() + ")";
+    }
+
+    private static String statusName(String statusId) {
+        if (statusId == null) {
+            return null;
+        }
+        String name = SpringContext.getBean(IStatusService.class).getStatusNameFromId(statusId);
+        return name != null ? name : statusId;
+    }
+
+    @Override
+    protected boolean showAttribute() {
+        return true;
     }
 
     @Override

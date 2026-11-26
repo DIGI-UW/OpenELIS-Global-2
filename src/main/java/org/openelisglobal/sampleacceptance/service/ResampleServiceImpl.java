@@ -282,7 +282,8 @@ public class ResampleServiceImpl implements ResampleService {
         // so the order's accepted specimens proceed while this one is removed from the
         // workflow. Set the bidirectional resample links between the parent order and
         // the replacement for cross-reference.
-        rejectSampleItem(originalItem, originalAnalyses, sysUserId);
+        rejectSampleItem(originalItem, sampleItemService.getStoredCopy(originalItem.getId()), originalAnalyses,
+                sysUserId);
 
         // Cancel a matching-type sample_type_request so the request-based Enter
         // Order / Collect views drop the rejected type (its replacement lives on the
@@ -358,8 +359,9 @@ public class ResampleServiceImpl implements ResampleService {
             return;
         }
         String sysUserId = userId != null ? String.valueOf(userId) : null;
+        SampleItem storedState = sampleItemService.getStoredCopy(item.getId());
         item.setRejectReasonId(rejectReasonId);
-        rejectSampleItem(item, analysisService.getAnalysesBySampleItem(item), sysUserId);
+        rejectSampleItem(item, storedState, analysisService.getAnalysesBySampleItem(item), sysUserId);
         recordRejectionNote(item, noteText(rejectReason, reason), sysUserId);
     }
 
@@ -383,7 +385,8 @@ public class ResampleServiceImpl implements ResampleService {
             if (member.isVoided() || member.isRejected()) {
                 continue;
             }
-            rejectSampleItem(member, analysisService.getAnalysesBySampleItem(member), sysUserId);
+            rejectSampleItem(member, sampleItemService.getStoredCopy(member.getId()),
+                    analysisService.getAnalysesBySampleItem(member), sysUserId);
             recordRejectionNote(member, reason, sysUserId);
         }
     }
@@ -466,11 +469,11 @@ public class ResampleServiceImpl implements ResampleService {
      * caller supplies the specimen's analyses — resample already holds them; the
      * plain paths fetch them.
      */
-    private void rejectSampleItem(SampleItem item, List<Analysis> analyses, String sysUserId) {
+    private void rejectSampleItem(SampleItem item, SampleItem storedState, List<Analysis> analyses, String sysUserId) {
         cancelAnalyses(analyses, sysUserId);
         item.setRejected(true);
         item.setSysUserId(sysUserId);
-        sampleItemService.update(item);
+        sampleItemService.updateAgainst(item, storedState);
     }
 
     private void cancelAnalyses(List<Analysis> analyses, String sysUserId) {

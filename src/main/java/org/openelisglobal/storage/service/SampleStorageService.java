@@ -62,9 +62,10 @@ public interface SampleStorageService {
 
     /**
      * Dispose a SampleItem. The audit emission for the global audit trail rides on
-     * {@code SampleItemService.update} (AuditableBaseObject path), so the caller
-     * MUST pass the acting user's sysUserId (numeric String). The same id is
-     * stamped on the storage-movement row for the per-sample audit modal.
+     * {@code SampleItemService.updateAgainst} (AuditableBaseObject path), diffing
+     * against a copy of the item taken before the status change, and stamps the
+     * acting user's sysUserId. The same id is stamped on the storage-movement row
+     * for the per-sample audit modal.
      *
      * <p>
      * OGC-738: previously the disposal hardcoded {@code movedByUserId=1} and called
@@ -77,8 +78,8 @@ public interface SampleStorageService {
      * Entry v3 R7). Partial use decrements {@code remainingQuantity} and refuses an
      * amount above it; {@code markUsedUp} zeroes it — "exhausted" is remaining ==
      * 0, not a status, and disposal stays an explicit follow-up step. The update
-     * rides {@code SampleItemService.update} so the global audit row reflects the
-     * acting user.
+     * rides {@code SampleItemService.updateAgainst}, diffing against a copy taken
+     * before the change, so the global audit row records it and the acting user.
      *
      * @param sampleItemId flexible identifier (internal id, accession number, or
      *                     external id)

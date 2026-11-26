@@ -404,15 +404,12 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 sampleStorageAssignmentDAO.update(existingAssignment);
             }
 
-            // Update SampleItem status to "SampleDisposed" via the audit-emitting
-            // service path (OGC-738). SampleItemServiceImpl has auditTrailLog=true,
-            // so the global audit_trail row is written automatically. Going through
-            // sampleItemDAO directly would bypass that emission.
             String disposedStatusId = statusService
                     .getStatusID(org.openelisglobal.common.services.StatusService.SampleStatus.Disposed);
+            SampleItem storedState = sampleItemService.getStoredCopy(sampleItem.getId());
             sampleItem.setStatusId(disposedStatusId);
             sampleItem.setSysUserId(String.valueOf(actingUserId));
-            sampleItemService.update(sampleItem);
+            sampleItemService.updateAgainst(sampleItem, storedState);
 
             // Create audit movement record for disposal
             // Only create if there was a previous location (constraint requires at least
@@ -429,8 +426,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 movement.setNewLocationType(null);
                 movement.setNewPositionCoordinate(null);
                 movement.setMovementDate(new Timestamp(System.currentTimeMillis()));
-                movement.setReason(
-                        "Disposal: " + reason + " | Method: " + method + (notes != null ? " | Notes: " + notes : ""));
+                movement.setReason("Disposal: " + reason + " | Method: " + method
+                        + (notes != null && !notes.isBlank() ? " | Notes: " + notes : ""));
                 movement.setMovedByUserId(actingUserId);
 
                 movementIdInt = sampleStorageMovementDAO.insert(movement);
@@ -481,6 +478,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 throw new LIMSRuntimeException("SampleItem is already disposed");
             }
 
+            SampleItem storedState = sampleItemService.getStoredCopy(sampleItem.getId());
             if (markUsedUp) {
                 sampleItem.setRemainingQuantity(java.math.BigDecimal.ZERO);
             } else {
@@ -495,7 +493,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             java.math.BigDecimal newRemaining = sampleItem.getRemainingQuantity();
 
             sampleItem.setSysUserId(sysUserId);
-            sampleItemService.update(sampleItem);
+            sampleItemService.updateAgainst(sampleItem, storedState);
 
             Map<String, Object> response = new HashMap<>();
             response.put("sampleItemId", sampleItem.getId());

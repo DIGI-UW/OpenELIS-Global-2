@@ -21,7 +21,7 @@ import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 async function pickDisposableSample(
   page: Page,
-): Promise<{ row: Locator; sampleItemId: string }> {
+): Promise<{ row: Locator; sampleItemId: string; accession: string }> {
   // Auto-retrying wait: `toBeVisible` polls until rows hydrate.
   // `locator.count()` is a one-shot snapshot (non-retrying) and must
   // only run AFTER the DOM stabilizes — otherwise flakes on cold
@@ -39,7 +39,8 @@ async function pickDisposableSample(
     const rowText = (await row.textContent()) ?? "";
     if (!/Disposed/i.test(rowText)) {
       const sampleItemId = (await row.locator("td").first().innerText()).trim();
-      return { row, sampleItemId };
+      const accession = (await row.locator("td").nth(1).innerText()).trim();
+      return { row, sampleItemId, accession };
     }
   }
 
@@ -63,7 +64,11 @@ test.describe("Storage Dispose", () => {
       await storage.expectTabSelected("Sample Items");
     });
 
-    const { row: sampleRow, sampleItemId } = await pickDisposableSample(page);
+    const {
+      row: sampleRow,
+      sampleItemId,
+      accession,
+    } = await pickDisposableSample(page);
 
     await test.step("open Dispose modal from row actions", async () => {
       await sampleRow
@@ -99,6 +104,28 @@ test.describe("Storage Dispose", () => {
       });
       await expect(disposedRow).toBeVisible();
       await expect(disposedRow.getByText(/disposed/i)).toBeVisible();
+    });
+
+    await test.step("the order audit trail shows the disposal", async () => {
+      await page.goto("/qa/qms/audit-trail?type=order", {
+        waitUntil: "domcontentloaded",
+      });
+      await page.getByRole("textbox", { name: "Lab No" }).fill(accession);
+      const report = page.waitForResponse((response) =>
+        response.url().includes("/rest/AuditTrailReport"),
+      );
+      await page.getByRole("button", { name: "View Report" }).click();
+      await report;
+      const disposalRow = page
+        .getByRole("table", { name: "Patient Results" })
+        .getByRole("row")
+        .filter({
+          has: page.getByRole("cell", { name: "Status", exact: true }),
+        })
+        .filter({
+          has: page.getByRole("cell", { name: "Disposed", exact: true }),
+        });
+      await expect(disposalRow.first()).toBeVisible();
     });
   });
 });

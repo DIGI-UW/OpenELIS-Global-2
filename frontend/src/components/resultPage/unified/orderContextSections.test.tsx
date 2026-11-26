@@ -166,6 +166,36 @@ describe("orderContextSections (FR-C3/C5)", () => {
     ).toHaveTextContent("Assign Location");
   });
 
+  it("Storage section reloads the item when another section changed it", () => {
+    getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
+      if (typeof url === "string" && url.includes("/rest/storage/")) {
+        cb({});
+      }
+    });
+    const storageReads = () =>
+      getMock.mock.calls.filter(([url]) =>
+        String(url).includes("/rest/storage/sample-items/41"),
+      ).length;
+    const section = (refreshToken: number) => (
+      <IntlProvider locale="en" messages={messages}>
+        <StorageSection
+          open={true}
+          onToggle={() => {}}
+          sampleItemId="41"
+          accessionNumber="DEV1"
+          sampleType="Serum"
+          refreshToken={refreshToken}
+        />
+      </IntlProvider>
+    );
+    const { rerender } = render(section(0));
+    expect(storageReads()).toBe(1);
+
+    rerender(section(1));
+
+    expect(storageReads()).toBe(2);
+  });
+
   it("Storage section offers Move to Location once a location exists", async () => {
     getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
       if (typeof url === "string" && url.includes("/rest/storage/")) {

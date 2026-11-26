@@ -7,6 +7,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -15,6 +16,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -176,8 +178,14 @@ public class OrderProgressServiceImplTest {
         when(statusService.matches("4", AnalysisStatus.Canceled)).thenReturn(true);
         when(analysisService.getAnalysesBySampleId("41")).thenReturn(Arrays.asList(open, alreadyCancelled));
         SampleItem item = new SampleItem();
+        item.setId("51");
         item.setStatusId("1");
         when(sampleItemService.getSampleItemsBySampleId("41")).thenReturn(Arrays.asList(item));
+        when(sampleItemService.getStoredCopy("51")).thenAnswer(invocation -> {
+            SampleItem storedState = new SampleItem();
+            storedState.setStatusId(item.getStatusId());
+            return storedState;
+        });
 
         Sample cancelled = service.cancel("41", "Registered in the wrong domain", "7");
 
@@ -189,7 +197,10 @@ public class OrderProgressServiceImplTest {
         assertEquals("12", item.getStatusId());
         verify(analysisService).update(open);
         verify(analysisService, never()).update(alreadyCancelled);
-        verify(sampleItemService).update(item);
+        ArgumentCaptor<SampleItem> storedState = ArgumentCaptor.forClass(SampleItem.class);
+        verify(sampleItemService).updateAgainst(eq(item), storedState.capture());
+        assertEquals("the audit diffs against the status before the cancel", "1", storedState.getValue().getStatusId());
+        verify(sampleItemService, never()).update(any(SampleItem.class));
     }
 
     // The FHIR ServiceRequest create hands the save a shell that carries only
@@ -237,6 +248,7 @@ public class OrderProgressServiceImplTest {
         assertEquals("CANCELLED", cancelled.getOrderProgressStatus());
         assertEquals("1", cancelled.getStatusId());
         verify(sampleItemService, never()).update(any(SampleItem.class));
+        verify(sampleItemService, never()).updateAgainst(any(SampleItem.class), any(SampleItem.class));
     }
 
     // Found in review: a test whose result was already accepted was cancelled

@@ -108,6 +108,20 @@ public class SampleStorageServiceDisposalTest {
         lenient().when(sampleItemService.getSampleItemsByExternalID(TEST_ACCESSION_NUMBER))
                 .thenReturn(java.util.Collections.singletonList(testSampleItem));
         lenient().when(userContextHolder.requireSysUserId()).thenReturn(TEST_SYS_USER_ID);
+        lenient().when(sampleItemService.getStoredCopy(TEST_SAMPLE_ITEM_ID)).thenAnswer(invocation -> {
+            SampleItem storedState = new SampleItem();
+            storedState.setStatusId(testSampleItem.getStatusId());
+            storedState.setRemainingQuantity(testSampleItem.getRemainingQuantity());
+            return storedState;
+        });
+    }
+
+    private SampleItem verifyAuditedUpdateAgainstStoredState() {
+        org.mockito.ArgumentCaptor<SampleItem> storedState = org.mockito.ArgumentCaptor.forClass(SampleItem.class);
+        verify(sampleItemService).updateAgainst(eq(testSampleItem), storedState.capture());
+        verify(sampleItemService, never()).update(any(SampleItem.class));
+        verify(sampleItemDAO, never()).update(any(SampleItem.class));
+        return storedState.getValue();
     }
 
     @Test
@@ -121,10 +135,8 @@ public class SampleStorageServiceDisposalTest {
                 "Test disposal");
 
         // Assert
-        // OGC-738b: must go through sampleItemService.update (audit-emitting path),
-        // not sampleItemDAO.update directly.
-        verify(sampleItemService).update(testSampleItem);
-        verify(sampleItemDAO, never()).update(any(SampleItem.class));
+        SampleItem storedState = verifyAuditedUpdateAgainstStoredState();
+        assertEquals("the audit must diff against the status before disposal", "1", storedState.getStatusId());
         assertEquals("Status ID should be set to disposed status ID", DISPOSED_STATUS_ID, testSampleItem.getStatusId());
         assertEquals("sysUserId must be stamped on the item for audit emit", TEST_SYS_USER_ID,
                 testSampleItem.getSysUserId());
@@ -152,8 +164,7 @@ public class SampleStorageServiceDisposalTest {
         assertNull("Location Type should be null", testAssignment.getLocationType());
         assertNull("Position Coordinate should be null", testAssignment.getPositionCoordinate());
 
-        verify(sampleItemService).update(testSampleItem);
-        verify(sampleItemDAO, never()).update(any(SampleItem.class));
+        verifyAuditedUpdateAgainstStoredState();
     }
 
     @Test
@@ -221,6 +232,20 @@ public class SampleStorageServiceDisposalTest {
                 captor.getValue().getMovedByUserId());
     }
 
+    @Test
+    public void testDisposeSampleItem_BlankNotesLeaveNoNotesLabelInMovementReason() {
+        when(sampleStorageAssignmentDAO.findBySampleItemId(TEST_SAMPLE_ITEM_ID)).thenReturn(testAssignment);
+        when(storageLocationService.get(10, StorageDevice.class)).thenReturn(testDevice);
+        when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(1);
+
+        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "contaminated", "autoclave", " ");
+
+        org.mockito.ArgumentCaptor<SampleStorageMovement> captor = org.mockito.ArgumentCaptor
+                .forClass(SampleStorageMovement.class);
+        verify(sampleStorageMovementDAO).insert(captor.capture());
+        assertEquals("Disposal: contaminated | Method: autoclave", captor.getValue().getReason());
+    }
+
     /**
      * OGC-738b: no authenticated user context is a programming/security error —
      * UserContextHolder.requireSysUserId() fails loudly rather than silently
@@ -244,8 +269,9 @@ public class SampleStorageServiceDisposalTest {
         Map<String, Object> result = sampleStorageService.recordSampleUsage(TEST_ACCESSION_NUMBER,
                 new java.math.BigDecimal("1.0"), false, TEST_SYS_USER_ID);
 
-        verify(sampleItemService).update(testSampleItem);
-        verify(sampleItemDAO, never()).update(any(SampleItem.class));
+        SampleItem storedState = verifyAuditedUpdateAgainstStoredState();
+        assertEquals("the audit must diff against the quantity before use", 0,
+                storedState.getRemainingQuantity().compareTo(new java.math.BigDecimal("3.5")));
         assertEquals("sysUserId must be stamped for audit emit", TEST_SYS_USER_ID, testSampleItem.getSysUserId());
         assertEquals(0, testSampleItem.getRemainingQuantity().compareTo(new java.math.BigDecimal("2.5")));
         assertEquals(Boolean.FALSE, result.get("exhausted"));
@@ -271,7 +297,7 @@ public class SampleStorageServiceDisposalTest {
         Map<String, Object> result = sampleStorageService.recordSampleUsage(TEST_ACCESSION_NUMBER, null, true,
                 TEST_SYS_USER_ID);
 
-        verify(sampleItemService).update(testSampleItem);
+        verifyAuditedUpdateAgainstStoredState();
         assertEquals(0, testSampleItem.getRemainingQuantity().compareTo(java.math.BigDecimal.ZERO));
         assertEquals(Boolean.TRUE, result.get("exhausted"));
     }
