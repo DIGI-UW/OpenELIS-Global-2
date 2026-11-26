@@ -144,6 +144,18 @@ public class BatchWorkplanRestController extends BaseRestController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    /**
+     * OGC-1200 FR-B4 "Batch these" on the Results worklist: the chosen pending rows
+     * of one test become a batch released at once as a run, which the page opens.
+     */
+    @PostMapping(value = "/batches/from-worklist", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<BatchWorkplanResponse> fromWorklist(@RequestBody BatchWorkplanRequest request,
+            HttpServletRequest httpRequest) {
+        BatchWorkplanResponse response = batchWorkplanService
+                .batchFromWorklist(request == null ? null : request.getAnalysisIds(), getSysUserId(httpRequest));
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
     @PostMapping(value = "/batches/archive-all", produces = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, Object> archiveAll(HttpServletRequest httpRequest) {
         return Map.of("archived", batchWorkplanService.archiveAll(getSysUserId(httpRequest)));

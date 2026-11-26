@@ -77,6 +77,36 @@ describe("LinkReagentModal", () => {
     ).toBeInTheDocument();
   });
 
+  it("says the reagents could not be loaded when the Inventory request fails", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => cb(undefined));
+    renderModal({ linkedReagentIds: [] });
+    expect(
+      await screen.findByText(
+        messages["label.testCatalog.reagents.modal.loadError"],
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        messages["label.testCatalog.reagents.modal.noneActive"],
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("says no reagent is active in Inventory when nothing is linked and nothing is offered", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => cb([]));
+    renderModal({ linkedReagentIds: [] });
+    expect(
+      await screen.findByText(
+        messages["label.testCatalog.reagents.modal.noneActive"],
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        messages["label.testCatalog.reagents.modal.allLinked"],
+      ),
+    ).not.toBeInTheDocument();
+  });
+
   it("a reagent another admin linked meanwhile (409) counts as linked, not as a retry (OGC-1461)", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) =>
       cb([

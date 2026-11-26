@@ -52,6 +52,26 @@ public class BatchTestReassignmentRestController extends BaseController {
     @Autowired
     private FhirTransformService fhirTransformService;
 
+    @Autowired(required = false)
+    private IStatusService statusService;
+
+    @Autowired(required = false)
+    private TestService testService;
+
+    private IStatusService getStatusService() {
+        if (statusService != null) {
+            return statusService;
+        }
+        return SpringContext.getBean(IStatusService.class);
+    }
+
+    private TestService getTestService() {
+        if (testService != null) {
+            return testService;
+        }
+        return SpringContext.getBean(TestService.class);
+    }
+
     @InitBinder
     public void initBinder(WebDataBinder binder) {
         binder.setAllowedFields(ALLOWED_FIELDS);
@@ -90,9 +110,8 @@ public class BatchTestReassignmentRestController extends BaseController {
 
         try {
             analysisService.updateAnalysises(cancelAnalysis, newAnalysis, getSysUserId(request));
-
         } catch (LIMSRuntimeException e) {
-            LogEvent.logError(e);
+            return saveFailure(e);
         }
 
         try {
@@ -195,7 +214,7 @@ public class BatchTestReassignmentRestController extends BaseController {
 
     private void verifyStatusNotChanged(List<Analysis> changed, List<Analysis> noChanged,
             StatusService.AnalysisStatus status, List<BatchTestStatusChangeBean> changeBeans) {
-        String statusId = SpringContext.getBean(IStatusService.class).getStatusID(status);
+        String statusId = getStatusService().getStatusID(status);
 
         List<Analysis> changedAnalysis = new ArrayList<>();
 
@@ -229,10 +248,9 @@ public class BatchTestReassignmentRestController extends BaseController {
     }
 
     private String getStatusName(String statusId) {
-        StatusService.AnalysisStatus status = SpringContext.getBean(IStatusService.class)
-                .getAnalysisStatusForID(statusId);
+        StatusService.AnalysisStatus status = getStatusService().getAnalysisStatusForID(statusId);
         String name = getStatusName(status);
-        return name == null ? SpringContext.getBean(IStatusService.class).getStatusName(status) : name;
+        return name == null ? getStatusService().getStatusName(status) : name;
     }
 
     private String getStatusName(StatusService.AnalysisStatus status) {
@@ -260,7 +278,7 @@ public class BatchTestReassignmentRestController extends BaseController {
 
         for (Object testIdObject : replacementTestArray) {
             String testId = (String) testIdObject;
-            replacementTestList.add(SpringContext.getBean(TestService.class).get((String) testId));
+            replacementTestList.add(getTestService().get((String) testId));
         }
 
         return replacementTestList;

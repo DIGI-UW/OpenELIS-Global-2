@@ -133,9 +133,31 @@ describe("BenchQcTab", () => {
     ]);
     renderTab();
 
-    // Lab unit and test name fall back rather than rendering blank; an absent
-    // last run renders the shared formatter's placeholder.
-    expect(await screen.findAllByText("-")).toHaveLength(2);
+    // Lab unit, test name and results run fall back rather than rendering blank;
+    // an absent last run renders the shared formatter's placeholder.
+    expect(await screen.findAllByText("-")).toHaveLength(3);
     expect(screen.getByText("—")).toBeInTheDocument();
+  });
+
+  test("a group whose latest control was recorded on a run links to that run (OGC-1200 FR-G2)", async () => {
+    respondWith([
+      {
+        testSectionId: "701",
+        testSectionName: "Biochemistry",
+        testId: "6601",
+        testName: "Amylase",
+        source: "MANUAL",
+        totalRuns: 2,
+        failedRuns: 1,
+        lastRun: "2025-06-10T11:00:00",
+        lastRunId: 42,
+      },
+    ]);
+    renderTab();
+
+    const link = await screen.findByTestId("bench-qc-run-701-6601-MANUAL");
+    expect(link).toHaveTextContent("RUN-42");
+    expect(link).toHaveAttribute("href", "/Results?run=42");
+    expect(link).toHaveAttribute("title", "Open RUN-42 on the Results page");
   });
 });

@@ -2055,3 +2055,21 @@ describe("sending a case to the pathologist with open bench requests", () => {
     });
   });
 });
+
+describe("the prior anatomic-pathology results under the patient band", () => {
+  // The case's own read answers [] here, which reads as could not load.
+  it("renders the prior results panel directly after the patient header and asks this case's endpoint", async () => {
+    renderCaseView();
+    await loaded();
+
+    const panel = screen.getByTestId("prior-results").closest(".prior-results");
+    expect(panel.previousElementSibling).toContainElement(
+      document.querySelector(".patient-header2"),
+    );
+    expect(
+      getFromOpenElisServer.mock.calls.filter(
+        ([url]) => url === CASE_URL + "/priorResults",
+      ),
+    ).toHaveLength(1);
+  });
+});
