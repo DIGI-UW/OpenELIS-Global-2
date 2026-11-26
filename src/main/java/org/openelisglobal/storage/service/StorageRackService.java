@@ -19,6 +19,8 @@ public interface StorageRackService extends BaseObjectService<StorageRack, Integ
 
     StorageRack findByCode(String code);
 
+    StorageRack findByCodeAndParentShelf(String code, StorageShelf parentShelf);
+
     Optional<StorageRack> getRack(int id);
 
 }

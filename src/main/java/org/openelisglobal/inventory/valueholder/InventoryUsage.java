@@ -11,8 +11,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import java.sql.Timestamp;
 import lombok.Getter;
 import lombok.Setter;
@@ -51,7 +51,7 @@ public class InventoryUsage extends BaseObject<Long> {
 
     @Column(name = "quantity_used", nullable = false)
     @NotNull
-    @Min(1)
+    @Positive
     private Double quantityUsed;
 
     @Column(name = "usage_date", nullable = false)

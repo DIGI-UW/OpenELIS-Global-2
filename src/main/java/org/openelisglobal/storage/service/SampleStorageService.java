@@ -218,4 +218,6 @@ public interface SampleStorageService {
      *         location, assignedBy and date
      */
     java.util.List<java.util.Map<String, Object>> getAllInventoryLotsWithAssignments();
+
+    Map<String, Long> getStorageMetrics();
 }
