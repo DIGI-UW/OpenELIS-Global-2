@@ -1382,6 +1382,31 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
         ),
         (response: SaveResponse | undefined) => {
           const refusal = acknowledgementRefusal(response);
+          if (!mountedRef.current) {
+            if (!refusal && !requestFailed(response)) {
+              entry?.onAccepted?.();
+              return;
+            }
+            addNotification({
+              title: intl.formatMessage({ id: "notification.title" }),
+              message: intl.formatMessage(
+                { id: "error.results.save.closedRow" },
+                {
+                  accession: row.accessionNumber,
+                  reason:
+                    serverMessage(response) ||
+                    intl.formatMessage({
+                      id: refusal
+                        ? "error.results.save.closedRowAlert"
+                        : "error.results.save.noResponse",
+                    }),
+                },
+              ),
+              kind: NotificationKinds.error,
+            });
+            setNotificationVisible(true);
+            return;
+          }
           if (refusal) {
             setResultAlert({
               key,

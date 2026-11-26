@@ -24,6 +24,7 @@ public class ResultRunDAOImpl extends BaseDAOImpl<ResultRun, Long> implements Re
     private static final List<ResultRunState> ACTIVE = List.of(ResultRunState.OPEN, ResultRunState.HELD);
     /** Advisory lock namespace for an analysis's run of one (OGC-1200). */
     private static final int RUN_OF_ONE_LOCK = 1200;
+    private static final int RUN_LOCK = 1201;
 
     public ResultRunDAOImpl() {
         super(ResultRun.class);
@@ -109,6 +110,15 @@ public class ResultRunDAOImpl extends BaseDAOImpl<ResultRun, Long> implements Re
     }
 
     @Override
+    public ResultRun lockForUpdate(ResultRun run) {
+        session().createNativeQuery("SELECT CAST(pg_advisory_xact_lock(:namespace, hashtext(:run)) AS text)")
+                .setParameter("namespace", RUN_LOCK).setParameter("run", String.valueOf(run.getId())).getSingleResult();
+        ResultRun managed = entityManager.contains(run) ? run : entityManager.find(ResultRun.class, run.getId());
+        entityManager.refresh(managed);
+        return managed;
+    }
+
+    @Override
     public void lockRunOfOne(String analysisId) {
         session().createNativeQuery("SELECT CAST(pg_advisory_xact_lock(:namespace, hashtext(:analysis)) AS text)")
                 .setParameter("namespace", RUN_OF_ONE_LOCK).setParameter("analysis", analysisId).getSingleResult();
@@ -130,6 +140,16 @@ public class ResultRunDAOImpl extends BaseDAOImpl<ResultRun, Long> implements Re
             return query.uniqueResultOptional();
         } catch (RuntimeException e) {
             throw new LIMSRuntimeException("Error finding the open run of one of an analysis", e);
+        }
+    }
+
+    @Override
+    public List<org.openelisglobal.result.valueholder.Result> getResultsOfRun(Long runId) {
+        try {
+            return session().createQuery("FROM Result r WHERE r.runId = :runId ORDER BY r.id",
+                    org.openelisglobal.result.valueholder.Result.class).setParameter("runId", runId).list();
+        } catch (RuntimeException e) {
+            throw new LIMSRuntimeException("Error finding the results of run " + runId, e);
         }
     }
 

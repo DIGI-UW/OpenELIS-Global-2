@@ -165,9 +165,16 @@ public interface ResultRunService extends BaseObjectService<ResultRun, Long> {
     void workplanResultSaved(Long runId, String sysUserId);
 
     /**
+     * FR-G5: a result saved into a run that carries a lot uses that lot, in a
+     * transaction of its own, so a lot never stops a result.
+     */
+    void useRunLot(Long runId, String resultId, String sysUserId);
+
+    /**
      * Records results of batched analyses into their open workplan run (FR-D5), and
      * returns the update that completes a run whose batch has no analysis left
-     * waiting, run in the same save.
+     * waiting, run in the same save. The results use the run's lot once the save
+     * has committed.
      */
     org.openelisglobal.common.services.registration.interfaces.IResultUpdate recordIntoWorkplanRuns(
             Collection<org.openelisglobal.result.valueholder.Result> results, String sysUserId);

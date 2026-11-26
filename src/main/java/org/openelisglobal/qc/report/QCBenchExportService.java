@@ -3,6 +3,7 @@ package org.openelisglobal.qc.report;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Supplier;
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.qc.service.QCControlLotService;
@@ -10,6 +11,7 @@ import org.openelisglobal.qc.service.QCResultService;
 import org.openelisglobal.qc.valueholder.QCControlLot;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCSource;
+import org.openelisglobal.resultrun.valueholder.ResultRun;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.service.TestSectionService;
@@ -45,10 +47,13 @@ public class QCBenchExportService {
     @Autowired
     private SystemUserService systemUserService;
 
-    /** One bench control run, every name already resolved. */
+    /**
+     * One bench control run, every name already resolved; {@code runLabel} names
+     * the result run it was recorded on (OGC-1200 FR-G2), blank when none.
+     */
     public record BenchExportRow(Timestamp runDateTime, String source, String labUnitName, String testName,
             String controlLabel, BigDecimal expectedValue, BigDecimal uncertainty, BigDecimal resultValue,
-            String outcome, String technicianName) {
+            String outcome, String technicianName, String runLabel) {
     }
 
     /** The register rows, plus whether the row cap cut the window short. */
@@ -69,7 +74,8 @@ public class QCBenchExportService {
     private BenchExportRow toRow(QCResult result) {
         return new BenchExportRow(result.getRunDateTime(), String.valueOf(result.getSource()), labUnitName(result),
                 testName(result), controlLabel(result), result.getExpectedValue(), result.getUncertainty(),
-                result.getResultValue(), String.valueOf(result.getQualitativeOutcome()), technicianName(result));
+                result.getResultValue(), String.valueOf(result.getQualitativeOutcome()), technicianName(result),
+                Objects.toString(ResultRun.labelOf(result.getRunId()), ""));
     }
 
     /**

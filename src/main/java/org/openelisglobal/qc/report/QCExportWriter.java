@@ -106,13 +106,14 @@ public final class QCExportWriter {
         PrintWriter writer = new PrintWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8));
         SimpleDateFormat sdf = new SimpleDateFormat(DATE_TIME_PATTERN);
         writer.write('﻿');
-        writer.printf("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%n", m("qc.export.header.runDateTime"),
+        writer.printf("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%n", m("qc.export.header.runDateTime"),
                 m("qc.export.header.source"), m("qc.export.header.labUnit"), m("qc.export.header.test"),
                 m("qc.export.header.control"), m("qc.export.header.expected"), m("qc.export.header.uncertainty"),
-                m("qc.export.header.value"), m("qc.export.header.outcome"), m("qc.export.header.technician"));
+                m("qc.export.header.value"), m("qc.export.header.outcome"), m("qc.export.header.technician"),
+                m("qc.export.header.resultRun"));
 
         for (BenchExportRow row : bench.rows()) {
-            writer.printf("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%n",
+            writer.printf("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%n",
                     StringUtil.csvEscape(row.runDateTime() != null ? sdf.format(row.runDateTime()) : ""),
                     StringUtil.csvEscape(row.source()), StringUtil.csvEscape(row.labUnitName()),
                     StringUtil.csvEscape(row.testName()), StringUtil.csvEscape(row.controlLabel()),
@@ -121,7 +122,8 @@ public final class QCExportWriter {
                     row.expectedValue() != null ? row.expectedValue().toPlainString() : "",
                     row.uncertainty() != null ? row.uncertainty().toPlainString() : "",
                     row.resultValue() != null ? row.resultValue().toPlainString() : "",
-                    StringUtil.csvEscape(row.outcome()), StringUtil.csvEscape(row.technicianName()));
+                    StringUtil.csvEscape(row.outcome()), StringUtil.csvEscape(row.technicianName()),
+                    StringUtil.csvEscape(row.runLabel()));
         }
         writeTruncationNotice(writer, bench.truncated());
         writer.flush();

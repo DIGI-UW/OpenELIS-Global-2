@@ -25,6 +25,7 @@ import org.openelisglobal.analyzerimport.dao.AnalyzerDeliveryReceiptDAO;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt;
 import org.openelisglobal.analyzerresults.dao.AnalyzerResultsDAO;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.openelisglobal.common.services.IResultSaveService;
 import org.openelisglobal.common.services.IStatusService;
@@ -54,6 +55,7 @@ import org.openelisglobal.resultrun.service.ResultRunRowClassifier.ClassifiedRow
 import org.openelisglobal.resultrun.valueholder.ResultRun;
 import org.openelisglobal.resultrun.valueholder.ResultRunSource;
 import org.openelisglobal.resultrun.valueholder.ResultRunState;
+import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
@@ -121,6 +123,12 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     @Lazy
     @Autowired
     private org.openelisglobal.testcatalog.service.TestQcPolicyService testQcPolicyService;
+    @Lazy
+    @Autowired
+    private org.openelisglobal.inventory.service.InventoryManagementService inventoryManagementService;
+    @Lazy
+    @Autowired
+    private org.openelisglobal.testreagentlink.service.TestReagentLinkService testReagentLinkService;
 
     public ResultRunServiceImpl() {
         super(ResultRun.class);
@@ -624,12 +632,13 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     public Optional<ResultRunHeader> setReagentLot(Long runId, Long reagentId, Long reagentLotId, RunViewer viewer,
             String sysUserId) {
         Optional<ResultRun> open = openWorkplanRun(runId, viewer);
-        open.ifPresent(run -> {
+        open.map(baseObjectDAO::lockForUpdate).ifPresent(run -> {
             batchWorkplanService.setRunReagentLot(run.getBatchWorkplanId(), reagentId, reagentLotId, sysUserId);
             run.setReagentLotId(reagentLotId);
             run.setLastActivityAt(Timestamp.from(Instant.now()));
             run.setSysUserId(sysUserId);
             update(run);
+            consumeRunLotForRecordedResults(run, sysUserId);
         });
         return open.flatMap(run -> getHeader(run.getId(), viewer));
     }
@@ -673,8 +682,12 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     @Override
     @Transactional
     public void workplanResultSaved(Long runId, String sysUserId) {
-        ResultRun run = runId == null ? null : baseObjectDAO.get(runId).orElse(null);
-        if (run == null || run.getSource() != ResultRunSource.WORKPLAN || !run.getState().isActive()) {
+        ResultRun found = runId == null ? null : baseObjectDAO.get(runId).orElse(null);
+        if (found == null || found.getSource() != ResultRunSource.WORKPLAN) {
+            return;
+        }
+        ResultRun run = baseObjectDAO.lockForUpdate(found);
+        if (!run.getState().isActive()) {
             return;
         }
         Timestamp now = Timestamp.from(Instant.now());
@@ -695,11 +708,13 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
         Map<String, Long> runs = unplaced.isEmpty() ? Map.of()
                 : activeBatchRunsOf(unplaced.stream().map(result -> result.getAnalysis().getId()).distinct().toList());
         Set<Long> touched = new LinkedHashSet<>();
+        List<Result> placed = new ArrayList<>();
         for (Result result : unplaced) {
             Long runId = runs.get(result.getAnalysis().getId());
             if (runId != null) {
                 result.setRunId(runId);
                 touched.add(runId);
+                placed.add(result);
             }
         }
         return new IResultUpdate() {
@@ -710,8 +725,77 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
 
             @Override
             public void postTransactionalCommitUpdate(IResultSaveService saveService) {
+                ResultRunService runs = SpringContext.getBean(ResultRunService.class);
+                for (Result result : placed) {
+                    try {
+                        runs.useRunLot(result.getRunId(), result.getId(), sysUserId);
+                    } catch (RuntimeException e) {
+                        LogEvent.logError(ResultRunServiceImpl.class.getSimpleName(), "useRunLot",
+                                "Result " + result.getId() + " used nothing from the lot of run " + result.getRunId()
+                                        + ": " + e.getMessage());
+                    }
+                }
             }
         };
+    }
+
+    /**
+     * FR-G5: a result recorded in a run that carries a lot uses that lot, once per
+     * result, by the quantity the Test Catalog links the lot's reagent to the test
+     * with. A result whose analysis already used the reagent (Record use on the
+     * row, an earlier save) is not counted again. A lot that cannot give the
+     * quantity any more is logged and skipped: the use is a stock record and never
+     * stops the result.
+     */
+    @Override
+    @Transactional
+    public void useRunLot(Long runId, String resultId, String sysUserId) {
+        ResultRun run = runId == null ? null : baseObjectDAO.get(runId).map(baseObjectDAO::lockForUpdate).orElse(null);
+        Result result = StringUtils.isNumeric(resultId) ? resultService.get(resultId) : null;
+        if (run != null && result != null) {
+            consumeRunLot(run, result, sysUserId);
+        }
+    }
+
+    private void consumeRunLot(ResultRun run, Result result, String sysUserId) {
+        Analysis analysis = result.getAnalysis();
+        if (run.getReagentLotId() == null || StringUtils.isBlank(result.getValue()) || analysis == null
+                || analysis.getTest() == null || !StringUtils.isNumeric(analysis.getId())
+                || !StringUtils.isNumeric(result.getId())) {
+            return;
+        }
+        InventoryLot lot = inventoryLotService.getMatch("id", run.getReagentLotId()).orElse(null);
+        if (lot != null) {
+            inventoryLotService.refreshForUpdate(lot);
+        }
+        Long reagentId = lot == null || lot.getInventoryItem() == null ? null : lot.getInventoryItem().getId();
+        if (reagentId == null) {
+            return;
+        }
+        java.math.BigDecimal quantity = testReagentLinkService.getByTestId(analysis.getTest().getId()).stream()
+                .filter(link -> reagentId.equals(link.getReagentId()))
+                .map(org.openelisglobal.testreagentlink.valueholder.TestReagentLink::getQuantityPerTest)
+                .filter(perTest -> perTest != null && perTest.signum() > 0).findFirst().orElse(null);
+        Long analysisId = Long.valueOf(analysis.getId());
+        if (quantity == null || inventoryUsageService.getByAnalysisId(analysisId).stream().anyMatch(
+                usage -> usage.getInventoryItem() != null && reagentId.equals(usage.getInventoryItem().getId()))) {
+            return;
+        }
+        Optional<String> unavailable = inventoryManagementService.unavailableReason(lot.getId(),
+                quantity.doubleValue());
+        if (unavailable.isPresent()) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "consumeRunLot", "Lot " + lot.getLotNumber() + " of "
+                    + run.getLabel() + " gave nothing for result " + result.getId() + ": " + unavailable.get());
+            return;
+        }
+        inventoryManagementService.consumeSelectedLot(lot.getId(), quantity.doubleValue(), Long.valueOf(result.getId()),
+                analysisId, sysUserId);
+    }
+
+    private void consumeRunLotForRecordedResults(ResultRun run, String sysUserId) {
+        for (Result result : baseObjectDAO.getResultsOfRun(run.getId())) {
+            consumeRunLot(run, result, sysUserId);
+        }
     }
 
     @Override

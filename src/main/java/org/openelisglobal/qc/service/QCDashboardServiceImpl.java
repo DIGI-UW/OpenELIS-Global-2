@@ -209,7 +209,8 @@ public class QCDashboardServiceImpl implements QCDashboardService {
             summary.add(new BenchQcSummaryRow(testSectionId, resolveTestSectionName(testSectionId), testId,
                     testService.getLabelOrDefault(testId, Test::getName, null), Objects.toString(row[2], null),
                     row[3] == null ? 0L : ((Number) row[3]).longValue(),
-                    row[4] == null ? 0L : ((Number) row[4]).longValue(), (Timestamp) row[5]));
+                    row[4] == null ? 0L : ((Number) row[4]).longValue(), (Timestamp) row[5],
+                    row[6] == null ? null : ((Number) row[6]).longValue()));
         }
         return summary;
     }
@@ -380,6 +381,7 @@ public class QCDashboardServiceImpl implements QCDashboardService {
 
         if (latestResult != null) {
             detail.setLatestZScore(latestResult.getZScore());
+            detail.setLastRunId(latestResult.getRunId());
             if (latestResult.getRunDateTime() != null) {
                 detail.setLastRunTime(latestResult.getRunDateTime().toInstant().toString());
             }

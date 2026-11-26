@@ -2,6 +2,7 @@ package org.openelisglobal.qc.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.math.BigDecimal;
@@ -15,7 +16,11 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.qc.builder.BenchQCCaptureFormBuilder;
 import org.openelisglobal.qc.dto.BenchQcSummaryRow;
 import org.openelisglobal.qc.valueholder.QCQualitativeOutcome;
+import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCSource;
+import org.openelisglobal.resultrun.service.ResultRunService;
+import org.openelisglobal.resultrun.valueholder.ResultRun;
+import org.openelisglobal.resultrun.valueholder.ResultRunSource;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -44,6 +49,8 @@ public class BenchQcDashboardSummaryTest extends BaseWebContextSensitiveTest {
     private QCResultService qcResultService;
     @Autowired
     private QCChartDataService chartDataService;
+    @Autowired
+    private ResultRunService resultRunService;
 
     @Before
     public void setUp() throws Exception {
@@ -116,6 +123,25 @@ public class BenchQcDashboardSummaryTest extends BaseWebContextSensitiveTest {
         assertEquals(1L, manual.totalRuns());
         assertEquals(0L, manual.failedRuns());
         assertFalse("a clean group must not read as a failure", manual.failedRuns() > 0);
+        assertNull("a control recorded on no run names no run", manual.lastRunId());
+    }
+
+    /**
+     * OGC-1200 FR-G2: the listing names the latest run a control of the group was
+     * recorded on, which the dashboard links to the run on the Results page.
+     */
+    @Test
+    public void namesTheLatestRunAControlOfTheGroupWasRecordedOn() {
+        recordManual(QCQualitativeOutcome.PASS, new BigDecimal("100.00000"), "2025-06-10 08:00:00");
+        Long earlier = recordOnRun(
+                recordManual(QCQualitativeOutcome.PASS, new BigDecimal("101.00000"), "2025-06-10 09:00:00"));
+        Long later = recordOnRun(
+                recordManual(QCQualitativeOutcome.FAIL, new BigDecimal("140.00000"), "2025-06-10 11:00:00"));
+
+        BenchQcSummaryRow manual = row(dashboardService.getBenchQcSummary(WINDOW_START, WINDOW_END, null), TEST_ID);
+
+        assertTrue(later > earlier);
+        assertEquals(later, manual.lastRunId());
     }
 
     /**
@@ -155,8 +181,19 @@ public class BenchQcDashboardSummaryTest extends BaseWebContextSensitiveTest {
                 .orElseThrow(() -> new AssertionError("no bench row for test " + testId + " in " + rows.size()));
     }
 
-    private void recordManual(QCQualitativeOutcome outcome, BigDecimal value, String runAt) {
-        qcResultService.createBenchQCResult(BenchQCCaptureFormBuilder.create(QCSource.MANUAL).withTestId(TEST_ID)
+    private Long recordOnRun(QCResult control) {
+        ResultRun run = new ResultRun();
+        run.setSource(ResultRunSource.RESULT_ENTRY);
+        run.setOpenedAt(control.getRunDateTime());
+        run.setLastActivityAt(control.getRunDateTime());
+        run.setSysUserId("1");
+        Long runId = resultRunService.insert(run);
+        jdbcTemplate.update("UPDATE clinlims.qc_result SET run_id = ? WHERE id = ?", runId, control.getId());
+        return runId;
+    }
+
+    private QCResult recordManual(QCQualitativeOutcome outcome, BigDecimal value, String runAt) {
+        return qcResultService.createBenchQCResult(BenchQCCaptureFormBuilder.create(QCSource.MANUAL).withTestId(TEST_ID)
                 .withTestSectionId(LAB_UNIT).withControlLotId("bench-lot-a").withOutcome(outcome).withResultValue(value)
                 .withTarget(new BigDecimal("100.00000"), new BigDecimal("5.00000")).withRunDateTime(runAt).build(),
                 TECHNICIAN);

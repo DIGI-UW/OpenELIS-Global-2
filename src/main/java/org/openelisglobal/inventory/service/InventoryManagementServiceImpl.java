@@ -76,6 +76,21 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
         return usageService.recordUsage(lot, quantityNeeded, testResultId, analysisId, sysUserId);
     }
 
+    @Override
+    @Transactional
+    public java.util.Optional<String> unavailableReason(Long lotId, Double quantityNeeded) {
+        InventoryLot lot = lotId == null ? null : inventoryLotService.getMatch("id", lotId).orElse(null);
+        if (lot == null) {
+            return java.util.Optional.of("INVENTORY_LOT_NOT_FOUND");
+        }
+        try {
+            validateSelectedLot(lot, quantityNeeded);
+            return java.util.Optional.empty();
+        } catch (InventoryLotUnavailableException e) {
+            return java.util.Optional.of(e.getCode());
+        }
+    }
+
     private void validateSelectedLot(InventoryLot lot, Double quantityNeeded) {
         String lotNumber = lot.getLotNumber();
         if (lot.isExpired()) {
