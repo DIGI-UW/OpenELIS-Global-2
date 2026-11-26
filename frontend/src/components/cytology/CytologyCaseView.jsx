@@ -472,7 +472,7 @@ function CytologyCaseView() {
           </Section>
         </Column>
       </Grid>
-      <Grid fullWidth={true} className="orderLegendBody">
+      <Grid fullWidth={true} className="orderLegendBody case-view-order-band">
         {notificationVisible === true ? <AlertDialog /> : ""}
         {loading && <Loading description="Loading Dasboard..." />}
         <ConfirmPopup
