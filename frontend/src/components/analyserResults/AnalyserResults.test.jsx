@@ -419,7 +419,7 @@ describe("AnalyserResults", () => {
     ]);
     expect(
       await screen.findByText(
-        "A control for this test failed in this run, so the value is held and cannot be saved here.",
+        "QC for this test failed in this run, so the value is held and cannot be saved here. The run shows which control, blank or duplicate failed.",
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open the run" })).toHaveAttribute(
@@ -440,7 +440,7 @@ describe("AnalyserResults", () => {
     ]);
     expect(
       await screen.findByText(
-        "This test requires a control on every run, and none is recorded in this run, so the value is held and cannot be saved here.",
+        "This run lacks QC this test requires on every run, so the value is held and cannot be saved here. The run shows what is missing.",
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open the run" })).toHaveAttribute(

@@ -4,7 +4,8 @@ import java.util.List;
 
 /**
  * The run header's QC block (OGC-1200 FR-E2): the run's overall verdict, then
- * one line per covered test with its verdict and the controls covering it.
+ * one line per covered test with its verdict, the controls covering it and the
+ * blanks and duplicates recorded for it (FR-C1a).
  */
 public record RunQcBlock(String overall, List<TestLine> tests) {
 
@@ -15,13 +16,25 @@ public record RunQcBlock(String overall, List<TestLine> tests) {
      * superseded it (FR-A3).
      *
      * @param holdCause   why the test's rows are held now, null when they are not
-     * @param whenMissing what the test's policy does when its required control is
-     *                    missing (WARN or HOLD), null when no control is required
-     *                    (FR-H1)
+     * @param whenMissing what the test's policy does about what it lacks (HOLD when
+     *                    any missing kind holds, else WARN), null when it lacks
+     *                    nothing (FR-H1)
+     * @param missing     the kinds a test whose verdict is No control lacks:
+     *                    CONTROL, BLANK, DUPLICATE
+     * @param items       the blanks and duplicates recorded for the test
      */
     public record TestLine(String testId, String testName, String verdict, List<ControlLine> controls, String decision,
             String nceNumber, List<RunLink> retestOf, List<RunLink> retestSuggestions, List<RunLink> supersededBy,
-            RunHoldCause holdCause, String whenMissing) {
+            RunHoldCause holdCause, String whenMissing, List<String> missing, List<ItemLine> items) {
+    }
+
+    /**
+     * One blank or duplicate on the run (FR-C10, FR-C11): what was observed, for a
+     * duplicate the sample it repeats, what it came to and why, who recorded it and
+     * when.
+     */
+    public record ItemLine(Long id, String kind, String observed, String parentAccession, String evaluation,
+            String detail, String operator, String recordedAt) {
     }
 
     /**

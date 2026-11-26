@@ -8,8 +8,10 @@ import {
   runSourceKey,
   runStateKey,
   runVerdictTagType,
+  testVerdictText,
 } from "./runFormat";
 import { RunQc } from "./RunQcBlock";
+import RunQcItems from "./RunQcItems";
 
 interface RowRunHeader {
   id: number;
@@ -79,8 +81,12 @@ const RowRunSummary: React.FC<RowRunSummaryProps> = ({
     </Link>
   );
   const verdict = test && (
-    <Tag type={runVerdictTagType(test.verdict)} size="sm">
-      {intl.formatMessage({ id: `run.verdict.${test.verdict}` })}
+    <Tag
+      type={runVerdictTagType(test.verdict)}
+      size="sm"
+      data-testid="row-run-verdict"
+    >
+      {testVerdictText(intl, test.verdict, test.missing)}
     </Tag>
   );
 
@@ -146,6 +152,7 @@ const RowRunSummary: React.FC<RowRunSummaryProps> = ({
               <FormattedMessage id="run.row.noControlOnRun" />
             </p>
           )}
+          <RunQcItems items={test.items} testIdPrefix="row-run-qc-item" />
         </div>
       ) : (
         <p className="runsChipNote">

@@ -181,8 +181,61 @@ describe("QcTargetsSection", () => {
     expect(savedPayload().policy).toEqual({
       controlRequired: true,
       controlWhenMissing: "HOLD",
+      blankRequired: false,
+      blankWhenMissing: "WARN",
+      blankWhenFails: "HOLD",
+      duplicateRequired: false,
+      duplicateWhenMissing: "WARN",
+      duplicateWhenFails: "HOLD",
+      blankCeiling: "",
+      rpdLimit: "",
     });
     expect(savedPayload().targets).toHaveLength(1);
+  });
+
+  it("sets what a run needs of blanks and duplicates, with the blank ceiling and RPD limit (OGC-1200 FR-H1)", async () => {
+    load({
+      ...EMPTY,
+      policy: {
+        controlRequired: false,
+        controlWhenMissing: "WARN",
+        blankRequired: false,
+        blankWhenMissing: "WARN",
+        blankWhenFails: "HOLD",
+        duplicateRequired: false,
+        duplicateWhenMissing: "WARN",
+        duplicateWhenFails: "HOLD",
+        blankCeiling: "0.5",
+        rpdLimit: "",
+      },
+    });
+    renderSection();
+    const blankRequired = await screen.findByTestId("qc-policy-blank-required");
+    expect(screen.getByTestId("qc-policy-blank-when-missing")).toBeDisabled();
+    expect(screen.getByTestId("qc-policy-blank-limit")).toHaveValue("0.5");
+
+    fireEvent.change(blankRequired, { target: { value: "yes" } });
+    fireEvent.change(screen.getByTestId("qc-policy-blank-when-missing"), {
+      target: { value: "HOLD" },
+    });
+    fireEvent.change(screen.getByTestId("qc-policy-duplicate-when-fails"), {
+      target: { value: "WARN" },
+    });
+    fireEvent.change(screen.getByTestId("qc-policy-duplicate-limit"), {
+      target: { value: "15" },
+    });
+    fireEvent.click(screen.getByTestId("qc-targets-save"));
+
+    await waitFor(() =>
+      expect(putToOpenElisServerFullResponse).toHaveBeenCalledTimes(1),
+    );
+    expect(savedPayload().policy).toMatchObject({
+      blankRequired: true,
+      blankWhenMissing: "HOLD",
+      duplicateWhenFails: "WARN",
+      blankCeiling: "0.5",
+      rpdLimit: "15",
+    });
   });
 
   it("shows a stored Hold policy as it is", async () => {

@@ -10,6 +10,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { postToOpenElisServerJsonResponse } from "../../../utils/Utils";
 import { RequiredMarker, requiredProps } from "../../../common/RequiredMarker";
 import type { RunQc, RunQcTestLine } from "./RunQcBlock";
+import { missingQcItems } from "./runFormat";
 
 type Action = "RETEST" | "REJECT" | "ACCEPT_DESPITE";
 
@@ -67,11 +68,14 @@ const RunTestDecision: React.FC<RunTestDecisionProps> = ({
   const confirm = () => {
     if (action === "ACCEPT_DESPITE" && !reason.trim()) {
       setError(
-        intl.formatMessage({
-          id: missing
-            ? "run.decision.reasonRequiredMissing"
-            : "run.decision.reasonRequired",
-        }),
+        intl.formatMessage(
+          {
+            id: missing
+              ? "run.decision.reasonRequiredMissingQc"
+              : "run.decision.reasonRequired",
+          },
+          { items: missingQcItems(intl, test.missing) },
+        ),
       );
       return;
     }
@@ -127,11 +131,16 @@ const RunTestDecision: React.FC<RunTestDecisionProps> = ({
             {intl.formatMessage(
               {
                 id:
-                  missing && action === "ACCEPT_DESPITE"
-                    ? "run.decision.explainMissing.ACCEPT_DESPITE"
-                    : `run.decision.explain.${action}`,
+                  action !== "ACCEPT_DESPITE"
+                    ? `run.decision.explain.${action}`
+                    : missing
+                      ? "run.decision.explainMissingQc.ACCEPT_DESPITE"
+                      : "run.decision.explainQcFailed.ACCEPT_DESPITE",
               },
-              { test: test.testName },
+              {
+                test: test.testName,
+                items: missingQcItems(intl, test.missing),
+              },
             )}
           </p>
           {action === "REJECT" && (

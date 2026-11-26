@@ -17,9 +17,17 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import useSiteDateFormat from "../../../common/useSiteDateFormat";
-import { describeControl, runVerdictTagType } from "./runFormat";
+import {
+  describeControl,
+  missingQcItems,
+  missingQcTag,
+  runVerdictTagType,
+  testVerdictText,
+} from "./runFormat";
+import RunQcItems, { RunQcItemLine } from "./RunQcItems";
 import RunTestDecision from "./RunTestDecision";
 import RunRetestLink from "./RunRetestLink";
+import RunQcItemForm from "./RunQcItemForm";
 
 export interface RunControlLine {
   id: string;
@@ -52,6 +60,8 @@ export interface RunQcTestLine {
   supersededBy?: RunLinkItem[];
   holdCause?: "QC_FAILED" | "QC_MISSING" | null;
   whenMissing?: "WARN" | "HOLD" | null;
+  missing?: string[] | null;
+  items?: RunQcItemLine[];
 }
 
 export interface RunQc {
@@ -229,7 +239,14 @@ const RunQcBlock: React.FC<RunQcBlockProps> = ({
           renderIcon={qc.overall === "HELD" ? WarningFilled : undefined}
           data-testid="run-qc-overall"
         >
-          {intl.formatMessage({ id: `run.qc.overall.${qc.overall}` })}
+          {qc.overall === "NO_CONTROL"
+            ? missingQcTag(
+                intl,
+                qc.tests
+                  .filter((test) => test.verdict === "NO_CONTROL")
+                  .flatMap((test) => test.missing ?? []),
+              )
+            : intl.formatMessage({ id: `run.qc.overall.${qc.overall}` })}
         </Tag>
       </h4>
       {qc.tests.length === 0 && (
@@ -241,8 +258,12 @@ const RunQcBlock: React.FC<RunQcBlockProps> = ({
         {qc.tests.map((test) => (
           <li key={test.testId} data-testid={`run-qc-test-${test.testId}`}>
             <span className="runQcTestName">{test.testName}</span>{" "}
-            <Tag type={verdictTag(test.verdict)} size="sm">
-              {intl.formatMessage({ id: `run.verdict.${test.verdict}` })}
+            <Tag
+              type={verdictTag(test.verdict)}
+              size="sm"
+              data-testid={`run-qc-verdict-${test.testId}`}
+            >
+              {testVerdictText(intl, test.verdict, test.missing)}
             </Tag>
             {test.verdict === "NO_CONTROL" &&
               test.whenMissing &&
@@ -254,11 +275,12 @@ const RunQcBlock: React.FC<RunQcBlockProps> = ({
                   <FormattedMessage
                     id={
                       test.holdCause === "QC_MISSING"
-                        ? "run.qc.missingHold"
+                        ? "run.qc.missingItemsHold"
                         : active
-                          ? "run.qc.missingWarn"
-                          : "run.qc.missingWarnClosed"
+                          ? "run.qc.missingItemsWarn"
+                          : "run.qc.missingItemsWarnClosed"
                     }
+                    values={{ items: missingQcItems(intl, test.missing) }}
                   />
                 </p>
               )}
@@ -288,6 +310,7 @@ const RunQcBlock: React.FC<RunQcBlockProps> = ({
                 ))}
               </ul>
             )}
+            <RunQcItems items={test.items} />
           </li>
         ))}
       </ul>
@@ -297,6 +320,13 @@ const RunQcBlock: React.FC<RunQcBlockProps> = ({
           lowContrast
           hideCloseButton
           title={message.text}
+        />
+      )}
+      {active && !recording && (
+        <RunQcItemForm
+          runId={runId}
+          tests={recordable}
+          onRecorded={onRecorded}
         />
       )}
       {!recording ? (

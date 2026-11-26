@@ -551,7 +551,7 @@ describe("OGC-1200 slice 2: chips, paging and selection", () => {
       expect(screen.getAllByText("Held: QC failed")).toHaveLength(1);
       fireEvent.click(screen.getByTestId("run-row-expand-43"));
       expect(screen.getByTestId("run-row-entry-43")).toHaveTextContent(
-        "A control for this test failed in this run, so this value is held",
+        "QC for this test failed in this run, so this value is held",
       );
       expect(screen.queryByTestId("embedded-entry")).not.toBeInTheDocument();
 
@@ -570,19 +570,20 @@ describe("OGC-1200 slice 2: chips, paging and selection", () => {
         ...ROWS.rows[0],
         id: "46",
         category: "NORMAL",
-        missingControl: true,
+        missingQc: ["BLANK"],
       };
       wire({ ...HEADER, state: "HELD" }, { ...ROWS, rows: [missing, warned] });
       renderRun();
 
       expect(screen.getByText("Held: QC missing")).toBeInTheDocument();
       expect(screen.queryByText("Held: QC failed")).not.toBeInTheDocument();
-      expect(screen.getByTestId("run-row-no-control-46")).toHaveTextContent(
-        "No control",
+      expect(screen.getByTestId("run-row-missing-qc-46")).toHaveTextContent(
+        "No blank",
       );
+      expect(screen.queryByTestId("run-row-missing-qc-45")).toBeNull();
       fireEvent.click(screen.getByTestId("run-row-expand-45"));
       expect(screen.getByTestId("run-row-entry-45")).toHaveTextContent(
-        "requires a control on every run, and none is recorded in this one",
+        "This run lacks QC this test requires on every run, so this value is held",
       );
       fireEvent.click(screen.getByTestId("run-row-expand-46"));
       expect(screen.getByTestId("embedded-entry")).toBeInTheDocument();

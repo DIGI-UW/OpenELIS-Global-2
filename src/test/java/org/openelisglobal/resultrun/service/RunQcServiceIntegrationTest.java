@@ -5,11 +5,13 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -24,23 +26,29 @@ import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
 import org.openelisglobal.qc.dao.QCResultDAO;
 import org.openelisglobal.qc.form.BenchQCCaptureForm;
 import org.openelisglobal.qc.service.QcHoldService;
+import org.openelisglobal.qc.service.QcItemRules;
 import org.openelisglobal.qc.valueholder.QCQualitativeOutcome;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCSource;
 import org.openelisglobal.qc.valueholder.RunControlVerdict;
 import org.openelisglobal.qc.valueholder.RunVerdictSource;
+import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultrun.dao.ResultRunEventDAO;
 import org.openelisglobal.resultrun.form.ResultRunRowCategory;
 import org.openelisglobal.resultrun.form.RunHoldCause;
 import org.openelisglobal.resultrun.form.RunLink;
 import org.openelisglobal.resultrun.form.RunQcBlock;
+import org.openelisglobal.resultrun.form.RunQcFact;
+import org.openelisglobal.resultrun.form.RunQcItemForm;
 import org.openelisglobal.resultrun.form.RunTestVerdict;
 import org.openelisglobal.resultrun.form.RunViewer;
 import org.openelisglobal.resultrun.valueholder.ResultRun;
 import org.openelisglobal.resultrun.valueholder.ResultRunEvent;
+import org.openelisglobal.resultrun.valueholder.ResultRunQcItem;
 import org.openelisglobal.resultrun.valueholder.ResultRunSource;
 import org.openelisglobal.resultrun.valueholder.ResultRunState;
 import org.openelisglobal.resultrun.valueholder.ResultRunTestDisposition;
+import org.openelisglobal.resultrun.valueholder.RunQcItemKind;
 import org.openelisglobal.resultrun.valueholder.RunTestAction;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.test.beanItems.TestResultItem;
@@ -85,6 +93,12 @@ public class RunQcServiceIntegrationTest extends BaseWebContextSensitiveTest {
     private org.openelisglobal.systemuser.service.SystemUserService systemUserService;
     @Autowired
     private TestQcPolicyService testQcPolicyService;
+    @Autowired
+    private org.openelisglobal.resultvalidation.service.ResultValidationService resultValidationService;
+    @Autowired
+    private org.openelisglobal.result.service.ResultService resultService;
+    @Autowired
+    private org.openelisglobal.analysis.service.AnalysisService analysisService;
     @Autowired
     private javax.sql.DataSource dataSource;
     @PersistenceContext
@@ -674,7 +688,8 @@ public class RunQcServiceIntegrationTest extends BaseWebContextSensitiveTest {
         assertNull(line(run.getId(), TEST).holdCause());
         assertEquals("WARN", line(run.getId(), TEST).whenMissing());
         ResultRunRowClassifier.ClassifiedRow warned = classified(warnedOrder);
-        assertTrue("the row carries the warning", warned.missingControl());
+        assertEquals("the row carries the warning", List.of("CONTROL"), warned.missingQc());
+        assertEquals(List.of("CONTROL"), line(run.getId(), TEST).missing());
         assertEquals(ResultRunRowCategory.NORMAL, warned.category());
     }
 
@@ -777,6 +792,251 @@ public class RunQcServiceIntegrationTest extends BaseWebContextSensitiveTest {
             analyzerResultsService.update(row);
         }
         return row;
+    }
+
+    /**
+     * OGC-1200 slice 10a (FR-C10, FR-C12): a lab blank above the test's ceiling
+     * fails and holds the test under the default Hold policy; one at or below
+     * passes. Under a Warn failure policy the test only warns.
+     */
+    @Test
+    public void aLabBlankAboveTheCeilingHoldsItsTestAndUnderAWarnPolicyOnlyWarns() {
+        stagedRow(run.getId(), orderOf(TEST), TEST);
+        stagedRow(run.getId(), orderOf(OTHER_TEST), OTHER_TEST);
+        limits(TEST, "0.5", "20");
+        limits(OTHER_TEST, "0.5", "20");
+
+        assertEquals(QcItemRules.Evaluation.PASS, item(TEST, RunQcItemKind.BLANK, "0.4", null).getEvaluation());
+        assertEquals(RunTestVerdict.PASS, runQcService.testVerdicts(run.getId()).get(TEST));
+        ResultRunQcItem failing = item(TEST, RunQcItemKind.BLANK, "0.9", null);
+        assertEquals(QcItemRules.Evaluation.FAIL, failing.getEvaluation());
+        assertEquals("Result = 0.9 (threshold 0.5)", failing.getDetail());
+        assertEquals(RunTestVerdict.FAIL, runQcService.testVerdicts(run.getId()).get(TEST));
+        assertEquals(RunHoldCause.QC_FAILED, runQcService.holdCauses(run.getId()).get(TEST));
+
+        jdbc.update(
+                "INSERT INTO clinlims.test_qc_policy (test_id, control_required, control_when_missing,"
+                        + " blank_when_fails, last_updated) VALUES (?::numeric, false, 'WARN', 'WARN', NOW())",
+                OTHER_TEST);
+        item(OTHER_TEST, RunQcItemKind.BLANK, "0.9", null);
+        assertEquals(RunTestVerdict.PASS_WITH_WARNING, runQcService.testVerdicts(run.getId()).get(OTHER_TEST));
+        assertFalse("a warned blank failure holds nothing",
+                runQcService.holdCauses(run.getId()).containsKey(OTHER_TEST));
+        RunQcBlock.TestLine line = runQcService.qcBlock(run.getId()).tests().stream()
+                .filter(test -> OTHER_TEST.equals(test.testId())).findFirst().orElseThrow();
+        assertEquals(1, line.items().size());
+        assertEquals("BLANK", line.items().get(0).kind());
+        assertEquals("FAIL", line.items().get(0).evaluation());
+    }
+
+    /**
+     * FR-C11: a lab duplicate of a sample in the run is evaluated against that
+     * sample's result, by the test's RPD limit; recorded before the result, it is
+     * evaluated once the result is saved.
+     */
+    @Test
+    public void aLabDuplicateIsEvaluatedAgainstItsSamplesResultOnceSaved() {
+        String accession = orderOf(TEST);
+        stagedRow(run.getId(), accession, TEST);
+        String parent = analysisOf(accession);
+        limits(TEST, null, "10");
+
+        ResultRunQcItem duplicate = item(TEST, RunQcItemKind.DUPLICATE, "100", parent);
+        assertEquals(QcItemRules.Evaluation.NOT_EVALUATED, duplicate.getEvaluation());
+        assertEquals(RunTestVerdict.PASS, runQcService.testVerdicts(run.getId()).get(TEST));
+
+        jdbc.update("INSERT INTO clinlims.result (id, analysis_id, value, lastupdated) VALUES"
+                + " (nextval('clinlims.result_seq'), ?::numeric, '130', now())", parent);
+        entityManager.flush();
+        runQcService.reevaluateDuplicates(run.getId(), "1");
+        entityManager.flush();
+        entityManager.clear();
+
+        assertEquals("FAIL", jdbc.queryForObject("SELECT evaluation FROM clinlims.result_run_qc_item WHERE id = ?",
+                String.class, duplicate.getId()));
+        assertEquals(RunHoldCause.QC_FAILED, runQcService.holdCauses(run.getId()).get(TEST));
+        try {
+            item(TEST, RunQcItemKind.DUPLICATE, "100", analysisOf(orderOf(TEST)));
+            fail("a duplicate of a sample outside the run is refused");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("repeats a sample of this run"));
+        }
+    }
+
+    /**
+     * FR-H1, FR-C7, FR-H4: a blank the test requires per run, missing under a Hold
+     * policy, holds the test until one is recorded; a run of one requires none.
+     */
+    @Test
+    public void aRequiredBlankMissingUnderHoldHoldsTheTestAndARunOfOneRequiresNone() {
+        stagedRow(run.getId(), orderOf(TEST), TEST);
+        jdbc.update("INSERT INTO clinlims.test_qc_policy (test_id, control_required, control_when_missing,"
+                + " blank_required, blank_when_missing, last_updated) VALUES (?::numeric, false, 'WARN', true, 'HOLD',"
+                + " NOW())", TEST);
+        limits(TEST, "0.5", null);
+
+        assertEquals(RunTestVerdict.NO_CONTROL, runQcService.testVerdicts(run.getId()).get(TEST));
+        assertEquals(RunHoldCause.QC_MISSING, runQcService.holdCauses(run.getId()).get(TEST));
+        item(TEST, RunQcItemKind.BLANK, "0.1", null);
+        assertEquals(RunTestVerdict.PASS, runQcService.testVerdicts(run.getId()).get(TEST));
+        assertTrue(runQcService.holdCauses(run.getId()).isEmpty());
+
+        TestQcPolicy policy = testQcPolicyService.policyOf(TEST);
+        assertEquals(RunTestVerdict.NO_CONTROL, RunQcServiceImpl.verdictOf(List.of(), List.of(), policy, false));
+        assertEquals(RunTestVerdict.NOT_REQUIRED, RunQcServiceImpl.verdictOf(List.of(), List.of(), policy, true));
+    }
+
+    /**
+     * FR-H1: what a test lacks is named as what it is, on the run, on the rows the
+     * run warns and in the non-conformity a decision files, never as a control.
+     */
+    @Test
+    public void aMissingBlankOrDuplicateIsNamedAsItselfOnTheRunTheRowsAndTheNonConformity() {
+        String warnedOrder = orderOf(OTHER_TEST);
+        stagedRow(run.getId(), orderOf(TEST), TEST);
+        stagedRow(run.getId(), warnedOrder, OTHER_TEST);
+        jdbc.update("INSERT INTO clinlims.test_qc_policy (test_id, control_required, control_when_missing,"
+                + " blank_required, blank_when_missing, last_updated) VALUES (?::numeric, false, 'WARN', true, 'HOLD',"
+                + " NOW())", TEST);
+        jdbc.update("INSERT INTO clinlims.test_qc_policy (test_id, control_required, control_when_missing,"
+                + " duplicate_required, duplicate_when_missing, last_updated) VALUES (?::numeric, false, 'WARN', true,"
+                + " 'WARN', NOW())", OTHER_TEST);
+
+        RunQcBlock.TestLine held = line(run.getId(), TEST);
+        assertEquals(List.of("BLANK"), held.missing());
+        assertEquals("HOLD", held.whenMissing());
+        RunQcBlock.TestLine warned = line(run.getId(), OTHER_TEST);
+        assertEquals(List.of("DUPLICATE"), warned.missing());
+        assertEquals("WARN", warned.whenMissing());
+        assertEquals(List.of("DUPLICATE"), classified(warnedOrder).missingQc());
+
+        ResultRunTestDisposition decision = runQcService.decide(run.getId(), TEST, RunTestAction.ACCEPT_DESPITE,
+                "Blank material out of stock", false, "1");
+        entityManager.flush();
+        Map<String, Object> nce = jdbc.queryForMap("SELECT title, description FROM clinlims.nc_event WHERE id = ?",
+                decision.getNceId());
+        assertTrue(nce.toString(), String.valueOf(nce.get("title")).startsWith("Missing blank on "));
+        assertTrue(nce.toString(), String.valueOf(nce.get("description"))
+                .contains("accepted without its required blank. The test requires a blank on every run"));
+        assertNull("the decided test is held no longer", line(run.getId(), TEST).holdCause());
+        assertEquals("control, blank and duplicate",
+                RunQcServiceImpl.kindsInWords(List.of("CONTROL", "BLANK", "DUPLICATE")));
+    }
+
+    /**
+     * FR-C12, FR-G3: a blank that failed is named in the non-conformity of the
+     * decision on it, and the validator sees the run's blanks beside its verdict.
+     */
+    @Test
+    public void aFailedBlankIsNamedInTheNonConformityAndReachesValidationWithTheRunsBlanks() {
+        Analysis stored = storedResultOf(TEST);
+        limits(TEST, "0.5", null);
+        item(TEST, RunQcItemKind.BLANK, "0.9", null);
+        assertEquals(RunHoldCause.QC_FAILED, runQcService.holdCauses(run.getId()).get(TEST));
+
+        RunQcFact fact = runQcService.qcOfAnalyses(List.of(stored.getId())).get(stored.getId());
+        assertEquals(1, fact.items().size());
+        assertEquals("Result = 0.9 (threshold 0.5)", fact.items().get(0).detail());
+        assertTrue(fact.missing().isEmpty());
+
+        ResultRunTestDisposition decision = runQcService.decide(run.getId(), TEST, RunTestAction.ACCEPT_DESPITE,
+                "Reviewed by the supervisor", false, "1");
+        entityManager.flush();
+        String description = jdbc.queryForObject("SELECT description FROM clinlims.nc_event WHERE id = ?", String.class,
+                decision.getNceId());
+        assertTrue(description, description.contains("Failing blank: Result = 0.9 (threshold 0.5)."));
+        assertFalse(description, description.contains("Failing control"));
+    }
+
+    /**
+     * FR-C11: a duplicate follows its sample's result. A result corrected after the
+     * duplicate was judged, from the run, Results Entry or Validation, judges it
+     * again, and the run holds or releases its test with it.
+     */
+    @Test
+    public void aDuplicateFollowsItsSamplesResultWhenTheResultIsCorrected() {
+        String accession = orderOf(TEST);
+        stagedRow(run.getId(), accession, TEST);
+        String parent = analysisOf(accession);
+        limits(TEST, null, "10");
+        ResultRunQcItem duplicate = item(TEST, RunQcItemKind.DUPLICATE, "100", parent);
+        assertEquals("Its sample has no result yet", duplicate.getDetail());
+
+        jdbc.update("INSERT INTO clinlims.result (id, analysis_id, value, run_id, lastupdated) VALUES"
+                + " (nextval('clinlims.result_seq'), ?::numeric, '130', ?, now())", parent, run.getId());
+        resultRunService.recordIntoWorkplanRuns(List.of(resultOf(parent)), "1").transactionalUpdate(null);
+        entityManager.flush();
+        entityManager.clear();
+        assertEquals("FAIL RPD = 26.1% (threshold 10%)", judgementOf(duplicate.getId()));
+        assertEquals(RunHoldCause.QC_FAILED, runQcService.holdCauses(run.getId()).get(TEST));
+
+        jdbc.update("UPDATE clinlims.result SET value = '105' WHERE analysis_id = ?::numeric", parent);
+        resultRunService.recordIntoWorkplanRuns(List.of(resultOf(parent)), "1").transactionalUpdate(null);
+        entityManager.flush();
+        entityManager.clear();
+        assertEquals("a result already in the run, saved again, judges its duplicate again",
+                "PASS RPD = 4.9% (threshold 10%)", judgementOf(duplicate.getId()));
+        assertTrue(runQcService.holdCauses(run.getId()).isEmpty());
+
+        jdbc.update("UPDATE clinlims.result SET value = '140' WHERE analysis_id = ?::numeric", parent);
+        Result validated = resultService.getResultsByAnalysis(analysisService.get(parent)).get(0);
+        resultValidationService.persistdata(new ArrayList<>(), new ArrayList<>(), new ArrayList<>(List.of(validated)),
+                new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), null, new ArrayList<>(), "1");
+        entityManager.flush();
+        entityManager.clear();
+        assertEquals("a value changed in Validation judges the duplicate again", "FAIL RPD = 33.3% (threshold 10%)",
+                judgementOf(duplicate.getId()));
+        assertEquals(3, events().stream().filter(ResultRunEvent.QC_ITEM_EVALUATED::equals).count());
+    }
+
+    private Result resultOf(String analysisId) {
+        Analysis analysis = new Analysis();
+        analysis.setId(analysisId);
+        Result result = new Result();
+        result.setAnalysis(analysis);
+        result.setRunId(run.getId());
+        return result;
+    }
+
+    private String judgementOf(Long itemId) {
+        return jdbc.queryForObject("SELECT evaluation || ' ' || detail FROM clinlims.result_run_qc_item WHERE id = ?",
+                String.class, itemId);
+    }
+
+    @Test
+    public void aBlankOrDuplicateWithoutAValueOrOnADecidedTestIsRefused() {
+        stagedRow(run.getId(), orderOf(TEST), TEST);
+        try {
+            item(TEST, RunQcItemKind.BLANK, " ", null);
+            fail("a blank without a value is refused");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("Enter the value"));
+        }
+        try {
+            item("999999", RunQcItemKind.BLANK, "0.1", null);
+            fail("a test not in the run is refused");
+        } catch (IllegalArgumentException expected) {
+            assertFalse(expected.getMessage().isBlank());
+        }
+    }
+
+    private ResultRunQcItem item(String testId, RunQcItemKind kind, String value, String parentAnalysisId) {
+        ResultRunQcItem item = runQcService.recordQcItem(run.getId(),
+                new RunQcItemForm(testId, kind, value, null, parentAnalysisId), "1");
+        entityManager.flush();
+        return item;
+    }
+
+    private void limits(String testId, String blankCeiling, String rpdLimit) {
+        testService.saveQcThreshold(testId, blankCeiling == null ? null : new BigDecimal(blankCeiling),
+                rpdLimit == null ? null : new BigDecimal(rpdLimit), null, "1");
+        entityManager.flush();
+    }
+
+    private String analysisOf(String accession) {
+        return jdbc.queryForObject("SELECT CAST(a.id AS VARCHAR) FROM clinlims.analysis a"
+                + " JOIN clinlims.sample_item si ON si.id = a.sampitem_id JOIN clinlims.sample s ON s.id = si.samp_id"
+                + " WHERE s.accession_number = ?", String.class, accession);
     }
 
     /** A new order with the test on it, waiting for a result. */

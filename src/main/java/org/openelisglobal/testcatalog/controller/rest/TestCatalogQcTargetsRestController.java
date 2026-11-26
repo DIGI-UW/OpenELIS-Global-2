@@ -114,13 +114,23 @@ public class TestCatalogQcTargetsRestController {
     }
 
     /**
-     * FR-H1: whether every run of the test must carry a control, and whether a
-     * missing one warns (WARN) or holds the test's rows (HOLD). A failed control
-     * always holds.
+     * FR-H1: whether every run of the test must carry a control, a blank and a
+     * duplicate, whether a missing one warns (WARN) or holds the test's rows
+     * (HOLD), and whether a failed blank or duplicate holds or warns. A failed
+     * control always holds. Beside the block, the blank ceiling and the duplicate
+     * RPD limit (D-058): left out to keep them, empty to clear them.
      */
     public static class QcPolicyDto {
         public boolean controlRequired;
         public String controlWhenMissing = TestQcPolicy.WhenMissing.WARN.name();
+        public boolean blankRequired;
+        public String blankWhenMissing = TestQcPolicy.WhenMissing.WARN.name();
+        public String blankWhenFails = TestQcPolicy.WhenMissing.HOLD.name();
+        public boolean duplicateRequired;
+        public String duplicateWhenMissing = TestQcPolicy.WhenMissing.WARN.name();
+        public String duplicateWhenFails = TestQcPolicy.WhenMissing.HOLD.name();
+        public String blankCeiling;
+        public String rpdLimit;
     }
 
     public static class QcTargets {
@@ -208,10 +218,18 @@ public class TestCatalogQcTargetsRestController {
             policy = toPolicy(testId, body.policy);
             if (policy == null) {
                 return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                        .body("controlWhenMissing must be WARN or HOLD");
+                        .body("Each when missing and when it fails must be WARN or HOLD");
+            }
+            if (!isLimit(body.policy.blankCeiling) || !isLimit(body.policy.rpdLimit)) {
+                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                        .body("The blank ceiling and RPD limit must be numbers of zero or more");
             }
         }
-        policyService.saveSection(testId, desired, policy, ControllerUtills.getSysUserId(request));
+        String sysUserId = ControllerUtills.getSysUserId(request);
+        policyService.saveSection(testId, desired, policy, sysUserId);
+        if (body.policy != null && (body.policy.blankCeiling != null || body.policy.rpdLimit != null)) {
+            saveLimits(testId, body.policy, sysUserId);
+        }
         return ResponseEntity.ok(toQcTargets(testId));
     }
 
@@ -301,18 +319,63 @@ public class TestCatalogQcTargetsRestController {
      * HOLD.
      */
     private static TestQcPolicy toPolicy(String testId, QcPolicyDto dto) {
-        TestQcPolicy.WhenMissing whenMissing;
-        try {
-            whenMissing = TestQcPolicy.WhenMissing.valueOf(
-                    GenericValidator.isBlankOrNull(dto.controlWhenMissing) ? TestQcPolicy.WhenMissing.WARN.name()
-                            : dto.controlWhenMissing.trim().toUpperCase());
-        } catch (IllegalArgumentException e) {
+        TestQcPolicy.WhenMissing controlMissing = actionOf(dto.controlWhenMissing, TestQcPolicy.WhenMissing.WARN);
+        TestQcPolicy.WhenMissing blankMissing = actionOf(dto.blankWhenMissing, TestQcPolicy.WhenMissing.WARN);
+        TestQcPolicy.WhenMissing blankFails = actionOf(dto.blankWhenFails, TestQcPolicy.WhenMissing.HOLD);
+        TestQcPolicy.WhenMissing duplicateMissing = actionOf(dto.duplicateWhenMissing, TestQcPolicy.WhenMissing.WARN);
+        TestQcPolicy.WhenMissing duplicateFails = actionOf(dto.duplicateWhenFails, TestQcPolicy.WhenMissing.HOLD);
+        if (controlMissing == null || blankMissing == null || blankFails == null || duplicateMissing == null
+                || duplicateFails == null) {
             return null;
         }
         TestQcPolicy policy = TestQcPolicy.none(testId);
         policy.setControlRequired(dto.controlRequired);
-        policy.setControlWhenMissing(whenMissing);
+        policy.setControlWhenMissing(controlMissing);
+        policy.setBlankRequired(dto.blankRequired);
+        policy.setBlankWhenMissing(blankMissing);
+        policy.setBlankWhenFails(blankFails);
+        policy.setDuplicateRequired(dto.duplicateRequired);
+        policy.setDuplicateWhenMissing(duplicateMissing);
+        policy.setDuplicateWhenFails(duplicateFails);
         return policy;
+    }
+
+    /** WARN or HOLD, the default when left out, null when it is neither. */
+    private static TestQcPolicy.WhenMissing actionOf(String value, TestQcPolicy.WhenMissing fallback) {
+        if (GenericValidator.isBlankOrNull(value)) {
+            return fallback;
+        }
+        try {
+            return TestQcPolicy.WhenMissing.valueOf(value.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    private static boolean isLimit(String value) {
+        if (value == null || value.isBlank()) {
+            return true;
+        }
+        try {
+            return new java.math.BigDecimal(value.trim()).signum() >= 0;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    private static java.math.BigDecimal limitOf(String value) {
+        return value == null || value.isBlank() ? null : new java.math.BigDecimal(value.trim());
+    }
+
+    /** The blank ceiling and RPD limit sent, the recovery window kept as it was. */
+    private void saveLimits(String testId, QcPolicyDto dto, String sysUserId) {
+        org.openelisglobal.qc.valueholder.TestQcThreshold current = testService.getQcThreshold(testId).orElse(null);
+        java.math.BigDecimal blank = dto.blankCeiling != null ? limitOf(dto.blankCeiling)
+                : current == null ? null : current.getBlankThreshold();
+        java.math.BigDecimal rpd = dto.rpdLimit != null ? limitOf(dto.rpdLimit)
+                : current == null ? null : current.getRpdThreshold();
+        testService.saveQcThreshold(testId, blank, rpd, current == null ? null : current.getRecoveryWindowPct(),
+                sysUserId);
     }
 
     private TestQcTarget toEntity(QcTargetDto dto) {
@@ -335,6 +398,17 @@ public class TestCatalogQcTargetsRestController {
         out.policy = new QcPolicyDto();
         out.policy.controlRequired = policy.isControlRequired();
         out.policy.controlWhenMissing = policy.getControlWhenMissing().name();
+        out.policy.blankRequired = policy.isBlankRequired();
+        out.policy.blankWhenMissing = policy.getBlankWhenMissing().name();
+        out.policy.blankWhenFails = policy.getBlankWhenFails().name();
+        out.policy.duplicateRequired = policy.isDuplicateRequired();
+        out.policy.duplicateWhenMissing = policy.getDuplicateWhenMissing().name();
+        out.policy.duplicateWhenFails = policy.getDuplicateWhenFails().name();
+        org.openelisglobal.qc.valueholder.TestQcThreshold limits = testService.getQcThreshold(testId).orElse(null);
+        out.policy.blankCeiling = limits == null || limits.getBlankThreshold() == null ? ""
+                : limits.getBlankThreshold().stripTrailingZeros().toPlainString();
+        out.policy.rpdLimit = limits == null || limits.getRpdThreshold() == null ? ""
+                : limits.getRpdThreshold().stripTrailingZeros().toPlainString();
         TestResultComponent primary = primaryComponent(testId);
         out.quantitative = isQuantitative(primary);
         out.unit = unitName(primary);

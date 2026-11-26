@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+ <changeSet id="OGC-1200-test-qc-policy-blank-duplicate" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <not>
+    <columnExists schemaName="clinlims" tableName="test_qc_policy" columnName="blank_required"/>
+   </not>
+  </preConditions>
+  <comment>OGC-1200 FR-H1: a blank and a duplicate may each be required per run, a missing one warns or holds, and a failing one holds or warns. Nothing is required by default.</comment>
+  <addColumn schemaName="clinlims" tableName="test_qc_policy">
+   <column name="blank_required" type="boolean" defaultValueBoolean="false">
+    <constraints nullable="false"/>
+   </column>
+   <column name="blank_when_missing" type="varchar(10)" defaultValue="WARN">
+    <constraints nullable="false"/>
+   </column>
+   <column name="blank_when_fails" type="varchar(10)" defaultValue="HOLD">
+    <constraints nullable="false"/>
+   </column>
+   <column name="duplicate_required" type="boolean" defaultValueBoolean="false">
+    <constraints nullable="false"/>
+   </column>
+   <column name="duplicate_when_missing" type="varchar(10)" defaultValue="WARN">
+    <constraints nullable="false"/>
+   </column>
+   <column name="duplicate_when_fails" type="varchar(10)" defaultValue="HOLD">
+    <constraints nullable="false"/>
+   </column>
+  </addColumn>
+  <sql>ALTER TABLE clinlims.test_qc_policy ADD CONSTRAINT test_qc_policy_blank_ck CHECK (blank_when_missing IN ('WARN', 'HOLD') AND blank_when_fails IN ('WARN', 'HOLD'))</sql>
+  <sql>ALTER TABLE clinlims.test_qc_policy ADD CONSTRAINT test_qc_policy_duplicate_ck CHECK (duplicate_when_missing IN ('WARN', 'HOLD') AND duplicate_when_fails IN ('WARN', 'HOLD'))</sql>
+ </changeSet>
+</databaseChangeLog>

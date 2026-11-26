@@ -24,6 +24,7 @@ import org.openelisglobal.resultrun.form.ResultRunSelection;
 import org.openelisglobal.resultrun.form.ResultRunSelectionSummary;
 import org.openelisglobal.resultrun.form.RunLotOptions;
 import org.openelisglobal.resultrun.form.RunOrderMatch;
+import org.openelisglobal.resultrun.form.RunQcItemForm;
 import org.openelisglobal.resultrun.form.RunViewer;
 import org.openelisglobal.resultrun.form.WaitingRun;
 import org.openelisglobal.resultrun.service.ResultRunService;
@@ -134,6 +135,41 @@ public class ResultRunRestController extends BaseRestController {
             return ResponseEntity.badRequest().body(Map.of("message", message));
         }
         return ResponseEntity.status(HttpStatus.CREATED).body(runQcService.qcBlock(id));
+    }
+
+    /**
+     * Records a lab blank or lab duplicate on the run (FR-C10, FR-C11) and answers
+     * with the run's QC block as it now stands. The item's test must be one the
+     * user holds Results rights for.
+     */
+    @PostMapping(value = "/{id}/qc-items", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> recordQcItem(HttpServletRequest request, @PathVariable Long id,
+            @RequestBody RunQcItemForm item) {
+        RunViewer viewer = viewer(request);
+        if (resultRunService.getHeader(id, viewer).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        if (item == null || item.testId() == null || !viewer.testIds().contains(item.testId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        try {
+            runQcService.recordQcItem(id, item, getSysUserId(request));
+        } catch (IllegalArgumentException e) {
+            String message = e.getMessage() == null ? "Invalid blank or duplicate" : e.getMessage();
+            return ResponseEntity.badRequest().body(Map.of("message", message));
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(runQcService.qcBlock(id));
+    }
+
+    /** The run's samples of a test a lab duplicate may repeat (FR-C11). */
+    @GetMapping(value = "/{id}/qc-items/samples", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<IdValuePair>> duplicateCandidates(HttpServletRequest request, @PathVariable Long id,
+            @RequestParam String testId) {
+        RunViewer viewer = viewer(request);
+        if (resultRunService.getHeader(id, viewer).isEmpty() || !viewer.testIds().contains(testId)) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(runQcService.duplicateCandidates(id, testId));
     }
 
     /** What the page sends to decide a held test (FR-C5). */

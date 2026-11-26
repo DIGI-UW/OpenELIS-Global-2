@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+ <changeSet id="OGC-1200-result-run-qc-item" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <not>
+    <tableExists schemaName="clinlims" tableName="result_run_qc_item"/>
+   </not>
+  </preConditions>
+  <comment>OGC-1200 FR-C1a, FR-C10, FR-C11: a lab blank or lab duplicate recorded on a run for a test, with what it came to. Kept apart from qc_result, whose rows feed control statistics; blanks and duplicates never do (FR-G1).</comment>
+  <createSequence schemaName="clinlims" sequenceName="result_run_qc_item_seq" startValue="1" incrementBy="1"/>
+  <createTable schemaName="clinlims" tableName="result_run_qc_item">
+   <column name="id" type="BIGINT">
+    <constraints primaryKey="true" primaryKeyName="result_run_qc_item_pk" nullable="false"/>
+   </column>
+   <column name="run_id" type="BIGINT">
+    <constraints nullable="false" foreignKeyName="result_run_qc_item_run_fk" referencedTableSchemaName="clinlims"
+     referencedTableName="result_run" referencedColumnNames="id"/>
+   </column>
+   <column name="test_id" type="numeric(10)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="kind" type="varchar(10)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="source" type="varchar(10)" defaultValue="MANUAL">
+    <constraints nullable="false"/>
+   </column>
+   <column name="observed_value" type="numeric(15,5)"/>
+   <column name="observed_outcome" type="varchar(40)"/>
+   <column name="parent_analysis_id" type="numeric(10)"/>
+   <column name="evaluation" type="varchar(15)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="detail" type="varchar(255)"/>
+   <column name="recorded_by" type="numeric(10)"/>
+   <column name="recorded_at" type="timestamp" defaultValueComputed="now()">
+    <constraints nullable="false"/>
+   </column>
+   <column name="last_updated" type="timestamp" defaultValueComputed="now()">
+    <constraints nullable="false"/>
+   </column>
+  </createTable>
+  <createIndex schemaName="clinlims" tableName="result_run_qc_item" indexName="result_run_qc_item_run_idx">
+   <column name="run_id"/>
+  </createIndex>
+  <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="result_run_qc_item" baseColumnNames="parent_analysis_id"
+   constraintName="result_run_qc_item_parent_fk" referencedTableSchemaName="clinlims" referencedTableName="analysis"
+   referencedColumnNames="id" onDelete="SET NULL"/>
+  <sql>ALTER TABLE clinlims.result_run_qc_item ADD CONSTRAINT result_run_qc_item_kind_ck CHECK (kind IN ('BLANK', 'DUPLICATE'))</sql>
+  <sql>ALTER TABLE clinlims.result_run_qc_item ADD CONSTRAINT result_run_qc_item_evaluation_ck CHECK (evaluation IN ('PASS', 'FAIL', 'NOT_EVALUATED', 'BELOW_LOQ'))</sql>
+ </changeSet>
+</databaseChangeLog>

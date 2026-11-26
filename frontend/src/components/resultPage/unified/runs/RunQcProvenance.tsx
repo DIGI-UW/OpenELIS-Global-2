@@ -3,8 +3,13 @@ import { Link as CarbonLink, Tag } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { Link as RouterLink } from "react-router-dom";
 import useSiteDateFormat from "../../../common/useSiteDateFormat";
-import { describeControl, runVerdictTagType } from "./runFormat";
+import {
+  describeControl,
+  runVerdictTagType,
+  testVerdictText,
+} from "./runFormat";
 import { RunControlLine } from "./RunQcBlock";
+import RunQcItems, { RunQcItemLine } from "./RunQcItems";
 
 export interface RunQcFact {
   runId: number;
@@ -14,6 +19,8 @@ export interface RunQcFact {
   reason?: string | null;
   nceNumber?: string | null;
   controls: RunControlLine[];
+  missing?: string[] | null;
+  items?: RunQcItemLine[] | null;
 }
 
 interface RunQcProvenanceProps {
@@ -24,7 +31,7 @@ interface RunQcProvenanceProps {
  * OGC-1200 FR-G3: read-only, what the run a result came from recorded about
  * its test's quality control, for the review of that result: the run, its
  * verdict for the test, what was decided when the control failed, each control
- * covering the test and the reagent lot. It is edited on the run, never here.
+ * covering the test, its blanks and duplicates, and the reagent lot. It is edited on the run, never here.
  */
 const RunQcProvenance: React.FC<RunQcProvenanceProps> = ({ runQc }) => {
   const intl = useIntl();
@@ -51,7 +58,7 @@ const RunQcProvenance: React.FC<RunQcProvenanceProps> = ({ runQc }) => {
           size="sm"
           data-testid="run-qc-provenance-verdict"
         >
-          {intl.formatMessage({ id: `run.verdict.${runQc.verdict}` })}
+          {testVerdictText(intl, runQc.verdict, runQc.missing)}
         </Tag>
       </div>
       {runQc.decision && (
@@ -93,6 +100,7 @@ const RunQcProvenance: React.FC<RunQcProvenanceProps> = ({ runQc }) => {
           ))}
         </ul>
       )}
+      <RunQcItems items={runQc.items} testIdPrefix="run-qc-provenance-item" />
       <p className="unifiedFieldHint">
         <FormattedMessage id="run.entry.noLot" />
       </p>

@@ -24,9 +24,9 @@ public class LogbookHeldRowRefusalTest extends BaseWebContextSensitiveTest {
                 .held(RunHoldCause.QC_MISSING);
 
         assertEquals(
-                "DEV01260000000000385, Amylase(Serum): RUN-327 has no control for this test, and the test"
-                        + " requires one on every run, so its results there are held: they cannot be accepted, entered,"
-                        + " edited or released until a control is recorded on the run or the test is decided.",
+                "DEV01260000000000385, Amylase(Serum): RUN-327 lacks QC this test requires on every run, so its"
+                        + " results there are held: they cannot be accepted, entered, edited or released until it is"
+                        + " recorded on the run or the test is decided. The run shows what is missing.",
                 LogbookResultsRestController.heldRowRefusal(item, held));
     }
 }

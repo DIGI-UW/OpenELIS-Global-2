@@ -1,5 +1,7 @@
 package org.openelisglobal.resultrun.form;
 
+import java.util.List;
+
 /**
  * One value of a run as the instrument reported it, named by the test it is
  * mapped to, with the analyzer's own {@code code} beside it. The test and
@@ -9,11 +11,12 @@ package org.openelisglobal.resultrun.form;
  * dictionary test the choice the import resolved, where {@code value} is the
  * instrument's own text. {@code exceptionKind} names the Exceptions block
  * record the value belongs to (FR-E4), if any. {@code holdCause} says why the
- * run holds the value's test, and {@code missingControl} that the test lacks a
- * control it requires while its policy only warns (FR-A4, FR-D4).
+ * run holds the value's test, and {@code missingQc} the kinds (CONTROL, BLANK,
+ * DUPLICATE) the test requires and lacks while its policy only warns (FR-A4,
+ * FR-D4, FR-H1).
  */
 public record ResultRunRow(String id, String accessionNumber, String testName, String part, String value, String units,
         boolean control, boolean duplicate, String importIssueReason, String instrumentFlags, String completedAt,
         String flag, ResultRunRowCategory category, String testId, String componentId, String stagedResult,
-        ResultRunExceptionKind exceptionKind, String code, RunHoldCause holdCause, boolean missingControl) {
+        ResultRunExceptionKind exceptionKind, String code, RunHoldCause holdCause, List<String> missingQc) {
 }

@@ -48,7 +48,6 @@ import org.openelisglobal.resultrun.form.ResultRunSelection;
 import org.openelisglobal.resultrun.form.ResultRunSelectionSummary;
 import org.openelisglobal.resultrun.form.ResultRunSummary;
 import org.openelisglobal.resultrun.form.RunHoldCause;
-import org.openelisglobal.resultrun.form.RunTestVerdict;
 import org.openelisglobal.resultrun.form.RunViewer;
 import org.openelisglobal.resultrun.form.WaitingRun;
 import org.openelisglobal.resultrun.service.ResultRunRowClassifier.ClassifiedRow;
@@ -212,6 +211,7 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
             return;
         }
         ResultRun run = found.get();
+        runQcService.reevaluateDuplicates(runId, sysUserId);
         Timestamp now = Timestamp.from(Instant.now());
         run.setLastActivityAt(now);
         boolean completed = run.getSource() == ResultRunSource.ANALYZER && run.getState().isActive()
@@ -332,9 +332,7 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
             return List.of();
         }
         Map<String, RunHoldCause> holds = runQcService.holdCauses(run.getId());
-        Set<String> noControl = runQcService.testVerdicts(run.getId()).entrySet().stream()
-                .filter(entry -> entry.getValue() == RunTestVerdict.NO_CONTROL).map(Map.Entry::getKey)
-                .collect(Collectors.toSet());
+        Map<String, List<String>> missing = runQcService.missingQc(run.getId());
         Map<String, String> names = new HashMap<>();
         List<ResultRunRow> rows = new ArrayList<>();
         for (Analysis analysis : analysisService.getAnalysesByIdsWithDetails(ids)) {
@@ -347,7 +345,7 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
                     false, null, null, null, null,
                     hold != null ? ResultRunRowCategory.HELD : ResultRunRowCategory.NORMAL, testId,
                     testId == null ? null : componentOf(testId, null), null, null, null, hold,
-                    hold == null && noControl.contains(testId)));
+                    hold != null || testId == null ? List.of() : missing.getOrDefault(testId, List.of())));
         }
         return rows;
     }
@@ -690,6 +688,7 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
         if (!run.getState().isActive()) {
             return;
         }
+        runQcService.reevaluateDuplicates(runId, sysUserId);
         Timestamp now = Timestamp.from(Instant.now());
         run.setLastActivityAt(now);
         run.setSysUserId(sysUserId);
@@ -707,6 +706,9 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
                         && result.getAnalysis() != null && result.getAnalysis().getId() != null).toList();
         Map<String, Long> runs = unplaced.isEmpty() ? Map.of()
                 : activeBatchRunsOf(unplaced.stream().map(result -> result.getAnalysis().getId()).distinct().toList());
+        List<String> saved = results == null ? List.of()
+                : results.stream().filter(result -> result != null && result.getAnalysis() != null)
+                        .map(result -> result.getAnalysis().getId()).filter(Objects::nonNull).distinct().toList();
         Set<Long> touched = new LinkedHashSet<>();
         List<Result> placed = new ArrayList<>();
         for (Result result : unplaced) {
@@ -721,6 +723,7 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
             @Override
             public void transactionalUpdate(IResultSaveService saveService) {
                 touched.forEach(runId -> workplanResultSaved(runId, sysUserId));
+                runQcService.parentResultsSaved(saved, sysUserId);
             }
 
             @Override
@@ -1214,7 +1217,7 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
                 row.getTestId() == null ? StringUtils.trimToNull(row.getComponentId())
                         : componentOf(row.getTestId(), row.getComponentId()),
                 row.getResult(), classified.exceptionKind(), codeOf(row), classified.holdCause(),
-                classified.missingControl());
+                classified.missingQc());
     }
 
     /** What the analyzer called the value's test. */

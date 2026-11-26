@@ -178,6 +178,7 @@
         <class>org.openelisglobal.resultrun.valueholder.ResultRun</class>
         <class>org.openelisglobal.resultrun.valueholder.ResultRunEvent</class>
         <class>org.openelisglobal.resultrun.valueholder.ResultRunTestDisposition</class>
+        <class>org.openelisglobal.resultrun.valueholder.ResultRunQcItem</class>
         <class>org.openelisglobal.resultrun.valueholder.ResultRunRetest</class>
         <class>org.openelisglobal.containertype.valueholder.ContainerType</class>
         <class>org.openelisglobal.containertype.valueholder.TestExpectedContainer</class>

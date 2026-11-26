@@ -127,6 +127,7 @@ public class TestCatalogQcTargetsIntegrationTest extends BaseWebContextSensitive
     private void cleanup() {
         jdbc.update("DELETE FROM clinlims.test_qc_target WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM clinlims.test_qc_policy WHERE test_id = ?", TEST_ID);
+        jdbc.update("DELETE FROM clinlims.test_qc_threshold WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM qc_control_lot WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM clinlims.analyzer WHERE name = ?", ANALYZER_NAME);
         // The component save materializes a test_result row per numeric component.
@@ -257,6 +258,50 @@ public class TestCatalogQcTargetsIntegrationTest extends BaseWebContextSensitive
         noPolicy.targets = after.targets;
         assertEquals(200, controller.saveTargets(testId(), noPolicy, authedRequest()).getStatusCode().value());
         assertEquals("HOLD", controller.getTargets(testId()).getBody().policy.controlWhenMissing);
+    }
+
+    /**
+     * OGC-1200 slice 10a (FR-H1, D-058): the section also says what each run needs
+     * of blanks and duplicates, and holds the blank ceiling and RPD limit; a limit
+     * left out is kept, an empty one is cleared, and a negative one or an unknown
+     * action is refused.
+     */
+    @org.junit.Test
+    public void blankAndDuplicatePolicyAndLimits_roundTrip_andBadOnesAreRefused() {
+        QcTargets fresh = controller.getTargets(testId()).getBody();
+        assertFalse(fresh.policy.blankRequired);
+        assertEquals("HOLD", fresh.policy.blankWhenFails);
+        assertEquals("", fresh.policy.blankCeiling);
+
+        QcTargets body = new QcTargets();
+        body.targets = List.of();
+        body.policy = policy(false, "WARN");
+        body.policy.blankRequired = true;
+        body.policy.blankWhenMissing = "HOLD";
+        body.policy.duplicateWhenFails = "WARN";
+        body.policy.blankCeiling = "0.5";
+        body.policy.rpdLimit = "15";
+        assertEquals(200, controller.saveTargets(testId(), body, authedRequest()).getStatusCode().value());
+        QcTargets saved = controller.getTargets(testId()).getBody();
+        assertTrue(saved.policy.blankRequired);
+        assertEquals("HOLD", saved.policy.blankWhenMissing);
+        assertEquals("WARN", saved.policy.duplicateWhenFails);
+        assertEquals("0.5", saved.policy.blankCeiling);
+        assertEquals("15", saved.policy.rpdLimit);
+
+        body.policy.blankCeiling = null;
+        body.policy.rpdLimit = "";
+        assertEquals(200, controller.saveTargets(testId(), body, authedRequest()).getStatusCode().value());
+        QcTargets kept = controller.getTargets(testId()).getBody();
+        assertEquals("a ceiling left out is kept", "0.5", kept.policy.blankCeiling);
+        assertEquals("an empty limit is cleared", "", kept.policy.rpdLimit);
+
+        body.policy.rpdLimit = "-1";
+        assertEquals(422, controller.saveTargets(testId(), body, authedRequest()).getStatusCode().value());
+        body.policy.rpdLimit = "15";
+        body.policy.duplicateWhenFails = "SOMETIMES";
+        assertEquals(422, controller.saveTargets(testId(), body, authedRequest()).getStatusCode().value());
+        jdbc.update("DELETE FROM clinlims.test_qc_threshold WHERE test_id = ?", TEST_ID);
     }
 
     @org.junit.Test

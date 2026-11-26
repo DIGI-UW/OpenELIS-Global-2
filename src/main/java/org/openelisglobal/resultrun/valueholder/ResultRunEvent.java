@@ -25,6 +25,8 @@ public class ResultRunEvent extends BaseObject<Long> {
     private static final long serialVersionUID = 1L;
 
     public static final String CONTROL_RECORDED = "controlRecorded";
+    public static final String QC_ITEM_RECORDED = "qcItemRecorded";
+    public static final String QC_ITEM_EVALUATED = "qcItemEvaluated";
     public static final String TEST_HELD = "testHeld";
     public static final String TEST_RELEASED = "testReleased";
     public static final String RETEST_REQUESTED = "retestRequested";

@@ -3,7 +3,13 @@ import { createIntl } from "react-intl";
 import messages from "../../../../languages/en.json";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import { loadLabClock, resetLabClock } from "../../../utils/labClock";
-import { describeControl, formatRunTime } from "./runFormat";
+import {
+  describeControl,
+  formatRunTime,
+  missingQcItems,
+  missingQcTag,
+  testVerdictText,
+} from "./runFormat";
 
 vi.mock("../../../utils/Utils", async (importOriginal) => ({
   ...(await importOriginal()),
@@ -70,5 +76,22 @@ describe("run times", () => {
         "MM/dd/yyyy",
       ),
     ).toBe("KIT-7 · Invalid · Declared by the technician");
+  });
+});
+
+describe("what a test lacks (OGC-1200 FR-H1)", () => {
+  test("names each kind it lacks, and the control when none is named", () => {
+    expect(missingQcTag(intl, ["BLANK"])).toBe("No blank");
+    expect(missingQcTag(intl, ["DUPLICATE", "CONTROL"])).toBe(
+      "No control or duplicate",
+    );
+    expect(missingQcTag(intl, null)).toBe("No control");
+    expect(missingQcItems(intl, ["CONTROL", "BLANK", "DUPLICATE"])).toBe(
+      "control, blank, and duplicate",
+    );
+    expect(testVerdictText(intl, "NO_CONTROL", ["BLANK"])).toBe("No blank");
+    expect(testVerdictText(intl, "PASS_WITH_WARNING", ["BLANK"])).toBe(
+      "Pass with warning",
+    );
   });
 });

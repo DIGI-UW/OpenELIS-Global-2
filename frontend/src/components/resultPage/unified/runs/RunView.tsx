@@ -38,7 +38,12 @@ import RunExceptions, {
 } from "./RunExceptions";
 import UnifiedResults from "../UnifiedResults";
 import useSiteDateFormat from "../../../common/useSiteDateFormat";
-import { formatRunTime, runSourceKey, runStateKey } from "./runFormat";
+import {
+  formatRunTime,
+  missingQcTag,
+  runSourceKey,
+  runStateKey,
+} from "./runFormat";
 import {
   EMPTY_SELECTION,
   RUN_CHIPS,
@@ -94,7 +99,7 @@ interface RunRow {
   exceptionKind?: RunExceptionKind | null;
   code?: string | null;
   holdCause?: "QC_FAILED" | "QC_MISSING" | null;
-  missingControl?: boolean;
+  missingQc?: string[] | null;
 }
 
 interface RunRowsPage {
@@ -389,13 +394,13 @@ const RunView: React.FC<RunViewProps> = ({
         <Tag size="sm" type="green">
           <FormattedMessage id="run.row.ready" />
         </Tag>
-        {row.missingControl && (
+        {(row.missingQc ?? []).length > 0 && (
           <Tag
             size="sm"
             type="warm-gray"
-            data-testid={`run-row-no-control-${row.id}`}
+            data-testid={`run-row-missing-qc-${row.id}`}
           >
-            <FormattedMessage id="run.row.noControl" />
+            {missingQcTag(intl, row.missingQc)}
           </Tag>
         )}
       </>
@@ -418,8 +423,8 @@ const RunView: React.FC<RunViewProps> = ({
             ? "run.entry.importIssue"
             : row.category === "HELD"
               ? row.holdCause === "QC_MISSING"
-                ? "run.entry.testHeldMissing"
-                : "run.entry.testHeld"
+                ? "run.entry.testHeldQcMissing"
+                : "run.entry.testHeldQcFailed"
               : header?.state !== "OPEN" && header?.state !== "HELD"
                 ? "run.entry.closed"
                 : null;
