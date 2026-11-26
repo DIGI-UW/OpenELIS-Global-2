@@ -121,8 +121,8 @@ public abstract class CSVColumnBuilder {
 
     protected String validStatusId;
 
-    protected static final SimpleDateFormat postgresDateFormat = new SimpleDateFormat("yyyy-MM-dd");
-    private static final SimpleDateFormat postgresDateTime = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
+    protected final SimpleDateFormat postgresDateFormat = new SimpleDateFormat("yyyy-MM-dd");
+    private final SimpleDateFormat postgresDateTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
     protected ResultSet resultSet;
     private Session session;

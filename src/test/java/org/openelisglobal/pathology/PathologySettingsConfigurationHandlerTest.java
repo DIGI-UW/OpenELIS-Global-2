@@ -13,12 +13,13 @@ import org.springframework.core.io.ClassPathResource;
 
 /**
  * The shipped pathology settings file creates the scan verification setting on
- * for a laboratory that has none, and never overwrites a choice an
- * administrator made.
+ * and the prior results row count at five for a laboratory that has neither,
+ * and never overwrites a choice an administrator made.
  */
 public class PathologySettingsConfigurationHandlerTest extends BaseWebContextSensitiveTest {
 
     private static final String SETTING = "pathology.microtomy.scanVerificationRequired";
+    private static final String ROWS = "pathology.caseView.priorResultsRows";
 
     @Autowired
     private PathologySettingsConfigurationHandler handler;
@@ -32,12 +33,12 @@ public class PathologySettingsConfigurationHandlerTest extends BaseWebContextSen
                 + "SELECT nextval('clinlims.site_information_domain_seq'), 'resultConfiguration', "
                 + "'site information which effects the handling of results' "
                 + "WHERE NOT EXISTS (SELECT 1 FROM clinlims.site_information_domain WHERE name = 'resultConfiguration')");
-        jdbcTemplate.update("DELETE FROM clinlims.site_information WHERE name = ?", SETTING);
+        removeBothSettings();
     }
 
     @After
     public void cleanUp() {
-        jdbcTemplate.update("DELETE FROM clinlims.site_information WHERE name = ?", SETTING);
+        removeBothSettings();
     }
 
     @Test
@@ -52,16 +53,27 @@ public class PathologySettingsConfigurationHandlerTest extends BaseWebContextSen
                         "SELECT d.name FROM clinlims.site_information s "
                                 + "JOIN clinlims.site_information_domain d ON d.id = s.domain_id WHERE s.name = ?",
                         String.class, SETTING));
+
+        assertEquals("a missing row count is created at five", "5", storedValue(ROWS));
+        assertEquals("the row count is text", "text", jdbcTemplate
+                .queryForObject("SELECT value_type FROM clinlims.site_information WHERE name = ?", String.class, ROWS));
+        assertEquals("the row count sits in Result Entry Configuration", "resultConfiguration",
+                jdbcTemplate.queryForObject(
+                        "SELECT d.name FROM clinlims.site_information s "
+                                + "JOIN clinlims.site_information_domain d ON d.id = s.domain_id WHERE s.name = ?",
+                        String.class, ROWS));
     }
 
     @Test
     public void load_afterAnAdministratorTurnedItOff_keepsItOff() throws Exception {
         load();
         jdbcTemplate.update("UPDATE clinlims.site_information SET value = 'false' WHERE name = ?", SETTING);
+        jdbcTemplate.update("UPDATE clinlims.site_information SET value = '12' WHERE name = ?", ROWS);
 
         load();
 
         assertEquals("a later load never overwrites the administrator's choice", "false", storedValue());
+        assertEquals("nor the row count an administrator set", "12", storedValue(ROWS));
     }
 
     private void load() throws Exception {
@@ -71,7 +83,15 @@ public class PathologySettingsConfigurationHandlerTest extends BaseWebContextSen
     }
 
     private String storedValue() {
+        return storedValue(SETTING);
+    }
+
+    private String storedValue(String name) {
         return jdbcTemplate.queryForObject("SELECT value FROM clinlims.site_information WHERE name = ?", String.class,
-                SETTING);
+                name);
+    }
+
+    private void removeBothSettings() {
+        jdbcTemplate.update("DELETE FROM clinlims.site_information WHERE name IN (?, ?)", SETTING, ROWS);
     }
 }

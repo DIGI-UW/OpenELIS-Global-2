@@ -793,6 +793,32 @@ describe("OGC-1200 slice 2: chips, paging and selection", () => {
       expect(screen.getByTestId("run-lot-none")).toBeInTheDocument();
     });
 
+    it("shows a run of one with its lot and its one row, opened for entry with no staged value", () => {
+      wire(
+        { ...BATCH, source: "RESULT_ENTRY", batchWorkplanId: null },
+        BATCH_ROWS,
+      );
+      renderRun();
+
+      const settings = screen.getByTestId("run-settings");
+      expect(settings).toHaveTextContent("Manual entry");
+      expect(settings).toHaveTextContent("LOT-A1");
+      expect(settings).not.toHaveTextContent("Method");
+      expect(screen.queryByTestId("run-batch-link")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("run-mark-complete")).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText(/Select the value of/),
+      ).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId("run-row-expand-A900"));
+      expect(screen.getByTestId("embedded-entry")).not.toHaveAttribute(
+        "data-run-row",
+      );
+      expect(screen.getByTestId("run-row-provenance")).toHaveTextContent(
+        "From RUN-7, a manual entry: Amylase. Reagent lot LOT-A1.",
+      );
+    });
+
     it("offers no lot choice or Mark complete on an analyzer run", () => {
       wire(HEADER);
       renderRun();

@@ -3,6 +3,7 @@ import { Pagination, Tag } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import ReferenceSection from "./ReferenceSection";
 import { getFromOpenElisServer } from "../../utils/Utils";
+import RowRunSummary from "./runs/RowRunSummary";
 
 /**
  * OGC-1022 (R3, FR-H1/H2) — "History (this analysis)": an inline,
@@ -49,6 +50,9 @@ interface HistorySectionProps {
    * absent = the full analysis timeline (single-component tests, legacy).
    */
   componentId?: string;
+  /** OGC-1200 FR-D6: the run the row's result was recorded in. */
+  runId?: number | null;
+  testId?: string;
   open: boolean;
   onToggle: (open: boolean) => void;
 }
@@ -56,6 +60,8 @@ interface HistorySectionProps {
 const HistorySection: React.FC<HistorySectionProps> = ({
   analysisId,
   componentId,
+  runId,
+  testId,
   open,
   onToggle,
 }) => {
@@ -106,6 +112,9 @@ const HistorySection: React.FC<HistorySectionProps> = ({
       open={open}
       onToggle={onToggle}
     >
+      {runId ? (
+        <RowRunSummary runId={runId} testId={testId} variant="history" />
+      ) : null}
       {loaded && events.length === 0 && (
         <div className="unifiedHistoryEmpty">
           <FormattedMessage id="label.results.history.empty" />

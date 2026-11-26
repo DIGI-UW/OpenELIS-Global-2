@@ -9,6 +9,9 @@ import org.openelisglobal.inventory.valueholder.InventoryLot;
 
 public interface InventoryLotService extends BaseObjectService<InventoryLot, Long> {
 
+    /** Return only lots with the requested status. */
+    List<InventoryLot> getByStatus(LotStatus status);
+
     /** Locks and returns a lot for an atomic eligibility check and consumption. */
     InventoryLot getForUpdate(Long lotId);
 

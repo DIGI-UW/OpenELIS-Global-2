@@ -322,6 +322,10 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
   const [serverPageSize, setServerPageSize] = useState<number | undefined>();
   // The worklist request last sent, so a page of it can be asked for.
   const worklistUrl = useRef<string>("");
+  // Each worklist request is numbered, and only the answer to the latest one
+  // is shown: a slower answer to an earlier request (a lab unit's whole list
+  // arriving after a lab-number search) would otherwise replace the table.
+  const worklistRequest = useRef(0);
   const [loading, setLoading] = useState<boolean>(false);
   const [loadError, setLoadError] = useState<boolean>(false);
   const [loadedOnce, setLoadedOnce] = useState<boolean>(false);
@@ -569,9 +573,14 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
         return;
       }
       setLoading(true);
+      const request = ++worklistRequest.current;
       getFromOpenElisServer(
         worklistUrl.current + "&page=" + pageNumber,
-        applyLoadedRows,
+        (results?: WorklistResponse) => {
+          if (request === worklistRequest.current) {
+            applyLoadedRows(results);
+          }
+        },
       );
     },
     [applyLoadedRows],
@@ -615,10 +624,11 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
       params.set("doRange", "false");
       params.set("finished", includeFinished ? "true" : "false");
       worklistUrl.current = "/rest/LogbookResults?" + params.toString();
+      const request = ++worklistRequest.current;
       getFromOpenElisServer(
         worklistUrl.current,
         (results?: WorklistResponse) => {
-          if (mountedRef.current) {
+          if (mountedRef.current && request === worklistRequest.current) {
             applyLoadedRows(results, savedRowKey);
           }
         },
@@ -1046,6 +1056,42 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
     }));
     setEditingAnalysisId(target.analysisId);
   }, []);
+
+  /**
+   * OGC-1200 FR-C4: a control recorded on a row in its run of one holds the
+   * test's rows when it fails, and releases them once the run no longer holds
+   * the test, without a reload.
+   */
+  const handleRowHoldChange = useCallback(
+    (target: WorklistRow, waitingRun: WaitingRun | null) => {
+      const sameAnalysis = rowsRef.current.filter(
+        (row) => row.analysisId === target.analysisId,
+      );
+      setRows((current) =>
+        current.map((row) =>
+          row.analysisId === target.analysisId
+            ? { ...row, waitingRun: waitingRun ?? undefined }
+            : row,
+        ),
+      );
+      setRowStates((current) => {
+        const next = { ...current };
+        for (const row of sameAnalysis) {
+          next[worklistRowKey(row)] = initialRowState(
+            Boolean(row.resultValue) ||
+              Boolean(
+                row.multiSelectResultValues &&
+                row.multiSelectResultValues !== "{}",
+              ),
+            blocksEntry(waitingRun),
+            Boolean(waitingRun?.held),
+          );
+        }
+        return next;
+      });
+    },
+    [],
+  );
 
   const handleSaveResponse = useCallback(
     (target: WorklistRow, response: SaveResponse | undefined) => {
@@ -2266,6 +2312,9 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                                   disposition,
                                   reasonId,
                                 )
+                              }
+                              onRowHoldChange={(waitingRun) =>
+                                handleRowHoldChange(row, waitingRun)
                               }
                               actions={
                                 <>

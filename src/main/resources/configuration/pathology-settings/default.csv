@@ -1,2 +1,3 @@
 name,value,domainName,valueType,description,instructionKey,group,encrypted,createOnly
 pathology.microtomy.scanVerificationRequired,true,resultConfiguration,boolean,Scan verification of slide labels before sectioning,instructions.pathology.scanVerification,0,false,true
+pathology.caseView.priorResultsRows,5,resultConfiguration,text,Rows in the prior anatomic-pathology results panel,instructions.pathology.priorResultsRows,0,false,true
