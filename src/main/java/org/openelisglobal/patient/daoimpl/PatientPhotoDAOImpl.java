@@ -50,7 +50,6 @@ public class PatientPhotoDAOImpl extends BaseDAOImpl<PatientPhoto, Integer> impl
 
             return result;
         } catch (Exception e) {
-            System.out.println("---- Exception in getByPatientId: " + e.getMessage() + " ----");
             handleException(e, "getByPatientId");
             return null;
         }
