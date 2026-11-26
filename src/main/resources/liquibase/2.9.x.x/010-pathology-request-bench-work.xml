@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    A pathologist's request for more bench work (an additional block, slide or
+    stain) becomes a row with a kind, a target, a priority, who raised it and
+    when, and what fulfilled it or why it was cancelled.
+
+    Every new column is nullable. Requests on file were picked from a list of
+    stain names and carry none of this, and nobody recorded who raised them or
+    when, so they get no backfill and none may be shown with an author or a
+    date. The value column stays as it is: it holds the instruction text.
+    -->
+
+    <changeSet id="OGC-264-pathology-request-bench-work" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="pathology_request"/>
+                <not>
+                    <columnExists schemaName="clinlims" tableName="pathology_request" columnName="request_kind"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>Record the kind, target, priority, stain, author, time, result and cancel reason of a bench request</comment>
+        <addColumn schemaName="clinlims" tableName="pathology_request">
+            <column name="request_kind" type="VARCHAR(16)"/>
+            <column name="target_block_id" type="INTEGER"/>
+            <column name="target_slide_id" type="INTEGER"/>
+            <column name="priority" type="VARCHAR(8)"/>
+            <column name="result_block_id" type="INTEGER"/>
+            <column name="result_slide_id" type="INTEGER"/>
+            <column name="cancel_reason" type="VARCHAR(255)"/>
+            <column name="stain_id" type="NUMERIC(10)"/>
+            <column name="raised_at" type="TIMESTAMP"/>
+            <column name="raised_by" type="NUMERIC(10)"/>
+        </addColumn>
+        <!-- No cascade: a request is retained even if the row it points at were ever removed. -->
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims" baseTableName="pathology_request" baseColumnNames="target_block_id"
+            referencedTableSchemaName="clinlims" referencedTableName="pathology_block" referencedColumnNames="id"
+            constraintName="pathology_request_target_block_fk"/>
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims" baseTableName="pathology_request" baseColumnNames="target_slide_id"
+            referencedTableSchemaName="clinlims" referencedTableName="pathology_slide" referencedColumnNames="id"
+            constraintName="pathology_request_target_slide_fk"/>
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims" baseTableName="pathology_request" baseColumnNames="result_block_id"
+            referencedTableSchemaName="clinlims" referencedTableName="pathology_block" referencedColumnNames="id"
+            constraintName="pathology_request_result_block_fk"/>
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims" baseTableName="pathology_request" baseColumnNames="result_slide_id"
+            referencedTableSchemaName="clinlims" referencedTableName="pathology_slide" referencedColumnNames="id"
+            constraintName="pathology_request_result_slide_fk"/>
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims" baseTableName="pathology_request" baseColumnNames="stain_id"
+            referencedTableSchemaName="clinlims" referencedTableName="dictionary" referencedColumnNames="id"
+            constraintName="pathology_request_stain_fk"/>
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims" baseTableName="pathology_request" baseColumnNames="raised_by"
+            referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"
+            constraintName="pathology_request_raised_by_fk"/>
+        <!-- The open-source XML has no check-constraint change, so the rules are written in SQL. -->
+        <sql>
+            ALTER TABLE clinlims.pathology_request ADD CONSTRAINT pathology_request_kind_ck
+            CHECK (request_kind IS NULL OR request_kind IN ('BLOCK', 'SLIDE', 'STAIN'));
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.pathology_request ADD CONSTRAINT pathology_request_priority_ck
+            CHECK (priority IS NULL OR priority IN ('NORMAL', 'URGENT', 'STAT'));
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.pathology_request DROP CONSTRAINT pathology_request_priority_ck;
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.pathology_request DROP CONSTRAINT pathology_request_kind_ck;
+            </sql>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="pathology_request"
+                constraintName="pathology_request_raised_by_fk"/>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="pathology_request"
+                constraintName="pathology_request_stain_fk"/>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="pathology_request"
+                constraintName="pathology_request_result_slide_fk"/>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="pathology_request"
+                constraintName="pathology_request_result_block_fk"/>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="pathology_request"
+                constraintName="pathology_request_target_slide_fk"/>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="pathology_request"
+                constraintName="pathology_request_target_block_fk"/>
+            <dropColumn schemaName="clinlims" tableName="pathology_request">
+                <column name="request_kind"/>
+                <column name="target_block_id"/>
+                <column name="target_slide_id"/>
+                <column name="priority"/>
+                <column name="result_block_id"/>
+                <column name="result_slide_id"/>
+                <column name="cancel_reason"/>
+                <column name="stain_id"/>
+                <column name="raised_at"/>
+                <column name="raised_by"/>
+            </dropColumn>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-request-reference-table" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'PATHOLOGY_REQUEST'
+            </sqlCheck>
+        </preConditions>
+        <comment>Register pathology_request so a request's changes are auditable like every other reference table</comment>
+        <insert tableName="reference_tables" schemaName="clinlims">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="PATHOLOGY_REQUEST"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+        <rollback>
+            <delete tableName="reference_tables" schemaName="clinlims">
+                <where>name = 'PATHOLOGY_REQUEST'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!--
+    last_updated is the optimistic-lock version of the row. Requests created
+    before it was kept can hold null, and a row with a null version cannot be
+    updated, so it is set to the upgrade time. Which instant it held before is
+    not known, so nothing is restored on rollback.
+    -->
+    <changeSet id="OGC-264-pathology-request-last-updated-backfill" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="pathology_request"/>
+        </preConditions>
+        <comment>Give a request with no last_updated a version so it can be completed, cancelled or reopened</comment>
+        <sql>
+            UPDATE clinlims.pathology_request SET last_updated = now() WHERE last_updated IS NULL;
+        </sql>
+        <rollback>
+            <empty/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

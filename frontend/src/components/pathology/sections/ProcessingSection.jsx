@@ -1,10 +1,9 @@
 import React from "react";
-import { InlineNotification, Stack, TextInput } from "@carbon/react";
+import { InlineNotification, Stack } from "@carbon/react";
 import { useIntl } from "react-intl";
+import RunReferenceField from "./RunReferenceField";
 import StageEventList from "./StageEventList";
-
-// The column the run reference is stored in.
-const RUN_REFERENCE_MAX_LENGTH = 64;
+import { stageEntries } from "../pathologySections";
 
 /**
  * FR-5.1: the processor run a case went through, recorded as free text on
@@ -23,13 +22,7 @@ const RUN_REFERENCE_MAX_LENGTH = 64;
 const ProcessingSection = ({ caseInfo, updateCase, readOnly }) => {
   const intl = useIntl();
 
-  const processingEvents = (caseInfo.stageEvents ?? []).filter(
-    (event) => event.stage === "PROCESSING",
-  );
-  const atProcessing = caseInfo.status === "PROCESSING";
-  const hasOpenEntry = processingEvents.some((event) => !event.completedAt);
-  const missingEntry = atProcessing && !hasOpenEntry;
-  const editable = !readOnly && Boolean(caseInfo.runReferenceEditable);
+  const processingEvents = stageEntries(caseInfo, "PROCESSING");
 
   return (
     <Stack gap={6}>
@@ -44,34 +37,24 @@ const ProcessingSection = ({ caseInfo, updateCase, readOnly }) => {
           id: "pathology.banner.runReferenceInterim",
         })}
       />
-      <div className="pathology-case-view__field-group">
-        <TextInput
-          id="runReference"
-          labelText={intl.formatMessage({ id: "pathology.label.runReference" })}
-          maxLength={RUN_REFERENCE_MAX_LENGTH}
-          value={caseInfo.runReference ?? ""}
-          disabled={missingEntry}
-          readOnly={!editable && !missingEntry}
-          helperText={
-            atProcessing
-              ? intl.formatMessage({
-                  id: missingEntry
-                    ? "pathology.locked.noStageEvent"
-                    : "pathology.label.runReferenceOnce",
-                })
-              : undefined
-          }
-          onChange={(e) =>
-            editable && updateCase({ runReference: e.target.value })
-          }
-        />
-      </div>
+      <RunReferenceField
+        id="runReference"
+        stage="PROCESSING"
+        caseInfo={caseInfo}
+        value={caseInfo.runReference}
+        recordable={caseInfo.runReferenceEditable}
+        readOnly={readOnly}
+        labelKey="pathology.label.runReference"
+        onceKey="pathology.label.runReferenceOnce"
+        missingKey="pathology.locked.noStageEvent"
+        onChange={(runReference) => updateCase({ runReference })}
+      />
       {processingEvents.length > 0 && (
         <StageEventList
           events={processingEvents}
           ariaLabelKey="pathology.stage.processing"
           showStage={false}
-          showRunReference
+          runReferenceKey="pathology.label.runReference"
         />
       )}
     </Stack>

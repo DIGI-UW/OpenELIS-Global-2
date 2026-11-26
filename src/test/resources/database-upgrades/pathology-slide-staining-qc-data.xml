@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet id="fixture-pathology-slide-staining-qc-data"
+        author="openelis">
+        <comment>A deployment that cut slides before staining was recorded:
+            one block with two slides. One slide carries a stain_status value
+            nothing in OpenELIS ever wrote, which 009 must clear; the other has
+            none. Neither may come out of the upgrade as stained.</comment>
+        <sql>
+            INSERT INTO clinlims.sample
+            (id, accession_number, entered_date, received_date, lastupdated)
+            VALUES
+            (990601, 'SSQ26000000001', now(), now(), now());
+        </sql>
+        <sql>
+            INSERT INTO clinlims.pathology_sample
+            (id, sample_id, status, last_updated)
+            VALUES
+            (990601, 990601, 'STAINING', now());
+        </sql>
+        <sql>
+            INSERT INTO clinlims.pathology_block
+            (id, pathology_sample_id, designation, barcode, cassette_state, active,
+            last_updated)
+            VALUES
+            (990611, 990601, 'A1', 'SSQ26000000001.A1', 'BLOCK', true, now());
+        </sql>
+        <sql>
+            INSERT INTO clinlims.pathology_slide
+            (id, pathology_sample_id, block_id, designation, barcode, stain_status,
+            active, last_updated)
+            VALUES
+            (990621, 990601, 990611, '1', 'SSQ26000000001.A1.1', 'done', true, now());
+        </sql>
+        <sql>
+            INSERT INTO clinlims.pathology_slide
+            (id, pathology_sample_id, block_id, designation, barcode, active,
+            last_updated)
+            VALUES
+            (990622, 990601, 990611, '2', 'SSQ26000000001.A1.2', true, now());
+        </sql>
+    </changeSet>
+</databaseChangeLog>

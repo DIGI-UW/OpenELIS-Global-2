@@ -679,6 +679,10 @@ export interface CaseSlide {
   barcode?: string;
   level?: string | null;
   stainId?: string | null;
+  /** STAINED or UNSATISFACTORY once staining recorded one, else null. */
+  stainStatus?: string | null;
+  /** PASS or FAIL once the coverslip was checked, else null. */
+  coverslipQc?: string | null;
   active?: boolean;
   location?: string;
 }
@@ -687,6 +691,12 @@ export interface CaseSlide {
 export interface SlideLabelVerification {
   verifiedAt?: string;
   verifiedBy?: string;
+}
+
+/** Who recorded a slide's stain status or coverslip QC, and when. */
+export interface SlideStamp {
+  at?: string;
+  by?: string;
 }
 
 /** The parts of a stored case the stage moves below read and post back. */
@@ -704,10 +714,53 @@ export interface StoredPathologyCase {
   slides?: CaseSlide[];
   /** Who checked each slide's label against its block and when, by slide id. */
   labelVerifications?: Record<string, SlideLabelVerification | null>;
+  /** Who marked each slide's stain status and when, by slide id. */
+  stainStamps?: Record<string, SlideStamp | null>;
+  /** Who checked each slide's coverslip and when, by slide id. */
+  coverslipQcStamps?: Record<string, SlideStamp | null>;
+  /** The coverslipping batch written on the case's entry into the stage. */
+  coverslipRunReference?: string | null;
+  /** Whether the batch can still be written: once, while the case is there. */
+  coverslipRunReferenceEditable?: boolean;
   reports?: unknown[];
   techniques?: { id?: string }[];
-  requests?: { id?: string; status?: string }[];
+  /** The bench requests, newest first. */
+  requests?: CaseRequest[];
   conclusions?: { id?: string }[];
+}
+
+/** What a bench request asks for: another block, slide or stain. */
+export type RequestKind = "BLOCK" | "SLIDE" | "STAIN";
+
+/** How urgently a bench request is wanted. */
+export type RequestPriority = "NORMAL" | "URGENT" | "STAT";
+
+/** Where a bench request stands. */
+export type RequestStatus = "OPENED" | "COMPLETED" | "CANCELLED";
+
+/**
+ * One bench request as the case view reads it. A request on file from
+ * before requests had a kind carries none, nor a target, priority, author or
+ * date.
+ */
+export interface CaseRequest {
+  id: number;
+  kind?: RequestKind | null;
+  targetBlockId?: number | null;
+  targetSlideId?: number | null;
+  /** The target's designation as printed (A1, A1.1). */
+  targetName?: string | null;
+  stainId?: string | null;
+  stainName?: string | null;
+  priority?: RequestPriority | null;
+  instruction: string;
+  status: RequestStatus;
+  cancelReason?: string | null;
+  resultBlockId?: number | null;
+  resultSlideId?: number | null;
+  resultName?: string | null;
+  raisedAt?: string | null;
+  raisedBy?: string | null;
 }
 
 function casePath(caseId: string) {
@@ -722,6 +775,16 @@ export async function readCase(
   return apiGet<StoredPathologyCase>(page, casePath(caseId));
 }
 
+/** How a move treats the bench requests still open on the case. */
+export interface MoveOptions {
+  /**
+   * The open requests the person sending the case on has seen and sends it
+   * with, as the case view's Send anyway names them. The server refuses to
+   * send a case to the pathologist while any open request is missing here.
+   */
+  acknowledgedRequestIds?: number[];
+}
+
 /**
  * Move a case one stage on, or one stage back with a reason, through the
  * endpoints the case view posts to, naming the stage it is moved from. Throws
@@ -734,11 +797,18 @@ export async function moveCaseOnce(
   direction: "advance" | "return",
   from: PathologyStageId,
   reason?: string,
+  options: MoveOptions = {},
 ): Promise<PathologyStageId> {
+  const body =
+    direction === "return"
+      ? { from, reason }
+      : options.acknowledgedRequestIds
+        ? { from, acknowledgedRequestIds: options.acknowledgedRequestIds }
+        : { from };
   const answer = await apiPost(
     page,
     `${casePath(caseId)}/${direction}`,
-    direction === "return" ? { from, reason } : { from },
+    body,
     `Moving case ${caseId} (${direction}) from ${from}`,
   );
   const status = (JSON.parse(answer) as { status?: PathologyStageId }).status;
@@ -759,6 +829,8 @@ export interface CaseSaveChanges {
   cassetteTissueTypeId?: string;
   /** Cut one new slide (level 1, no stain) under the block with this id. */
   addSlideUnder?: number | string;
+  /** The stain to save on existing slides, by slide id. */
+  slideStains?: Record<string, string>;
   /** The free-text conclusion the pathologist writes before signing out. */
   conclusionText?: string;
   /**
@@ -772,7 +844,9 @@ export interface CaseSaveChanges {
 /**
  * Save the case through the same endpoint and with the same form the case
  * view's Save draft posts, built from the stored case, with the changes
- * given applied on top.
+ * given applied on top. Bench requests are not part of the form: each is
+ * raised and changed through its own endpoint (raiseRequest,
+ * changeRequestStatus), and a save leaves them as they are.
  */
 export async function saveCaseThroughApi(
   page: Page,
@@ -787,7 +861,10 @@ export async function saveCaseThroughApi(
       tissueTypeId: changes.cassetteTissueTypeId ?? null,
     });
   }
-  const slides = [...(stored.slides ?? [])];
+  const slides = (stored.slides ?? []).map((slide) => {
+    const stainId = changes.slideStains?.[String(slide.id)];
+    return stainId === undefined ? slide : { ...slide, stainId };
+  });
   if (changes.addSlideUnder !== undefined) {
     slides.push({
       blockId: changes.addSlideUnder,
@@ -812,14 +889,141 @@ export async function saveCaseThroughApi(
       release: changes.release ?? false,
       referToImmunoHistoChemistry: false,
       techniques: (stored.techniques ?? []).map((entry) => entry.id),
-      requests: (stored.requests ?? []).map((entry) => ({
-        value: entry.id,
-        status: entry.status,
-      })),
       conclusions: (stored.conclusions ?? []).map((entry) => entry.id),
     },
     `Saving case ${caseId}`,
   );
+}
+
+/** One bench request to raise, as the new-request row posts it. */
+export interface RequestDraft {
+  kind: RequestKind;
+  /** The block a slide request is cut from. */
+  targetBlockId?: number | string;
+  /** The slide a stain request is stained on. */
+  targetSlideId?: number | string;
+  /** The stain a stain request asks for, a Pathology Stains entry id. */
+  stainId?: string;
+  /** Normal when left out. */
+  priority?: RequestPriority;
+  instruction: string;
+}
+
+/** The answer of both request endpoints: the request and where it stands. */
+interface RequestAnswer {
+  id?: number;
+  status?: RequestStatus;
+}
+
+const idOrNull = (value: number | string | undefined) =>
+  value === undefined || value === "" ? null : Number(value);
+
+/**
+ * Raise a bench request on a case through the endpoint the Review section's
+ * Raise request posts to, with the same body. The server takes one at any
+ * stage before the case is signed out, stamped with the signed-in user and
+ * its own clock. Throws with the server's body when it is refused. Returns
+ * the new request's id.
+ */
+export async function raiseRequest(
+  page: Page,
+  seeded: Pick<SeededPathologyCase, "pathologySampleId">,
+  draft: RequestDraft,
+): Promise<number> {
+  const caseId = seeded.pathologySampleId;
+  const answer = await apiPost(
+    page,
+    `${casePath(caseId)}/requests`,
+    {
+      kind: draft.kind,
+      targetBlockId: idOrNull(draft.targetBlockId),
+      targetSlideId: idOrNull(draft.targetSlideId),
+      stainId: draft.stainId ?? null,
+      priority: draft.priority ?? "NORMAL",
+      instruction: draft.instruction,
+    },
+    `Raising a ${draft.kind} request on case ${caseId}`,
+  );
+  const id = (JSON.parse(answer) as RequestAnswer).id;
+  if (id == null) {
+    throw new Error(
+      `Raising a request on case ${caseId} answered no id: ${answer.substring(0, 400)}`,
+    );
+  }
+  return id;
+}
+
+/** One status change of a bench request. */
+export interface RequestStatusChange {
+  status: RequestStatus;
+  /**
+   * The status the change is made from. Left out, it is read from the case,
+   * which is what a page showing the request afresh would send.
+   */
+  from?: RequestStatus;
+  /** Required with CANCELLED. */
+  cancelReason?: string;
+  /** What fulfilled a completed block request. */
+  resultBlockId?: number | string;
+  /** What fulfilled a completed slide or stain request. */
+  resultSlideId?: number | string;
+}
+
+/**
+ * Complete, cancel or reopen a bench request through the endpoint the
+ * requests table posts to, with the same body: the status the change is made
+ * from, the new one, a reason only with a cancellation, and what fulfilled a
+ * completed request. Throws with the server's body when it is refused, a
+ * request changed elsewhere since `from` included (HTTP 409). Returns the
+ * status the request now has.
+ */
+export async function changeRequestStatus(
+  page: Page,
+  seeded: Pick<SeededPathologyCase, "pathologySampleId">,
+  requestId: number,
+  change: RequestStatusChange,
+): Promise<RequestStatus> {
+  const caseId = seeded.pathologySampleId;
+  let from = change.from;
+  if (!from) {
+    const stored = await readCase(page, caseId);
+    const request = (stored.requests ?? []).find(
+      (entry) => entry.id === requestId,
+    );
+    if (!request) {
+      throw new Error(`Case ${caseId} holds no request ${requestId}.`);
+    }
+    from = request.status;
+  }
+  const answer = await apiPost(
+    page,
+    `${casePath(caseId)}/requests/${requestId}/status`,
+    {
+      from,
+      status: change.status,
+      cancelReason:
+        change.status === "CANCELLED" ? (change.cancelReason ?? null) : null,
+      resultBlockId:
+        change.status === "COMPLETED" ? idOrNull(change.resultBlockId) : null,
+      resultSlideId:
+        change.status === "COMPLETED" ? idOrNull(change.resultSlideId) : null,
+    },
+    `Changing request ${requestId} of case ${caseId} from ${from} to ${change.status}`,
+  );
+  const status = (JSON.parse(answer) as RequestAnswer).status;
+  if (!status) {
+    throw new Error(
+      `Changing request ${requestId} of case ${caseId} answered no status: ${answer.substring(0, 400)}`,
+    );
+  }
+  return status;
+}
+
+/** The ids of the requests of a case still open. */
+export function openRequestIds(stored: StoredPathologyCase): number[] {
+  return (stored.requests ?? [])
+    .filter((request) => request.status === "OPENED")
+    .map((request) => request.id);
 }
 
 /**
@@ -868,17 +1072,195 @@ export async function verifySlideLabels(
   return verified;
 }
 
+/** The slides of a case that are saved and in use. */
+function slidesInUse(stored: StoredPathologyCase): CaseSlide[] {
+  return (stored.slides ?? []).filter(
+    (slide) => slide.id != null && slide.active !== false,
+  );
+}
+
+/**
+ * The stain this worker gives a slide that has none before marking it, added
+ * once by ensureStain and reused, so a run adds one setup entry rather than
+ * one per case.
+ */
+let setupStain: Stain | undefined;
+
+/**
+ * Whether the laboratory tracks staining, as the authenticated configuration
+ * the case view boots with says. Where it does not, no slide is ever marked
+ * stained and its coverslip is checked without.
+ */
+async function stainingTracked(page: Page): Promise<boolean> {
+  const config = await apiGet<Record<string, string>>(
+    page,
+    `${API_PREFIX}/rest/configuration-properties`,
+  );
+  return (
+    String(config.PATHOLOGY_STAGE_STAINING_ENABLED ?? "true")
+      .trim()
+      .toLowerCase() !== "false"
+  );
+}
+
+/** Which slides a mark is given to: some by id, or all those it applies to. */
+export interface SlideWorkOptions {
+  /** Only these slides; by default every slide in use the mark changes. */
+  slideIds?: (number | string)[];
+}
+
+/**
+ * Record what staining found for slides of a case, by slide id, through the
+ * endpoint the staining section posts to, exactly as one row's action or a
+ * batch does. The server takes it only while the case stands at Staining or
+ * Coverslipping, and a slide marked STAINED must carry a stain. Throws with
+ * the server's body when the mark is refused.
+ */
+export async function recordStainStatus(
+  page: Page,
+  seeded: Pick<SeededPathologyCase, "pathologySampleId">,
+  slideIds: (number | string)[],
+  status: "STAINED" | "UNSATISFACTORY",
+): Promise<void> {
+  const caseId = seeded.pathologySampleId;
+  await apiPost(
+    page,
+    `${casePath(caseId)}/slides/stain-status`,
+    { slideIds: slideIds.map(Number), status },
+    `Marking slides ${slideIds.join(", ")} of case ${caseId} ${status}`,
+  );
+}
+
+/**
+ * Record how the coverslip check of slides of a case went, by slide id,
+ * through the endpoint the coverslipping section posts to. The server takes
+ * it only while the case stands at Coverslipping. Throws with the server's
+ * body when the result is refused.
+ */
+export async function recordCoverslipQc(
+  page: Page,
+  seeded: Pick<SeededPathologyCase, "pathologySampleId">,
+  slideIds: (number | string)[],
+  result: "PASS" | "FAIL",
+): Promise<void> {
+  const caseId = seeded.pathologySampleId;
+  await apiPost(
+    page,
+    `${casePath(caseId)}/slides/coverslip-qc`,
+    { slideIds: slideIds.map(Number), result },
+    `Recording coverslip QC ${result} for slides ${slideIds.join(", ")} of case ${caseId}`,
+  );
+}
+
+/**
+ * Mark slides of a case stained through the endpoint the staining section
+ * posts to, as the bench does once the stain is on the slide. A slide with no
+ * stain saved is first given this worker's own stain through the case save,
+ * since the server marks a slide stained only with the stain it carries.
+ * By default every slide in use not yet stained is marked; slides already
+ * stained are left as they are. The server takes the mark only while the case
+ * stands at Staining or Coverslipping. Returns the barcodes of the slides it
+ * marked.
+ */
+export async function stainSlides(
+  page: Page,
+  seeded: Pick<SeededPathologyCase, "pathologySampleId">,
+  options: SlideWorkOptions = {},
+): Promise<string[]> {
+  const caseId = seeded.pathologySampleId;
+  let stored = await readCase(page, caseId);
+  const wanted = options.slideIds?.map(String);
+  const chosen = () =>
+    slidesInUse(stored).filter((slide) =>
+      wanted
+        ? wanted.includes(String(slide.id))
+        : slide.stainStatus !== "STAINED",
+    );
+
+  const unstained = chosen().filter((slide) => !slide.stainId);
+  if (unstained.length > 0) {
+    setupStain ??= await ensureStain(page);
+    await saveCaseThroughApi(page, caseId, stored, {
+      slideStains: Object.fromEntries(
+        unstained.map((slide) => [String(slide.id), setupStain!.id]),
+      ),
+    });
+    stored = await readCase(page, caseId);
+  }
+
+  const slides = chosen();
+  if (slides.length > 0) {
+    await recordStainStatus(
+      page,
+      seeded,
+      slides.map((slide) => slide.id!),
+      "STAINED",
+    );
+  }
+  return slides.map((slide) => slide.barcode ?? String(slide.id));
+}
+
+/**
+ * Pass the coverslip QC of slides of a case through the endpoint the
+ * coverslipping section posts to. Where the laboratory tracks staining a
+ * slide's coverslip is checked only once it is stained, so any slide that is
+ * not is marked stained first through stainSlides. By default every slide in
+ * use whose QC has not passed is passed. The server takes the result only
+ * while the case stands at Coverslipping. Returns the barcodes of the slides
+ * it passed.
+ */
+export async function passCoverslipQc(
+  page: Page,
+  seeded: Pick<SeededPathologyCase, "pathologySampleId">,
+  options: SlideWorkOptions = {},
+): Promise<string[]> {
+  const caseId = seeded.pathologySampleId;
+  const wanted = options.slideIds?.map(String);
+  const chosen = (stored: StoredPathologyCase) =>
+    slidesInUse(stored).filter((slide) =>
+      wanted ? wanted.includes(String(slide.id)) : slide.coverslipQc !== "PASS",
+    );
+
+  let stored = await readCase(page, caseId);
+  if (await stainingTracked(page)) {
+    const notStained = chosen(stored).filter(
+      (slide) => slide.stainStatus !== "STAINED",
+    );
+    if (notStained.length > 0) {
+      await stainSlides(page, seeded, {
+        slideIds: notStained.map((slide) => slide.id!),
+      });
+      stored = await readCase(page, caseId);
+    }
+  }
+
+  const slides = chosen(stored);
+  if (slides.length > 0) {
+    await recordCoverslipQc(
+      page,
+      seeded,
+      slides.map((slide) => slide.id!),
+      "PASS",
+    );
+  }
+  return slides.map((slide) => slide.barcode ?? String(slide.id));
+}
+
 /**
  * Bring a case to a stage for a test's setup, doing the bench's work on the
  * way rather than going round it: the server refuses to send a case on from
  * grossing until it is described and has a cassette, from embedding until
- * every cassette is a block, and from microtomy until a slide is cut and
- * every slide's label is checked against its block, so a blank description
- * is filled in and a cassette cut through the case save, each outstanding
- * cassette is embedded through its own endpoint, and one slide is cut under
- * the first block through the case save and every label checked through
- * verifySlideLabels, exactly as the screen would. Nothing is done at the target stage itself, so a case brought
- * to microtomy arrives there with no slide. A target
+ * every cassette is a block, from microtomy until a slide is cut and every
+ * slide's label is checked against its block, from staining until every
+ * slide is stained, and from coverslipping until every slide's coverslip
+ * passed QC. So a blank description is filled in and a cassette cut through
+ * the case save, each outstanding cassette is embedded through its own
+ * endpoint, one slide is cut under the first block through the case save and
+ * every label checked through verifySlideLabels, every slide is marked
+ * stained through stainSlides and passed through passCoverslipQc, exactly as
+ * the screen would. Nothing is done at the target stage itself, so a case
+ * brought to microtomy arrives there with no slide, and one brought to
+ * coverslipping with its slides stained but not yet checked. A target
  * behind the case is reached by returning it, one stage at a time, with a
  * reason.
  *
@@ -887,11 +1269,20 @@ export async function verifySlideLabels(
  * page has to be on the application, since the calls carry its session; the
  * screen it shows is not read again here, so a caller showing the case opens
  * it afresh afterwards.
+ *
+ * The server sends a case with open bench requests to the pathologist only
+ * when the move names every one of them. By default nothing is named, so
+ * such a case is refused there, as the screen refuses it until Send anyway;
+ * with `acknowledgeOpenRequests` the move onto Ready for Pathologist names
+ * every request open at that moment.
  */
 export async function moveCaseToStage(
   page: Page,
   seeded: Pick<SeededPathologyCase, "pathologySampleId">,
   stageId: PathologyStageId,
+  {
+    acknowledgeOpenRequests = false,
+  }: { acknowledgeOpenRequests?: boolean } = {},
 ): Promise<void> {
   const caseId = seeded.pathologySampleId;
   const target = PATHOLOGY_STAGE_ORDER.indexOf(stageId);
@@ -980,7 +1371,28 @@ export async function moveCaseToStage(
       await verifySlideLabels(page, seeded);
     }
 
-    const now = await moveCaseOnce(page, caseId, "advance", stored.status);
+    // The marks are taken only while the case stands at these stages, so
+    // they are made here, before the case is sent on, never after.
+    if (stored.status === "STAINING") {
+      await stainSlides(page, seeded);
+    }
+
+    if (stored.status === "COVERSLIPPING") {
+      await passCoverslipQc(page, seeded);
+    }
+
+    const acknowledged =
+      acknowledgeOpenRequests && stored.nextStage === "READY_PATHOLOGIST"
+        ? { acknowledgedRequestIds: openRequestIds(stored) }
+        : {};
+    const now = await moveCaseOnce(
+      page,
+      caseId,
+      "advance",
+      stored.status,
+      undefined,
+      acknowledged,
+    );
     if (position(now) > target) {
       throw new Error(
         `Sending case ${caseId} on from ${stored.status} went to ${now}, past ${stageId}: ` +

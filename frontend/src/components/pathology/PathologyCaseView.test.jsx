@@ -95,6 +95,11 @@ const caseAtStage = (status, overrides = {}) => ({
       blockId: 1,
       active: true,
       location: "",
+      // Stained and through coverslip QC, as staining and coverslipping
+      // require before the case is sent on.
+      stainId: "31",
+      stainStatus: "STAINED",
+      coverslipQc: "PASS",
     },
   ],
   // The slide's label has been checked against its block, as microtomy
@@ -193,6 +198,27 @@ const answerMove = async (response) => {
   await act(async () => {
     callback(response);
   });
+};
+
+// Holds every read of the case, so a test can act in the window between a
+// change's answer and the read that follows it, and land or fail the read
+// when it chooses.
+const holdCaseReads = () => {
+  const held = [];
+  getFromOpenElisServer.mockImplementation((url, callback) => {
+    if (url === CASE_URL) {
+      held.push(callback);
+      return;
+    }
+    if (url.startsWith("/rest/paginatedDisplayList/")) {
+      return callback({
+        displayItems: [],
+        paging: { totalPages: 1, currentPage: 1 },
+      });
+    }
+    return callback([]);
+  });
+  return held;
 };
 
 const describedBy = (element) =>
@@ -486,23 +512,6 @@ describe("PathologyCaseView stage transitions", () => {
 
   // Until the case is read again the page still shows the stage it left, so
   // a second press would post that stage and come back as a conflict.
-  const holdCaseReads = () => {
-    const held = [];
-    getFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url === CASE_URL) {
-        held.push(callback);
-        return;
-      }
-      if (url.startsWith("/rest/paginatedDisplayList/")) {
-        return callback({
-          displayItems: [],
-          paging: { totalPages: 1, currentPage: 1 },
-        });
-      }
-      return callback([]);
-    });
-    return held;
-  };
 
   it("keeps the moves and the form held until the case is read again after a move lands", async () => {
     servedCase = caseAtStage("PROCESSING");
@@ -1404,6 +1413,540 @@ describe("Embed and Deactivate: refusals and the signed-out lock", () => {
     expect(
       screen.getByText(messages["common.deactivate"], { selector: "button" }),
     ).toBeEnabled();
+  });
+});
+
+// FR-8: a slide marked at staining or coverslipping is its own request, and
+// the case is read again after it. Until that read lands the page still
+// shows the slide as it was, so a second press in between would post the
+// same mark again, and anything typed would be overwritten by the read.
+describe("marking slides at staining and coverslipping", () => {
+  const pendingSlide = {
+    id: 5,
+    designation: "1",
+    barcode: "ACC9.A1.1",
+    blockId: 1,
+    active: true,
+    location: "",
+    stainId: "31",
+  };
+  const atStainingWithAPendingSlide = (overrides = {}) =>
+    caseAtStage("STAINING", { slides: [pendingSlide], ...overrides });
+
+  const markStained = () => document.getElementById("markStained-5");
+
+  const grossExam = () =>
+    screen.getByLabelText(messages["pathology.label.grossExam"]);
+
+  it("holds the marks, the moves and the form until the case is read again after a mark lands", async () => {
+    servedCase = atStainingWithAPendingSlide();
+    renderCaseView();
+    await loaded();
+    const heldReads = holdCaseReads();
+
+    fireEvent.click(markStained());
+    await answerMove({ slides: [{ id: 5, stainStatus: "STAINED" }] });
+
+    expect(heldReads).toHaveLength(1);
+    expect(markStained()).toBeDisabled();
+    expect(markStained()).toHaveAttribute(
+      "title",
+      messages["pathology.locked.requestInFlight"],
+    );
+    fireEvent.click(markStained());
+    expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1);
+    expect(saveDraftButton()).toBeDisabled();
+    expect(returnButton()).toBeDisabled();
+
+    // Typed into while the read is out, the form takes nothing, so the read
+    // cannot overwrite anything.
+    expect(grossExam()).toBeDisabled();
+    fireEvent.change(grossExam(), { target: { value: "Typed in the window" } });
+    expect(
+      screen.queryByText(messages["caseView.label.unsavedChanges"]),
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      heldReads[0]({
+        ...caseAtStage("STAINING", {
+          slides: [{ ...pendingSlide, stainStatus: "STAINED" }],
+        }),
+      });
+    });
+
+    expect(saveDraftButton()).toBeEnabled();
+    expect(markStained()).toBeNull();
+    // Once the case is read, what is typed stays on the form.
+    fireEvent.change(grossExam(), {
+      target: { value: "Typed after the read" },
+    });
+    expect(grossExam()).toHaveValue("Typed after the read");
+    expect(
+      screen.getByText(messages["caseView.label.unsavedChanges"]),
+    ).toBeInTheDocument();
+  });
+
+  it("lets go of the marks when the read after a mark fails, leaving the page as it was", async () => {
+    servedCase = atStainingWithAPendingSlide();
+    renderCaseView();
+    await loaded();
+    const heldReads = holdCaseReads();
+
+    fireEvent.click(markStained());
+    await answerMove({ slides: [] });
+    await act(async () => {
+      heldReads[0](undefined);
+    });
+
+    expect(markStained()).toBeEnabled();
+    expect(saveDraftButton()).toBeEnabled();
+    expect(grossExam()).toBeEnabled();
+  });
+
+  it("shows a mark the server refuses in the reader's language, reads the case again and lets go once it lands", async () => {
+    servedCase = atStainingWithAPendingSlide();
+    renderCaseView();
+    await loaded();
+    const fetchesBefore = caseFetchCount();
+
+    fireEvent.click(markStained());
+    await answerMove({
+      status: 400,
+      error: "Save a stain first",
+      messageKey: "pathology.error.stainMissing",
+      messageArgs: { designations: "A1.1" },
+    });
+
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        message: intl.formatMessage(
+          { id: "pathology.error.stainMissing" },
+          { designations: "A1.1" },
+        ),
+      }),
+    );
+    expect(caseFetchCount()).toBe(fetchesBefore + 1);
+    expect(markStained()).toBeEnabled();
+  });
+
+  it("reports any other failed mark as the ordinary failure, and lets it be tried again", async () => {
+    servedCase = atStainingWithAPendingSlide();
+    renderCaseView();
+    await loaded();
+
+    fireEvent.click(markStained());
+    await answerMove({ status: 0 });
+
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        message: messages["pathology.toast.slideWorkFailed"],
+      }),
+    );
+    fireEvent.click(markStained());
+    expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(2);
+  });
+
+  it("holds staining back on the primary until every slide is stained, naming the one outstanding", async () => {
+    servedCase = atStainingWithAPendingSlide();
+    renderCaseView();
+    await loaded();
+
+    const primary = primaryButton("pathology.action.sendForCoverslip");
+    const reason = intl.formatMessage(
+      { id: "pathology.locked.stainingIncomplete" },
+      {
+        outstanding: intl.formatMessage(
+          { id: "pathology.badge.outstanding" },
+          { designations: "A1.1" },
+        ),
+      },
+    );
+    expect(primary).toBeDisabled();
+    expect(primary).toHaveAttribute("title", reason);
+    expect(describedBy(primary)).toHaveTextContent(reason);
+  });
+
+  it("holds coverslipping back on the primary until every slide passed QC, naming a failed one", async () => {
+    servedCase = caseAtStage("COVERSLIPPING", {
+      slides: [
+        { ...pendingSlide, stainStatus: "STAINED", coverslipQc: "FAIL" },
+      ],
+    });
+    renderCaseView();
+    await loaded();
+
+    expect(primaryButton("pathology.action.sendToPathologist")).toHaveAttribute(
+      "title",
+      intl.formatMessage(
+        { id: "pathology.locked.coverslipQcIncomplete" },
+        {
+          outstanding: intl.formatMessage(
+            { id: "pathology.badge.outstanding" },
+            { designations: "A1.1" },
+          ),
+        },
+      ),
+    );
+  });
+
+  it("holds staining back on a case whose every slide is retired, as microtomy holds a case with none", async () => {
+    servedCase = caseAtStage("STAINING", {
+      slides: [{ ...pendingSlide, active: false }],
+    });
+    renderCaseView();
+    await loaded();
+
+    const primary = primaryButton("pathology.action.sendForCoverslip");
+    expect(primary).toBeDisabled();
+    expect(primary).toHaveAttribute(
+      "title",
+      messages["pathology.locked.microtomyIncomplete"],
+    );
+  });
+
+  it("shows a mark refused past the bench in the reader's language", async () => {
+    servedCase = atStainingWithAPendingSlide();
+    renderCaseView();
+    await loaded();
+
+    fireEvent.click(markStained());
+    await answerMove({
+      status: 400,
+      error: "The case is with the pathologist.",
+      messageKey: "pathology.error.slideWorkAfterBench",
+      messageArgs: {},
+    });
+
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        message: messages["pathology.error.slideWorkAfterBench"],
+      }),
+    );
+  });
+
+  it("names a stain no longer in use when the server refuses a save for it", async () => {
+    servedCase = caseAtStage("MICROTOMY");
+    renderCaseView();
+    await loaded();
+
+    fireEvent.click(saveDraftButton());
+    await waitFor(() =>
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+    const callback = postToOpenElisServerFullResponse.mock.calls.at(-1)[2];
+    await act(async () => {
+      await callback({
+        status: 400,
+        json: async () => ({
+          error: "inactive stain",
+          messageKey: "pathology.error.stainNotInUse",
+          messageArgs: { name: "Orcein" },
+        }),
+      });
+    });
+
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        message: intl.formatMessage(
+          { id: "pathology.error.stainNotInUse" },
+          { name: "Orcein" },
+        ),
+      }),
+    );
+  });
+});
+
+// FR-10.11 and AC-20: sending a case to the pathologist with requests still
+// open asks first, inline in the action bar's status slot, and the move names
+// the requests it was shown so one raised behind the page is refused rather
+// than overridden unseen.
+describe("sending a case to the pathologist with open bench requests", () => {
+  const request = (id, instruction, status = "OPENED") => ({
+    id,
+    kind: null,
+    instruction,
+    status,
+  });
+
+  const OPEN_TWO = [
+    request(11, "Two deeper levels"),
+    request(12, "PAS on A1.1"),
+    request(13, "Recut", "COMPLETED"),
+  ];
+
+  const confirmation = () => document.getElementById("sendAnywayConfirm");
+  const sendAnyway = () => document.getElementById("sendAnyway");
+  const cancelSend = () => document.getElementById("sendAnywayCancel");
+  const sendToPathologist = () =>
+    primaryButton("pathology.action.sendToPathologist");
+  const listed = () =>
+    within(confirmation())
+      .getAllByRole("listitem")
+      .map((item) => item.textContent);
+
+  it("opens a confirmation in the status slot naming each open request instead of sending the case, with focus on Send anyway", async () => {
+    servedCase = caseAtStage("COVERSLIPPING", { requests: OPEN_TWO });
+    renderCaseView();
+    await loaded();
+
+    fireEvent.click(sendToPathologist());
+
+    expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(
+      document.querySelector(".case-view__action-bar-status"),
+    ).toContainElement(confirmation());
+    expect(confirmation()).toHaveTextContent(
+      intl.formatMessage({ id: "pathology.banner.openRequests" }, { count: 2 }),
+    );
+    expect(listed()).toEqual(["Two deeper levels", "PAS on A1.1"]);
+    expect(sendAnyway()).toHaveTextContent(
+      messages["pathology.action.sendAnyway"],
+    );
+    expect(sendAnyway()).toHaveAccessibleName(
+      intl.formatMessage(
+        { id: "pathology.action.sendAnywayOf" },
+        { name: "Two deeper levels, PAS on A1.1" },
+      ),
+    );
+    await waitFor(() => expect(sendAnyway()).toHaveFocus());
+  });
+
+  it("tells two open requests with the same instruction apart by what each is asked of", async () => {
+    servedCase = caseAtStage("COVERSLIPPING", {
+      requests: [
+        { ...request(11, "Deeper levels"), kind: "SLIDE", targetName: "A1" },
+        { ...request(12, "Deeper levels"), kind: "SLIDE", targetName: "A2" },
+        request(14, "Recut"),
+      ],
+    });
+    renderCaseView();
+    await loaded();
+
+    fireEvent.click(sendToPathologist());
+
+    const onTarget = (instruction, target) =>
+      intl.formatMessage(
+        { id: "pathology.label.requestOnTarget" },
+        { instruction, target },
+      );
+    expect(listed()).toEqual([
+      onTarget("Deeper levels", "A1"),
+      onTarget("Deeper levels", "A2"),
+      "Recut",
+    ]);
+  });
+
+  it("sends the case with the ids of the open requests it listed, says so, and closes the confirmation", async () => {
+    servedCase = caseAtStage("COVERSLIPPING", { requests: OPEN_TWO });
+    renderCaseView();
+    await loaded();
+
+    fireEvent.click(sendToPathologist());
+    fireEvent.click(sendAnyway());
+
+    const [url, body] = lastJsonPost();
+    expect(url).toBe(CASE_URL + "/advance");
+    expect(JSON.parse(body)).toEqual({
+      from: "COVERSLIPPING",
+      acknowledgedRequestIds: [11, 12],
+    });
+
+    servedCase = caseAtStage("READY_PATHOLOGIST", { requests: OPEN_TWO });
+    await answerMove({ status: "READY_PATHOLOGIST" });
+
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "success",
+        message: messages["pathology.toast.sentWithOpenRequests"],
+      }),
+    );
+    expect(confirmation()).toBeNull();
+    await waitFor(() =>
+      expect(sectionHeader("pathology-section-review")).toHaveFocus(),
+    );
+  });
+
+  it("closes the confirmation on Cancel without posting anything, and puts focus back on the primary", async () => {
+    servedCase = caseAtStage("COVERSLIPPING", { requests: OPEN_TWO });
+    renderCaseView();
+    await loaded();
+
+    fireEvent.click(sendToPathologist());
+    fireEvent.click(cancelSend());
+
+    expect(confirmation()).toBeNull();
+    expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+    await waitFor(() => expect(sendToPathologist()).toHaveFocus());
+  });
+
+  // A request raised after the page was read is not in the list sent, so the
+  // server refuses the move and names every open request.
+  it("keeps the confirmation open after the server names a request raised behind the page, lists it from the case read again, and puts focus back on Send anyway", async () => {
+    servedCase = caseAtStage("COVERSLIPPING", { requests: OPEN_TWO });
+    renderCaseView();
+    await loaded();
+    const fetchesBefore = caseFetchCount();
+
+    fireEvent.click(sendToPathologist());
+    // Opening the confirmation puts focus on Send anyway; that lands first,
+    // so it cannot be what brings focus back after the refusal.
+    await waitFor(() => expect(sendAnyway()).toHaveFocus());
+    fireEvent.click(sendAnyway());
+    // A browser takes focus off a button once it is disabled for the move;
+    // jsdom leaves it there and ignores blur() on a disabled button, so it is
+    // let go here as a browser would, and only the refusal's own focus target
+    // can bring it back.
+    const pressed = sendAnyway();
+    expect(pressed).toBeDisabled();
+    pressed.disabled = false;
+    pressed.blur();
+    pressed.disabled = true;
+    expect(document.activeElement).toBe(document.body);
+    servedCase = caseAtStage("COVERSLIPPING", {
+      requests: [...OPEN_TWO, request(15, "Iron stain")],
+    });
+    const instructions = "Two deeper levels, PAS on A1.1, Iron stain";
+    await answerMove({
+      status: 400,
+      messageKey: "pathology.error.openRequestsUnacknowledged",
+      messageArgs: { instructions },
+    });
+
+    expect(caseFetchCount()).toBe(fetchesBefore + 1);
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        message: intl.formatMessage(
+          { id: "pathology.error.openRequestsUnacknowledged" },
+          { instructions },
+        ),
+      }),
+    );
+    expect(listed()).toEqual([
+      "Two deeper levels",
+      "PAS on A1.1",
+      "Iron stain",
+    ]);
+    await waitFor(() => expect(sendAnyway()).toHaveFocus());
+
+    fireEvent.click(sendAnyway());
+    expect(JSON.parse(lastJsonPost()[1]).acknowledgedRequestIds).toEqual([
+      11, 12, 15,
+    ]);
+  });
+
+  it("opens the confirmation when a page that showed no open request is refused for one raised behind it", async () => {
+    servedCase = caseAtStage("COVERSLIPPING");
+    renderCaseView();
+    await loaded();
+
+    const primary = sendToPathologist();
+    primary.focus();
+    fireEvent.click(primary);
+    expect(JSON.parse(lastJsonPost()[1])).toEqual({ from: "COVERSLIPPING" });
+    servedCase = caseAtStage("COVERSLIPPING", {
+      requests: [request(15, "Iron stain")],
+    });
+    await answerMove({
+      status: 400,
+      messageKey: "pathology.error.openRequestsUnacknowledged",
+      messageArgs: { instructions: "Iron stain" },
+    });
+
+    expect(listed()).toEqual(["Iron stain"]);
+    await waitFor(() => expect(sendAnyway()).toHaveFocus());
+  });
+
+  // The status slot holds one inline row at a time.
+  it("closes an open return row when the confirmation opens, and offers no return while it is open", async () => {
+    servedCase = caseAtStage("COVERSLIPPING", { requests: OPEN_TWO });
+    renderCaseView();
+    await loaded();
+
+    fireEvent.click(returnButton());
+    fireEvent.change(reasonField(), { target: { value: "Recut needed" } });
+    fireEvent.click(sendToPathologist());
+
+    expect(reasonField()).toBeNull();
+    expect(returnButton()).toBeNull();
+    expect(confirmation()).not.toBeNull();
+
+    fireEvent.click(cancelSend());
+    expect(returnButton()).toBeEnabled();
+    fireEvent.click(returnButton());
+    expect(reasonField()).toHaveValue("");
+    expect(confirmation()).toBeNull();
+  });
+
+  it("holds Send anyway over unsaved work typed while the confirmation is open, and says why", async () => {
+    servedCase = caseAtStage("COVERSLIPPING", { requests: OPEN_TWO });
+    renderCaseView();
+    await loaded();
+
+    fireEvent.click(sendToPathologist());
+    fireEvent.change(
+      screen.getByLabelText(messages["pathology.label.grossExam"]),
+      { target: { value: "Changed" } },
+    );
+
+    expect(sendAnyway()).toBeDisabled();
+    expect(sendAnyway()).toHaveAttribute(
+      "title",
+      messages["pathology.locked.saveBeforeTransition"],
+    );
+    expect(describedBy(sendAnyway())).toHaveTextContent(
+      messages["pathology.locked.saveBeforeTransition"],
+    );
+    fireEvent.click(sendAnyway());
+    expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+  });
+
+  it("sends the case at once, naming no request, when none is open", async () => {
+    servedCase = caseAtStage("COVERSLIPPING", {
+      requests: [
+        request(13, "Recut", "COMPLETED"),
+        request(14, "Old", "CANCELLED"),
+      ],
+    });
+    renderCaseView();
+    await loaded();
+
+    fireEvent.click(sendToPathologist());
+
+    expect(confirmation()).toBeNull();
+    expect(JSON.parse(lastJsonPost()[1])).toEqual({ from: "COVERSLIPPING" });
+  });
+
+  it("asks nothing on a move to any other stage, open requests or not", async () => {
+    servedCase = caseAtStage("STAINING", { requests: OPEN_TWO });
+    renderCaseView();
+    await loaded();
+
+    fireEvent.click(primaryButton("pathology.action.sendForCoverslip"));
+
+    expect(confirmation()).toBeNull();
+    expect(JSON.parse(lastJsonPost()[1])).toEqual({ from: "STAINING" });
+  });
+
+  it("asks nothing on a return, open requests or not", async () => {
+    servedCase = caseAtStage("COVERSLIPPING", { requests: OPEN_TWO });
+    renderCaseView();
+    await loaded();
+
+    fireEvent.click(returnButton());
+    fireEvent.change(reasonField(), { target: { value: "Restain" } });
+    fireEvent.click(confirmReturnButton());
+
+    expect(confirmation()).toBeNull();
+    expect(JSON.parse(lastJsonPost()[1])).toEqual({
+      from: "COVERSLIPPING",
+      reason: "Restain",
+    });
   });
 });
 

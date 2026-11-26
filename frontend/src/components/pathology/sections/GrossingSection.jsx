@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import {
   Checkbox,
-  ComboBox,
   Heading,
   Section,
   Select,
@@ -12,6 +11,7 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import config from "../../../config.json";
+import SearchableSelect from "../../common/SearchableSelect";
 import IdentifiedRow, { ListToolbar } from "../IdentifiedRow";
 import {
   cassetteStateBadge,
@@ -19,6 +19,7 @@ import {
   deactivatedCount,
   heldOrServedItems,
   labelStreamUrl,
+  optionId,
   rowListEditors,
   unsavedPosition,
 } from "../pathologyRows";
@@ -152,10 +153,10 @@ const GrossingSection = ({
                     />
                   </div>
                   <div className="pathology-case-view__row-field">
-                    <ComboBox
+                    <SearchableSelect
                       id={"blockTissueType" + index}
                       size="md"
-                      titleText={
+                      labelText={
                         <>
                           {intl.formatMessage({
                             id: "pathology.label.tissueType",
@@ -164,17 +165,11 @@ const GrossingSection = ({
                         </>
                       }
                       placeholder={intl.formatMessage({ id: "common.select" })}
-                      items={tissueItems}
-                      itemToString={(item) => item?.value ?? ""}
-                      selectedItem={
-                        tissueItems.find(
-                          (tissue) =>
-                            String(tissue.id) === String(block.tissueTypeId),
-                        ) ?? null
-                      }
-                      onChange={({ selectedItem }) =>
+                      options={tissueItems}
+                      value={block.tissueTypeId ?? ""}
+                      onChange={(id) =>
                         patchRow(index, {
-                          tissueTypeId: selectedItem ? selectedItem.id : null,
+                          tissueTypeId: optionId(tissueItems, id),
                         })
                       }
                       disabled={disabled || tissueTypesUnknown || noTissueTypes}

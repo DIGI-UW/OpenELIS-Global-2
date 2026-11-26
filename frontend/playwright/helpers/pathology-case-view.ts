@@ -193,6 +193,130 @@ export function labelTag(row: Locator) {
     .filter({ hasText: /^(Verified|Unverified)$/ });
 }
 
+/** The two stages whose sections list the slides as a table to work through. */
+export type SlideWorkStage = "STAINING" | "COVERSLIPPING";
+
+/** Each slide-work section's item id, and the id its table's parts carry. */
+const SLIDE_WORK_SECTIONS: Record<
+  SlideWorkStage,
+  { sectionId: string; tableId: string }
+> = {
+  STAINING: { sectionId: "pathology-section-staining", tableId: "staining" },
+  COVERSLIPPING: {
+    sectionId: "pathology-section-coverslipping",
+    tableId: "coverslipping",
+  },
+};
+
+/** The section of one slide-work stage. */
+export function slideWorkSection(page: Page, stage: SlideWorkStage) {
+  return page.locator(`#${SLIDE_WORK_SECTIONS[stage].sectionId}`);
+}
+
+/**
+ * One slide's row in a slide-work section's table, by the name the slide
+ * goes by under its block ("A1.1"), matched whole. Both sections list the
+ * same slides, so the row is always addressed inside its section.
+ */
+export function slideWorkRow(
+  page: Page,
+  stage: SlideWorkStage,
+  slideName: string,
+) {
+  const { tableId } = SLIDE_WORK_SECTIONS[stage];
+  return slideWorkSection(page, stage)
+    .locator(`tr[data-testid^="${tableId}Row-"]`)
+    .filter({
+      has: page.locator(".pathology-case-view__row-designation", {
+        hasText: new RegExp(`^${escapeRegExp(slideName)}$`),
+      }),
+    });
+}
+
+/**
+ * A row's own action on a slide, by its accessible name, which starts with
+ * the words the button shows and then names the slide ("Mark stained: A1.1",
+ * "Pass coverslip QC: A1.1").
+ */
+export function slideWorkButton(
+  page: Page,
+  stage: SlideWorkStage,
+  name: string,
+) {
+  return slideWorkSection(page, stage).getByRole("button", {
+    name,
+    exact: true,
+  });
+}
+
+/**
+ * The checkbox that selects one slide, or every slide, for a batch.
+ * Carbon hides the input itself, so the label it is drawn by is what a
+ * person clicks, and the input is what is read back.
+ */
+export function slideSelectCheckbox(
+  page: Page,
+  stage: SlideWorkStage,
+  slideName?: string,
+) {
+  return slideWorkSection(page, stage).getByRole("checkbox", {
+    name: slideName ? `Select ${slideName}` : "Select all slides",
+    exact: true,
+  });
+}
+
+/** Select slides for a batch by clicking each one's checkbox label. */
+export async function selectSlides(
+  page: Page,
+  stage: SlideWorkStage,
+  slideNames: string[],
+) {
+  for (const slideName of slideNames) {
+    const checkbox = slideSelectCheckbox(page, stage, slideName);
+    const id = await checkbox.getAttribute("id");
+    await slideWorkSection(page, stage).locator(`label[for="${id}"]`).click();
+    await expect(checkbox).toBeChecked();
+  }
+}
+
+/** The batch bar's one action ("Mark selected stained", "Pass selected"). */
+export function slideBatchAction(page: Page, stage: SlideWorkStage) {
+  return page.locator(`#${SLIDE_WORK_SECTIONS[stage].tableId}BatchAction`);
+}
+
+/** The row a batch is confirmed in, which names every selected slide. */
+export function slideBatchConfirm(page: Page, stage: SlideWorkStage) {
+  return page.locator(`#${SLIDE_WORK_SECTIONS[stage].tableId}BatchConfirm`);
+}
+
+/**
+ * The line above a slide-work table that says why the whole section is
+ * held, present only while it is.
+ */
+export function slideWorkHold(page: Page, stage: SlideWorkStage) {
+  return page.locator(`#${SLIDE_WORK_SECTIONS[stage].tableId}Hold`);
+}
+
+/**
+ * A wait for one slide mark (a stain status or a coverslip QC result),
+ * registered before the click that starts it.
+ */
+export function waitForSlideWork(
+  page: Page,
+  caseId: string,
+  stage: SlideWorkStage,
+) {
+  const path = `/rest/pathology/caseView/${caseId}/slides/${
+    stage === "STAINING" ? "stain-status" : "coverslip-qc"
+  }`;
+  return page.waitForResponse(
+    (r) =>
+      r.request().method() === "POST" &&
+      new URL(r.url()).pathname.endsWith(path),
+    { timeout: UI_TIMEOUT },
+  );
+}
+
 /**
  * The one row on a list carrying a designation, matched whole, so A1 never
  * also matches A10.
@@ -260,9 +384,9 @@ export function returnRow(page: Page) {
   return page.locator(".pathology-case-view__return-row");
 }
 
-/** The success toast a move raises, naming the stage the case went to. */
-function moveToast(page: Page, text: string) {
-  return page.locator(".cds--toast-notification").filter({ hasText: text });
+/** A toast carrying the sentence it was given: a move's, a mark's, a request's. */
+export function toast(page: Page, sentence: string | RegExp) {
+  return page.locator(".cds--toast-notification").filter({ hasText: sentence });
 }
 
 /**
@@ -337,7 +461,7 @@ export async function advanceCase(
     throw new Error(`"${label}" was answered with no stage`);
   }
   await expect(
-    moveToast(page, `Case sent to ${STAGE_LABELS[stage]}`),
+    toast(page, `Case sent to ${STAGE_LABELS[stage]}`),
   ).not.toHaveCount(0, { timeout: UI_TIMEOUT });
   await readBack;
   await expectStage(page, STAGE_LABELS[stage]);
@@ -371,7 +495,7 @@ export async function returnCase(
     throw new Error("The return was answered with no stage");
   }
   await expect(
-    moveToast(page, `Case returned to ${STAGE_LABELS[stage]}`),
+    toast(page, `Case returned to ${STAGE_LABELS[stage]}`),
   ).not.toHaveCount(0, { timeout: UI_TIMEOUT });
   await readBack;
   await expectStage(page, STAGE_LABELS[stage]);
@@ -515,4 +639,157 @@ export async function saveDraft(page: Page, caseId: string) {
   await expect(page.getByText("Unsaved changes")).toHaveCount(0, {
     timeout: UI_TIMEOUT,
   });
+}
+
+/** The Pathologist Review section, which holds the bench requests. */
+export const REVIEW_SECTION = "pathology-section-review";
+
+/** What a bench request asks for, by the id its radio button carries. */
+export type RequestKindId = "BLOCK" | "SLIDE" | "STAIN";
+
+/**
+ * The region the requests table scrolls in, present while the table is,
+ * which is what a layout check measures.
+ */
+export function requestsRegion(page: Page) {
+  return page.locator("#requestsRegion");
+}
+
+/** The toolbar's New request, offered only in the pathologist's open review. */
+export function newRequestButton(page: Page) {
+  return page.locator("#newRequest");
+}
+
+/** The new request's row, the first of the table while it is open. */
+export function newRequestRow(page: Page) {
+  return page.locator('[data-testid="newRequestRow"]');
+}
+
+/** The radio button of one kind on the new request's row. */
+export function requestKindRadio(page: Page, kind: RequestKindId) {
+  return page.locator(`#requestKind-${kind}`);
+}
+
+/**
+ * Pick the kind of the new request by clicking its label, since Carbon hides
+ * the radio input itself, and wait until the input reads checked.
+ */
+export async function chooseRequestKind(page: Page, kind: RequestKindId) {
+  await newRequestRow(page).locator(`label[for="requestKind-${kind}"]`).click();
+  await expect(requestKindRadio(page, kind)).toBeChecked();
+}
+
+/** The new request's target picker: blocks for a slide, slides for a stain. */
+export function requestTargetPicker(page: Page) {
+  return page.locator("input#requestTarget");
+}
+
+/** The new request's stain picker, drawn only for a stain request. */
+export function requestStainPicker(page: Page) {
+  return page.locator("input#requestStain");
+}
+
+/** The new request's instruction. */
+export function requestInstruction(page: Page) {
+  return page.locator("#requestInstruction");
+}
+
+/** The new request's Raise request. */
+export function raiseRequestButton(page: Page) {
+  return page.locator("#raiseRequest");
+}
+
+/**
+ * One request's row in the requests table, by its instruction, matched
+ * whole in the instruction column.
+ */
+export function requestRow(page: Page, instruction: string) {
+  return page
+    .locator(`#${REVIEW_SECTION} tr[data-testid^="requestRow-"]`)
+    .filter({
+      has: page.locator("td.pathology-case-view__request-col--instruction", {
+        hasText: new RegExp(`^${escapeRegExp(instruction)}$`),
+      }),
+    });
+}
+
+/** Every request row of the table, newest first. */
+export function requestRows(page: Page) {
+  return page.locator(`#${REVIEW_SECTION} tr[data-testid^="requestRow-"]`);
+}
+
+/** The status tag of one request's row. */
+export function requestStatusTag(page: Page, instruction: string) {
+  return requestRow(page, instruction).locator(
+    "td.pathology-case-view__request-col--status .cds--tag",
+  );
+}
+
+/**
+ * A request action in the Review section by its accessible name, which is
+ * the word the button shows and then the request's instruction ("Complete:
+ * Recut A1 at 3 microns"), or Confirm followed by the instruction on an
+ * inline row.
+ */
+export function requestAction(page: Page, name: string) {
+  return page
+    .locator(`#${REVIEW_SECTION}`)
+    .getByRole("button", { name, exact: true });
+}
+
+/**
+ * A wait for one request change (a raise, or a status change of the request
+ * with this id), registered before the click that starts it.
+ */
+export function waitForRequestChange(
+  page: Page,
+  caseId: string,
+  requestId?: number,
+) {
+  const path =
+    requestId === undefined
+      ? `/rest/pathology/caseView/${caseId}/requests`
+      : `/rest/pathology/caseView/${caseId}/requests/${requestId}/status`;
+  return page.waitForResponse(
+    (r) =>
+      r.request().method() === "POST" &&
+      new URL(r.url()).pathname.endsWith(path),
+    { timeout: UI_TIMEOUT },
+  );
+}
+
+/**
+ * The confirmation in the action bar's status slot that lists the open
+ * requests before the case goes to the pathologist with them.
+ */
+export function sendAnywayConfirmation(page: Page) {
+  return page.locator("#sendAnywayConfirm");
+}
+
+/** The confirmation's Send anyway. */
+export function sendAnywayButton(page: Page) {
+  return page.locator("#sendAnyway");
+}
+
+/**
+ * The names a Carbon ComboBox offers, read by opening its list and closed
+ * again with Escape, so nothing is chosen.
+ */
+export async function pickerOptions(combobox: Locator): Promise<string[]> {
+  await expect(combobox).toBeEnabled();
+  await combobox.click();
+  await expect(combobox).toHaveAttribute("aria-expanded", "true");
+  const listboxId = await combobox.getAttribute("aria-controls");
+  if (!listboxId) {
+    throw new Error("The picker has no list it controls");
+  }
+  const options = combobox
+    .page()
+    .locator(`[id="${listboxId}"]`)
+    .getByRole("option");
+  await expect(options).not.toHaveCount(0);
+  const names = (await options.allInnerTexts()).map((name) => name.trim());
+  await combobox.press("Escape");
+  await expect(combobox).toHaveAttribute("aria-expanded", "false");
+  return names;
 }

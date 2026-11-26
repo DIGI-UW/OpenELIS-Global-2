@@ -9,6 +9,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
+import org.openelisglobal.program.valueholder.pathology.StainStatus;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletResponse;
 
@@ -173,7 +174,48 @@ public class PathologyStageRestControllerTest extends PathologyControllerTestSup
         assertEquals("the case has not moved", "GROSSING", storedStage());
     }
 
+    /**
+     * The stage alone, as the page and every helper posted it before requests could
+     * be acknowledged, still parses and reaches the rule: a case with an open
+     * request is not sent to the pathologist unseen, and the refusal names the
+     * request so the screen can list it (FR-10.11).
+     */
+    @Test
+    public void advanceOntoThePathologistPastAnUnseenRequest_answers400NamingIt() throws Exception {
+        standAtCoverslippingWithTheSlidePassed();
+
+        MockHttpServletResponse response = postAsTechnician(ADVANCE, "{\"from\":\"COVERSLIPPING\"}");
+
+        assertEquals("an open request nobody was shown holds the case", HttpStatus.BAD_REQUEST.value(),
+                response.getStatus());
+        Map<String, Object> body = bodyOf(response);
+        assertEquals("pathology.error.openRequestsUnacknowledged", body.get("messageKey"));
+        assertEquals("the refusal carries each open instruction for the screen to list",
+                Map.of("instructions", "Histology review"), body.get("messageArgs"));
+        assertEquals("the case stays at coverslipping", "COVERSLIPPING", storedStage());
+    }
+
+    /** The open request the page listed, acknowledged by id, lets the case go. */
+    @Test
+    public void advanceAcknowledgingTheOpenRequest_movesOntoThePathologist() throws Exception {
+        standAtCoverslippingWithTheSlidePassed();
+
+        MockHttpServletResponse response = postAsTechnician(ADVANCE,
+                "{\"from\":\"COVERSLIPPING\",\"acknowledgedRequestIds\":[" + FIXTURE_REQUEST_ID + "]}");
+
+        assertEquals("the send goes ahead", HttpStatus.OK.value(), response.getStatus());
+        assertEquals(Map.of("status", "READY_PATHOLOGIST"), bodyOf(response));
+        assertEquals("READY_PATHOLOGIST", storedStage());
+    }
+
     // helpers
+
+    /** Case 1 at Coverslipping with its one slide stained and passed. */
+    private void standAtCoverslippingWithTheSlidePassed() {
+        storeAt(PathologyStatus.COVERSLIPPING);
+        PathologyCaseRows.storeStainStatus(jdbcTemplate, LEGACY_SLIDE_ID, StainStatus.STAINED);
+        PathologyCaseRows.storeCoverslipQc(jdbcTemplate, LEGACY_SLIDE_ID, "PASS");
+    }
 
     private int stageEventCount() {
         return jdbcTemplate.queryForObject(

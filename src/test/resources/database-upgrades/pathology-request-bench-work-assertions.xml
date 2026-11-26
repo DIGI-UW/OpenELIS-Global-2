@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet id="assert-pathology-request-bench-work"
+        author="openelis">
+        <preConditions onFail="HALT" onError="HALT">
+            <sqlCheck expectedResult="10">
+                SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_schema = 'clinlims'
+                AND table_name = 'pathology_request'
+                AND column_name IN ('request_kind', 'target_block_id',
+                'target_slide_id', 'priority', 'result_block_id',
+                'result_slide_id', 'cancel_reason', 'stain_id', 'raised_at',
+                'raised_by')
+            </sqlCheck>
+            <sqlCheck expectedResult="10">
+                SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_schema = 'clinlims'
+                AND table_name = 'pathology_request'
+                AND is_nullable = 'YES'
+                AND column_name IN ('request_kind', 'target_block_id',
+                'target_slide_id', 'priority', 'result_block_id',
+                'result_slide_id', 'cancel_reason', 'stain_id', 'raised_at',
+                'raised_by')
+            </sqlCheck>
+            <sqlCheck expectedResult="6">
+                SELECT COUNT(*) FROM information_schema.table_constraints
+                WHERE table_schema = 'clinlims'
+                AND table_name = 'pathology_request'
+                AND constraint_type = 'FOREIGN KEY'
+                AND constraint_name IN ('pathology_request_target_block_fk',
+                'pathology_request_target_slide_fk',
+                'pathology_request_result_block_fk',
+                'pathology_request_result_slide_fk',
+                'pathology_request_stain_fk', 'pathology_request_raised_by_fk')
+            </sqlCheck>
+            <sqlCheck expectedResult="2">
+                SELECT COUNT(*) FROM information_schema.table_constraints
+                WHERE table_schema = 'clinlims'
+                AND table_name = 'pathology_request'
+                AND constraint_type = 'CHECK'
+                AND constraint_name IN ('pathology_request_kind_ck',
+                'pathology_request_priority_ck')
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.reference_tables
+                WHERE name = 'PATHOLOGY_REQUEST' AND keep_history = 'Y'
+                AND is_hl7_encoded = 'N'
+            </sqlCheck>
+            <!-- Requests on file are kept as they were, with no kind, author or date. -->
+            <sqlCheck expectedResult="2">
+                SELECT COUNT(*) FROM clinlims.pathology_request
+                WHERE id IN (990731, 990732) AND pathology_sample_id = 990701
+                AND request_kind IS NULL AND target_block_id IS NULL
+                AND target_slide_id IS NULL AND priority IS NULL
+                AND result_block_id IS NULL AND result_slide_id IS NULL
+                AND cancel_reason IS NULL AND stain_id IS NULL
+                AND raised_at IS NULL AND raised_by IS NULL
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.pathology_request
+                WHERE id = 990731 AND status = 'OPENED' AND type = 'DICTIONARY'
+                AND value = 'HISTOLOGY'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.pathology_request
+                WHERE id = 990732 AND status = 'COMPLETED' AND type = 'TEXT'
+                AND value = 'Histology review'
+            </sqlCheck>
+            <!-- The request that had no last_updated now has one. -->
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.pathology_request
+                WHERE id IN (990731, 990732) AND last_updated IS NULL
+            </sqlCheck>
+        </preConditions>
+        <comment>Every assertion lives in the preConditions above.</comment>
+        <sql>SELECT 1;</sql>
+    </changeSet>
+</databaseChangeLog>
