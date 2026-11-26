@@ -25,10 +25,8 @@ public class SampleEntryByProjectControllerTest {
             if (Modifier.isStatic(field.getModifiers())) {
                 continue;
             }
-            assertFalse(
-                    controller.getSimpleName() + " must not keep request state in the instance field '"
-                            + field.getName() + "'",
-                    Resource.class.isAssignableFrom(field.getType()));
+            assertFalse(controller.getSimpleName() + " must not keep request state in the instance field '"
+                    + field.getName() + "'", Resource.class.isAssignableFrom(field.getType()));
         }
     }
 }
