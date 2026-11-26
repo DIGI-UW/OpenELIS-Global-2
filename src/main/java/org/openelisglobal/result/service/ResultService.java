@@ -54,9 +54,9 @@ public interface ResultService extends BaseObjectService<Result, String> {
 
     String getDisplayReferenceRange(Result result, boolean includeSelectList);
 
-    String getResultValue(Result result, String separator, boolean printable, boolean includeUOM);
+    String formatResultForDisplay(Result result, String separator, boolean printable, boolean includeUOM);
 
-    String getSimpleResultValue(Result result);
+    String formatSimpleResultForDisplay(Result result);
 
     String getTestType(Result result);
 
@@ -68,7 +68,7 @@ public interface ResultService extends BaseObjectService<Result, String> {
 
     String getReportingTestName(Result result);
 
-    String getResultValue(Result result, boolean printable);
+    String formatResultForDisplay(Result result, boolean printable);
 
     String getResultValueForDisplay(Result result, String string, boolean b, boolean c);
 

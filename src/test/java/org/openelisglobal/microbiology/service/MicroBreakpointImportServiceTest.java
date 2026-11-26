@@ -3,6 +3,7 @@ package org.openelisglobal.microbiology.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -56,10 +57,9 @@ public class MicroBreakpointImportServiceTest {
         MicroOrganism organism = new MicroOrganism();
         organism.setId("eco");
         organism.setDisplayName("Escherichia coli");
-        organism.setOrganismGroup("Enterobacterales");
         when(organismDAO.findByDisplayNameIgnoreCase("Escherichia coli")).thenReturn(Optional.of(organism));
         when(organismDAO.findByDisplayNameIgnoreCase("Missing organism")).thenReturn(Optional.empty());
-        when(organismDAO.getActiveOrganisms()).thenReturn(List.of(organism));
+        when(organismDAO.getLabGroupNames()).thenReturn(List.of("Enterobacterales"));
         MicroAntibiotic antibiotic = new MicroAntibiotic();
         antibiotic.setId("cip");
         antibiotic.setWhonetCode("CIP");
@@ -80,6 +80,45 @@ public class MicroBreakpointImportServiceTest {
         assertFalse(preview.previewToken.isBlank());
         verify(standardDAO, org.mockito.Mockito.never()).insert(org.mockito.ArgumentMatchers.any());
         verify(ruleDAO, org.mockito.Mockito.never()).insert(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    public void aValueWithAnEnormousExponent_isARowError() {
+        String csv = CSV.substring(0, CSV.indexOf('\n') + 1)
+                + "CLSI,SYNTH-2026,Escherichia coli,CIP,MIC,,MIC,1E+500000000,2,3,4,ug/mL\n";
+
+        MicroBreakpointImportPreviewForm preview = service.preview(csv);
+
+        assertEquals(0, preview.validRows);
+        assertTrue(preview.errors.get(0).message, preview.errors.get(0).message.contains("Invalid decimal"));
+    }
+
+    @Test
+    public void anAppliedPreview_isGone() {
+        MicroBreakpointImportPreviewForm preview = service.preview(CSV);
+        service.apply(preview.previewToken, "42");
+
+        try {
+            service.apply(preview.previewToken, "42");
+            fail("the applied preview was still held");
+        } catch (IllegalArgumentException gone) {
+            assertTrue(gone.getMessage().contains("expired"));
+        }
+    }
+
+    @Test
+    public void theOldestPreviews_leaveWhenTheCapIsReached() {
+        String first = service.preview(CSV).previewToken;
+        for (int i = 0; i < MicroBreakpointImportServiceImpl.MAX_PREVIEWS; i++) {
+            service.preview(CSV);
+        }
+
+        try {
+            service.apply(first, "42");
+            fail("the oldest preview was still held past the cap");
+        } catch (IllegalArgumentException gone) {
+            assertTrue(gone.getMessage().contains("expired"));
+        }
     }
 
     @Test
@@ -148,6 +187,20 @@ public class MicroBreakpointImportServiceTest {
     }
 
     @Test
+    public void groupLookupIsLoadedOncePerPreviewAndRefreshesBetweenImports() {
+        String rows = csv("CLSI,SYNTH-2025,group:enterobacterales,CIP,MIC,,MIC,1,2,3,4,ug/mL\n"
+                + "CLSI,SYNTH-2026,group:Enterobacterales,CIP,MIC,,MIC,1,2,3,4,ug/mL\n"
+                + "CLSI,SYNTH-2026,group:Unknown,CIP,MIC,,MIC,1,2,3,4,ug/mL\n");
+        var preview = service.preview(rows);
+        assertEquals(2, preview.validRows);
+        assertEquals(1, preview.skippedRows);
+        verify(organismDAO).getLabGroupNames();
+        when(organismDAO.getLabGroupNames()).thenReturn(List.of());
+        assertEquals(0, service.preview(rows).validRows);
+        verify(organismDAO, org.mockito.Mockito.times(2)).getLabGroupNames();
+    }
+
+    @Test
     public void previewRejectsUnknownOrganismGroupsAndSpecimenTypes() {
         String invalidContextCsv = csv("CLSI,SYNTH-2026,group:Enterobactrales,CIP,MIC,,MIC,1,2,3,4,ug/mL\n"
                 + "CLSI,SYNTH-2026,group:Enterobacterales,CIP,MIC,999,MIC,1,2,3,4,ug/mL\n");
@@ -180,9 +233,101 @@ public class MicroBreakpointImportServiceTest {
         verify(ruleDAO, never()).update(org.mockito.ArgumentMatchers.any());
     }
 
+    @Test
+    public void previewRejectsMeasurementsThatCannotBeInterpretedOrStoredExactly() {
+        for (String fields : List.of("MIC,,MIC,0,,,4,ug/mL", "MIC,,MIC,0.00001,,,4,ug/mL", "MIC,,MIC,5,,,4,ug/mL",
+                "MIC,,MIC,1,,,4,mm", "MIC,,ZONE,1,,,4,ug/mL", "MIC,,MIC,1,3,2,4,ug/mL", "MIC,,MIC,1,2,,4,ug/mL")) {
+            var result = service.preview(csv("CLSI,SYNTH-2026,Escherichia coli,CIP," + fields + "\n"));
+            assertEquals(fields, 0, result.validRows);
+            assertEquals(fields, 1, result.errors.size());
+        }
+        verify(ruleDAO, never()).insert(org.mockito.ArgumentMatchers.any());
+    }
+
+    private String withDisk(String content) {
+        var lines = content.lines().toList();
+        StringBuilder csv = new StringBuilder(lines.get(0)).append(",disk_content\n");
+        for (String line : lines.subList(1, lines.size())) {
+            csv.append(line).append(line.contains(",ZONE,") ? ",30ug\n" : ",\n");
+        }
+        return csv.toString();
+    }
+
     private String csv(String rows) {
         return "publisher,version,organism_or_group,antibiotic_whonet_code,method,specimen_type_id,"
                 + "breakpoint_type,susceptible_value,intermediate_lower_value,intermediate_upper_value,"
                 + "resistant_value,units\n" + rows;
+    }
+
+    @Test
+    public void intermediateIntervalsCannotOverrideSusceptibleOrResistantResults() {
+        for (String fields : List.of("MIC,,MIC,1,0.5,2,4,ug/mL", "MIC,,MIC,1,1,2,4,ug/mL", "MIC,,MIC,1,2,4,4,ug/mL",
+                "ZONE,,ZONE,22,20,22,18,mm", "ZONE,,ZONE,22,18,20,18,mm")) {
+            var result = service.preview(withDisk(csv("CLSI,SYNTH-2026,Escherichia coli,CIP," + fields + "\n")));
+            assertEquals(fields, 0, result.validRows);
+            assertTrue(fields, result.errors.get(0).message.contains("overlap"));
+        }
+        for (String fields : List.of("MIC,,MIC,1,2,4,4,ug/mL", "ZONE,,ZONE,22,18,20,18,mm")) {
+            String content = csv("EUCAST,2026,Escherichia coli,CIP," + fields + ",false\n")
+                    .replace("resistant_value,units\n", "resistant_value,units,resistant_inclusive\n");
+            assertEquals(fields, 1, service.preview(withDisk(content)).validRows);
+        }
+    }
+
+    @Test
+    public void partialTerminalRulesAreRejectedInsteadOfSilentlyBecomingNoBreakpoint() {
+        for (String fields : List.of("MIC,,MIC,1,,,,ug/mL", "MIC,,MIC,,,,4,ug/mL", "MIC,,MIC,,2,3,,ug/mL",
+                "ZONE,,ZONE,22,,,,mm", "ZONE,,ZONE,,,,18,mm")) {
+            var preview = service.preview(withDisk(csv("CLSI,SYNTH-2026,Escherichia coli,CIP," + fields + "\n")));
+            assertEquals(fields, 0, preview.validRows);
+            assertTrue(fields, preview.errors.get(0).message.contains("Both susceptible and resistant"));
+        }
+        verify(ruleDAO, never()).insert(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    public void equalTerminalThresholdsRequireStrictResistanceForBothMethods() {
+        for (String fields : List.of("MIC,,MIC,1,,,1,ug/mL", "ZONE,,ZONE,20,,,20,mm")) {
+            var inclusive = service.preview(withDisk(csv("CLSI,SYNTH-2026,Escherichia coli,CIP," + fields + "\n")));
+            assertEquals(fields, 0, inclusive.validRows);
+            assertTrue(fields, inclusive.errors.get(0).message.contains("Thresholds are out of order"));
+            String strict = csv("EUCAST,2026,Escherichia coli,CIP," + fields + ",false\n")
+                    .replace("resistant_value,units\n", "resistant_value,units,resistant_inclusive\n");
+            assertEquals(fields, 1, service.preview(withDisk(strict)).validRows);
+        }
+    }
+
+    @Test
+    public void explicitEmptyRuleCanBeImportedAsNoBreakpoint() {
+        var preview = service.preview(csv("CLSI,SYNTH-2026,Escherichia coli,CIP,MIC,,MIC,,,,,ug/mL\n"));
+        assertEquals(1, preview.validRows);
+        assertEquals(1, service.apply(preview.previewToken, "42").importedRows);
+        var captured = ArgumentCaptor.forClass(MicroBreakpointRule.class);
+        verify(ruleDAO).insert(captured.capture());
+        assertEquals(org.openelisglobal.microbiology.valueholder.MicroAstInterpretation.NO_BREAKPOINT,
+                new MicroAstInterpretationServiceImpl().interpret(captured.getValue(),
+                        org.openelisglobal.microbiology.valueholder.MicroAstMethod.MIC, java.math.BigDecimal.ONE));
+    }
+
+    @Test
+    public void referenceLookupsAreReusedWithinAnImportButRefreshedForTheNextImport() {
+        String content = csv("EUCAST,2025,Escherichia coli,CIP,MIC,,MIC,1,,,4,mg/L,AMR,ECO,AMR,CIP\n"
+                + "EUCAST,2026,Escherichia coli,CIP,MIC,,MIC,1,,,4,mg/L,AMR,ECO,AMR,CIP\n")
+                .replace("resistant_value,units\n",
+                        "resistant_value,units,organism_source,organism_code,antibiotic_source,antibiotic_code\n");
+        MicroOrganism organism = new MicroOrganism();
+        organism.setId("eco");
+        MicroAntibiotic antibiotic = new MicroAntibiotic();
+        antibiotic.setId("cip");
+        when(organismDAO.findByReference("AMR", "ECO")).thenReturn(Optional.of(organism));
+        when(antibioticDAO.findByReference("AMR", "CIP")).thenReturn(Optional.of(antibiotic));
+
+        assertEquals(2, service.preview(content).validRows);
+        verify(organismDAO).findByReference("AMR", "ECO");
+        verify(antibioticDAO).findByReference("AMR", "CIP");
+
+        when(organismDAO.findByReference("AMR", "ECO")).thenReturn(Optional.empty());
+        assertEquals(0, service.preview(content).validRows);
+        verify(organismDAO, org.mockito.Mockito.times(2)).findByReference("AMR", "ECO");
     }
 }

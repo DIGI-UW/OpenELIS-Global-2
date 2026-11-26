@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.hl7.fhir.r4.model.Annotation;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.DateTimeType;
@@ -31,6 +32,7 @@ import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.TableIdService;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.IsoDateNormalizer;
 import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
@@ -65,6 +67,7 @@ import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.vector.valueholder.VectorSamplingSite;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ServiceRequestTransformServiceImpl implements ServiceRequestTransformService {
@@ -154,6 +157,7 @@ public class ServiceRequestTransformServiceImpl implements ServiceRequestTransfo
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ServiceRequest> transformToServiceRequests(SamplePatientUpdateData updateData,
             SampleTestCollection sampleTestCollection) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformToServiceRequests",
@@ -171,11 +175,13 @@ public class ServiceRequestTransformServiceImpl implements ServiceRequestTransfo
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ServiceRequest transformToServiceRequest(String anlaysisId) {
         return this.transformToServiceRequest(analysisService.get(anlaysisId));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ServiceRequest transformToServiceRequest(Analysis analysis) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformToServiceRequest",
                 "transformToServiceRequest called");
@@ -262,8 +268,16 @@ public class ServiceRequestTransformServiceImpl implements ServiceRequestTransfo
         serviceRequest.setCode(terminologyTransformService.transformTestToCodeableConcept(test.getId(),
                 analysisSampleItem == null ? null : analysisSampleItem.getTypeOfSampleId()));
         serviceRequest.setAuthoredOnElement(authoredOnFor(sample));
-        for (Note note : noteService.getNotes(analysis)) {
-            serviceRequest.addNote(common.transformNoteToAnnotation(note));
+        List<Note> analysisNotes = noteService.getNotes(analysis);
+        if (analysisNotes != null) {
+            for (Note note : analysisNotes) {
+                if (note != null && Note.EXTERNAL.equals(note.getNoteType())) {
+                    Annotation annotation = common.transformNoteToAnnotation(note);
+                    if (annotation != null) {
+                        serviceRequest.addNote(annotation);
+                    }
+                }
+            }
         }
         // TODO performer type?
 
@@ -341,12 +355,12 @@ public class ServiceRequestTransformServiceImpl implements ServiceRequestTransfo
     private DateTimeType authoredOnFor(Sample sample) {
         String requestDate = observationHistoryService.getValueForSample(ObservationType.REQUEST_DATE, sample.getId());
         if (!GenericValidator.isBlankOrNull(requestDate)) {
-            try {
-                return new DateTimeType(DateUtil.convertStringDateToSqlDate(requestDate), TemporalPrecisionEnum.DAY);
-            } catch (RuntimeException e) {
-                LogEvent.logWarn(this.getClass().getSimpleName(), "authoredOnFor",
-                        "unreadable request date '" + requestDate + "' on sample " + sample.getId());
+            java.time.LocalDate requested = IsoDateNormalizer.toLocalDate(requestDate);
+            if (requested != null) {
+                return new DateTimeType(java.sql.Date.valueOf(requested), TemporalPrecisionEnum.DAY);
             }
+            LogEvent.logWarn(this.getClass().getSimpleName(), "authoredOnFor",
+                    "unreadable request date '" + requestDate + "' on sample " + sample.getId());
         }
         Date entered = sample.getEnteredDate() != null ? sample.getEnteredDate()
                 : sample.getReceivedTimestamp() != null ? sample.getReceivedTimestamp() : sample.getLastupdated();

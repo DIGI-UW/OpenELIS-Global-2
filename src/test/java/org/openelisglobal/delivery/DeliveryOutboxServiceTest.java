@@ -199,6 +199,39 @@ public class DeliveryOutboxServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(ChannelStatus.FAILED, row.getStatus());
         assertEquals("Email is not set up", row.getErrorMessage());
         assertTrue(outbox.claim("worker-a", 10).isEmpty());
+        assertEquals("finding the channel not set up is the attempt that failed (OGC-1551)", 1, row.getAttempts());
+        SentMessageDTO detail = outbox.detail(log.getId()).orElseThrow();
+        assertEquals("and it is listed with its reason", 1, detail.getAttempts().size());
+        assertFalse(detail.getAttempts().get(0).isSucceeded());
+        assertEquals("Email is not set up", detail.getAttempts().get(0).getErrorMessage());
+    }
+
+    /**
+     * OGC-1551: a resend is a new row of its own. It shows the attempt it made and
+     * names the message it repeats, with that message's time, so the reader can
+     * find the original.
+     */
+    @Test
+    public void aResendOfAFailedMessageShowsItsAttemptAndTheMessageItRepeats() {
+        email.setUp = false;
+        NotificationLog source = outbox.enqueue(emailTo("kila@example.org", "ACC-010"));
+
+        NotificationLog again = outbox.resend(source.getId(), ADMIN);
+
+        SentMessageDTO detail = outbox.detail(again.getId()).orElseThrow();
+        assertEquals(source.getId(), detail.getResentFromId());
+        assertEquals(outbox.detail(source.getId()).orElseThrow().getFiredAt(), detail.getResentFromFiredAt());
+        assertEquals(1, detail.getChannels().get(0).getAttempts());
+        assertEquals(1, detail.getAttempts().size());
+        assertEquals("Email is not set up", detail.getAttempts().get(0).getErrorMessage());
+        assertEquals("the original is left as it was", 1,
+                outbox.detail(source.getId()).orElseThrow().getAttempts().size());
+
+        DeliveryQueueSearch original = new DeliveryQueueSearch();
+        original.setMessageId(detail.getResentFromId());
+        SentMessagesPageDTO linked = outbox.list(original, 1, 10);
+        assertEquals("the resend links to exactly the message it repeats", 1, linked.getTotal());
+        assertEquals(source.getId(), linked.getRows().get(0).getId());
     }
 
     @Test

@@ -139,4 +139,48 @@ public class MicroAstPanel extends BaseObject<String> {
     public void setIsActive(String isActive) {
         this.isActive = isActive;
     }
+
+    @Column(name = "susceptibility_protocol", nullable = false, length = 24)
+    private String susceptibilityProtocol = "GENERAL";
+
+    public String getSusceptibilityProtocol() {
+        return susceptibilityProtocol;
+    }
+
+    public void setSusceptibilityProtocol(String value) {
+        susceptibilityProtocol = value;
+    }
+
+    @Column(name = "default_for")
+    private String defaultFor;
+
+    @Column(name = "default_for_file", length = 255)
+    private String defaultForFile;
+
+    public String getDefaultFor() {
+        return defaultFor;
+    }
+
+    public void setDefaultFor(String defaultFor) {
+        this.defaultFor = defaultFor;
+    }
+
+    @Column(name = "configuration_content")
+    private String configurationContent;
+
+    public String getConfigurationContent() {
+        return configurationContent;
+    }
+
+    public void setConfigurationContent(String configurationContent) {
+        this.configurationContent = configurationContent;
+    }
+
+    public String getDefaultForFile() {
+        return defaultForFile;
+    }
+
+    public void setDefaultForFile(String defaultForFile) {
+        this.defaultForFile = defaultForFile;
+    }
 }

@@ -2,6 +2,8 @@ package org.openelisglobal.testcalculated.controller.rest;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -14,6 +16,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import org.hibernate.ObjectNotFoundException;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -21,8 +26,11 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.testcalculated.service.CalculationRuleViolation;
 import org.openelisglobal.testcalculated.service.TestCalculationService;
 import org.openelisglobal.testcalculated.valueholder.Calculation;
+import org.openelisglobal.testcalculated.valueholder.Operation;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -172,5 +180,127 @@ public class CalculatedValueRestControllerTest {
 
         mockMvc.perform(get("/rest/test-calculations?id=")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1));
+    }
+
+    /**
+     * OGC-1587: the rule the list serves, posted back unchanged, saves. The list
+     * carries the derived scopedSampleTypeId, which the save used to refuse as an
+     * unreadable request.
+     */
+    @Test
+    public void aRuleReadFromTheListSavesBackUnchanged() throws Exception {
+        Calculation stored = new Calculation();
+        stored.setId(7);
+        stored.setName("Urea from creatinine");
+        stored.setTestId(411);
+        stored.setActive(true);
+        Operation operand = new Operation();
+        operand.setOrder(0);
+        operand.setType(Operation.OperationType.TEST_RESULT);
+        operand.setValue("160");
+        operand.setSampleId(2);
+        stored.setOperations(new ArrayList<>(List.of(operand)));
+        when(testCalculationService.getAll()).thenReturn(new ArrayList<>(List.of(stored)));
+        when(testCalculationService.get(7)).thenReturn(stored);
+        String served = mockMvc.perform(get("/rest/test-calculations?id=7")).andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].operations[0].scopedSampleTypeId").value("2")).andReturn().getResponse()
+                .getContentAsString();
+        String rule = served.substring(1, served.length() - 1);
+
+        mockMvc.perform(post("/rest/test-calculation").contentType(MediaType.APPLICATION_JSON).content(rule))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Calculation> captor = ArgumentCaptor.forClass(Calculation.class);
+        verify(testCalculationService).update(captor.capture());
+        assertEquals(Integer.valueOf(2), captor.getValue().getOperations().get(0).getSampleId());
+    }
+
+    @Test
+    public void aRefusedRuleAnswers400WithTheReasonAndIsNotSaved() throws Exception {
+        doThrow(new CalculationRuleViolation("calculation.error.cycle", Map.of("cycle", "A → B → A")))
+                .when(testCalculationService).validateRule(any(Calculation.class), eq(true));
+
+        mockMvc.perform(post("/rest/test-calculation").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"A\",\"testId\":1,\"active\":true,\"operations\":[]}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.messageKey").value("calculation.error.cycle"))
+                .andExpect(jsonPath("$.messageArgs.cycle").value("A → B → A"));
+
+        verify(testCalculationService, never()).save(any(Calculation.class));
+        verify(testCalculationService, never()).update(any(Calculation.class));
+    }
+
+    /** A rule saved switched off is checked as one that will not run. */
+    @Test
+    public void anInactiveRuleIsCheckedAsInactive() throws Exception {
+        mockMvc.perform(post("/rest/test-calculation").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"A\",\"testId\":1,\"active\":false,\"operations\":[]}"))
+                .andExpect(status().isOk());
+
+        verify(testCalculationService).validateRule(any(Calculation.class), eq(false));
+        verify(testCalculationService).save(any(Calculation.class));
+    }
+
+    /** Saving over a rule that no longer exists used to answer 200 and save nothing. */
+    @Test
+    public void savingOverAMissingRuleAnswers404() throws Exception {
+        when(testCalculationService.get(99)).thenReturn(null);
+
+        mockMvc.perform(post("/rest/test-calculation").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"id\":99,\"name\":\"A\",\"testId\":1,\"active\":true,\"operations\":[]}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.messageKey").value("calculation.error.notFound"));
+
+        verify(testCalculationService, never()).update(any(Calculation.class));
+        verify(testCalculationService, never()).save(any(Calculation.class));
+    }
+
+    /**
+     * The service answers a missing id by throwing, as the real one does; that
+     * used to come back as a 500 on save, activate and deactivate alike.
+     */
+    @Test
+    public void aMissingRuleIsNotFoundWhenTheServiceThrows() throws Exception {
+        when(testCalculationService.get(99)).thenThrow(new ObjectNotFoundException(99, Calculation.class.getName()));
+
+        mockMvc.perform(post("/rest/test-calculation").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"id\":99,\"name\":\"A\",\"testId\":1,\"active\":true,\"operations\":[]}"))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(post("/rest/activate-test-calculation/99")).andExpect(status().isNotFound());
+        mockMvc.perform(post("/rest/deactivate-test-calculation/99")).andExpect(status().isNotFound());
+
+        verify(testCalculationService, never()).update(any(Calculation.class));
+        verify(testCalculationService, never()).save(any(Calculation.class));
+    }
+
+    @Test
+    public void switchingOnARefusedRuleAnswers400AndLeavesItOff() throws Exception {
+        Calculation existing = new Calculation();
+        existing.setId(7);
+        existing.setActive(false);
+        when(testCalculationService.get(7)).thenReturn(existing);
+        doThrow(new CalculationRuleViolation("calculation.error.duplicateDestination",
+                Map.of("test", "Urea", "other", "Urea x2"))).when(testCalculationService).validateRule(existing, true);
+
+        mockMvc.perform(post("/rest/activate-test-calculation/7")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.messageKey").value("calculation.error.duplicateDestination"));
+
+        verify(testCalculationService, never()).update(any(Calculation.class));
+        assertEquals(Boolean.FALSE, existing.getActive());
+    }
+
+    /**
+     * Switching a rule off never needs a check: a rule that does not run conflicts
+     * with nothing.
+     */
+    @Test
+    public void switchingOffIsNeverRefused() throws Exception {
+        Calculation existing = new Calculation();
+        existing.setId(7);
+        existing.setActive(true);
+        when(testCalculationService.get(7)).thenReturn(existing);
+
+        mockMvc.perform(post("/rest/deactivate-test-calculation/7")).andExpect(status().isOk());
+
+        verify(testCalculationService, never()).validateRule(any(Calculation.class), anyBoolean());
     }
 }

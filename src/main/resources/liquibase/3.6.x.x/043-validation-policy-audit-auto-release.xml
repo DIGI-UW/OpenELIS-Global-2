@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+ <!-- Policy saves write history rows. AuditTrailServiceImpl refuses to write (and rolls the save back) for a
+      table without a reference_tables row, so the row lands before any save. -->
+ <changeSet id="OGC-1017-validation-policy-audit-ref-table" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.reference_tables WHERE LOWER(name) = 'validation_policy'</sqlCheck>
+  </preConditions>
+  <comment>OGC-1017: every validation policy change is audited with the user who made it.</comment>
+  <insert schemaName="clinlims" tableName="reference_tables">
+   <column name="id" valueSequenceNext="reference_tables_seq"/>
+   <column name="name" value="validation_policy"/>
+   <column name="keep_history" value="Y"/>
+   <column name="lastupdated" valueDate="now()"/>
+  </insert>
+  <rollback>
+   <delete schemaName="clinlims" tableName="reference_tables">
+    <where>LOWER(name) = 'validation_policy'</where>
+   </delete>
+  </rollback>
+ </changeSet>
+
+ <changeSet id="OGC-1017-analysis-auto-release" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <not>
+    <tableExists schemaName="clinlims" tableName="analysis_auto_release"/>
+   </not>
+  </preConditions>
+  <comment>OGC-1017: a result released at entry without a validator, with who saved it and the rule that released it: the policy in force (lab-wide default or lab unit override, its trigger, reviews and version) or, with the validation policy off, the "validate all results" setting.</comment>
+  <createSequence schemaName="clinlims" sequenceName="analysis_auto_release_seq" startValue="1" incrementBy="1"/>
+  <createTable schemaName="clinlims" tableName="analysis_auto_release">
+   <column name="id" type="BIGINT">
+    <constraints primaryKey="true" nullable="false" primaryKeyName="pk_analysis_auto_release"/>
+   </column>
+   <column name="analysis_id" type="numeric(10)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="released_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="CURRENT_TIMESTAMP">
+    <constraints nullable="false"/>
+   </column>
+   <column name="released_by" type="numeric(10)"/>
+   <column name="release_rule" type="VARCHAR(20)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="policy_scope" type="VARCHAR(20)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="test_section_id" type="numeric(10)"/>
+   <column name="review_trigger" type="VARCHAR(20)"/>
+   <column name="review_levels" type="INT"/>
+   <column name="policy_id" type="BIGINT"/>
+   <column name="policy_version" type="TIMESTAMP"/>
+   <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+  </createTable>
+  <addForeignKeyConstraint constraintName="fk_analysis_auto_release_analysis" baseTableSchemaName="clinlims"
+   baseTableName="analysis_auto_release" baseColumnNames="analysis_id" referencedTableSchemaName="clinlims"
+   referencedTableName="analysis" referencedColumnNames="id" onDelete="CASCADE"/>
+  <createIndex schemaName="clinlims" tableName="analysis_auto_release" indexName="idx_analysis_auto_release_analysis">
+   <column name="analysis_id"/>
+  </createIndex>
+  <sql>
+   ALTER TABLE clinlims.analysis_auto_release ADD CONSTRAINT ck_analysis_auto_release_rule
+     CHECK (release_rule IN ('NO_REVIEW', 'CLEAR'));
+   ALTER TABLE clinlims.analysis_auto_release ADD CONSTRAINT ck_analysis_auto_release_scope
+     CHECK (policy_scope IN ('LAB_WIDE', 'LAB_UNIT', 'SETTING'));
+  </sql>
+ </changeSet>
+</databaseChangeLog>

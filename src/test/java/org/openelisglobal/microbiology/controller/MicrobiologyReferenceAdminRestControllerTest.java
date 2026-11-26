@@ -65,11 +65,23 @@ public class MicrobiologyReferenceAdminRestControllerTest {
     public void breakpointActivationUsesAuthenticatedActor() {
         MicroBreakpointAdminService service = org.mockito.Mockito.mock(MicroBreakpointAdminService.class);
         MicroBreakpointImportService importService = org.mockito.Mockito.mock(MicroBreakpointImportService.class);
-        MicroBreakpointAdminRestController controller = new MicroBreakpointAdminRestController(service, importService);
+        MicroBreakpointAdminRestController controller = new MicroBreakpointAdminRestController(service, importService,
+                org.mockito.Mockito.mock(org.openelisglobal.microbiology.service.MicroBreakpointService.class));
 
         controller.activate("standard-1", Date.valueOf("2026-08-04"), requestFor("77"));
 
         verify(service).activate("standard-1", Date.valueOf("2026-08-04"), "77");
+    }
+
+    @Test
+    public void defaultWriteUsesAuthenticatedActor() {
+        var service = org.mockito.Mockito.mock(MicroBreakpointAdminService.class);
+        var imports = org.mockito.Mockito.mock(MicroBreakpointImportService.class);
+        var breakpoints = org.mockito.Mockito
+                .mock(org.openelisglobal.microbiology.service.MicroBreakpointService.class);
+        var controller = new MicroBreakpointAdminRestController(service, imports, breakpoints);
+        controller.setDefaultStandard("eu", requestFor("77"));
+        verify(breakpoints).setDefaultStandard("eu", "77");
     }
 
     @Test

@@ -1,6 +1,7 @@
 import { expect, test, Page, Locator } from "../../../helpers/test-base";
 import { showSceneLabel, showTitleCard } from "../../../helpers/title-card";
 import { videoPause } from "../../../helpers/video-pause";
+import { chooseFirstCarbonOption } from "../../../helpers/carbon-select";
 import {
   SHORT_TIMEOUT,
   UI_TIMEOUT,
@@ -231,9 +232,14 @@ async function fillSampleStep(page: Page) {
     await quantity.fill("1");
   }
 
-  const uomSelect = page.locator("select#uomId_0");
-  if (await uomSelect.isVisible()) {
-    await uomSelect.selectOption({ index: 1 });
+  const uom = page.getByRole("combobox", { name: "Sample Unit Of Measure" });
+  if (await uom.isVisible()) {
+    await uom.click();
+    await page
+      .locator(`[id="${await uom.getAttribute("aria-controls")}"]`)
+      .getByRole("option")
+      .first()
+      .click();
   }
 
   await selectPanelOrTest(page);
@@ -335,7 +341,7 @@ async function fillOrderDetails(page: Page, pause: PauseFn) {
   if (await samplingPoint.isVisible()) {
     const current = await samplingPoint.inputValue();
     if (!current) {
-      await samplingPoint.selectOption({ index: 1 });
+      await chooseFirstCarbonOption(samplingPoint);
     }
   }
 }

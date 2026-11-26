@@ -1,6 +1,7 @@
 package org.openelisglobal.localization;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -9,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -41,6 +43,7 @@ public class ShippedReferenceDataLabelsTest extends BaseWebContextSensitiveTest 
     private static final int CATEGORY = 98701;
     private static final int LINKED_BY_NAME = 98701;
     private static final int SITE_OWN = 98702;
+    private static final int LEGACY = 98703;
     private static final int DICTIONARY = 98701;
 
     @Autowired
@@ -66,6 +69,7 @@ public class ShippedReferenceDataLabelsTest extends BaseWebContextSensitiveTest 
                 Map.of("en", "Sample collection error", "fr", "Erreur de prélèvement (fichier)"), "SYSTEM");
         localization(98703, "NCE Type: Ward courier lost it", Map.of("en", "Ward courier lost it"), "SYSTEM");
         localization(98704, "dictionary entry: Positive", Map.of("en", "Positive", "fr", "Positif"), "SYSTEM");
+        localization(98705, "NCE Type: Barcode Issue", Map.of("en", "Barcode Issue"), "SYSTEM");
         jdbcTemplate.update("INSERT INTO clinlims.nce_category (id, name, display_key, active, last_updated,"
                 + " name_localization_id) VALUES (?, 'Post analytical', 'nce.category.postanalytical', true, now(),"
                 + " 98701)", CATEGORY);
@@ -76,6 +80,9 @@ public class ShippedReferenceDataLabelsTest extends BaseWebContextSensitiveTest 
                 "INSERT INTO clinlims.nce_type (id, name, display_key, category_id, active, last_updated,"
                         + " name_localization_id) VALUES (?, 'Ward courier lost it', NULL, ?, true, now(), 98703)",
                 SITE_OWN, CATEGORY);
+        jdbcTemplate.update("INSERT INTO clinlims.nce_type (id, name, display_key, category_id, active, last_updated,"
+                + " name_localization_id) VALUES (?, 'Barcode Issue', 'nce.type.barcodeIssue', ?, true, now(),"
+                + " 98705)", LEGACY, CATEGORY);
         jdbcTemplate.update("INSERT INTO clinlims.dictionary_category (id, description, lastupdated, local_abbrev,"
                 + " name) VALUES (98701, 'Test Results', now(), 'TR987', 'Test Results 98701')");
         jdbcTemplate.update("INSERT INTO clinlims.dictionary (id, is_active, dict_entry, lastupdated, local_abbrev,"
@@ -88,10 +95,10 @@ public class ShippedReferenceDataLabelsTest extends BaseWebContextSensitiveTest 
         jdbcTemplate.update("DELETE FROM clinlims.supported_locale WHERE id = 98701");
         jdbcTemplate.update("DELETE FROM clinlims.dictionary WHERE id = ?", DICTIONARY);
         jdbcTemplate.update("DELETE FROM clinlims.dictionary_category WHERE id = 98701");
-        jdbcTemplate.update("DELETE FROM clinlims.nce_type WHERE id IN (?, ?)", LINKED_BY_NAME, SITE_OWN);
+        jdbcTemplate.update("DELETE FROM clinlims.nce_type WHERE id IN (?, ?, ?)", LINKED_BY_NAME, SITE_OWN, LEGACY);
         jdbcTemplate.update("DELETE FROM clinlims.nce_category WHERE id = ?", CATEGORY);
-        jdbcTemplate.update("DELETE FROM clinlims.localization_value WHERE localization_id BETWEEN 98701 AND 98704");
-        jdbcTemplate.update("DELETE FROM clinlims.localization WHERE id BETWEEN 98701 AND 98704");
+        jdbcTemplate.update("DELETE FROM clinlims.localization_value WHERE localization_id BETWEEN 98701 AND 98705");
+        jdbcTemplate.update("DELETE FROM clinlims.localization WHERE id BETWEEN 98701 AND 98705");
         for (Map<String, Object> row : baseTypeKeys) {
             jdbcTemplate.update("UPDATE clinlims.nce_type SET display_key = ? WHERE id = ?", row.get("display_key"),
                     row.get("id"));
@@ -133,6 +140,38 @@ public class ShippedReferenceDataLabelsTest extends BaseWebContextSensitiveTest 
         JsonNode english = categories("en-US");
         assertEquals("Post-analytical", english.get("name").asText());
         assertEquals("Sample collection error", type(english, LINKED_BY_NAME).get("name").asText());
+    }
+
+    /**
+     * The 3.5.x upgrades stored only English for the earlier NCE list, so its
+     * French comes from the translations OpenELIS ships.
+     */
+    @Test
+    public void anUpgradedValueWithOnlyItsEnglishStoredShowsTheFrenchOpenElisShips() throws Exception {
+        assertEquals("Problème de code-barres", type(categories("fr-FR"), LEGACY).get("name").asText());
+        assertEquals("Problème de code-barres", localization(98705).get("shippedLabels").get("fr").asText());
+        assertEquals("SHIPPED", localization(98705).get("origins").get("fr").asText());
+        assertEquals("Barcode Issue", type(categories("en-US"), LEGACY).get("name").asText());
+    }
+
+    /**
+     * Translation Management's "missing" list and counts follow the label users
+     * see: a shipped value showing a translation is not missing, a site's own value
+     * with only English still is.
+     */
+    @Test
+    public void aShippedValueShowingATranslationIsNotListedAsMissing() throws Exception {
+        JsonNode missing = json.readTree(ok(mockMvc.perform(get("/rest/localizations/missing/fr"))));
+        List<String> ids = new ArrayList<>();
+        missing.forEach(entry -> ids.add(entry.get("id").asText()));
+
+        assertFalse("the earlier list's value shows its shipped French", ids.contains("98705"));
+        assertTrue("the site's own value has no French", ids.contains("98703"));
+
+        JsonNode stats = json.readTree(ok(mockMvc.perform(get("/rest/localizations/stats"))));
+        JsonNode french = stats.get("localeStats").get("fr");
+        assertEquals("the count is the list", ids.size(), french.get("missing").asInt());
+        assertEquals(stats.get("totalEntries").asInt(), french.get("translated").asInt() + ids.size());
     }
 
     @Test

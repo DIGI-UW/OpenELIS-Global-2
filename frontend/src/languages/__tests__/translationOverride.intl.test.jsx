@@ -3,7 +3,7 @@ import { render, cleanup, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { FormattedMessage, IntlProvider } from "react-intl";
 import en from "../en.json";
-import { languageMessages } from "../index";
+import { loadMessagesForLocale, resolveMessagesForLocale } from "../index";
 import { NO_OVERRIDE, applyOverride } from "../translationOverride";
 
 /**
@@ -18,13 +18,19 @@ import { NO_OVERRIDE, applyOverride } from "../translationOverride";
  * message id to string.
  */
 
+// The French bundle is a separate chunk the app downloads on demand.
+beforeAll(() => loadMessagesForLocale("fr"));
+
 /** Mirrors the composition App.jsx performs for IntlProvider. */
 const renderWith = (locale, override, ids) =>
   render(
     <IntlProvider
       locale={locale}
       defaultLocale="en"
-      messages={applyOverride(languageMessages[locale], override)}
+      messages={applyOverride(
+        resolveMessagesForLocale(locale).messages,
+        override,
+      )}
     >
       <ul>
         {ids.map((id) => (

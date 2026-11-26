@@ -18,6 +18,8 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.util.IdValuePair;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 public class PagingUtility<E> {
     private int totalPages = 0;
@@ -82,14 +84,26 @@ public class PagingUtility<E> {
      * @param paging      The paging bean, it knows the current page
      * @param updater     The object which knows how to update the cache
      */
-    @SuppressWarnings("unchecked")
     public void updatePagedResults(HttpSession session, E clientItems, PagingBean paging, IPageUpdater<E> updater) {
-        List<E> pagedResults = (List<E>) session.getAttribute(getSessionCache());
+        List<E> pagedResults = getLoadedPages(session);
+        updateSessionResultCache(pagedResults, clientItems, paging, updater);
+        totalPages = pagedResults.size();
+    }
 
-        if (pagedResults != null) {
-            updateSessionResultCache(pagedResults, clientItems, paging, updater);
-            totalPages = pagedResults.size();
+    /**
+     * @param session the Session for the current HttpRequest
+     * @return The pages this session loaded
+     * @throws ResponseStatusException 400 when the session loaded none, since a
+     *                                 save can only apply its rows to a page the
+     *                                 session served
+     */
+    public List<E> getLoadedPages(HttpSession session) {
+        List<E> pagedResults = getAllPages(session);
+        if (pagedResults == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "No results are loaded in this session; load them before saving");
         }
+        return pagedResults;
     }
 
     /**
@@ -106,11 +120,32 @@ public class PagingUtility<E> {
     private void updateSessionResultCache(List<E> pagedResults, E clientTests, PagingBean paging,
             IPageUpdater<E> updater) {
 
-        int currentPage = Integer.parseInt(paging.getCurrentPage()) - 1;
+        int currentPage = loadedPageIndex(paging, pagedResults.size());
 
         E sessionTests = pagedResults.get(currentPage);
 
+        if (clientTests instanceof List<?> clientRows && sessionTests instanceof List<?> pageRows
+                && clientRows.size() > pageRows.size()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The save posts " + clientRows.size()
+                    + " rows but page " + (currentPage + 1) + " holds " + pageRows.size());
+        }
+
         updater.updateCache(sessionTests, clientTests);
+    }
+
+    private static int loadedPageIndex(PagingBean paging, int pageCount) {
+        String currentPage = paging == null ? null : paging.getCurrentPage();
+        int page;
+        try {
+            page = Integer.parseInt(currentPage);
+        } catch (NumberFormatException e) {
+            page = 0;
+        }
+        if (page < 1 || page > pageCount) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "paging.currentPage must name a loaded page, 1 to " + pageCount + ": " + currentPage);
+        }
+        return page - 1;
     }
 
     /**

@@ -17,14 +17,25 @@ import {
   TableSelectRow,
   TableContainer,
   Pagination,
+  Search,
 } from "@carbon/react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
-import { useServerData } from "../../../utils/useServerData";
+import {
+  useInvalidateServerData,
+  useServerData,
+} from "../../../utils/useServerData";
 import { NotificationContext } from "../../../layout/Layout";
 import { AlertDialog } from "../../../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../../common/PageBreadCrumb";
 import GenericConfigEdit from "../../generalConfig/common/GenericConfigEdit";
+import ValidationPolicySection, {
+  VALIDATION_POLICY_API,
+} from "./ValidationPolicySection";
+import { settingDescription, settingName } from "./settingLabels";
+import ResultValidationSettings from "./ResultValidationSettings";
+import { matchesSearch } from "../../../common/searchText";
+import FacilityLocationSection from "../facilityLocation/FacilityLocationSection";
 
 interface ConfigMenuDisplayProps {
   id: string;
@@ -35,12 +46,20 @@ interface ConfigLocalization {
   localesAndValuesOfLocalesWithValues?: string;
 }
 
+const RESULT_CONFIGURATION_MENU = "ResultConfigurationMenu";
+const REPLACED_BY_VALIDATION_POLICY = "validate all results";
+
+interface ValidationPolicy {
+  enabled: boolean;
+}
+
 interface ConfigMenuItem {
   id: string;
   name: string;
   description: string;
   value: string;
   valueType: string;
+  lastupdated?: number;
   tag?: string;
   localization?: ConfigLocalization;
 }
@@ -56,6 +75,7 @@ interface ConfigTableRow {
   description: string;
   value: string;
   valueType: string;
+  lastupdated?: number;
 }
 
 interface CarbonTableCell {
@@ -89,6 +109,7 @@ function ConfigMenuDisplayContent(props: ConfigMenuDisplayProps) {
     useState<ConfigTableRow[]>([]);
 
   const [ConfigEdit, setConfigEdit] = useState(false);
+  const [query, setQuery] = useState("");
 
   // eslint-disable-next-line prefer-const -- preserve the original JavaScript runtime declaration
   let breadcrumbs = [
@@ -140,6 +161,12 @@ function ConfigMenuDisplayContent(props: ConfigMenuDisplayProps) {
   const { data: formEntryConfigMenuList } = useServerData<ConfigMenuResponse>(
     `/rest/${props.menuType}`,
   );
+  const { data: validationPolicy } = useServerData<ValidationPolicy>(
+    props.menuType === RESULT_CONFIGURATION_MENU ? VALIDATION_POLICY_API : null,
+  );
+  const validationPolicyEnabled = Boolean(validationPolicy?.enabled);
+  const groupedSettings = props.menuType === RESULT_CONFIGURATION_MENU;
+  const invalidateServerData = useInvalidateServerData();
 
   useEffect(() => {
     const updateConfigList = () => {
@@ -172,6 +199,7 @@ function ConfigMenuDisplayContent(props: ConfigMenuDisplayProps) {
               description: item.description,
               value: value,
               valueType: item.valueType,
+              lastupdated: item.lastupdated,
             };
           })
           .filter(Boolean);
@@ -182,6 +210,31 @@ function ConfigMenuDisplayContent(props: ConfigMenuDisplayProps) {
 
     updateConfigList();
   }, [formEntryConfigMenuList]);
+
+  const shownSettings = orderEntryConfigurationList
+    .filter(
+      (item) =>
+        !(
+          validationPolicyEnabled && item.name === REPLACED_BY_VALIDATION_POLICY
+        ),
+    )
+    .map((item) => ({
+      ...item,
+      name: settingName(intl, item.name),
+      description: settingDescription(intl, item.name, item.description),
+    }))
+    .filter((item) =>
+      [
+        item.name,
+        orderEntryConfigurationList.find((setting) => setting.id === item.id)
+          ?.name,
+        item.description,
+        item.value,
+      ].some((text) => matchesSearch(text, query)),
+    );
+  const selectionShown = shownSettings.some(
+    (item) => String(item.id) === selectedRowId,
+  );
 
   const renderCell = (
     cell: CarbonTableCell,
@@ -195,7 +248,7 @@ function ConfigMenuDisplayContent(props: ConfigMenuDisplayProps) {
           id={cell.id}
           checked={selectedRowId === row.id}
           name="selectRowRadio"
-          ariaLabel="selectRow"
+          aria-label="selectRow"
           onSelect={() => {
             setModifyButton(false);
             setSelectedRowId(row.id);
@@ -237,137 +290,191 @@ function ConfigMenuDisplayContent(props: ConfigMenuDisplayProps) {
               <Column lg={16} md={8} sm={4}>
                 <Section>
                   <Heading>
-                    <FormattedMessage id={props.id} />
+                    <FormattedMessage
+                      id={
+                        groupedSettings ? "resultSettings.pageTitle" : props.id
+                      }
+                    />
                   </Heading>
                 </Section>
                 <br />
-                <Section>
-                  <Form onSubmit={handleModify}>
-                    <Column lg={16} md={8} sm={4}>
-                      <Button
-                        data-cy="modify-Button"
-                        disabled={modifyButton}
-                        type="submit"
-                      >
-                        <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.modify" />
-                      </Button>{" "}
-                    </Column>
-                  </Form>
-                </Section>
+                {validationPolicyEnabled && (
+                  <Section>
+                    <ValidationPolicySection policy={validationPolicy} />
+                    <br />
+                  </Section>
+                )}
+                {props.menuType === "SiteInformationMenu" && (
+                  <Section>
+                    <FacilityLocationSection />
+                    <br />
+                  </Section>
+                )}
+                {!groupedSettings && (
+                  <Section>
+                    <Form onSubmit={handleModify}>
+                      <Column lg={16} md={8} sm={4}>
+                        <Button
+                          data-cy="modify-Button"
+                          disabled={modifyButton || !selectionShown}
+                          type="submit"
+                        >
+                          <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.modify" />
+                        </Button>{" "}
+                      </Column>
+                    </Form>
+                  </Section>
+                )}
               </Column>
             </Grid>
-            <div className="orderLegendBody">
-              <Grid fullWidth={true} className="gridBoundary">
-                <Column lg={16} md={8} sm={4}>
-                  <DataTable
-                    rows={orderEntryConfigurationList.slice(
-                      (page - 1) * pageSize,
-                      page * pageSize,
-                    )}
-                    headers={[
-                      {
-                        key: "select",
-                        header: intl.formatMessage({
-                          id: "admin.page.configuration.formEntryConfigMenu.select",
-                        }),
-                      },
-                      {
-                        key: "name",
-                        header: intl.formatMessage({
-                          id: "admin.page.configuration.formEntryConfigMenu.name",
-                        }),
-                      },
+            {groupedSettings ? (
+              <div className="orderLegendBody">
+                <ResultValidationSettings
+                  settings={orderEntryConfigurationList}
+                  policyEnabled={validationPolicyEnabled}
+                  onSaved={() => {
+                    invalidateServerData(`/rest/${props.menuType}`);
+                    invalidateServerData(VALIDATION_POLICY_API);
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="orderLegendBody">
+                <Grid fullWidth={true} className="gridBoundary">
+                  <Column lg={16} md={8} sm={4}>
+                    <Search
+                      id="config-menu-search"
+                      size="lg"
+                      labelText={intl.formatMessage({
+                        id: "admin.page.configuration.search",
+                      })}
+                      placeholder={intl.formatMessage({
+                        id: "admin.page.configuration.search",
+                      })}
+                      value={query}
+                      onChange={(event) => {
+                        setQuery(event.target.value);
+                        setPage(1);
+                      }}
+                    />
+                    <DataTable
+                      rows={shownSettings.slice(
+                        (page - 1) * pageSize,
+                        page * pageSize,
+                      )}
+                      headers={[
+                        {
+                          key: "select",
+                          header: intl.formatMessage({
+                            id: "admin.page.configuration.formEntryConfigMenu.select",
+                          }),
+                        },
+                        {
+                          key: "name",
+                          header: intl.formatMessage({
+                            id: "admin.page.configuration.formEntryConfigMenu.name",
+                          }),
+                        },
 
-                      {
-                        key: "description",
-                        header: intl.formatMessage({
-                          id: "admin.page.configuration.formEntryConfigMenu.description",
-                        }),
-                      },
-                      {
-                        key: "value",
-                        header: intl.formatMessage({
-                          id: "admin.page.configuration.formEntryConfigMenu.value",
-                        }),
-                      },
-                    ]}
-                  >
-                    {({ rows, headers, getHeaderProps, getTableProps }) => (
-                      <TableContainer>
-                        <Table {...getTableProps()}>
-                          <TableHead>
-                            <TableRow>
-                              {headers.map((header) => (
-                                <TableHeader
-                                  key={header.key}
-                                  {...getHeaderProps({ header })}
-                                >
-                                  {header.header}
-                                </TableHeader>
-                              ))}
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            <>
-                              {rows.map((row) => (
-                                <TableRow key={row.id}>
-                                  {row.cells.map((cell) =>
-                                    renderCell(cell, row),
-                                  )}
-                                </TableRow>
-                              ))}
-                            </>
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    )}
-                  </DataTable>
-                  <Pagination
-                    onChange={handlePageChange}
-                    page={page}
-                    pageSize={pageSize}
-                    pageSizes={[5, 20, 30, 50]}
-                    totalItems={orderEntryConfigurationList.length}
-                    forwardText={intl.formatMessage({
-                      id: "pagination.forward",
-                    })}
-                    backwardText={intl.formatMessage({
-                      id: "pagination.backward",
-                    })}
-                    itemRangeText={(min, max, total) =>
-                      intl.formatMessage(
-                        { id: "pagination.item-range" },
-                        { min: min, max: max, total: total },
-                      )
-                    }
-                    itemsPerPageText={intl.formatMessage({
-                      id: "pagination.items-per-page",
-                    })}
-                    itemText={(min, max) =>
-                      intl.formatMessage(
-                        { id: "pagination.item" },
-                        { min: min, max: max },
-                      )
-                    }
-                    pageNumberText={intl.formatMessage({
-                      id: "pagination.page-number",
-                    })}
-                    pageRangeText={(_current, total) =>
-                      intl.formatMessage(
-                        { id: "pagination.page-range" },
-                        { total: total },
-                      )
-                    }
-                    pageText={(page, pagesUnknown) =>
-                      intl.formatMessage(
-                        { id: "pagination.page" },
-                        { page: pagesUnknown ? "" : page },
-                      )
-                    }
-                  />
-                </Column>
-              </Grid>
-            </div>
+                        {
+                          key: "description",
+                          header: intl.formatMessage({
+                            id: "admin.page.configuration.formEntryConfigMenu.description",
+                          }),
+                        },
+                        {
+                          key: "value",
+                          header: intl.formatMessage({
+                            id: "admin.page.configuration.formEntryConfigMenu.value",
+                          }),
+                        },
+                      ]}
+                    >
+                      {({ rows, headers, getHeaderProps, getTableProps }) => (
+                        <TableContainer>
+                          <Table {...getTableProps()}>
+                            <TableHead>
+                              <TableRow>
+                                {headers.map((header) => (
+                                  <TableHeader
+                                    key={header.key}
+                                    {...getHeaderProps({ header })}
+                                  >
+                                    {header.header}
+                                  </TableHeader>
+                                ))}
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              <>
+                                {rows.map((row) => (
+                                  <TableRow key={row.id}>
+                                    {row.cells.map((cell) =>
+                                      renderCell(cell, row),
+                                    )}
+                                  </TableRow>
+                                ))}
+                              </>
+                            </TableBody>
+                          </Table>
+                          {query && shownSettings.length === 0 && (
+                            <p className="cds--label">
+                              <FormattedMessage
+                                id="searchableList.noMatch"
+                                values={{ query }}
+                              />
+                            </p>
+                          )}
+                        </TableContainer>
+                      )}
+                    </DataTable>
+                    <Pagination
+                      onChange={handlePageChange}
+                      page={page}
+                      pageSize={pageSize}
+                      pageSizes={[5, 20, 30, 50]}
+                      totalItems={shownSettings.length}
+                      forwardText={intl.formatMessage({
+                        id: "pagination.forward",
+                      })}
+                      backwardText={intl.formatMessage({
+                        id: "pagination.backward",
+                      })}
+                      itemRangeText={(min, max, total) =>
+                        intl.formatMessage(
+                          { id: "pagination.item-range" },
+                          { min: min, max: max, total: total },
+                        )
+                      }
+                      itemsPerPageText={intl.formatMessage({
+                        id: "pagination.items-per-page",
+                      })}
+                      itemText={(min, max) =>
+                        intl.formatMessage(
+                          { id: "pagination.item" },
+                          { min: min, max: max },
+                        )
+                      }
+                      pageNumberText={intl.formatMessage({
+                        id: "pagination.page-number",
+                      })}
+                      pageRangeText={(_current, total) =>
+                        intl.formatMessage(
+                          { id: "pagination.page-range" },
+                          { total: total },
+                        )
+                      }
+                      pageText={(page, pagesUnknown) =>
+                        intl.formatMessage(
+                          { id: "pagination.page" },
+                          { page: pagesUnknown ? "" : page },
+                        )
+                      }
+                    />
+                  </Column>
+                </Grid>
+              </div>
+            )}
           </div>
         </>
       )}

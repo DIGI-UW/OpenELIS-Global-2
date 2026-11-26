@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import {
   Button,
   InlineNotification,
@@ -28,6 +28,7 @@ import CriticalCallbackAction from "./CriticalCallbackAction";
 import HistorySection from "./HistorySection";
 import InterpretationSection from "./InterpretationSection";
 import ReagentsQcSection from "./ReagentsQcSection";
+import type { WaitingRun } from "./runs/WaitingTag";
 import AliquotsSection from "./AliquotsSection";
 import ReferralAction, {
   ReferralDraft,
@@ -41,10 +42,12 @@ import InlineNceForm from "../../nonconform/common/InlineNceForm";
 import { FlagChip, accentClass } from "./flags";
 import { resultFlagFor } from "./resultFlagFor";
 import SampleKindTag from "../SampleKindTag";
+import EQABadge from "../../eqa/EQABadge";
+import { getFromOpenElisServer } from "../../utils/Utils";
 import { AnalysisNote, noteVisibleOnRow } from "./noteScope";
 import { NceDisposition } from "./nceDisposition";
 import { ResultsDomain, formatDomainMessage } from "./domainIntl";
-import { dilutionApplies, computeReportedValue } from "./dilution";
+import { dilutionApplies, computeDilutedValue } from "./dilution";
 import {
   SectionLayout,
   isSectionOpen,
@@ -53,6 +56,7 @@ import {
 } from "./sectionLayout";
 import { labNow } from "../../utils/labClock";
 import { ConfigurationContext } from "../../layout/Layout";
+import { methodOptions, useMethodChoices } from "./methodChoices";
 
 /**
  * OGC-1021 (R2 of OGC-811) — the expanded row panel.
@@ -129,6 +133,12 @@ interface ExpandedPanelProps {
   domain: ResultsDomain;
   editable: boolean;
   editing: boolean;
+  /**
+   * OGC-1200: the row is resulted from a run (its value waits there, or the
+   * run's failed control holds it), so nothing is saved from the worklist and
+   * no referral or rejection is offered.
+   */
+  inRun?: boolean;
   /** the worklist's lab unit — scopes OGC-1025 control capture. */
   testSectionId?: string;
   /** analyzerId as loaded from the server — drives the provenance tag (FR-B2). */
@@ -139,7 +149,10 @@ interface ExpandedPanelProps {
   dilutionDraft: DilutionDraft;
   sectionLayout: SectionLayout;
   onSectionLayoutChange: (layout: SectionLayout) => void;
-  onFieldChange: (field: "testMethod" | "analyzerId", value: string) => void;
+  onFieldChange: (
+    field: "testMethod" | "analyzerId" | "eqaAnalystId",
+    value: string,
+  ) => void;
   onValueChange: (
     field: "resultValue" | "multiSelectResultValues",
     value: string,
@@ -174,6 +187,8 @@ interface ExpandedPanelProps {
     disposition: NceDisposition,
     rejectReasonId: string,
   ) => void;
+  /** OGC-1200: a control recorded on the row held or released it. */
+  onRowHoldChange?: (waitingRun: WaitingRun | null) => void;
 }
 
 const noteVisibilityTag = (noteType?: string) =>
@@ -203,6 +218,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   domain,
   editable,
   editing,
+  inRun = false,
   testSectionId,
   loadedAnalyzerId,
   methods,
@@ -235,6 +251,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   nceRejectReasonId,
   onNceRejectReasonChange,
   onNceApplyDisposition,
+  onRowHoldChange,
 }) => {
   const intl = useIntl();
   const { configurationProperties } = (useContext(ConfigurationContext) ||
@@ -243,34 +260,66 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
 
   const methodName =
     methods.find((m) => m.id === row.testMethod)?.value || row.testMethod || "";
+  const methodChoices = useMethodChoices(row.testId as string | undefined);
+  const methodsOffered = methodOptions(
+    methodChoices,
+    methods,
+    row.testMethod as string | undefined,
+  );
   const analyzerName =
     analyzers.find((a) => a.id === row.analyzerId)?.value ||
     row.analyzerId ||
     "";
 
-  const reported = computeReportedValue(
+  const reported = computeDilutedValue(
     dilutionDraft.measuredValue,
     dilutionDraft.factor,
-    row.significantDigits,
   );
 
   const applyDilution = (draft: DilutionDraft) => {
     onDilutionDraftChange(draft);
-    const computed = computeReportedValue(
-      draft.measuredValue,
-      draft.factor,
-      row.significantDigits,
-    );
+    const computed = computeDilutedValue(draft.measuredValue, draft.factor);
     if (computed !== null) {
       onValueChange("resultValue", computed);
     }
   };
+
+  const eqaSchemeId = row.eqaPerAnalyst
+    ? (row.eqaSchemeId as string | undefined)
+    : undefined;
+  const [eqaAnalysts, setEqaAnalysts] = useState<
+    { id: string; displayName: string }[]
+  >([]);
+  useEffect(() => {
+    if (!eqaSchemeId) {
+      return undefined;
+    }
+    let active = true;
+    getFromOpenElisServer(
+      `/rest/eqa/schemes/${eqaSchemeId}/eligible-analysts`,
+      (list: { id: string; displayName: string }[]) => {
+        if (active) {
+          setEqaAnalysts(list || []);
+        }
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [eqaSchemeId]);
+  const eqaAnalystId = (row.eqaAnalystId as string | undefined) || "";
 
   // one order-record fetch per accession feeds Order info + Programme
   const orderContext = useOrderContext(row.accessionNumber);
   // notes and the interpretation are component-scoped on component rows;
   // legacy analysis-level notes (no component id) still show everywhere
   const rowComponentId = row.testResultComponentId as string | undefined;
+  // OGC-1200 FR-D6, FR-D7: the run the row's result is recorded in, or the
+  // open run it waits in, batched in or opened by its control.
+  const rowRunId =
+    (row.runId as number | undefined) ??
+    (row.waitingRun as { runId?: number } | undefined)?.runId ??
+    null;
   const notes = (row.analysisNotes || []).filter((note) =>
     noteVisibleOnRow(note, rowComponentId),
   );
@@ -281,7 +330,12 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   const toggleSection = (sectionId: string, open: boolean) =>
     onSectionLayoutChange(rememberSectionChoice(sectionId, open));
 
-  const flag = resultFlagFor(row);
+  const flag = resultFlagFor({
+    ...row,
+    resultValue: editable
+      ? row.resultValue
+      : (row.rawResultValue ?? row.resultValue),
+  });
 
   return (
     <div className="unifiedExpandedPanel" data-testid={`panel-${rowKey}`}>
@@ -306,7 +360,11 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           data-testid={`sample-kind-${rowKey}`}
         >
           <FormattedMessage id="column.name.sampleKind" />
-          <SampleKindTag qcType={row.qcType} />
+          {row.eqaSample ? (
+            <EQABadge priority={row.eqaPriority} />
+          ) : (
+            <SampleKindTag qcType={row.qcType} />
+          )}
         </span>
         {row.referredOut && (
           <Tag type="cyan" size="sm">
@@ -327,6 +385,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
                 row={row}
                 editable={editable}
                 onValueChange={onValueChange}
+                scope="panel"
               />
               {row.unitsOfMeasure && <span>{row.unitsOfMeasure}</span>}
               <FlagChip flag={flag} />
@@ -373,7 +432,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
                 }
               >
                 <SelectItem text="" value="" />
-                {methods.map((m) => (
+                {methodsOffered.map((m) => (
                   <SelectItem text={m.value} value={m.id} key={m.id} />
                 ))}
               </Select>
@@ -413,6 +472,47 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
             <div className="unifiedFieldHint">
               <FormattedMessage id="label.results.methodAnalyzerHint" />
             </div>
+
+            {eqaSchemeId && (
+              <>
+                <div className="cds--label unifiedFieldSpacer">
+                  <FormattedMessage id="eqa.result.analyst" />
+                </div>
+                {editable ? (
+                  <Select
+                    id={`eqaAnalyst-${rowKey}`}
+                    noLabel
+                    value={eqaAnalystId}
+                    invalid={!eqaAnalystId}
+                    invalidText={intl.formatMessage({
+                      id: "eqa.result.analystRequired",
+                    })}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                      onFieldChange("eqaAnalystId", e.target.value)
+                    }
+                  >
+                    <SelectItem
+                      text={intl.formatMessage({
+                        id: "eqa.result.analystChoose",
+                      })}
+                      value=""
+                    />
+                    {eqaAnalysts.map((analyst) => (
+                      <SelectItem
+                        text={analyst.displayName}
+                        value={analyst.id}
+                        key={analyst.id}
+                      />
+                    ))}
+                  </Select>
+                ) : (
+                  <span>
+                    {eqaAnalysts.find((a) => a.id === eqaAnalystId)
+                      ?.displayName || "—"}
+                  </span>
+                )}
+              </>
+            )}
           </div>
         </div>
 
@@ -519,7 +619,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           >
             <FormattedMessage id="label.results.nce.report" />
           </Button>
-          {allowResultRejection && (
+          {allowResultRejection && !inRun && (
             <Button
               kind="ghost"
               size="sm"
@@ -534,34 +634,38 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           {/* A referred test cannot be referred again: the save has no way to
               amend an existing referral, so a second click would raise a rival
               one. The referral is edited or cancelled from Referred Out. */}
-          <Button
-            kind="ghost"
-            size="sm"
-            disabled={row.referredOut}
-            onClick={() =>
-              onReferralDraftChange(
-                referralDraft
-                  ? null
-                  : emptyReferralDraft(
-                      todayForReferral(
-                        configurationProperties?.DEFAULT_DATE_LOCALE,
-                      ),
-                    ),
-              )
-            }
-            data-testid={`referral-toggle-${rowKey}`}
-          >
-            {row.referredOut ? (
-              <FormattedMessage id="label.results.referredOut" />
-            ) : referralDraft ? (
-              <FormattedMessage id="label.results.referral.editing" />
-            ) : (
-              <FormattedMessage id="label.results.referral.refer" />
-            )}
-          </Button>
-          <span className="unifiedFieldHint">
-            <FormattedMessage id="label.results.saveHint" />
-          </span>
+          {!inRun && (
+            <>
+              <Button
+                kind="ghost"
+                size="sm"
+                disabled={row.referredOut}
+                onClick={() =>
+                  onReferralDraftChange(
+                    referralDraft
+                      ? null
+                      : emptyReferralDraft(
+                          todayForReferral(
+                            configurationProperties?.DEFAULT_DATE_LOCALE,
+                          ),
+                        ),
+                  )
+                }
+                data-testid={`referral-toggle-${rowKey}`}
+              >
+                {row.referredOut ? (
+                  <FormattedMessage id="label.results.referredOut" />
+                ) : referralDraft ? (
+                  <FormattedMessage id="label.results.referral.editing" />
+                ) : (
+                  <FormattedMessage id="label.results.referral.refer" />
+                )}
+              </Button>
+              <span className="unifiedFieldHint">
+                <FormattedMessage id="label.results.saveHint" />
+              </span>
+            </>
+          )}
         </div>
 
         {allowResultRejection && rejectReasons.length > 0 && rejectDraft && (
@@ -716,13 +820,13 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
       {/* Critical banner (FR-C2) — the one full-width banner. The person
           entering the value acknowledges it at Save (OGC-1417); the banner's
           dashboard acknowledgement is the follow-up. */}
-      {flag === "CRITICAL" && (
+      {flag === "CRITICAL" && !row.eqaSample && (
         <CriticalBanner
           analysisId={row.analysisId as string | undefined}
           criticalRange={row.criticalRange}
         />
       )}
-      {flag === "CRITICAL" && !editable && (
+      {flag === "CRITICAL" && !editable && !row.eqaSample && (
         <CriticalCallbackAction
           row={{
             resultId: row.resultId as string | undefined,
@@ -738,6 +842,10 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
       <ReagentsQcSection
         testId={row.testId as string | undefined}
         analysisId={row.analysisId as string | undefined}
+        runId={rowRunId}
+        hasSavedResult={Boolean(row.resultId)}
+        runOfOneOpen={Boolean(row.runOfOneOpen)}
+        onRowHoldChange={onRowHoldChange}
         editable={editable}
         resultType={row.resultType}
         testSectionId={testSectionId}
@@ -870,6 +978,8 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
         <HistorySection
           analysisId={row.analysisId as string | undefined}
           componentId={rowComponentId}
+          runId={rowRunId}
+          testId={row.testId as string | undefined}
           open={isSectionOpen(sectionLayout, "history", false)}
           onToggle={(open) => toggleSection("history", open)}
         />

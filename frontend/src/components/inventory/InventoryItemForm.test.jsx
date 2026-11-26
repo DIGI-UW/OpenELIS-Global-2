@@ -234,6 +234,97 @@ describe("InventoryItemForm — item type is a tag now", () => {
     );
   });
 
+  it("refuses to save without units and says why in a translated message", async () => {
+    await renderForm();
+    fireEvent.change(screen.getByLabelText(/item name/i), {
+      target: { value: "Examination gloves" },
+    });
+    fireEvent.change(screen.getByLabelText(/units/i), {
+      target: { value: "   " },
+    });
+
+    fireEvent.click(screen.getByText("Save"));
+
+    expect(screen.getByText("Units are required.")).toBeInTheDocument();
+    expect(screen.getByLabelText(/units/i)).toBeRequired();
+    expect(screen.getByLabelText(/units/i)).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    expect(InventoryItemAPI.create).not.toHaveBeenCalled();
+  });
+
+  it("shows every missing required field on one Save", async () => {
+    await renderForm();
+
+    fireEvent.click(screen.getByText("Save"));
+
+    expect(screen.getByText("Item name is required.")).toBeInTheDocument();
+    expect(screen.getByText("Units are required.")).toBeInTheDocument();
+    for (const label of [/item name/i, /units/i]) {
+      expect(screen.getByLabelText(label)).toHaveAttribute(
+        "aria-invalid",
+        "true",
+      );
+    }
+    expect(InventoryItemAPI.create).not.toHaveBeenCalled();
+  });
+
+  it("sends the name and units without surrounding spaces", async () => {
+    await renderForm();
+    fireEvent.change(screen.getByLabelText(/item name/i), {
+      target: { value: "  Examination gloves " },
+    });
+    fireEvent.change(screen.getByLabelText(/units/i), {
+      target: { value: " mL " },
+    });
+
+    fireEvent.click(screen.getByText("Save"));
+
+    const payload = InventoryItemAPI.create.mock.calls[0][0];
+    expect(payload.name).toBe("Examination gloves");
+    expect(payload.units).toBe("mL");
+  });
+
+  it("marks item name and units as required next to their labels", async () => {
+    await renderForm();
+    for (const id of ["name", "units"]) {
+      expect(
+        document.querySelector(`label[for="${id}"] .requiredlabel`),
+      ).toHaveTextContent("*");
+    }
+  });
+
+  it("shows the example placeholders from the message bundle", async () => {
+    const french = {
+      ...messages,
+      "catalog.item.units.placeholder": "p. ex. mL, tests, kits",
+      "catalog.item.storageRequirements.placeholder":
+        "p. ex. conserver entre 2 et 8 °C, à l’abri de la lumière",
+      "catalog.item.compatibleAnalyzers.placeholder": "p. ex. GeneXpert, Cobas",
+    };
+    render(
+      <IntlProvider locale="fr" messages={french}>
+        <NotificationContext.Provider value={notificationContext}>
+          <InventoryItemForm open onClose={vi.fn()} onSave={vi.fn()} />
+        </NotificationContext.Provider>
+      </IntlProvider>,
+    );
+
+    expect(await screen.findByLabelText(/units/i)).toHaveAttribute(
+      "placeholder",
+      "p. ex. mL, tests, kits",
+    );
+    expect(screen.getByLabelText(/storage requirements/i)).toHaveAttribute(
+      "placeholder",
+      "p. ex. conserver entre 2 et 8 °C, à l’abri de la lumière",
+    );
+    expect(screen.getByLabelText(/compatible analyzers/i)).toHaveAttribute(
+      "placeholder",
+      "p. ex. GeneXpert, Cobas",
+    );
+  });
+
   it("says this defines a kind of item, not a delivery of one", async () => {
     await renderForm();
 
@@ -382,6 +473,37 @@ const renderCodeForm = (props = {}) =>
   );
 
 describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
+  it("preserves medium environment defaults when editing tracking flags", async () => {
+    const item = {
+      id: 1007,
+      code: "CULTURE-AGAR",
+      name: "Culture agar",
+      itemType: "REAGENT",
+      units: "plates",
+      stabilityAfterOpening: 1,
+      usualAtmosphereId: "42",
+      usualTemperature: 37,
+      microbiologyMedium: false,
+      trackLots: "N",
+    };
+    InventoryItemAPI.update.mockResolvedValue(item);
+    renderForm({ item });
+    fireEvent.click(await screen.findByLabelText("Microbiology medium"));
+    fireEvent.click(screen.getByLabelText("Track lots and expiry"));
+    fireEvent.click(screen.getByText("Save"));
+    await waitFor(() => {
+      expect(InventoryItemAPI.update).toHaveBeenCalledWith(
+        item.id,
+        expect.objectContaining({
+          microbiologyMedium: true,
+          trackLots: "Y",
+          usualAtmosphereId: "42",
+          usualTemperature: 37,
+        }),
+      );
+    });
+  });
+
   it("shows an editable Code field with an auto-generate hint when adding a new item", async () => {
     renderCodeForm();
 
@@ -400,6 +522,9 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
 
     fireEvent.change(await screen.findByLabelText(/^item name/i), {
       target: { value: "My Reagent" },
+    });
+    fireEvent.change(screen.getByLabelText(/units/i), {
+      target: { value: "mL" },
     });
     const codeInput = screen.getByLabelText(/^code$/i);
     fireEvent.change(codeInput, { target: { value: "my reagent 1" } });
@@ -430,6 +555,9 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
 
     fireEvent.change(await screen.findByLabelText(/^item name/i), {
       target: { value: "My Reagent" },
+    });
+    fireEvent.change(screen.getByLabelText(/units/i), {
+      target: { value: "mL" },
     });
     const codeInput = screen.getByLabelText(/^code$/i);
     expect(codeInput).toHaveAttribute("maxlength", "64");
@@ -471,6 +599,9 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
 
     fireEvent.change(await screen.findByLabelText(/^item name/i), {
       target: { value: "Auto Generated Item" },
+    });
+    fireEvent.change(screen.getByLabelText(/units/i), {
+      target: { value: "mL" },
     });
     fireEvent.change(screen.getByLabelText(/stability after opening/i), {
       target: { value: "30" },
@@ -517,6 +648,9 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
     fireEvent.change(await screen.findByLabelText(/^item name/i), {
       target: { value: "Examination gloves" },
     });
+    fireEvent.change(screen.getByLabelText(/units/i), {
+      target: { value: "mL" },
+    });
     fireEvent.click(screen.getByText("Save"));
 
     await waitFor(() => expect(InventoryItemAPI.create).toHaveBeenCalled());
@@ -538,6 +672,9 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
 
     fireEvent.change(await screen.findByLabelText(/^item name/i), {
       target: { value: "My Reagent" },
+    });
+    fireEvent.change(screen.getByLabelText(/units/i), {
+      target: { value: "mL" },
     });
     fireEvent.change(screen.getByLabelText(/stability after opening/i), {
       target: { value: "30" },

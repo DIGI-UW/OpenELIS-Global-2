@@ -15,15 +15,16 @@ import {
   SelectItem,
   Checkbox,
   TextArea,
-  DatePicker,
   DatePickerInput,
 } from "@carbon/react";
+import { DatePicker } from "../../../common/DatePicker";
 import { ChevronDown, ChevronUp } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import { useOrderContext } from "../../OrderContext";
 import { ConfigurationContext } from "../../../layout/Layout";
 import { labNow } from "../../../utils/labClock";
 import { RequiredMarker, requiredProps } from "../../../common/RequiredMarker";
+import useSiteDateFormat from "../../../common/useSiteDateFormat";
 
 const todayIso = () => {
   const d = labNow();
@@ -155,6 +156,8 @@ function SelectedCard({ onClear, isNew, isLocked, onUnlock, children }) {
 
 function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
   const intl = useIntl();
+  const siteDate = useSiteDateFormat();
+  const [todayEnd] = useState(() => labNow().setHours(23, 59, 59, 999));
   const { samples, setSamples, hydrateOrderData, hydrateSamples } =
     useOrderContext();
 
@@ -459,9 +462,10 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
         <div style={{ maxWidth: "240px" }}>
           <DatePicker
             datePickerType="single"
-            dateFormat="Y-m-d"
-            value={collectionDate}
-            maxDate={todayIso()}
+            dateFormat={siteDate.dateFormat}
+            parseDate={siteDate.parseDate}
+            value={siteDate.formatIsoDate(collectionDate)}
+            maxDate={todayEnd}
             onChange={(dates) => {
               if (!dates || dates.length === 0) return;
               const d = dates[0];
@@ -474,7 +478,7 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
             <DatePickerInput
               id="vec-collection-date"
               labelText=""
-              placeholder="YYYY-MM-DD"
+              placeholder={siteDate.placeholder}
               disabled={isReadOnly}
             />
           </DatePicker>

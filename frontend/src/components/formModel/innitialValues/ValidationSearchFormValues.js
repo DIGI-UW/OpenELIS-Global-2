@@ -68,7 +68,7 @@ export default {
       shadowResultValue: "",
       showSampleDetails: "",
       siblingReflexKey: "",
-      significantDigits: "",
+      reportingDecimalPlaces: "",
       technician: "",
       technicianSignatureId: "",
       testDate: "",

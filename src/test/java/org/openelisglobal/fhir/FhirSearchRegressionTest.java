@@ -9,7 +9,6 @@ import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.RestfulServer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -69,6 +68,9 @@ public class FhirSearchRegressionTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private ProviderService providerService;
+
+    @Autowired
+    private org.openelisglobal.dataexchange.fhir.service.FhirTransformService fhirTransformService;
 
     private RestfulServer fhirServlet;
 
@@ -206,8 +208,8 @@ public class FhirSearchRegressionTest extends BaseWebContextSensitiveTest {
 
     /**
      * {@code ContactPoint.use} is optional in FHIR, and a phone that omitted it
-     * used to be dropped on the way in - so the resource the facade had just
-     * accepted could not be found by the very parameters that search phone numbers.
+     * used to be dropped on the way in - so the transformed record could not be
+     * found by the parameters that search phone numbers.
      */
     @Test
     public void practitioner_phoneWithoutAUseIsStoredAndSearchable() throws Exception {
@@ -225,7 +227,8 @@ public class FhirSearchRegressionTest extends BaseWebContextSensitiveTest {
     /**
      * address-city, address-state, address-postalcode and address-country are
      * declared search parameters reading the person's address columns, but nothing
-     * on the write path populated them, so all four could only ever return nothing.
+     * in the shared transform populated them. Persist through the normal services
+     * and verify that all four search parameters can find the stored record.
      */
     @Test
     public void practitioner_addressIsStoredAndSearchableByEveryAddressParam() throws Exception {
@@ -249,18 +252,15 @@ public class FhirSearchRegressionTest extends BaseWebContextSensitiveTest {
 
     // ==================== helpers ====================
 
-    private String createPractitioner(String json) throws Exception {
-        MockHttpServletResponse response = post("/Practitioner", json);
-        assertEquals(response.getContentAsString(), 201, response.getStatus());
-        return objectMapper.readTree(response.getContentAsString()).path("id").asText();
-    }
-
-    private MockHttpServletResponse post(String path, String json) throws Exception {
-        MockHttpServletRequest request = buildFhirRequest("POST", path);
-        request.setContent(json.getBytes(StandardCharsets.UTF_8));
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        fhirServlet.service(request, response);
-        return response;
+    private String createPractitioner(String json) {
+        org.hl7.fhir.r4.model.Practitioner resource = FhirContext.forR4().newJsonParser()
+                .parseResource(org.hl7.fhir.r4.model.Practitioner.class, json);
+        resource.setId(java.util.UUID.randomUUID().toString());
+        Provider provider = fhirTransformService.transformToProvider(resource);
+        provider.getPerson().setSysUserId("1");
+        provider.setPerson(personService.save(provider.getPerson()));
+        provider.setSysUserId("1");
+        return providerService.save(provider).getFhirUuid().toString();
     }
 
     private JsonNode read(String path) throws Exception {

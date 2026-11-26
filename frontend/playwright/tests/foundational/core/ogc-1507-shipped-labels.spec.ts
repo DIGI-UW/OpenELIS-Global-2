@@ -2,6 +2,7 @@ import { test, expect, type Page } from "../../../helpers/test-base";
 import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
 import { API_PREFIX } from "../../../helpers/admin-ui";
 import { csrfToken } from "../../../helpers/api-session";
+import { chooseFirstCarbonOption } from "../../../helpers/carbon-select";
 
 /**
  * OGC-1507: an NCE type OpenELIS ships ("Documentation error", linked to the
@@ -173,7 +174,7 @@ test("an event that concerns no sample is reported from the form", async ({
   await expect(
     page.locator(`#nce-category option[value="${category.id}"]`),
   ).toHaveCount(1, { timeout: UI_TIMEOUT });
-  await page.locator("#reporting-unit").selectOption({ index: 1 });
+  await chooseFirstCarbonOption(page.locator("#reporting-unit"));
   await page.locator("#nce-category").selectOption(category.id);
   await page.locator("#nce-type").selectOption(type.id);
   const minor = page.getByTestId("nce-severity-MINOR");

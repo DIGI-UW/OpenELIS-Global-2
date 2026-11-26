@@ -9,6 +9,9 @@ import org.openelisglobal.inventory.valueholder.InventoryLot;
 
 public interface InventoryLotService extends BaseObjectService<InventoryLot, Long> {
 
+    /** Return only lots with the requested status. */
+    List<InventoryLot> getByStatus(LotStatus status);
+
     /** Locks and returns a lot for an atomic eligibility check and consumption. */
     InventoryLot getForUpdate(Long lotId);
 
@@ -37,6 +40,12 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
      * Get expired lots that are still marked as ACTIVE
      */
     List<InventoryLot> getExpiredActiveLots();
+
+    /**
+     * ACTIVE or IN_USE lots with stock whose effective expiry is past or within
+     * daysAhead.
+     */
+    List<InventoryLot> getStockedLotsExpiringWithin(int daysAhead);
 
     /**
      * Get lot by lot number

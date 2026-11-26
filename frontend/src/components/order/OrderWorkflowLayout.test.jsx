@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { vi, describe, it, expect, beforeEach } from "vitest";
@@ -42,6 +42,10 @@ vi.mock("../common/PageBreadCrumb", () => ({
   ),
 }));
 vi.mock("./OrderContextCard", () => ({ default: () => null }));
+const { searchCases } = vi.hoisted(() => ({
+  searchCases: vi.fn(() => Promise.resolve({ rows: [] })),
+}));
+vi.mock("../microbiology/CaseWorkspaceService", () => ({ searchCases }));
 vi.mock("./BarcodeScannerBar", () => ({ default: () => null }));
 vi.mock("./SaveNavigationButtons", () => ({ default: () => null }));
 vi.mock("./OrderStepper", async () => {
@@ -70,7 +74,7 @@ describe("the state after the entry step saves", () => {
 
   it("leads with the domain action, not a generic order parent", () => {
     renderLayout();
-    expect(screen.getByText("Add Clinical Order")).toBeInTheDocument();
+    expect(screen.getByText("Clinical Orders")).toBeInTheDocument();
     expect(screen.queryByText("Add Generic Order")).not.toBeInTheDocument();
   });
 
@@ -191,5 +195,75 @@ describe("the save status indicator", () => {
     renderLayout();
 
     expect(screen.getByText("Save failed")).toBeInTheDocument();
+  });
+});
+
+describe("the microbiology cases a saved order opened", () => {
+  beforeEach(() => {
+    push.mockClear();
+    searchCases.mockReset();
+    orderContextValue.saveStatus = "saved";
+    orderContextValue.isDirty = false;
+    orderContextValue.labNumber = "LAB-42";
+  });
+
+  it("names each case's lab unit and opens the case", async () => {
+    searchCases.mockResolvedValue({
+      rows: [{ id: "case-1", labUnit: "M4 Bacteriology" }],
+    });
+    renderLayout();
+
+    await screen.findByText("Opened a microbiology case in M4 Bacteriology");
+    expect(searchCases.mock.calls[0][0]).toContain("accessionNumber=LAB-42");
+    await userEvent.click(screen.getByRole("button", { name: "Open case" }));
+    expect(push).toHaveBeenCalledWith(
+      expect.stringContaining("/Microbiology/cases/case-1"),
+    );
+    expect(screen.queryByText("Focus sentinel")).toBeNull();
+  });
+
+  it("ignores a late answer for the order shown before", async () => {
+    let lateAnswer;
+    searchCases
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            lateAnswer = resolve;
+          }),
+      )
+      .mockResolvedValueOnce({
+        rows: [{ id: "case-2", labUnit: "TB unit" }],
+      });
+    const view = renderLayout();
+    orderContextValue.labNumber = "LAB-43";
+    view.rerender(
+      <IntlProvider locale="en" messages={messages}>
+        <OrderWorkflowLayout title="order.step.enter">
+          <div>form</div>
+        </OrderWorkflowLayout>
+      </IntlProvider>,
+    );
+
+    await screen.findByText("Opened a microbiology case in TB unit");
+    await act(async () =>
+      lateAnswer({ rows: [{ id: "case-1", labUnit: "M4 Bacteriology" }] }),
+    );
+    expect(
+      screen.queryByText("Opened a microbiology case in M4 Bacteriology"),
+    ).toBeNull();
+    expect(
+      screen.getByText("Opened a microbiology case in TB unit"),
+    ).toBeInTheDocument();
+  });
+
+  it("says nothing for an order with unsaved changes", () => {
+    orderContextValue.isDirty = true;
+    searchCases.mockResolvedValue({
+      rows: [{ id: "case-1", labUnit: "M4 Bacteriology" }],
+    });
+    renderLayout();
+
+    expect(searchCases).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Opened a microbiology case/)).toBeNull();
   });
 });

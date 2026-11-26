@@ -1,7 +1,10 @@
 package org.openelisglobal.config;
 
 import jakarta.persistence.EntityManagerFactory;
+import java.util.List;
 import javax.sql.DataSource;
+import org.hibernate.cfg.AvailableSettings;
+import org.openelisglobal.module.runtime.persistence.ModuleEntityRegistrar;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,13 +25,24 @@ public class HibernateConfig {
     @Autowired
     private DataSource dataSource;
 
+    /**
+     * Built after the core and module changelogs have run. Module entities join the
+     * single persistence unit through the registrar, and Hibernate loads them
+     * through the module class loaders ({@code hibernate.classLoaders}); with no
+     * modules installed both are empty and nothing changes.
+     */
     @Bean
-    @DependsOn("liquibase")
-    public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
+    @DependsOn({ "liquibase", "moduleLiquibase" })
+    public LocalContainerEntityManagerFactoryBean entityManagerFactory(ModuleEntityRegistrar moduleEntityRegistrar) {
         if (emf == null) {
             emf = new LocalContainerEntityManagerFactoryBean();
             emf.setDataSource(dataSource);
             emf.setPersistenceXmlLocation("classpath:persistence/persistence.xml");
+            emf.setPersistenceUnitPostProcessors(moduleEntityRegistrar);
+            List<ClassLoader> moduleClassLoaders = moduleEntityRegistrar.classLoaders();
+            if (!moduleClassLoaders.isEmpty()) {
+                emf.getJpaPropertyMap().put(AvailableSettings.CLASSLOADERS, moduleClassLoaders);
+            }
             // activate this once we migrate away from hbm.xmls and persistence.xml
             // emf.setPackagesToScan("org.openelisglobal");
         }

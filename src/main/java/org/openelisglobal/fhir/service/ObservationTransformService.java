@@ -1,17 +1,18 @@
 package org.openelisglobal.fhir.service;
 
+import java.util.List;
 import org.hl7.fhir.r4.model.Observation;
+import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.result.valueholder.Result;
-import org.openelisglobal.test.beanItems.TestResultItem;
 
 /**
- * OpenELIS Result to and from FHIR Observation.
+ * OpenELIS Result to FHIR Observation.
  */
 public interface ObservationTransformService {
-
-    TestResultItem createResultFromObservation(org.hl7.fhir.r4.model.Observation observation);
 
     Observation transformResultToObservation(String resultId);
 
     Observation transformResultToObservation(Result result);
+
+    Observation transformResultToObservation(Result result, List<Note> analysisNotes);
 }

@@ -86,7 +86,7 @@ jobs:
           digest="${{ steps.build.outputs.digest }}"
           touch "/tmp/digests/backend/${digest#sha256:}"
       - name: Upload digest
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: digests-${{ env.PLATFORM_PAIR_BACKEND }}-backend
           path: /tmp/digests/backend/*
@@ -100,7 +100,7 @@ jobs:
       - build-and-push-image-backend-dev
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: /tmp/digests/backend
           pattern: digests-*

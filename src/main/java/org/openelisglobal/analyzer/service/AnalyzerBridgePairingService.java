@@ -15,11 +15,14 @@ public interface AnalyzerBridgePairingService {
 
     /**
      * {@code pairedAt} is sent as ISO-8601 text, which the page reads as a date.
-     * {@code pinCheck} is null while unpaired or when the Bridge cannot be reached.
+     * {@code pinCheck} is null while unpaired or when the Bridge's answer cannot be
+     * read, and {@code UNREACHABLE} when it cannot be reached.
+     * {@code clientKeyReadable} is false when the stored client key was saved under
+     * another encryption key; pairing again with a new code replaces it.
      */
     record Status(String bridgeUrl, boolean paired, String bridgeCertificateSha256, String clientCertificateSha256,
             @JsonFormat(shape = JsonFormat.Shape.STRING) Instant pairedAt, boolean pairsAutomatically,
-            PinCheck pinCheck) {
+            PinCheck pinCheck, boolean clientKeyReadable) {
     }
 
     /** What the Bridge at the configured address says about the stored pin. */
@@ -28,7 +31,9 @@ public interface AnalyzerBridgePairingService {
         /** The Bridge presents a certificate other than the pinned one. */
         OTHER_CERTIFICATE,
         /** The Bridge presents the pinned certificate but holds no pairing. */
-        BRIDGE_UNPAIRED
+        BRIDGE_UNPAIRED,
+        /** Nothing answers at the configured address. */
+        UNREACHABLE
     }
 
     /** The TLS context for calls to the paired Bridge, and whom it trusts. */

@@ -19,6 +19,7 @@ import {
   Tag,
   InlineNotification,
 } from "@carbon/react";
+import CultureMediaDefaultsModal from "./CultureMediaDefaultsModal";
 import { Add, TrashCan } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -56,6 +57,7 @@ const ReagentsSection = ({ testId }) => {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [cultureTarget, setCultureTarget] = useState(null);
   const [reagents, setReagents] = useState([]);
   const [edits, setEdits] = useState({});
   const [linkModalOpen, setLinkModalOpen] = useState(false);
@@ -358,6 +360,17 @@ const ReagentsSection = ({ testId }) => {
 
   return (
     <Stack gap={6} data-testid="reagents-section">
+      {cultureTarget && (
+        <CultureMediaDefaultsModal
+          testId={testId}
+          link={cultureTarget}
+          onClose={() => setCultureTarget(null)}
+          onSaved={() => {
+            setCultureTarget(null);
+            load();
+          }}
+        />
+      )}
       {notification && (
         <InlineNotification
           kind={notification.kind}
@@ -503,6 +516,17 @@ const ReagentsSection = ({ testId }) => {
                           </Tag>
                         </TableCell>
                         <TableCell>
+                          {link.microbiologyMedium && (
+                            <Button
+                              kind="ghost"
+                              size="sm"
+                              onClick={() => setCultureTarget(link)}
+                            >
+                              {intl.formatMessage({
+                                id: "microbiology.culture.mediaDefaults",
+                              })}
+                            </Button>
+                          )}
                           <Button
                             kind="ghost"
                             size="sm"

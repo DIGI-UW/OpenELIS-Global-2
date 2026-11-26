@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-1599: changeset 074 gave every existing panel CLINICAL, and a database
+    upgraded from before OGC-1209 still files its vector and environmental panels
+    there. Move each CLINICAL panel to the one domain its member sample types and
+    member tests share; panels whose members span domains or have no sample types
+    keep their domain and are named in the log.
+    -->
+    <changeSet author="openelis" id="025-panel-domain-from-members">
+        <comment>File each CLINICAL panel under the one domain its member sample types and tests share.</comment>
+        <customChange class="org.openelisglobal.panel.upgrade.PanelDomainBackfill"/>
+    </changeSet>
+</databaseChangeLog>

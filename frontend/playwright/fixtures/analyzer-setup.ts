@@ -94,7 +94,7 @@ export class AnalyzerSetupPage {
   }
 
   /**
-   * From the instrument step, through Assays as the defaults left them, to
+   * From the saved Connect step, through Assays as the defaults left them, to
    * Verify: less the assays named in `assaysOff`.
    */
   async continueToVerify({ assaysOff = [] }: { assaysOff?: string[] } = {}) {

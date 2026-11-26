@@ -11,6 +11,8 @@ public interface MicroAstPanelDAO extends BaseDAO<MicroAstPanel, String> {
 
     MicroAstPanel findCurrentByLogicalKey(String logicalKey);
 
+    MicroAstPanel findCurrentByNameIgnoreCase(String name);
+
     List<MicroAstPanel> search(String q, String status, String organismGroup, String sort, int offset, int limit);
 
     long countSearch(String q, String status, String organismGroup);

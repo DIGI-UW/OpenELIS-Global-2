@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Positive;
 import java.sql.Timestamp;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.qc.valueholder.QCControlLot;
+import org.openelisglobal.qc.valueholder.QCFrequencyType;
 import org.openelisglobal.validation.annotations.SafeHtml;
 
 /**
@@ -80,6 +81,16 @@ public class QCControlLotForm extends BaseForm {
     private QCControlLot controlLot;
 
     private Timestamp lastupdated;
+
+    private QCFrequencyType qcFrequencyType = QCFrequencyType.DAILY;
+
+    @Positive
+    private Integer qcFrequencyHours;
+
+    @Positive
+    private Integer shiftDefinitionHours = 8;
+
+    private Boolean qcRequired = Boolean.TRUE;
 
     public QCControlLotForm() {
         setFormName("qcControlLotForm");
@@ -240,5 +251,37 @@ public class QCControlLotForm extends BaseForm {
 
     public void setLastupdated(Timestamp lastupdated) {
         this.lastupdated = lastupdated;
+    }
+
+    public QCFrequencyType getQcFrequencyType() {
+        return qcFrequencyType;
+    }
+
+    public void setQcFrequencyType(QCFrequencyType qcFrequencyType) {
+        this.qcFrequencyType = qcFrequencyType;
+    }
+
+    public Integer getQcFrequencyHours() {
+        return qcFrequencyHours;
+    }
+
+    public void setQcFrequencyHours(Integer qcFrequencyHours) {
+        this.qcFrequencyHours = qcFrequencyHours;
+    }
+
+    public Integer getShiftDefinitionHours() {
+        return shiftDefinitionHours;
+    }
+
+    public void setShiftDefinitionHours(Integer shiftDefinitionHours) {
+        this.shiftDefinitionHours = shiftDefinitionHours;
+    }
+
+    public Boolean getQcRequired() {
+        return qcRequired;
+    }
+
+    public void setQcRequired(Boolean qcRequired) {
+        this.qcRequired = qcRequired;
     }
 }

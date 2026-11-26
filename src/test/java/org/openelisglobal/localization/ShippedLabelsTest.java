@@ -23,7 +23,10 @@ public class ShippedLabelsTest {
 
     /** Translated in fr.json ("Échec du contrôle qualité"). */
     private static final String TRANSLATED_KEY = "nce.type.qc_failure";
-    /** Added for OGC-1507; Transifex has no French for it yet. */
+    /**
+     * Added for OGC-1507; Transifex has no translation for it yet, and OpenELIS
+     * ships its French ("Problème de code-barres") but no German.
+     */
     private static final String UNTRANSLATED_KEY = "nce.type.barcodeIssue";
 
     /** The catalogue without translation overrides, whatever context ran before. */
@@ -82,11 +85,13 @@ public class ShippedLabelsTest {
         Localization stored = stored(site("en", "Barcode unreadable"));
 
         assertEquals("Barcode unreadable",
-                ShippedLabels.label(UNTRANSLATED_KEY, stored, "Barcode issue", Locale.FRENCH));
+                ShippedLabels.label(UNTRANSLATED_KEY, stored, "Barcode issue", Locale.GERMAN));
         assertEquals("a translation still wins", "Échec du contrôle qualité",
                 ShippedLabels.label(TRANSLATED_KEY, stored, "QC failure", Locale.FRENCH));
+        assertEquals("so does the translation OpenELIS ships", "Problème de code-barres",
+                ShippedLabels.label(UNTRANSLATED_KEY, stored, "Barcode issue", Locale.FRENCH));
         assertEquals("the shipped translation is still the key's", "Barcode Issue",
-                ShippedLabels.shippedLabel(UNTRANSLATED_KEY, stored, Locale.FRENCH));
+                ShippedLabels.shippedLabel(UNTRANSLATED_KEY, stored, Locale.GERMAN));
     }
 
     @Test
@@ -100,12 +105,32 @@ public class ShippedLabelsTest {
 
     @Test
     public void withoutATranslationTheConfigurationFilesTranslationShowsThenEnglish() {
-        Localization fromFile = stored(system("en", "Barcode Issue"), system("fr", "Problème de code-barres"));
+        Localization fromFile = stored(system("en", "Barcode Issue"), system("de", "Barcode-Problem"));
+
+        assertEquals("Barcode-Problem",
+                ShippedLabels.label(UNTRANSLATED_KEY, fromFile, "Barcode Issue", Locale.GERMAN));
+        assertEquals("Barcode Issue", ShippedLabels.label(UNTRANSLATED_KEY, null, "Barcode Issue", Locale.GERMAN));
+        assertEquals("Barcode Issue", ShippedLabels.shippedLabel(UNTRANSLATED_KEY, stored(), Locale.GERMAN));
+    }
+
+    /**
+     * The 3.5.x upgrades stored only English, so an upgraded database holds no
+     * French for the configuration files' translations: OpenELIS's own copy of them
+     * shows instead.
+     */
+    @Test
+    public void onAnUpgradedDatabaseTheTranslationOpenElisShipsShows() {
+        Localization backfill = stored(system("en", "Barcode Issue"));
 
         assertEquals("Problème de code-barres",
-                ShippedLabels.label(UNTRANSLATED_KEY, fromFile, "Barcode Issue", Locale.FRENCH));
-        assertEquals("Barcode Issue", ShippedLabels.label(UNTRANSLATED_KEY, null, "Barcode Issue", Locale.FRENCH));
-        assertEquals("Barcode Issue", ShippedLabels.shippedLabel(UNTRANSLATED_KEY, stored(), Locale.FRENCH));
+                ShippedLabels.label(UNTRANSLATED_KEY, backfill, "Barcode Issue", Locale.FRENCH));
+        assertEquals("Problème de code-barres",
+                ShippedLabels.label(UNTRANSLATED_KEY, backfill, "Barcode Issue", Locale.forLanguageTag("fr-HT")));
+        assertEquals("Général", ShippedLabels.label("nce.category.general", null, "General", Locale.FRENCH));
+        assertEquals("Problème de code-barres", ShippedLabels.shippedLabel(UNTRANSLATED_KEY, backfill, Locale.FRENCH));
+        assertEquals("OpenELIS's copy wins over an older one the database stored, so a correction reaches every lab",
+                "Problème de code-barres", ShippedLabels.label(UNTRANSLATED_KEY,
+                        stored(system("fr", "Code-barres illisible")), "Barcode Issue", Locale.FRENCH));
     }
 
     @Test

@@ -11,6 +11,7 @@ import {
   Layer,
   Link as CarbonLink,
   Loading,
+  MultiSelect,
   Pagination,
   ProgressIndicator,
   ProgressStep,
@@ -59,6 +60,7 @@ const formatRequestError = (intl, error) => {
 };
 
 const mappingRepairMessage = {
+  "patient-origins": "microbiology.whonet.mapping.fixOrigin",
   organisms: "microbiology.whonet.mapping.fixOrganism",
   antibiotics: "microbiology.whonet.mapping.fixAntibiotic",
   "specimen-types": "microbiology.whonet.mapping.fixSpecimen",
@@ -142,7 +144,14 @@ const WhonetExport = ({ service = defaultService, now }) => {
     return () => {
       active = false;
     };
-  }, [intl, invalidPeriod, request.from, request.to, service]);
+  }, [
+    intl,
+    invalidPeriod,
+    request.from,
+    request.to,
+    request.includeEnvironmentalIsolates,
+    service,
+  ]);
 
   useEffect(() => {
     if (state.step !== "preview") {
@@ -653,16 +662,35 @@ const WhonetExport = ({ service = defaultService, now }) => {
                 }
               />
               <Checkbox
-                id="whonet-include-unspecified"
+                id="whonet-include-environmental"
                 aria-label={intl.formatMessage({
-                  id: "microbiology.whonet.culturePurpose.includeUnspecified",
+                  id: "microbiology.whonet.includeEnvironmental",
                 })}
                 labelText={intl.formatMessage({
-                  id: "microbiology.whonet.culturePurpose.includeUnspecified",
+                  id: "microbiology.whonet.includeEnvironmental",
                 })}
-                checked={state.includeUnspecified}
+                checked={state.includeEnvironmentalIsolates}
                 onChange={(_, { checked }) =>
-                  updateConfiguration({ includeUnspecified: checked })
+                  updateConfiguration({ includeEnvironmentalIsolates: checked })
+                }
+              />
+              <MultiSelect
+                id="whonet-survey-programs"
+                titleText={intl.formatMessage({
+                  id: "microbiology.whonet.surveyPrograms",
+                })}
+                label={intl.formatMessage({
+                  id: "microbiology.whonet.selectSurveyPrograms",
+                })}
+                items={filterOptions.surveyPrograms || []}
+                itemToString={(item) => item?.label || ""}
+                selectedItems={(filterOptions.surveyPrograms || []).filter(
+                  (item) => state.surveyProgramIds.includes(item.id),
+                )}
+                onChange={({ selectedItems }) =>
+                  updateConfiguration({
+                    surveyProgramIds: selectedItems.map((item) => item.id),
+                  })
                 }
               />
             </fieldset>

@@ -56,6 +56,7 @@ import LocalizationSection from "../testCatalog/sections/LocalizationSection";
 import DisplayOrderSection from "./sections/DisplayOrderSection";
 import DisposalSection from "./sections/DisposalSection";
 import AssociatedTestsSection from "./sections/AssociatedTestsSection";
+import ContainersSection from "./sections/ContainersSection";
 import {
   Add,
   Edit,
@@ -211,7 +212,8 @@ function SampleTypeManagement({ intl }) {
               id: item.id || index + 1,
               name: item.name || item.description || "Unknown Sample Type",
               description: item.description || "",
-              domain: item.domain || "CLINICAL", // Use the domain directly from the new endpoint
+              domain: item.domain || "CLINICAL",
+              microbiologyIsolate: !!item.microbiologyIsolate,
               active: item.isActive !== undefined ? item.isActive : true,
               testCount: item.testCount || 0, // Use actual test count from backend
               abbreviation: item.abbreviation || "",
@@ -337,6 +339,7 @@ function SampleTypeManagement({ intl }) {
       description: st.description,
       active: st.active,
       domain: st.domain,
+      microbiologyIsolate: !!st.microbiologyIsolate,
       testCount: st.testCount,
       abbreviation: st.abbreviation || "",
       sortOrder: st.sortOrder || 0,
@@ -523,6 +526,7 @@ function SampleTypeManagement({ intl }) {
         name: item.name || item.description || "",
         description: item.description || "",
         domain: item.domain || "CLINICAL",
+        microbiologyIsolate: !!item.microbiologyIsolate,
         active: item.isActive !== undefined ? item.isActive : true,
         testCount: item.testCount || 0,
         abbreviation: item.abbreviation || "",
@@ -564,6 +568,7 @@ function SampleTypeManagement({ intl }) {
           description: editingType.description?.trim() || "",
           domain: editingType.domain || "CLINICAL",
           active: !!editingType.active,
+          microbiologyIsolate: !!editingType.microbiologyIsolate,
         };
         await new Promise((resolve, reject) => {
           postToOpenElisServerJsonResponse(
@@ -653,6 +658,7 @@ function SampleTypeManagement({ intl }) {
           abbreviation: editingType.abbreviation?.trim() || "",
           isActive:
             editingType.active !== undefined ? editingType.active : true,
+          microbiologyIsolate: !!editingType.microbiologyIsolate,
           sortOrder: editingType.sortOrder || 0,
           whonetCode: editingType.whonetCode?.trim() || "",
           lastUpdated: editingType.lastUpdated || null,
@@ -710,6 +716,7 @@ function SampleTypeManagement({ intl }) {
                   description: d.description,
                   active: d.isActive,
                   domain: d.domain,
+                  microbiologyIsolate: !!d.microbiologyIsolate,
                   testCount: d.testCount,
                   abbreviation: d.abbreviation || "",
                   sortOrder: d.sortOrder || 0,
@@ -1433,9 +1440,9 @@ function SampleTypeManagement({ intl }) {
                                 }))
                               }
                               helperText={intl.formatMessage({
-                                id: "label.sampleType.domain.helper",
+                                id: "label.sampleType.domain.helperAllDomains",
                                 defaultMessage:
-                                  "Determines which workflow mode (Clinical or Environmental) this sample type appears in.",
+                                  "Determines which workflow mode (Clinical, Environmental or Vector) this sample type appears in.",
                               })}
                             >
                               {domains.map((d) => (
@@ -1470,6 +1477,21 @@ function SampleTypeManagement({ intl }) {
                               }
                             />
 
+                            <Toggle
+                              id="st-microbiology-isolate"
+                              labelText={intl.formatMessage({
+                                id: "microbiology.isolateWorkspace.sampleTypeFlag",
+                              })}
+                              labelA={intl.formatMessage({ id: "label.no" })}
+                              labelB={intl.formatMessage({ id: "label.yes" })}
+                              toggled={!!editingType?.microbiologyIsolate}
+                              onToggle={(checked) =>
+                                setEditingType((prev) => ({
+                                  ...prev,
+                                  microbiologyIsolate: checked,
+                                }))
+                              }
+                            />
                             {view === "editor" && (
                               <TextInput
                                 ref={whonetCodeInputRef}
@@ -1719,6 +1741,33 @@ function SampleTypeManagement({ intl }) {
                         </p>
                       ) : (
                         <DisposalSection sampleTypeId={sampleTypeId} />
+                      )}
+                    </Tile>
+                  </div>
+                )}
+
+                {/* OGC-1611 FR-G7, FR-G6b: default container and the tests served. */}
+                {activeSection === "containers" && (
+                  <div>
+                    <Tile
+                      style={{
+                        padding: "var(--cds-spacing-07)",
+                        border: "1px solid var(--cds-border-subtle)",
+                        borderRadius: "var(--cds-border-radius)",
+                      }}
+                    >
+                      {view === "add" ? (
+                        <p
+                          style={{
+                            color: "var(--cds-text-secondary)",
+                            fontSize: "14px",
+                            margin: 0,
+                          }}
+                        >
+                          <FormattedMessage id="label.sampleType.containers.addHint" />
+                        </p>
+                      ) : (
+                        <ContainersSection sampleTypeId={sampleTypeId} />
                       )}
                     </Tile>
                   </div>

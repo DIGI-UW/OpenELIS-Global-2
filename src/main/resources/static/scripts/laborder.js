@@ -232,17 +232,17 @@ function getCrossSampleTypeOrderMapEntry(id) {
 }
 
 
-function populateCrossPanelsAndTests(panels, tests, entryDate) {       
-    
-    var buffer = ["<table width='100%'><tr><td><br></td></tr><tr align='left'><td><table id='crossPanelsTestsTable'>"];
-    
-    populateCrossPanels(panels, buffer, entryDate);
-
-    populateCrossTests(tests, buffer, entryDate);
-    
-    buffer.push("<tr><td colspan='4'><br></td></tr></table></td></tr></table>");
-    jQuery('#crossPanels').html(buffer.join(""));
-    
+function populateCrossPanelsAndTests(panels, tests, entryDate) {
+    var outer = document.createElement("table");
+    outer.width = "100%";
+    outer.insertRow().insertCell().appendChild(document.createElement("br"));
+    var table = document.createElement("table");
+    table.id = "crossPanelsTestsTable";
+    outer.insertRow().insertCell().appendChild(table);
+    populateCrossPanels(panels, table, entryDate);
+    populateCrossTests(tests, table, entryDate);
+    var target = document.getElementById("crossPanels");
+    if (target) target.replaceChildren(outer);
 }
 
 function removeCrossPanelsTestsTable() {
@@ -256,36 +256,55 @@ function removeCrossPanelsTestsTable() {
 	}
 }
 
-function populateCrossPanels(panels, buffer, entryDate) {
-
-	var i = 0, j = 0;      
-	if (panels && panels.length > 0) {
-	    buffer.push("<tr><td>Panel&nbsp;</td>");
-	
-	    for (i = 0; i <= sampleTypeOrder; i = i + 1) {                                                                                                                                                                                                                                                                                                                                                                                               
-	        buffer.push("<td>&nbsp;");
-	        var sampleTypeId = getCrossSampleTypeOrderMapEntry(i);
-	        buffer.push(crossSampleTypeMap[sampleTypeId].name);
-	        buffer.push("&nbsp;</td>");
-	    }
-	    buffer.push("</tr><tr><td colspan='4'><hr size='3' /></td></tr>");
-	    
-	
-	    for (i = 0; i < panels.length; i = i + 1) {
-	    	buffer.push("<tr><td>", panels[i].name, "<span class='requiredlabel'>*</span><input type='hidden' class='required' name='hidden-" + panels[i].name + "' value='unselected'/>", "</td>");
-	        for (j = 0; j <= sampleTypeOrder; j = j + 1) {
-	            var sampleTypeId = crossSampleTypeOrderMap[j];
-	            var sampleType = getCrossSampleTypeMapEntry(sampleTypeId);
-	            var type = panels[i].typeMap[sampleType.name];
-	            if (type === "t") {
-	            	buffer.push("<td align='middle'><INPUT TYPE='RADIO' NAME='" + panels[i].id + "' ID='" + sampleTypeId + "' value='" + sampleTypeId + "' onclick=\"crossPanelSelected(" +panels[i].id + ", '" + panels[i].name + "'," + sampleTypeId + ", '" + sampleType.name + "', '" + entryDate  + "')\"/></td>");
-	            } else {
-	            	buffer.push("<td></td>");
-	            }
-	        }
-	        buffer.push("</tr>");
-	    }
+function populateCrossRows(items, table, entryDate, isPanel) {
+    if (!items || !items.length) return;
+    var heading = table.insertRow();
+    heading.insertCell().textContent = isPanel ? "Panel" : "Test";
+    for (var i = 0; i <= sampleTypeOrder; i++) {
+        heading.insertCell().textContent = crossSampleTypeMap[getCrossSampleTypeOrderMapEntry(i)].name;
     }
+    var divider = table.insertRow().insertCell();
+    divider.colSpan = sampleTypeOrder + 2;
+    divider.appendChild(document.createElement("hr"));
+    items.forEach(function (item) {
+        var row = table.insertRow();
+        var name = row.insertCell();
+        name.appendChild(document.createTextNode(item.name));
+        var required = document.createElement("span");
+        required.className = "requiredlabel";
+        required.textContent = "*";
+        name.appendChild(required);
+        var hidden = document.createElement("input");
+        hidden.type = "hidden";
+        hidden.className = "required";
+        hidden.name = "hidden-" + item.name;
+        hidden.value = "unselected";
+        name.appendChild(hidden);
+        for (var j = 0; j <= sampleTypeOrder; j++) {
+            var sampleTypeId = crossSampleTypeOrderMap[j];
+            var sampleType = getCrossSampleTypeMapEntry(sampleTypeId);
+            var cell = row.insertCell();
+            if (item.typeMap[sampleType.name] === "t") {
+                var radio = document.createElement("input");
+                radio.type = "radio";
+                radio.name = isPanel ? item.id : item.name;
+                radio.id = sampleTypeId;
+                radio.value = sampleTypeId;
+                radio.addEventListener("click", (function (id, type) {
+                    return function () {
+                        if (isPanel) crossPanelSelected(item.id, item.name, id, type.name, entryDate);
+                        else crossTestSelected(item.name, id, type.name, entryDate);
+                    };
+                })(sampleTypeId, sampleType));
+                cell.align = "middle";
+                cell.appendChild(radio);
+            }
+        }
+    });
+}
+
+function populateCrossPanels(panels, table, entryDate) {
+    populateCrossRows(panels, table, entryDate, true);
 }
 
 function crossTestSelected(testName, sampleTypeId, sampleTypeName, entryDate) {
@@ -565,37 +584,8 @@ function removeTestsFromAllSampleTypes(testIds, testNames) {
 	}
 }
 
-function populateCrossTests(tests, buffer, entryDate) {
-                                                                  
-	var i = 0, x = 0, y = 0;
-	
-	if (tests && tests.length > 0) {
-	    buffer.push("<tr><td colspan='4'><br></td></tr><tr><td><br>Test&nbsp;</td>");
-	    for (i = 0; i <= sampleTypeOrder; i = i + 1) {
-	       buffer.push("<td>&nbsp;");
-	        var sampleTypeId = getCrossSampleTypeOrderMapEntry(i);
-	        buffer.push(crossSampleTypeMap[sampleTypeId].name);
-	        buffer.push("&nbsp;</td>");
-	    }
-	    buffer.push("</tr><tr><td colspan='4'><hr size='3' /></td></tr>");
-	    
-                                                                                      	
-	    for (x = 0; x < tests.length; x = x + 1) {                                                        
-	    	buffer.push("<tr><td>", tests[x].name, "&nbsp;<span class='requiredlabel'>*</span>", "<input type='hidden' class='required' name='hidden-" + tests[x].name + "' value='unselected'/>", "</td>");
-	        for (y = 0; y <= sampleTypeOrder; y = y + 1) {
-	            var sampleTypeId = crossSampleTypeOrderMap[y];
-	            var sampleType = getCrossSampleTypeMapEntry(sampleTypeId);
-	            var type = tests[x].typeMap[sampleType.name];
-	            if (type === "t") {
-                                                                                                                                                          
-	            	buffer.push("<td align='middle'><INPUT TYPE='RADIO' NAME='" + tests[x].name + "' ID='" + sampleTypeId + "' value='" + sampleTypeId + "' onclick=\"crossTestSelected('" + tests[x].name + "'," + sampleTypeId + ", '" + sampleType.name + "', '" + entryDate  + "')\"/></td>");
-	            } else {
-	            	buffer.push("<td></td>");
-	            }
-	        }
-	        buffer.push("</tr>");
-	    }
-    }
+function populateCrossTests(tests, table, entryDate) {
+    populateCrossRows(tests, table, entryDate, false);
 }
 
 function getCurrentTime(){

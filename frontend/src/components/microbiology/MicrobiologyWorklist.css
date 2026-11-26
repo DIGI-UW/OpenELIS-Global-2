@@ -94,7 +94,24 @@
 }
 
 .microbiology-worklist__grain-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--microbiology-spacing-03);
+}
+
+.microbiology-worklist__grain-control .cds--content-switcher {
   max-width: 22rem;
+}
+
+.microbiology-worklist__header h1 {
+  font-size: var(--microbiology-heading-font-size);
+  line-height: var(--microbiology-heading-line-height);
+}
+
+.microbiology-worklist__filter-header h2 {
+  font-size: var(--cds-heading-compact-01-font-size, 1rem);
+  line-height: var(--cds-heading-compact-01-line-height, 1.375rem);
 }
 
 .microbiology-worklist__summary {

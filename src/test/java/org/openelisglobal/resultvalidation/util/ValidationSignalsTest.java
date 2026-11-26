@@ -147,6 +147,18 @@ public class ValidationSignalsTest {
     }
 
     @Test
+    public void flagsJudgeTheClinicalValueRegardlessOfReportFormatting() {
+        Result reportedAsFive = numeric("4.6");
+        reportedAsFive.setReportingDecimalPlaces(0);
+        Result reportedAsTwo = numeric("1.96");
+        reportedAsTwo.setReportingDecimalPlaces(1);
+
+        assertFalse(ValidationSignals.isNormalResult(authoredLimit(), reportedAsFive));
+        assertTrue(ValidationSignals.isCritical(limit(2.0, 10.0), reportedAsTwo));
+        assertEquals("4.6", reportedAsFive.getValue());
+    }
+
+    @Test
     public void isNormalResult_falseWithoutARangeOrAValue() {
         assertFalse(ValidationSignals.isNormalResult(null, numeric("5")));
         assertFalse(ValidationSignals.isNormalResult(authoredLimit(), null));

@@ -67,7 +67,8 @@ const renderForm = async () => {
 };
 
 const fill = async (user) => {
-  await user.selectOptions(document.getElementById("reporting-unit"), "7");
+  await user.type(document.getElementById("reporting-unit"), "bioch");
+  await user.click(screen.getByRole("option", { name: "Biochemistry" }));
   await user.selectOptions(document.getElementById("nce-category"), "1");
   await user.selectOptions(document.getElementById("nce-type"), "58");
   await user.type(
