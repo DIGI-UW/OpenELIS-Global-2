@@ -109,6 +109,25 @@ describe("BlindingWizard", () => {
     ]);
   });
 
+  test("same-named tests are told apart by their sample type", () => {
+    const { container } = renderWizard();
+    const reply = getFromOpenElisServer.getMockImplementation();
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      url === "/rest/eqa/programs/3/tests"
+        ? cb([
+            { id: 1, testId: 55, isActive: true, label: "Glucose (Serum)" },
+            { id: 2, testId: 56, isActive: true, label: "Glucose (Plasma)" },
+          ])
+        : reply(url, cb),
+    );
+    pickScheme("3");
+
+    expect(offeredTests(container)).toEqual([
+      "Glucose (Serum)",
+      "Glucose (Plasma)",
+    ]);
+  });
+
   test("a picked test outside a newly chosen scheme is cleared", () => {
     const { container } = renderWizard();
     pickScheme("3");
@@ -154,5 +173,44 @@ describe("BlindingWizard", () => {
     expect(
       screen.getByText(/This scheme has no tests a panel can use/),
     ).toBeInTheDocument();
+  });
+
+  test("the picker waits for the scheme's tests instead of saying it has none", () => {
+    const { container } = renderWizard();
+    const reply = getFromOpenElisServer.getMockImplementation();
+    let lateCatalog;
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/displayList/ALL_TESTS") {
+        lateCatalog = () => reply(url, cb);
+      } else {
+        reply(url, cb);
+      }
+    });
+    pickScheme("3");
+
+    expect(
+      screen.queryByText(/This scheme has no tests a panel can use/),
+    ).toBeNull();
+    act(() => lateCatalog());
+    expect(offeredTests(container)).toEqual([
+      "HIV Viral Load",
+      "Malaria smear",
+    ]);
+  });
+
+  test("a failed read says so instead of claiming the scheme has no tests", () => {
+    renderWizard();
+    const reply = getFromOpenElisServer.getMockImplementation();
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      url === "/rest/eqa/testable-tests" ? cb(undefined) : reply(url, cb),
+    );
+    pickScheme("3");
+
+    expect(
+      screen.getByText(/The scheme's tests could not be loaded/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/This scheme has no tests a panel can use/),
+    ).toBeNull();
   });
 });

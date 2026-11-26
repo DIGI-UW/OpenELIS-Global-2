@@ -542,6 +542,10 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
         if (request.plannedStartDate() == null || request.plannedEndDate() == null) {
             throw new IllegalArgumentException("A cycle needs a distribution date and a submission deadline");
         }
+        if (request.plannedEndDate().before(request.plannedStartDate())) {
+            throw new IllegalArgumentException(
+                    "A cycle's submission deadline cannot fall before its distribution date");
+        }
         if (GenericValidator.isBlankOrNull(request.panelName())) {
             throw new IllegalArgumentException("A cycle needs a panel name");
         }

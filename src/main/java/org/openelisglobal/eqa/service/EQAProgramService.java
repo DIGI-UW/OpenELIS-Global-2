@@ -1,6 +1,7 @@
 package org.openelisglobal.eqa.service;
 
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQAProgramTest;
@@ -15,6 +16,12 @@ public interface EQAProgramService extends BaseObjectService<EQAProgram, Long> {
     EQAProgram activateProgram(Long programId);
 
     List<EQAProgramTest> getTestAssignments(Long programId);
+
+    /**
+     * Picker label per test id, "Name (Sample type)", since a scheme can hold
+     * same-named tests.
+     */
+    Map<Long, String> getTestLabels(Long programId);
 
     EQAProgramTest assignTest(Long programId, Long testId);
 

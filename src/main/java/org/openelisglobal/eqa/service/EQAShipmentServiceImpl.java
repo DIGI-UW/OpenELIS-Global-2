@@ -440,6 +440,10 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
     @Override
     public Map<String, Object> markDelivered(Long cycleId, Long organizationId, String sysUserId) {
         EQACycle cycle = cycle(cycleId);
+        if (cycle.getStatus() == EQACycleStatus.CLOSED) {
+            throw new IllegalStateException(
+                    "Cycle " + displayName(cycle) + " is closed, so no receipt can be recorded for it");
+        }
         requireParticipant(eqaCycleService.participantOrganizationIds(cycle), organizationId);
         ShippingBox box = latestBoxes(cycleId).get(organizationId);
         if (box == null || box.getShipment() == null) {
@@ -508,9 +512,10 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         // so a remote receipt and a manual click write identical rows and the cycle
         // advances the same way. A superseded box (a repeat replaced it) must not
         // mark the participant delivered — the monitor follows the repeat — so it is
-        // only closed off.
+        // only closed off. So is a closed cycle's box, which markDelivered refuses.
         ShippingBox latest = latestBoxes(box.getEqaCycleId()).get(organizationId);
-        if (latest != null && latest.getId().equals(box.getId())) {
+        if (latest != null && latest.getId().equals(box.getId())
+                && cycle(box.getEqaCycleId()).getStatus() != EQACycleStatus.CLOSED) {
             markDelivered(box.getEqaCycleId(), organizationId, sysUserId);
             return;
         }
