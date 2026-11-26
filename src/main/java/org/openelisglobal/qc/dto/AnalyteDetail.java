@@ -3,7 +3,8 @@ package org.openelisglobal.qc.dto;
 import java.math.BigDecimal;
 
 /**
- * Per-analyte (test) QC detail for an instrument: latest z-score and run time.
+ * Per-analyte (test) QC detail for an instrument: latest z-score and run time,
+ * and the result run its latest control was recorded on (OGC-1200 FR-G2).
  */
 public class AnalyteDetail {
 
@@ -11,6 +12,15 @@ public class AnalyteDetail {
     private String testName;
     private BigDecimal latestZScore;
     private String lastRunTime;
+    private Long lastRunId;
+
+    public Long getLastRunId() {
+        return lastRunId;
+    }
+
+    public void setLastRunId(Long lastRunId) {
+        this.lastRunId = lastRunId;
+    }
 
     public String getTestId() {
         return testId;

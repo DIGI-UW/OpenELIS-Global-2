@@ -355,3 +355,51 @@ describe("the pathology reading a referred case carries", () => {
     consoleError.mockRestore();
   });
 });
+
+describe("the prior anatomic-pathology results under the patient band", () => {
+  it("renders the prior results panel directly after the patient header and asks this case's endpoint", async () => {
+    // The tests above leave their calls on the shared mock.
+    getFromOpenElisServer.mockClear();
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === CASE_URL) {
+        return callback({
+          labNumber: "ACC4",
+          patientPK: "1",
+          lastName: "B",
+          firstName: "A",
+          status: "IN_PROGRESS",
+          assignedTechnicianId: "1",
+          assignedPathologistId: "1",
+          blocks: [],
+          slides: [],
+          reports: [],
+          requests: [],
+          techniques: [],
+          conclusions: [],
+        });
+      }
+      if (url.startsWith("/rest/paginatedDisplayList/")) {
+        return callback({
+          displayItems: [],
+          paging: { totalPages: 1, currentPage: 1 },
+        });
+      }
+      return callback([]);
+    });
+
+    renderCaseView();
+    await waitFor(() =>
+      expect(document.querySelector(".patient-header2")).not.toBeNull(),
+    );
+
+    const panel = screen.getByTestId("prior-results").closest(".prior-results");
+    expect(panel.previousElementSibling).toContainElement(
+      document.querySelector(".patient-header2"),
+    );
+    expect(
+      getFromOpenElisServer.mock.calls.filter(
+        ([url]) => url === CASE_URL + "/priorResults",
+      ),
+    ).toHaveLength(1);
+  });
+});

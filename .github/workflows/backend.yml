@@ -34,7 +34,7 @@ jobs:
           java-version: "21"
           cache: maven
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: "20"
       # The formatter comes from download.eclipse.org; when that site does not
@@ -201,7 +201,7 @@ jobs:
 
       - name: Preserve backend and existing-data upgrade diagnostics
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: backend-test-reports
           path: target/surefire-reports/
@@ -254,7 +254,7 @@ jobs:
 
       - name: Upload test reports
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: backend-test-reports-isolated
           path: target/surefire-reports/
@@ -262,7 +262,7 @@ jobs:
 
       - name: Upload coverage data
         if: always() && github.event_name == 'push'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: backend-jacoco-isolated
           path: target/jacoco.exec
@@ -298,7 +298,7 @@ jobs:
 
       - name: Upload test reports
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: backend-test-reports-shard-${{ matrix.shard }}
           path: target/surefire-reports/
@@ -306,7 +306,7 @@ jobs:
 
       - name: Upload coverage data
         if: always() && github.event_name == 'push'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: backend-jacoco-shard-${{ matrix.shard }}
           path: target/jacoco.exec
@@ -325,14 +325,14 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Download shard reports
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: backend-test-reports-*
           path: reports
 
       - name: Download the single full run's reports
         if: needs.changes.outputs.full == 'true'
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: backend-test-reports
           path: reports/baseline
@@ -368,7 +368,7 @@ jobs:
         uses: ./.github/actions/backend-maven-setup
 
       - name: Download coverage data
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: backend-jacoco-*
           path: coverage
@@ -438,7 +438,7 @@ jobs:
 
       - name: Upload security artifacts
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: backend-security-reports
           path: |

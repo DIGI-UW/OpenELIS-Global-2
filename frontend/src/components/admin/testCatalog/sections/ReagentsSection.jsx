@@ -156,10 +156,11 @@ const ReagentsSection = ({ testId }) => {
   };
 
   // PUT one row (usage type / quantity / unit). Driven by Save, never by leaving a
-  // field. On failure the edited values stay on screen for a retry.
-  const saveRow = (id, overrides = {}, onDone) => {
+  // field. On failure the edited values stay on screen, and Save sends them again.
+  const saveRow = (id, overrides, onDone) => {
     const link = byId[id];
     if (!link) {
+      onDone(false);
       return;
     }
     const current = { ...edits[id], ...overrides };
@@ -169,6 +170,7 @@ const ReagentsSection = ({ testId }) => {
         (link.quantityPerTest != null ? String(link.quantityPerTest) : "") &&
       (current.quantityUnit || "") === (link.quantityUnit || "");
     if (unchanged) {
+      onDone(true);
       return;
     }
     const payload = {
@@ -183,33 +185,13 @@ const ReagentsSection = ({ testId }) => {
       `/rest/test-catalog/${testId}/reagents/${link.reagentId}`,
       JSON.stringify(payload),
       (status) => {
-        if (status >= 200 && status < 300) {
+        const ok = status >= 200 && status < 300;
+        if (ok) {
           setReagents((prev) =>
             prev.map((r) => (r.id === id ? { ...r, ...payload } : r)),
           );
-          if (onDone) {
-            onDone(true);
-            return;
-          }
-          setNotification({
-            kind: "success",
-            text: intl.formatMessage({
-              id: "label.testCatalog.reagents.updated",
-            }),
-          });
-        } else {
-          if (onDone) {
-            onDone(false);
-            return;
-          }
-          setNotification({
-            kind: "error",
-            text: intl.formatMessage({
-              id: "label.testCatalog.reagents.saveError",
-            }),
-            retryId: id,
-          });
         }
+        onDone(ok);
       },
     );
   };
@@ -376,20 +358,6 @@ const ReagentsSection = ({ testId }) => {
           kind={notification.kind}
           lowContrast
           title={notification.text}
-          actionButtonLabel={
-            notification.retryId
-              ? intl.formatMessage({ id: "label.testCatalog.reagents.retry" })
-              : undefined
-          }
-          onActionButtonClick={
-            notification.retryId
-              ? () => {
-                  const id = notification.retryId;
-                  setNotification(null);
-                  saveRow(id);
-                }
-              : undefined
-          }
           onCloseButtonClick={() => setNotification(null)}
         />
       )}
@@ -497,16 +465,23 @@ const ReagentsSection = ({ testId }) => {
                               invalidText={intl.formatMessage({
                                 id: "label.testCatalog.reagents.unitTooLong",
                               })}
-                              onChange={({ selectedItem }) =>
-                                setEdit(
-                                  link.id,
-                                  "quantityUnit",
-                                  selectedItem || "",
-                                )
-                              }
-                              onInputChange={(text) =>
-                                setEdit(link.id, "quantityUnit", text || "")
-                              }
+                              onChange={({ selectedItem }) => {
+                                if (
+                                  (selectedItem || "") !==
+                                  (e.quantityUnit || "")
+                                ) {
+                                  setEdit(
+                                    link.id,
+                                    "quantityUnit",
+                                    selectedItem || "",
+                                  );
+                                }
+                              }}
+                              onInputChange={(text) => {
+                                if ((text || "") !== (e.quantityUnit || "")) {
+                                  setEdit(link.id, "quantityUnit", text || "");
+                                }
+                              }}
                             />
                           </div>
                         </TableCell>

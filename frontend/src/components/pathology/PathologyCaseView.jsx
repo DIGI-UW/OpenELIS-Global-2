@@ -27,6 +27,7 @@ import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
 import { FormattedMessage, useIntl } from "react-intl";
 import PatientHeader from "../common/PatientHeader";
+import PriorResultsPanel from "../common/PriorResultsPanel";
 import "./PathologyDashboard.css";
 import "./pathologyCaseView.scss";
 import PageBreadCrumb from "../common/PageBreadCrumb";
@@ -1618,6 +1619,7 @@ function PathologyCaseView() {
               },
             ]}
           />
+          <PriorResultsPanel bench="pathology" caseId={pathologySampleId} />
           {notificationVisible === true ? <AlertDialog /> : ""}
           {postSavePrintModel?.accessionNumber && (
             <PostSavePrintDialog

@@ -52,7 +52,8 @@ public class ImmunohistochemistryDisplayServiceImpl implements Immunohistochemis
                 .get(immunohistochemistrySampleId);
         ImmunohistochemistryDisplayItem displayItem = new ImmunohistochemistryDisplayItem();
         displayItem.setStatus(immunohistochemistrySample.getStatus());
-        displayItem.setRequestDate(immunohistochemistrySample.getSample().getEnteredDate());
+        displayItem.setRequestDate(
+                DateUtil.convertDateToLocalDate(immunohistochemistrySample.getSample().getEnteredDate()));
         if (immunohistochemistrySample.getPathologist() != null) {
             displayItem.setAssignedPathologist(immunohistochemistrySample.getPathologist().getDisplayName());
         }
@@ -74,7 +75,8 @@ public class ImmunohistochemistryDisplayServiceImpl implements Immunohistochemis
                 .get(immunohistochemistrySampleId);
         ImmunohistochemistryCaseViewDisplayItem displayItem = new ImmunohistochemistryCaseViewDisplayItem();
         displayItem.setStatus(immunohistochemistrySample.getStatus());
-        displayItem.setRequestDate(immunohistochemistrySample.getSample().getEnteredDate());
+        displayItem.setRequestDate(
+                DateUtil.convertDateToLocalDate(immunohistochemistrySample.getSample().getEnteredDate()));
         if (immunohistochemistrySample.getPathologist() != null) {
             displayItem.setAssignedPathologist(immunohistochemistrySample.getPathologist().getDisplayName());
             displayItem.setAssignedPathologistId(immunohistochemistrySample.getPathologist().getId());

@@ -1,13 +1,15 @@
 package org.openelisglobal.storage.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import org.openelisglobal.coldstorage.service.FreezerService;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
 import org.openelisglobal.common.constants.Constants;
@@ -21,6 +23,7 @@ import org.openelisglobal.storage.form.response.StorageDeviceResponse;
 import org.openelisglobal.storage.form.response.StorageRackResponse;
 import org.openelisglobal.storage.form.response.StorageRoomResponse;
 import org.openelisglobal.storage.form.response.StorageShelfResponse;
+import org.openelisglobal.storage.service.CodeGenerationService;
 import org.openelisglobal.storage.service.DeletionValidationResult;
 import org.openelisglobal.storage.service.StorageDashboardService;
 import org.openelisglobal.storage.service.StorageDeviceService;
@@ -65,6 +68,9 @@ public class StorageLocationRestController extends BaseRestController {
     private StorageDeviceService storageDeviceService;
 
     @Autowired
+    private CodeGenerationService codeGenerationService;
+
+    @Autowired
     private SampleStorageAssignmentDAO sampleStorageAssignmentDAO;
 
     @Autowired
@@ -81,13 +87,12 @@ public class StorageLocationRestController extends BaseRestController {
     /**
      * Helper method to check admin status with graceful error handling
      *
-     * @param request HTTP request containing session information
      * @return true if user is admin, false otherwise (defaults to false if session
      *         unavailable)
      */
-    private boolean checkAdminStatus(HttpServletRequest request) {
+    private boolean checkAdminStatus() {
         try {
-            String sysUserId = getSysUserId(request);
+            String sysUserId = getSysUserId();
             if (sysUserId == null) {
                 return false;
             }
@@ -101,7 +106,7 @@ public class StorageLocationRestController extends BaseRestController {
     // ========== Room Endpoints ==========
 
     @PostMapping("/rooms")
-    public ResponseEntity<?> createRoom(@Valid @RequestBody StorageRoomForm form, HttpServletRequest request) {
+    public ResponseEntity<?> createRoom(@Valid @RequestBody StorageRoomForm form) {
         try {
             if (!storageLocationService.isNameUniqueWithinParent(form.getName(), null, "room", null)) {
                 Map<String, Object> error = new HashMap<>();
@@ -171,6 +176,8 @@ public class StorageLocationRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
             return ResponseEntity.ok(toRoomResponse(room));
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             logger.error("Error getting room by id", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -234,7 +241,7 @@ public class StorageLocationRestController extends BaseRestController {
      * OGC-75: Check if a room can be deleted (pre-flight check for frontend)
      */
     @GetMapping("/rooms/{id}/can-delete")
-    public ResponseEntity<Map<String, Object>> canDeleteRoom(@PathVariable String id, HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>> canDeleteRoom(@PathVariable String id) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageRoom room = storageLocationService.getRoom(idInt);
@@ -242,7 +249,7 @@ public class StorageLocationRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
-            boolean isAdmin = checkAdminStatus(request);
+            boolean isAdmin = checkAdminStatus();
 
             Map<String, Object> response = new HashMap<>();
             response.put("isAdmin", isAdmin);
@@ -286,7 +293,7 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     @DeleteMapping("/rooms/{id}")
-    public ResponseEntity<?> deleteRoom(@PathVariable String id, HttpServletRequest request) {
+    public ResponseEntity<?> deleteRoom(@PathVariable String id) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageRoom room = storageLocationService.getRoom(idInt);
@@ -294,7 +301,7 @@ public class StorageLocationRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
-            boolean isAdmin = checkAdminStatus(request);
+            boolean isAdmin = checkAdminStatus();
             if (!isAdmin) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
@@ -333,7 +340,7 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     @PostMapping("/devices")
-    public ResponseEntity<?> createDevice(@Valid @RequestBody StorageDeviceForm form, HttpServletRequest request) {
+    public ResponseEntity<?> createDevice(@Valid @RequestBody StorageDeviceForm form) {
         try {
             // Set parent room first (needed for code generation)
             Integer parentRoomId = form.getParentRoomId() != null ? Integer.parseInt(form.getParentRoomId()) : null;
@@ -530,7 +537,7 @@ public class StorageLocationRestController extends BaseRestController {
      * OGC-75: Check if a device can be deleted (pre-flight check for frontend)
      */
     @GetMapping("/devices/{id}/can-delete")
-    public ResponseEntity<Map<String, Object>> canDeleteDevice(@PathVariable String id, HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>> canDeleteDevice(@PathVariable String id) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageDevice device = (StorageDevice) storageLocationService.get(idInt, StorageDevice.class);
@@ -538,7 +545,7 @@ public class StorageLocationRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
-            boolean isAdmin = checkAdminStatus(request);
+            boolean isAdmin = checkAdminStatus();
             Map<String, Object> response = new HashMap<>();
             response.put("isAdmin", isAdmin);
 
@@ -602,7 +609,7 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     @DeleteMapping("/devices/{id}")
-    public ResponseEntity<?> deleteDevice(@PathVariable String id, HttpServletRequest request) {
+    public ResponseEntity<?> deleteDevice(@PathVariable String id) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageDevice device = (StorageDevice) storageLocationService.get(idInt, StorageDevice.class);
@@ -610,7 +617,7 @@ public class StorageLocationRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
-            boolean isAdmin = checkAdminStatus(request);
+            boolean isAdmin = checkAdminStatus();
             if (!isAdmin) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
@@ -639,7 +646,7 @@ public class StorageLocationRestController extends BaseRestController {
     // ========== Shelf Endpoints ==========
 
     @PostMapping("/shelves")
-    public ResponseEntity<?> createShelf(@Valid @RequestBody StorageShelfForm form, HttpServletRequest request) {
+    public ResponseEntity<?> createShelf(@Valid @RequestBody StorageShelfForm form) {
         try {
             StorageShelf shelf = new StorageShelf();
             shelf.setLabel(form.getLabel());
@@ -816,7 +823,7 @@ public class StorageLocationRestController extends BaseRestController {
      * OGC-75: Check if a shelf can be deleted (pre-flight check for frontend)
      */
     @GetMapping("/shelves/{id}/can-delete")
-    public ResponseEntity<Map<String, Object>> canDeleteShelf(@PathVariable String id, HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>> canDeleteShelf(@PathVariable String id) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageShelf shelf = (StorageShelf) storageLocationService.get(idInt, StorageShelf.class);
@@ -824,7 +831,7 @@ public class StorageLocationRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
-            boolean isAdmin = checkAdminStatus(request);
+            boolean isAdmin = checkAdminStatus();
             Map<String, Object> response = new HashMap<>();
             response.put("isAdmin", isAdmin);
 
@@ -865,7 +872,7 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     @DeleteMapping("/shelves/{id}")
-    public ResponseEntity<?> deleteShelf(@PathVariable String id, HttpServletRequest request) {
+    public ResponseEntity<?> deleteShelf(@PathVariable String id) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageShelf shelf = (StorageShelf) storageLocationService.get(idInt, StorageShelf.class);
@@ -873,7 +880,7 @@ public class StorageLocationRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
-            boolean isAdmin = checkAdminStatus(request);
+            boolean isAdmin = checkAdminStatus();
             if (!isAdmin) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
@@ -902,7 +909,7 @@ public class StorageLocationRestController extends BaseRestController {
     // ========== Rack Endpoints ==========
 
     @PostMapping("/racks")
-    public ResponseEntity<?> createRack(@Valid @RequestBody StorageRackForm form, HttpServletRequest request) {
+    public ResponseEntity<?> createRack(@Valid @RequestBody StorageRackForm form) {
         try {
             StorageRack rack = new StorageRack();
             rack.setLabel(form.getLabel());
@@ -1082,7 +1089,7 @@ public class StorageLocationRestController extends BaseRestController {
      * OGC-75: Check if a rack can be deleted (pre-flight check for frontend)
      */
     @GetMapping("/racks/{id}/can-delete")
-    public ResponseEntity<Map<String, Object>> canDeleteRack(@PathVariable String id, HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>> canDeleteRack(@PathVariable String id) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageRack rack = (StorageRack) storageLocationService.get(idInt, StorageRack.class);
@@ -1090,7 +1097,7 @@ public class StorageLocationRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
-            boolean isAdmin = checkAdminStatus(request);
+            boolean isAdmin = checkAdminStatus();
 
             Map<String, Object> response = new HashMap<>();
             response.put("isAdmin", isAdmin);
@@ -1132,7 +1139,7 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     @DeleteMapping("/racks/{id}")
-    public ResponseEntity<?> deleteRack(@PathVariable String id, HttpServletRequest request) {
+    public ResponseEntity<?> deleteRack(@PathVariable String id) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageRack rack = (StorageRack) storageLocationService.get(idInt, StorageRack.class);
@@ -1140,7 +1147,7 @@ public class StorageLocationRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
-            boolean isAdmin = checkAdminStatus(request);
+            boolean isAdmin = checkAdminStatus();
             if (!isAdmin) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
@@ -1184,7 +1191,7 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     @PostMapping("/boxes")
-    public ResponseEntity<?> createBox(@Valid @RequestBody StorageBoxForm form, HttpServletRequest request) {
+    public ResponseEntity<?> createBox(@Valid @RequestBody StorageBoxForm form) {
         try {
             StorageBox box = new StorageBox();
             box.setLabel(form.getLabel());
@@ -1316,7 +1323,7 @@ public class StorageLocationRestController extends BaseRestController {
      * OGC-75: Check if a box can be deleted (pre-flight check for frontend)
      */
     @GetMapping("/boxes/{id}/can-delete")
-    public ResponseEntity<Map<String, Object>> canDeleteBox(@PathVariable String id, HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>> canDeleteBox(@PathVariable String id) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageBox box = (StorageBox) storageLocationService.get(idInt, StorageBox.class);
@@ -1324,7 +1331,7 @@ public class StorageLocationRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
-            boolean isAdmin = checkAdminStatus(request);
+            boolean isAdmin = checkAdminStatus();
 
             Map<String, Object> response = new HashMap<>();
             response.put("isAdmin", isAdmin);
@@ -1346,7 +1353,7 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     @DeleteMapping("/boxes/{id}")
-    public ResponseEntity<?> deleteBox(@PathVariable String id, HttpServletRequest request) {
+    public ResponseEntity<?> deleteBox(@PathVariable String id) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageBox box = (StorageBox) storageLocationService.get(idInt, StorageBox.class);
@@ -1354,7 +1361,7 @@ public class StorageLocationRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
-            boolean isAdmin = checkAdminStatus(request);
+            boolean isAdmin = checkAdminStatus();
             if (!isAdmin) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
@@ -1379,83 +1386,41 @@ public class StorageLocationRestController extends BaseRestController {
     // ========== Helper Methods ==========
 
     /**
-     * Generate a unique room code from the room name. If the base code already
-     * exists, appends a numeric suffix.
-     * 
+     * Generate a unique room code from the room name, within the 10-character limit
+     * that CodeValidationService enforces on save. If the code is taken, a numeric
+     * suffix is appended.
+     *
      * @param name Room name
-     * @return Unique code (max 50 characters)
+     * @return Unique code (max 10 characters)
      */
     private String generateUniqueRoomCode(String name) {
-        // Generate base code from name: uppercase, alphanumeric only, max 45 chars
-        String baseCode = name.substring(0, Math.min(45, name.length())).toUpperCase().replaceAll("[^A-Z0-9]", "");
-
-        // If base code is empty (name had no alphanumeric chars), use default
-        if (baseCode.isEmpty()) {
-            baseCode = "ROOM";
-        }
-
-        String code = baseCode;
-        int suffix = 1;
-
-        // Check for uniqueness and append suffix if needed
-        while (storageRoomService.findByCode(code) != null) {
-            String suffixStr = String.valueOf(suffix);
-            int maxBaseLength = 50 - suffixStr.length() - 1; // -1 for hyphen
-            if (maxBaseLength < 1) {
-                maxBaseLength = 1;
-            }
-            code = baseCode.substring(0, Math.min(maxBaseLength, baseCode.length())) + "-" + suffixStr;
-            suffix++;
-
-            // Safety check to prevent infinite loop
-            if (suffix > 9999) {
-                // Fallback to timestamp-based code
-                code = baseCode.substring(0, Math.min(30, baseCode.length())) + "-" + System.currentTimeMillis();
-                break;
-            }
-        }
-
-        return code;
+        return generateUniqueCode(name, "room", code -> storageRoomService.findByCode(code) != null);
     }
 
     /**
-     * Generate a unique device code from the device name within a room. If the base
-     * code already exists in the room, appends a numeric suffix.
-     * 
+     * Generate a unique device code from the device name within a room, within the
+     * 10-character limit that CodeValidationService enforces on save. If the code
+     * is taken in the room, a numeric suffix is appended.
+     *
      * @param name   Device name
      * @param roomId Parent room ID
-     * @return Unique code (max 50 characters)
+     * @return Unique code (max 10 characters)
      */
     private String generateUniqueDeviceCode(String name, Integer roomId) {
-        // Generate base code from name: uppercase, alphanumeric only, max 45 chars
-        String baseCode = name.substring(0, Math.min(45, name.length())).toUpperCase().replaceAll("[^A-Z0-9]", "");
+        return generateUniqueCode(name, "device",
+                code -> storageDeviceService.findByParentRoomIdAndCode(roomId, code) != null);
+    }
 
-        // If base code is empty (name had no alphanumeric chars), use default
-        if (baseCode.isEmpty()) {
-            baseCode = "DEVICE";
+    private String generateUniqueCode(String name, String context, Predicate<String> isTaken) {
+        // A name with no alphanumeric characters falls back to the level name
+        String source = name.matches(".*[A-Za-z0-9].*") ? name : context;
+        Set<String> taken = new HashSet<>();
+        String code = codeGenerationService.generateCodeFromName(source, context);
+        // Stops once a free code is found, or when the generator runs out of
+        // suffixes and repeats a taken one (save then reports the conflict)
+        while (isTaken.test(code) && taken.add(code)) {
+            code = codeGenerationService.generateCodeWithConflictResolution(source, context, taken);
         }
-
-        String code = baseCode;
-        int suffix = 1;
-
-        // Check for uniqueness within the room and append suffix if needed
-        while (storageDeviceService.findByParentRoomIdAndCode(roomId, code) != null) {
-            String suffixStr = String.valueOf(suffix);
-            int maxBaseLength = 50 - suffixStr.length() - 1; // -1 for hyphen
-            if (maxBaseLength < 1) {
-                maxBaseLength = 1;
-            }
-            code = baseCode.substring(0, Math.min(maxBaseLength, baseCode.length())) + "-" + suffixStr;
-            suffix++;
-
-            // Safety check to prevent infinite loop
-            if (suffix > 9999) {
-                // Fallback to timestamp-based code
-                code = baseCode.substring(0, Math.min(30, baseCode.length())) + "-" + System.currentTimeMillis();
-                break;
-            }
-        }
-
         return code;
     }
 
