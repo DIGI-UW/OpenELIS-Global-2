@@ -312,7 +312,7 @@ test.describe("OGC-1200 a single save is a run of one", () => {
       await openRow(page, accession);
       await saveValue(page, "81");
       await expect(
-        page.getByText(/the test requires one on every run/).first(),
+        page.getByText(/lacks QC this test requires on every run/).first(),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
 
       await openRow(page, accession, true);
