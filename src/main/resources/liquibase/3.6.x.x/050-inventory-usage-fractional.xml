@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+ <changeSet id="OGC-1200-inventory-usage-fractional" author="openelisglobal">
+  <comment>A test uses a fraction of a reagent unit (0.5 mL per test is configured on the Test Catalog), but consumption required at least 1, so recording the use of a test's reagent failed. A use only has to be more than nothing.</comment>
+  <sql>
+   ALTER TABLE clinlims.inventory_usage DROP CONSTRAINT IF EXISTS chk_usage_quantity;
+   ALTER TABLE clinlims.inventory_usage ADD CONSTRAINT chk_usage_quantity CHECK (quantity_used &gt; 0);
+  </sql>
+  <rollback>
+   <sql>
+    ALTER TABLE clinlims.inventory_usage DROP CONSTRAINT IF EXISTS chk_usage_quantity;
+    ALTER TABLE clinlims.inventory_usage ADD CONSTRAINT chk_usage_quantity CHECK (quantity_used &gt;= 1);
+   </sql>
+  </rollback>
+ </changeSet>
+</databaseChangeLog>

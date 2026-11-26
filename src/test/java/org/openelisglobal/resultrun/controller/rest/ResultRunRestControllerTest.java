@@ -122,6 +122,48 @@ public class ResultRunRestControllerTest extends BaseWebContextSensitiveTest {
     }
 
     /**
+     * OGC-1200 FR-B3, FR-C4: a control recorded on a row answers with the row's
+     * hold after it, so the worklist holds the row on a failing control and
+     * releases it once the run no longer holds its test, without a reload.
+     */
+    @Test
+    public void aRowControlAnswersWithTheRowsHoldAfterIt() throws Exception {
+        String failing = pendingAnalysis();
+        String passing = pendingAnalysis();
+        try {
+            mockMvc.perform(post("/rest/result-runs/of-analysis/" + failing + "/controls").session(session)
+                    .contentType(MediaType.APPLICATION_JSON).content(rowControl("INVALID")))
+                    .andExpect(status().isCreated()).andExpect(jsonPath("$.id").isNotEmpty())
+                    .andExpect(jsonPath("$.runId").isNumber()).andExpect(jsonPath("$.waitingRun.held").value(true))
+                    .andExpect(jsonPath("$.waitingRun.heldCause").value("QC_FAILED"));
+            mockMvc.perform(post("/rest/result-runs/of-analysis/" + passing + "/controls").session(session)
+                    .contentType(MediaType.APPLICATION_JSON).content(rowControl("VALID")))
+                    .andExpect(status().isCreated()).andExpect(jsonPath("$.runId").isNumber())
+                    .andExpect(jsonPath("$.waitingRun").doesNotExist());
+        } finally {
+            for (String analysisId : java.util.List.of(failing, passing)) {
+                jdbc.update("DELETE FROM clinlims.result_run_event WHERE run_id IN (SELECT id FROM clinlims.result_run"
+                        + " WHERE analysis_id = CAST(? AS numeric))", analysisId);
+                jdbc.update("DELETE FROM clinlims.qc_result WHERE run_id IN (SELECT id FROM clinlims.result_run"
+                        + " WHERE analysis_id = CAST(? AS numeric))", analysisId);
+                jdbc.update("DELETE FROM clinlims.result_run WHERE analysis_id = CAST(? AS numeric)", analysisId);
+                jdbc.update("DELETE FROM clinlims.analysis WHERE id = CAST(? AS numeric)", analysisId);
+            }
+        }
+    }
+
+    private String pendingAnalysis() {
+        return jdbc.queryForObject("INSERT INTO clinlims.analysis (id, sampitem_id, test_id, test_sect_id, revision,"
+                + " status_id, analysis_type, lastupdated) VALUES (nextval('clinlims.analysis_seq'), 601, 1, 1, 1, 1,"
+                + " 'MANUAL', NOW()) RETURNING CAST(id AS VARCHAR)", String.class);
+    }
+
+    private static String rowControl(String outcome) {
+        return "{\"source\": \"RDT\", \"testId\": \"1\", \"testSectionId\": \"1\", \"controlLabel\": \"Kit 1\","
+                + " \"qualitativeOutcome\": \"" + outcome + "\"}";
+    }
+
+    /**
      * OGC-1200 slice 5b: confirming a retest link answers 400 with the reason when
      * the run retests nothing of the named run, and 404 for a run that does not
      * exist.

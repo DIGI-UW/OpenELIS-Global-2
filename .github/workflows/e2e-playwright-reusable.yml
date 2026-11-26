@@ -97,7 +97,7 @@ jobs:
 
       - name: Setup Node.js
         if: steps.pw-cache.outputs.cache-hit != 'true'
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: "20"
           cache: npm
@@ -164,7 +164,7 @@ jobs:
           sudo swapon /swapfile 2>/dev/null || true
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: "20"
           cache: npm
@@ -222,7 +222,7 @@ jobs:
 
       - name: Download image map (cross-run)
         if: inputs.artifact_source_mode == 'cross_run'
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.setup_analyzer_harness && 'e2e-image-map' || 'e2e-image-map-base' }}
           path: /tmp/e2e-image-map
@@ -231,7 +231,7 @@ jobs:
 
       - name: Download image map (same-run)
         if: inputs.artifact_source_mode == 'same_run'
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.setup_analyzer_harness && 'e2e-image-map' || 'e2e-image-map-base' }}
           path: /tmp/e2e-image-map
@@ -400,7 +400,7 @@ jobs:
 
       - name: Upload blob report
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.artifact_prefix }}-blob-report-${{ matrix.shard_index }}
           path: frontend/blob-report
@@ -409,7 +409,7 @@ jobs:
 
       - name: Upload failure screenshots
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.artifact_prefix }}-screenshots-${{ matrix.shard_index }}
           path: frontend/test-results/**/test-failed-*.png
@@ -418,7 +418,7 @@ jobs:
 
       - name: Upload test traces
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.artifact_prefix }}-traces-${{ matrix.shard_index }}
           path: frontend/test-results/**/trace.zip
@@ -467,13 +467,13 @@ jobs:
           allow-unsafe-pr-checkout: true
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: "20"
 
       - name: Download blob reports from shards
         continue-on-error: true
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: frontend/all-blob-reports
           pattern: ${{ inputs.artifact_prefix }}-blob-report-*
@@ -506,7 +506,7 @@ jobs:
 
       - name: Upload merged HTML report
         if: ${{ always() }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.artifact_prefix }}-playwright-report-html-attempt-${{ github.run_attempt }}
           path: frontend/playwright-report/

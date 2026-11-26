@@ -1,0 +1,62 @@
+@use "@carbon/styles/scss/spacing";
+@use "@carbon/styles/scss/type";
+
+// The prior anatomic-pathology results under the patient band of the three
+// case views. Written against WCAG 2.1 AA: text keeps Carbon's own contrast,
+// so a row is not tinted on hover (a link on Carbon's hovered row measured
+// 4.08:1). The lab number, the request date and the headers keep to one
+// line; the specimen wraps between words; only the conclusion, which can be
+// one unbroken string, breaks anywhere, so it is the column that gives way
+// rather than the page scrolling sideways.
+.prior-results {
+  margin-block: spacing.$spacing-05;
+
+  .cds--data-table-content {
+    max-inline-size: 100%;
+  }
+
+  .cds--data-table th {
+    white-space: nowrap;
+  }
+
+  .cds--data-table td {
+    vertical-align: top;
+  }
+
+  .cds--data-table td.prior-results__nowrap {
+    white-space: nowrap;
+  }
+
+  .cds--data-table td.prior-results__conclusion {
+    overflow-wrap: anywhere;
+  }
+
+  .cds--data-table tbody tr:not([data-child-row]):hover,
+  .cds--data-table tbody tr:hover td {
+    background-color: var(--cds-layer);
+  }
+
+  .cds--data-table tbody tr:hover td {
+    border-block-end: 1px solid var(--cds-border-subtle);
+    border-block-start: 1px solid var(--cds-layer);
+    color: var(--cds-text-primary);
+  }
+
+  .cds--data-table tr:hover .cds--link {
+    color: var(--cds-link-primary);
+  }
+}
+
+.prior-results__bench {
+  @include type.type-style("helper-text-01");
+
+  color: var(--cds-text-secondary);
+}
+
+.prior-results__message {
+  margin-block-start: spacing.$spacing-03;
+}
+
+.prior-results__toggle {
+  margin-block-start: spacing.$spacing-03;
+}

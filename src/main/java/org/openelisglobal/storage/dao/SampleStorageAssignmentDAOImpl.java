@@ -1,6 +1,8 @@
 package org.openelisglobal.storage.dao;
 
 import java.util.List;
+import java.util.Map;
+
 import org.hibernate.FlushMode;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
@@ -307,5 +309,38 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
             logger.error("Error finding paginated sample storage assignments: " + e.getMessage(), e);
             throw new LIMSRuntimeException("Error finding paginated sample storage assignments", e);
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Long> countSampleItemAssignmentMetrics(String disposedStatusId) {
+        Map<String, Long> metrics = new java.util.HashMap<>();
+        metrics.put("totalSampleItems", 0L);
+        metrics.put("active", 0L);
+        metrics.put("disposed", 0L);
+
+        try {
+            String effectiveDisposedId = disposedStatusId != null ? disposedStatusId : "";
+            String sql = "SELECT " + "COUNT(*) AS total_count, " + "COUNT(*) FILTER (WHERE si.id IS NOT NULL "
+                    + "    AND (si.status_id IS NULL OR CAST(si.status_id AS VARCHAR) <> :disposedStatusId)) AS active_count, "
+                    + "COUNT(*) FILTER (WHERE si.id IS NOT NULL "
+                    + "    AND CAST(si.status_id AS VARCHAR) = :disposedStatusId) AS disposed_count "
+                    + "FROM sample_storage_assignment ssa " + "LEFT JOIN sample_item si ON ssa.sample_item_id = si.id "
+                    + "WHERE ssa.sample_item_id IS NOT NULL";
+
+            Object[] row = (Object[]) entityManager.unwrap(Session.class).createNativeQuery(sql)
+                    .setParameter("disposedStatusId", effectiveDisposedId).uniqueResult();
+
+            if (row != null) {
+                metrics.put("totalSampleItems", row[0] != null ? ((Number) row[0]).longValue() : 0L);
+                metrics.put("active", row[1] != null ? ((Number) row[1]).longValue() : 0L);
+                metrics.put("disposed", row[2] != null ? ((Number) row[2]).longValue() : 0L);
+            }
+        } catch (Exception e) {
+            logger.error("Error counting sample item assignment metrics: " + e.getMessage(), e);
+            throw new LIMSRuntimeException("Error counting sample item assignment metrics", e);
+        }
+
+        return metrics;
     }
 }
