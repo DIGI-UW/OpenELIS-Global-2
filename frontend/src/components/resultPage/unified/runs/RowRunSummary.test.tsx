@@ -107,4 +107,49 @@ describe("OGC-1200 FR-D6, FR-D7 a row's run", () => {
       "No control is recorded on the run for this test.",
     );
   });
+
+  it("names what the row's test lacks on its run and lists its blanks (FR-C10, FR-H1)", () => {
+    utilsMock.getFromOpenElisServer.mockImplementation(
+      (url: string, callback: (r: unknown) => void) => {
+        if (url === "/rest/result-runs/248" && typeof callback === "function") {
+          callback({
+            ...header("OPEN"),
+            qc: {
+              overall: "NO_CONTROL",
+              tests: [
+                {
+                  testId: "5",
+                  testName: "Amylase",
+                  verdict: "NO_CONTROL",
+                  missing: ["DUPLICATE"],
+                  controls: [],
+                  items: [
+                    {
+                      id: 3,
+                      kind: "BLANK",
+                      observed: "0.4",
+                      evaluation: "PASS",
+                      detail: "Result = 0.4 (threshold 0.5)",
+                    },
+                  ],
+                },
+              ],
+            },
+          });
+        }
+      },
+    );
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <RowRunSummary runId={248} testId="5" variant="reagents" />
+      </IntlProvider>,
+    );
+
+    expect(screen.getByTestId("row-run-verdict")).toHaveTextContent(
+      "No duplicate",
+    );
+    expect(screen.getByTestId("row-run-qc-item-3")).toHaveTextContent(
+      "Pass Blank · 0.4 · Result = 0.4 (threshold 0.5)",
+    );
+  });
 });

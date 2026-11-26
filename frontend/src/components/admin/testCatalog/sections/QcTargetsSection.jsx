@@ -15,6 +15,7 @@ import {
   TableHeader,
   TableRow,
   Tag,
+  TextInput,
   Toggle,
 } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
@@ -68,6 +69,14 @@ const QcTargetsSection = ({ testId }) => {
   const [policy, setPolicy] = useState({
     controlRequired: false,
     controlWhenMissing: "WARN",
+    blankRequired: false,
+    blankWhenMissing: "WARN",
+    blankWhenFails: "HOLD",
+    duplicateRequired: false,
+    duplicateWhenMissing: "WARN",
+    duplicateWhenFails: "HOLD",
+    blankCeiling: "",
+    rpdLimit: "",
   });
   const [showDeactivated, setShowDeactivated] = useState(false);
   const [expanded, setExpanded] = useState(null);
@@ -105,6 +114,14 @@ const QcTargetsSection = ({ testId }) => {
         setPolicy({
           controlRequired: res.policy?.controlRequired === true,
           controlWhenMissing: res.policy?.controlWhenMissing || "WARN",
+          blankRequired: res.policy?.blankRequired === true,
+          blankWhenMissing: res.policy?.blankWhenMissing || "WARN",
+          blankWhenFails: res.policy?.blankWhenFails || "HOLD",
+          duplicateRequired: res.policy?.duplicateRequired === true,
+          duplicateWhenMissing: res.policy?.duplicateWhenMissing || "WARN",
+          duplicateWhenFails: res.policy?.duplicateWhenFails || "HOLD",
+          blankCeiling: res.policy?.blankCeiling ?? "",
+          rpdLimit: res.policy?.rpdLimit ?? "",
         });
       },
     );
@@ -876,6 +893,98 @@ const QcTargetsSection = ({ testId }) => {
                 <FormattedMessage id="admin.testCatalog.qc.policy.targetsAbove" />
               </TableCell>
             </TableRow>
+            {[
+              {
+                kind: "blank",
+                label: "run.qc.item.BLANK",
+                limit: "blankCeiling",
+              },
+              {
+                kind: "duplicate",
+                label: "run.qc.item.DUPLICATE",
+                limit: "rpdLimit",
+              },
+            ].map(({ kind, label, limit }) => {
+              const choose = (field, choices) => (
+                <Select
+                  id={`qc-policy-${kind}-${field}`}
+                  data-testid={`qc-policy-${kind}-${field}`}
+                  size="sm"
+                  labelText={intl.formatMessage({ id: label })}
+                  hideLabel
+                  disabled={
+                    field === "when-missing" && !policy[`${kind}Required`]
+                  }
+                  value={
+                    field === "required"
+                      ? policy[`${kind}Required`]
+                        ? "yes"
+                        : "no"
+                      : field === "when-missing"
+                        ? policy[`${kind}WhenMissing`]
+                        : policy[`${kind}WhenFails`]
+                  }
+                  onChange={(event) => {
+                    const chosen = event.target.value;
+                    setPolicy((current) => ({
+                      ...current,
+                      ...(field === "required"
+                        ? { [`${kind}Required`]: chosen === "yes" }
+                        : field === "when-missing"
+                          ? { [`${kind}WhenMissing`]: chosen }
+                          : { [`${kind}WhenFails`]: chosen }),
+                    }));
+                  }}
+                >
+                  {choices.map(([value, id]) => (
+                    <SelectItem
+                      key={value}
+                      value={value}
+                      text={intl.formatMessage({ id })}
+                    />
+                  ))}
+                </Select>
+              );
+              const holdOrWarn = [
+                ["WARN", "admin.testCatalog.qc.policy.warn"],
+                ["HOLD", "admin.testCatalog.qc.policy.hold"],
+              ];
+              return (
+                <TableRow key={kind} data-testid={`qc-policy-${kind}`}>
+                  <TableCell>
+                    <strong>
+                      <FormattedMessage id={label} />
+                    </strong>
+                  </TableCell>
+                  <TableCell>
+                    {choose("required", [
+                      ["no", "label.no"],
+                      ["yes", "label.yes"],
+                    ])}
+                  </TableCell>
+                  <TableCell>{choose("when-missing", holdOrWarn)}</TableCell>
+                  <TableCell>{choose("when-fails", holdOrWarn)}</TableCell>
+                  <TableCell>
+                    <TextInput
+                      id={`qc-policy-${kind}-limit`}
+                      data-testid={`qc-policy-${kind}-limit`}
+                      size="sm"
+                      labelText={intl.formatMessage({
+                        id: `admin.testCatalog.qc.policy.${limit}`,
+                      })}
+                      value={policy[limit]}
+                      onChange={(event) => {
+                        const typed = event.target.value;
+                        setPolicy((current) => ({
+                          ...current,
+                          [limit]: typed,
+                        }));
+                      }}
+                    />
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
         <p

@@ -48,6 +48,9 @@ public class ResultValidationServiceImpl implements ResultValidationService {
     private ValidationQcAcknowledgmentDAO qcAcknowledgmentDAO;
     @Autowired
     private AuditTrailService auditTrailService;
+    @org.springframework.context.annotation.Lazy
+    @Autowired
+    private org.openelisglobal.resultrun.service.RunQcService runQcService;
     @Autowired
     private org.openelisglobal.qc.dao.SampleItemQcProfileDAO sampleItemQcProfileDAO;
     @Autowired
@@ -119,6 +122,9 @@ public class ResultValidationServiceImpl implements ResultValidationService {
                 }
             }
         }
+
+        runQcService.parentResultsSaved(resultUpdateList.stream().map(Result::getAnalysis)
+                .filter(java.util.Objects::nonNull).map(Analysis::getId).toList(), sysUserId);
 
         checkIfSamplesFinished(resultItemList, sampleUpdateList);
 

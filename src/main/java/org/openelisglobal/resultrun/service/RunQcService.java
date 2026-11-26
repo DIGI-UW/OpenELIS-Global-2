@@ -1,6 +1,7 @@
 package org.openelisglobal.resultrun.service;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.openelisglobal.qc.valueholder.QCResult;
@@ -19,6 +20,12 @@ public interface RunQcService {
      * recorded for.
      */
     Map<String, RunTestVerdict> testVerdicts(Long runId);
+
+    /**
+     * For each test whose verdict is No control, the kinds it requires per run that
+     * the run lacks: CONTROL, BLANK, DUPLICATE (FR-H1).
+     */
+    Map<String, List<String>> missingQc(Long runId);
 
     /** The tests whose rows the run holds. */
     Set<String> heldTestIds(Long runId);
@@ -105,6 +112,35 @@ public interface RunQcService {
      * technician's own verdict.
      */
     QCResult recordControl(Long runId, org.openelisglobal.qc.form.BenchQCCaptureForm capture, int sysUserId);
+
+    /**
+     * FR-C10, FR-C11: records a lab blank, or a lab duplicate of a sample in the
+     * run, for one of the run's tests, evaluates it and refreshes the run's holds.
+     * Refused for a test not in the run or already decided, without a value, or for
+     * a duplicate whose sample is not one of the run's.
+     */
+    org.openelisglobal.resultrun.valueholder.ResultRunQcItem recordQcItem(Long runId,
+            org.openelisglobal.resultrun.form.RunQcItemForm form, String sysUserId);
+
+    /**
+     * The run's duplicates are evaluated again against their samples' results as
+     * they stand: a duplicate recorded before its sample's result is evaluated once
+     * that result is saved, and one whose sample's result was corrected follows the
+     * correction (FR-C11).
+     */
+    void reevaluateDuplicates(Long runId, String sysUserId);
+
+    /**
+     * Results saved on these analyses, wherever they were saved (the run, Results
+     * Entry, Validation): their duplicates on any run are evaluated again (FR-C11).
+     */
+    void parentResultsSaved(Collection<String> analysisIds, String sysUserId);
+
+    /**
+     * The run's samples of a test a duplicate may repeat: {analysisId, accession
+     * number}.
+     */
+    java.util.List<org.openelisglobal.common.util.IdValuePair> duplicateCandidates(Long runId, String testId);
 
     /**
      * Decides a held test of a run (FR-C5): Retest and Reject take its values out

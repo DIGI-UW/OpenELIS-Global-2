@@ -654,8 +654,8 @@ const AnalyserResults = (props) => {
               <FormattedMessage
                 id={
                   row.importIssueReason === "run_qc_missing"
-                    ? "analyzer.results.held.runQcMissing"
-                    : "analyzer.results.held.runQcFailed"
+                    ? "analyzer.results.held.qcMissing"
+                    : "analyzer.results.held.qcFailed"
                 }
               />
             </div>

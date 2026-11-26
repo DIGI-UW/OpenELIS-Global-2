@@ -463,7 +463,7 @@ describe("RunQcBlock under the test's QC policy (OGC-1200 slice 8)", () => {
 
     expect(screen.getByTestId("run-qc-overall")).toHaveTextContent("Held");
     expect(screen.getByTestId("run-qc-missing-11")).toHaveTextContent(
-      "requires a control on every run, and none is recorded on this one, so its rows are held",
+      "This run lacks the control this test requires on every run, so its rows are held",
     );
     expect(screen.getByRole("button", { name: "Retest" })).toBeInTheDocument();
     expect(screen.getByTestId("run-qc-record")).toBeEnabled();
@@ -542,6 +542,106 @@ describe("RunQcBlock under the test's QC policy (OGC-1200 slice 8)", () => {
     expect(screen.queryByRole("button", { name: "Retest" })).toBeNull();
   });
 
+  it("names the blank a test lacks on its tag, its hold and its decision, never a control (FR-H1)", () => {
+    renderQc({
+      overall: "HELD",
+      tests: [
+        {
+          testId: "11",
+          testName: "Glucose",
+          verdict: "NO_CONTROL",
+          controls: [],
+          holdCause: "QC_MISSING",
+          whenMissing: "HOLD",
+          missing: ["BLANK"],
+        },
+      ],
+    });
+
+    expect(screen.getByTestId("run-qc-verdict-11")).toHaveTextContent(
+      "No blank",
+    );
+    expect(screen.getByTestId("run-qc-missing-11")).toHaveTextContent(
+      "This run lacks the blank this test requires on every run, so its rows are held.",
+    );
+    expect(screen.getByTestId("run-qc-verdict-11")).not.toHaveTextContent(
+      /control/i,
+    );
+    expect(screen.getByTestId("run-qc-missing-11")).not.toHaveTextContent(
+      /control/i,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /Accept despite QC failure/ }),
+    );
+    expect(
+      screen.getByText(/without the blank the test requires/),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("run-qc-decide-confirm-11"));
+    expect(
+      screen.getByText(
+        "Give the reason the results are accepted without the required blank.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("names every kind its tests lack in the run's verdict under a Warn policy", () => {
+    renderQc({
+      overall: "NO_CONTROL",
+      tests: [
+        {
+          testId: "11",
+          testName: "Glucose",
+          verdict: "NO_CONTROL",
+          controls: [],
+          holdCause: null,
+          whenMissing: "WARN",
+          missing: ["BLANK", "DUPLICATE"],
+        },
+        { testId: "12", testName: "Urea", verdict: "PASS", controls: [] },
+      ],
+    });
+
+    expect(screen.getByTestId("run-qc-overall")).toHaveTextContent(
+      "No blank or duplicate",
+    );
+    expect(screen.getByTestId("run-qc-missing-11")).toHaveTextContent(
+      "This run lacks the blank and duplicate this test requires on every run. Its rows can still be accepted.",
+    );
+  });
+
+  it("explains accepting despite a failed blank as failing QC, never a failing control", () => {
+    renderQc({
+      overall: "HELD",
+      tests: [
+        {
+          testId: "11",
+          testName: "Glucose",
+          verdict: "FAIL",
+          controls: [],
+          holdCause: "QC_FAILED",
+          items: [
+            {
+              id: 4,
+              kind: "BLANK",
+              observed: "0.6",
+              evaluation: "FAIL",
+              detail: "Result = 0.6 (threshold 0.5)",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(screen.getByTestId("run-qc-item-4")).toHaveTextContent(
+      "Fail Blank · 0.6 · Result = 0.6 (threshold 0.5)",
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /Accept despite QC failure/ }),
+    );
+    expect(screen.getByText(/this run's failing QC/)).toBeInTheDocument();
+    expect(screen.queryByText(/failing control/)).toBeNull();
+  });
+
   it("does not offer acceptance on a run that is no longer open", () => {
     render(
       <IntlProvider locale="en" messages={messages}>
@@ -566,7 +666,7 @@ describe("RunQcBlock under the test's QC policy (OGC-1200 slice 8)", () => {
       </IntlProvider>,
     );
     expect(screen.getByTestId("run-qc-missing-11")).toHaveTextContent(
-      "none was recorded on this one.",
+      "This run lacked the control this test requires on every run.",
     );
     expect(screen.getByTestId("run-qc-missing-11")).not.toHaveTextContent(
       "can still be accepted",

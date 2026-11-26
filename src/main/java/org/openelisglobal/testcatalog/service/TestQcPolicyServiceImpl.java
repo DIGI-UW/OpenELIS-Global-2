@@ -60,12 +60,23 @@ public class TestQcPolicyServiceImpl implements TestQcPolicyService {
         TestQcPolicy.WhenMissing whenMissing = wanted.getControlWhenMissing() == null ? TestQcPolicy.WhenMissing.WARN
                 : wanted.getControlWhenMissing();
         TestQcPolicy current = stored == null ? TestQcPolicy.none(testId) : stored;
-        if (current.isControlRequired() == wanted.isControlRequired()
-                && current.getControlWhenMissing() == whenMissing) {
+        if (current.isControlRequired() == wanted.isControlRequired() && current.getControlWhenMissing() == whenMissing
+                && current.isBlankRequired() == wanted.isBlankRequired()
+                && current.getBlankWhenMissing() == wanted.getBlankWhenMissing()
+                && current.getBlankWhenFails() == wanted.getBlankWhenFails()
+                && current.isDuplicateRequired() == wanted.isDuplicateRequired()
+                && current.getDuplicateWhenMissing() == wanted.getDuplicateWhenMissing()
+                && current.getDuplicateWhenFails() == wanted.getDuplicateWhenFails()) {
             return false;
         }
         current.setControlRequired(wanted.isControlRequired());
         current.setControlWhenMissing(whenMissing);
+        current.setBlankRequired(wanted.isBlankRequired());
+        current.setBlankWhenMissing(wanted.getBlankWhenMissing());
+        current.setBlankWhenFails(wanted.getBlankWhenFails());
+        current.setDuplicateRequired(wanted.isDuplicateRequired());
+        current.setDuplicateWhenMissing(wanted.getDuplicateWhenMissing());
+        current.setDuplicateWhenFails(wanted.getDuplicateWhenFails());
         current.setSystemUserId(StringUtils.isNumeric(sysUserId) ? Integer.valueOf(sysUserId) : null);
         current.setSysUserId(sysUserId);
         if (stored == null) {

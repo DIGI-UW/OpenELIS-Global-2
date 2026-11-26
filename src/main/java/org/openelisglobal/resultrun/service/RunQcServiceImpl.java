@@ -27,6 +27,7 @@ import org.openelisglobal.qc.dao.QCResultDAO;
 import org.openelisglobal.qc.form.BenchQCCaptureForm;
 import org.openelisglobal.qc.service.QCControlLotService;
 import org.openelisglobal.qc.service.QCResultService;
+import org.openelisglobal.qc.service.QcItemRules;
 import org.openelisglobal.qc.valueholder.QCControlLot;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.RunControlVerdict;
@@ -34,6 +35,7 @@ import org.openelisglobal.qc.valueholder.RunVerdictSource;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultrun.dao.ResultRunDAO;
 import org.openelisglobal.resultrun.dao.ResultRunEventDAO;
+import org.openelisglobal.resultrun.dao.ResultRunQcItemDAO;
 import org.openelisglobal.resultrun.dao.ResultRunRetestDAO;
 import org.openelisglobal.resultrun.dao.ResultRunRetestDAO.RetestedSample;
 import org.openelisglobal.resultrun.dao.ResultRunTestDispositionDAO;
@@ -44,9 +46,11 @@ import org.openelisglobal.resultrun.form.RunQcFact;
 import org.openelisglobal.resultrun.form.RunTestVerdict;
 import org.openelisglobal.resultrun.valueholder.ResultRun;
 import org.openelisglobal.resultrun.valueholder.ResultRunEvent;
+import org.openelisglobal.resultrun.valueholder.ResultRunQcItem;
 import org.openelisglobal.resultrun.valueholder.ResultRunRetest;
 import org.openelisglobal.resultrun.valueholder.ResultRunState;
 import org.openelisglobal.resultrun.valueholder.ResultRunTestDisposition;
+import org.openelisglobal.resultrun.valueholder.RunQcItemKind;
 import org.openelisglobal.resultrun.valueholder.RunTestAction;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
@@ -107,11 +111,41 @@ public class RunQcServiceImpl implements RunQcService {
     @Lazy
     @Autowired
     private IStatusService statusService;
+    @Autowired
+    private ResultRunQcItemDAO qcItemDAO;
+    @Lazy
+    @Autowired
+    private org.openelisglobal.result.service.ResultService resultService;
+    @Lazy
+    @Autowired
+    private org.openelisglobal.analysis.service.AnalysisService analysisService;
+    @Lazy
+    @Autowired
+    private org.openelisglobal.testresultcomponent.service.TestResultComponentService testResultComponentService;
 
     @Override
     @Transactional(readOnly = true)
     public Map<String, RunTestVerdict> testVerdicts(Long runId) {
+        return assess(runId).verdicts();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, List<String>> missingQc(Long runId) {
+        return assess(runId).missing();
+    }
+
+    /**
+     * Each covered test's verdict, the kinds a test whose verdict is No control
+     * lacks, and the tests' policies.
+     */
+    private record Assessment(Map<String, RunTestVerdict> verdicts, Map<String, List<String>> missing,
+            Map<String, TestQcPolicy> policies) {
+    }
+
+    private Assessment assess(Long runId) {
         List<QCResult> controls = qcResultDAO.findByRunIds(List.of(runId));
+        List<ResultRunQcItem> items = qcItemDAO.getItems(List.of(runId));
         Set<String> tests = new LinkedHashSet<>();
         resultRunDAO.getStagedRows(List.of(runId)).stream()
                 .filter(row -> !row.getIsControl() && StringUtils.isNotBlank(row.getTestId()))
@@ -119,15 +153,27 @@ public class RunQcServiceImpl implements RunQcService {
         resultRunDAO.getTestIdsOfResults(runId).stream().filter(Objects::nonNull).forEach(tests::add);
         resultRunDAO.getBatchTestIds(runId).stream().filter(Objects::nonNull).forEach(tests::add);
         controls.stream().map(QCResult::getTestId).filter(Objects::nonNull).forEach(tests::add);
+        items.stream().map(ResultRunQcItem::getTestId).filter(Objects::nonNull).forEach(tests::add);
         dispositionDAO.getDispositions(runId).stream().map(ResultRunTestDisposition::getTestId).filter(Objects::nonNull)
                 .forEach(tests::add);
         Map<String, TestQcPolicy> policies = testQcPolicyService.policiesOf(tests);
+        boolean runOfOne = isRunOfOne(runId);
         Map<String, RunTestVerdict> verdicts = new LinkedHashMap<>();
+        Map<String, List<String>> missing = new LinkedHashMap<>();
         for (String testId : tests) {
-            verdicts.put(testId, verdictOf(controls.stream().filter(c -> testId.equals(c.getTestId())).toList(),
-                    policies.get(testId)));
+            List<QCResult> testControls = controls.stream().filter(c -> testId.equals(c.getTestId())).toList();
+            List<ResultRunQcItem> testItems = items.stream().filter(item -> testId.equals(item.getTestId())).toList();
+            RunTestVerdict verdict = verdictOf(testControls, testItems, policies.get(testId), runOfOne);
+            verdicts.put(testId, verdict);
+            if (verdict == RunTestVerdict.NO_CONTROL) {
+                missing.put(testId, List.copyOf(missingKinds(testControls, testItems, policies.get(testId), runOfOne)));
+            }
         }
-        return verdicts;
+        return new Assessment(verdicts, missing, policies);
+    }
+
+    private boolean isRunOfOne(Long runId) {
+        return resultRunDAO.get(runId).map(run -> run.getAnalysisId() != null).orElse(false);
     }
 
     /**
@@ -136,13 +182,66 @@ public class RunQcServiceImpl implements RunQcService {
      * recorded, No control when the test requires one per run, else Not required.
      */
     static RunTestVerdict verdictOf(List<QCResult> covering, TestQcPolicy policy) {
-        if (covering.isEmpty()) {
-            return policy != null && policy.isControlRequired() ? RunTestVerdict.NO_CONTROL
-                    : RunTestVerdict.NOT_REQUIRED;
+        return verdictOf(covering, List.of(), policy, false);
+    }
+
+    /**
+     * FR-C12: Fail if a control failed, or a blank or duplicate failed under a Hold
+     * failure policy; No control if a kind the test requires per run is missing (a
+     * run of one requires no blank or duplicate, FR-H4); Pass with warning if the
+     * only failures are blanks or duplicates under a Warn policy; Pass if what was
+     * recorded passes; Not required if nothing is required and nothing recorded. An
+     * item Not evaluated or Below LOQ counts as present.
+     */
+    static RunTestVerdict verdictOf(List<QCResult> controls, List<ResultRunQcItem> items, TestQcPolicy policy,
+            boolean runOfOne) {
+        if (controls.stream().anyMatch(control -> control.getRunVerdict() == RunControlVerdict.FAIL)
+                || items.stream().anyMatch(item -> item.getEvaluation() == QcItemRules.Evaluation.FAIL
+                        && holdsWhenFails(item.getKind(), policy))) {
+            return RunTestVerdict.FAIL;
         }
-        return covering.stream().anyMatch(control -> control.getRunVerdict() == RunControlVerdict.FAIL)
-                ? RunTestVerdict.FAIL
-                : RunTestVerdict.PASS;
+        if (!missingKinds(controls, items, policy, runOfOne).isEmpty()) {
+            return RunTestVerdict.NO_CONTROL;
+        }
+        if (items.stream().anyMatch(item -> item.getEvaluation() == QcItemRules.Evaluation.FAIL)) {
+            return RunTestVerdict.PASS_WITH_WARNING;
+        }
+        return controls.isEmpty() && items.isEmpty() ? RunTestVerdict.NOT_REQUIRED : RunTestVerdict.PASS;
+    }
+
+    /**
+     * A failed blank or duplicate holds its test unless its policy only warns; Hold
+     * by default (FR-H1).
+     */
+    static boolean holdsWhenFails(RunQcItemKind kind, TestQcPolicy policy) {
+        if (policy == null) {
+            return true;
+        }
+        return kind == RunQcItemKind.BLANK ? policy.holdsWhenBlankFails() : policy.holdsWhenDuplicateFails();
+    }
+
+    /**
+     * The kinds the test requires per run that are not recorded: CONTROL, BLANK or
+     * DUPLICATE.
+     */
+    static Set<String> missingKinds(List<QCResult> controls, List<ResultRunQcItem> items, TestQcPolicy policy,
+            boolean runOfOne) {
+        Set<String> missing = new LinkedHashSet<>();
+        if (policy == null) {
+            return missing;
+        }
+        if (policy.isControlRequired() && controls.isEmpty()) {
+            missing.add("CONTROL");
+        }
+        if (!runOfOne && policy.isBlankRequired()
+                && items.stream().noneMatch(item -> item.getKind() == RunQcItemKind.BLANK)) {
+            missing.add(RunQcItemKind.BLANK.name());
+        }
+        if (!runOfOne && policy.isDuplicateRequired()
+                && items.stream().noneMatch(item -> item.getKind() == RunQcItemKind.DUPLICATE)) {
+            missing.add(RunQcItemKind.DUPLICATE.name());
+        }
+        return missing;
     }
 
     @Override
@@ -177,22 +276,32 @@ public class RunQcServiceImpl implements RunQcService {
         if (run == null || run.getState() == null || !run.getState().isActive()) {
             return Set.of();
         }
-        Set<String> missing = testVerdicts(runId).entrySet().stream()
-                .filter(entry -> entry.getValue() == RunTestVerdict.NO_CONTROL).map(Map.Entry::getKey)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
-        if (missing.isEmpty()) {
-            return Set.of();
-        }
-        Map<String, TestQcPolicy> policies = testQcPolicyService.policiesOf(missing);
-        return missing.stream()
-                .filter(testId -> policies.get(testId) != null && policies.get(testId).holdsWhenControlMissing())
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Assessment assessment = assess(runId);
+        return assessment.missing().entrySet().stream()
+                .filter(entry -> holdsWhenMissing(entry.getValue(), assessment.policies().get(entry.getKey())))
+                .map(Map.Entry::getKey).collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    /** FR-H1: a missing kind holds its test unless its policy only warns. */
+    static boolean holdsWhenMissing(Collection<String> kinds, TestQcPolicy policy) {
+        return policy != null && (kinds.contains("CONTROL") && policy.holdsWhenControlMissing()
+                || kinds.contains(RunQcItemKind.BLANK.name()) && policy.holdsWhenBlankMissing()
+                || kinds.contains(RunQcItemKind.DUPLICATE.name()) && policy.holdsWhenDuplicateMissing());
     }
 
     private Set<String> failedTestIds(Long runId) {
-        return qcResultDAO.findByRunIds(List.of(runId)).stream()
+        Set<String> failed = qcResultDAO.findByRunIds(List.of(runId)).stream()
                 .filter(control -> control.getRunVerdict() == RunControlVerdict.FAIL).map(QCResult::getTestId)
                 .filter(Objects::nonNull).collect(Collectors.toCollection(LinkedHashSet::new));
+        List<ResultRunQcItem> failedItems = qcItemDAO.getItems(List.of(runId)).stream()
+                .filter(item -> item.getEvaluation() == QcItemRules.Evaluation.FAIL).toList();
+        if (!failedItems.isEmpty()) {
+            Map<String, TestQcPolicy> policies = testQcPolicyService
+                    .policiesOf(failedItems.stream().map(ResultRunQcItem::getTestId).distinct().toList());
+            failedItems.stream().filter(item -> holdsWhenFails(item.getKind(), policies.get(item.getTestId())))
+                    .map(ResultRunQcItem::getTestId).forEach(failed::add);
+        }
+        return failed;
     }
 
     /**
@@ -242,21 +351,24 @@ public class RunQcServiceImpl implements RunQcService {
     }
 
     private Map<String, RunQcFact> factsOfRun(Long runId) {
-        Map<String, RunTestVerdict> verdicts = testVerdicts(runId);
+        Assessment assessment = assess(runId);
+        Map<String, RunTestVerdict> verdicts = assessment.verdicts();
         List<QCResult> controls = controlsOf(runId);
+        List<ResultRunQcItem> items = qcItemDAO.getItems(List.of(runId));
         Map<String, QCControlLot> lots = new HashMap<>();
         Map<String, ResultRunTestDisposition> decisions = new HashMap<>();
         dispositionDAO.getDispositions(runId).forEach(decision -> decisions.put(decision.getTestId(), decision));
         Map<String, RunQcFact> facts = new HashMap<>();
         verdicts.forEach((testId, verdict) -> {
             ResultRunTestDisposition decision = decisions.get(testId);
-            facts.put(testId,
-                    new RunQcFact(runId, ResultRun.labelOf(runId), verdict.name(),
-                            decision == null ? null : decision.getAction().name(),
-                            decision == null ? null : decision.getReason(),
-                            decision == null || decision.getNceId() == null ? null : nceNumberOf(decision.getNceId()),
-                            controls.stream().filter(control -> testId.equals(control.getTestId()))
-                                    .map(control -> controlLine(control, lots)).toList()));
+            facts.put(testId, new RunQcFact(runId, ResultRun.labelOf(runId), verdict.name(),
+                    decision == null ? null : decision.getAction().name(),
+                    decision == null ? null : decision.getReason(),
+                    decision == null || decision.getNceId() == null ? null : nceNumberOf(decision.getNceId()),
+                    controls.stream().filter(control -> testId.equals(control.getTestId()))
+                            .map(control -> controlLine(control, lots)).toList(),
+                    assessment.missing().getOrDefault(testId, List.of()),
+                    items.stream().filter(item -> testId.equals(item.getTestId())).map(this::itemLine).toList()));
         });
         return facts;
     }
@@ -451,7 +563,8 @@ public class RunQcServiceImpl implements RunQcService {
     @Override
     @Transactional(readOnly = true)
     public RunQcBlock qcBlock(Long runId) {
-        Map<String, RunTestVerdict> verdicts = testVerdicts(runId);
+        Assessment assessment = assess(runId);
+        Map<String, RunTestVerdict> verdicts = assessment.verdicts();
         List<QCResult> controls = controlsOf(runId);
         Map<String, QCControlLot> lots = new HashMap<>();
         Map<String, ResultRunTestDisposition> decisions = new HashMap<>();
@@ -461,11 +574,12 @@ public class RunQcServiceImpl implements RunQcService {
                 verdicts.get(testId) == RunTestVerdict.FAIL ? RunHoldCause.QC_FAILED : RunHoldCause.QC_MISSING));
         Map<String, RunHoldCause> held = new LinkedHashMap<>(everHeld);
         decisions.keySet().forEach(held::remove);
-        Map<String, TestQcPolicy> policies = testQcPolicyService.policiesOf(verdicts.keySet());
         Map<String, List<RunLink>> retestOf = retestOf(runId);
         Map<String, List<RunLink>> supersededBy = supersededBy(runId);
+        List<ResultRunQcItem> items = qcItemDAO.getItems(List.of(runId));
         List<RunQcBlock.TestLine> lines = verdicts.entrySet().stream().map(entry -> {
             ResultRunTestDisposition decision = decisions.get(entry.getKey());
+            List<String> missing = assessment.missing().getOrDefault(entry.getKey(), List.of());
             return new RunQcBlock.TestLine(entry.getKey(), TestServiceImpl.getUserLocalizedTestName(entry.getKey()),
                     entry.getValue().name(),
                     controls.stream().filter(control -> entry.getKey().equals(control.getTestId()))
@@ -477,13 +591,17 @@ public class RunQcServiceImpl implements RunQcService {
                             ? retestSuggestions(runId, entry.getKey())
                             : List.of(),
                     supersededBy.getOrDefault(entry.getKey(), List.of()), held.get(entry.getKey()),
-                    whenMissingOf(policies.get(entry.getKey())));
+                    whenMissingOf(missing, assessment.policies().get(entry.getKey())), missing, items.stream()
+                            .filter(item -> entry.getKey().equals(item.getTestId())).map(this::itemLine).toList());
         }).toList();
         return new RunQcBlock(overallOf(verdicts.values(), held.keySet(), everHeld), lines);
     }
 
-    private static String whenMissingOf(TestQcPolicy policy) {
-        return policy == null || !policy.isControlRequired() ? null : policy.getControlWhenMissing().name();
+    private static String whenMissingOf(List<String> missing, TestQcPolicy policy) {
+        if (missing.isEmpty()) {
+            return null;
+        }
+        return holdsWhenMissing(missing, policy) ? "HOLD" : "WARN";
     }
 
     private String nceNumberOf(Integer nceId) {
@@ -509,10 +627,178 @@ public class RunQcServiceImpl implements RunQcService {
         if (verdicts.contains(RunTestVerdict.NO_CONTROL)) {
             return RunTestVerdict.NO_CONTROL.name();
         }
+        if (verdicts.contains(RunTestVerdict.PASS_WITH_WARNING)) {
+            return RunTestVerdict.PASS_WITH_WARNING.name();
+        }
         if (verdicts.contains(RunTestVerdict.PASS)) {
             return RunTestVerdict.PASS.name();
         }
         return RunTestVerdict.NOT_REQUIRED.name();
+    }
+
+    private RunQcBlock.ItemLine itemLine(ResultRunQcItem item) {
+        String observed = item.getObservedValue() != null ? item.getObservedValue().stripTrailingZeros().toPlainString()
+                : item.getObservedOutcome();
+        String parentAccession = null;
+        if (item.getParentAnalysisId() != null) {
+            org.openelisglobal.analysis.valueholder.Analysis parent = analysisService
+                    .getMatch("id", item.getParentAnalysisId()).orElse(null);
+            parentAccession = parent == null || parent.getSampleItem() == null
+                    || parent.getSampleItem().getSample() == null ? null
+                            : parent.getSampleItem().getSample().getAccessionNumber();
+        }
+        SystemUser user = StringUtils.isBlank(item.getRecordedBy()) ? null
+                : systemUserService.getUserById(item.getRecordedBy());
+        return new RunQcBlock.ItemLine(item.getId(), item.getKind().name(), observed, parentAccession,
+                item.getEvaluation().name(), item.getDetail(),
+                user == null ? null : StringUtils.trim(user.getNameForDisplay()),
+                item.getRecordedAt() == null ? null : item.getRecordedAt().toInstant().toString());
+    }
+
+    @Override
+    @Transactional
+    public ResultRunQcItem recordQcItem(Long runId, org.openelisglobal.resultrun.form.RunQcItemForm form,
+            String sysUserId) {
+        if (form == null || form.testId() == null || !testVerdicts(runId).containsKey(form.testId())) {
+            throw new IllegalArgumentException(MessageUtil.getMessage("run.refusal.testNotInRun"));
+        }
+        if (form.kind() == null) {
+            throw new IllegalArgumentException(MessageUtil.getMessage("run.refusal.qcItemKind"));
+        }
+        if (dispositionDAO.getDispositions(runId).stream()
+                .anyMatch(decision -> form.testId().equals(decision.getTestId()))) {
+            throw new IllegalArgumentException(MessageUtil.getMessage("run.refusal.decided"));
+        }
+        BigDecimal value = numberOf(form.value());
+        String outcome = StringUtils.trimToNull(form.outcome());
+        if (value == null && outcome == null) {
+            throw new IllegalArgumentException(MessageUtil.getMessage("run.refusal.qcItemValue"));
+        }
+        if (form.kind() == RunQcItemKind.DUPLICATE && (StringUtils.isBlank(form.parentAnalysisId())
+                || !analysesOfRunTest(runId, form.testId()).contains(form.parentAnalysisId()))) {
+            throw new IllegalArgumentException(MessageUtil.getMessage("run.refusal.qcItemParent"));
+        }
+        ResultRunQcItem item = new ResultRunQcItem();
+        item.setRunId(runId);
+        item.setTestId(form.testId());
+        item.setKind(form.kind());
+        item.setObservedValue(value);
+        item.setObservedOutcome(value == null ? outcome : null);
+        item.setParentAnalysisId(form.kind() == RunQcItemKind.DUPLICATE ? form.parentAnalysisId() : null);
+        item.setRecordedBy(sysUserId);
+        item.setRecordedAt(new Timestamp(System.currentTimeMillis()));
+        item.setSysUserId(sysUserId);
+        evaluate(item);
+        qcItemDAO.insert(item);
+        log(runId, ResultRunEvent.QC_ITEM_RECORDED, item.getTestId(),
+                item.getKind().name() + " " + item.getEvaluation().name(), sysUserId);
+        refreshState(runId, sysUserId);
+        return item;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<org.openelisglobal.common.util.IdValuePair> duplicateCandidates(Long runId, String testId) {
+        if (StringUtils.isBlank(testId)) {
+            return List.of();
+        }
+        return analysesOfRunTest(runId, testId).stream()
+                .map(analysisId -> analysisService.getMatch("id", analysisId).orElse(null)).filter(Objects::nonNull)
+                .filter(analysis -> analysis.getSampleItem() != null && analysis.getSampleItem().getSample() != null)
+                .map(analysis -> new org.openelisglobal.common.util.IdValuePair(analysis.getId(),
+                        analysis.getSampleItem().getSample().getAccessionNumber()))
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public void reevaluateDuplicates(Long runId, String sysUserId) {
+        reevaluate(qcItemDAO.getItems(List.of(runId)).stream().filter(item -> item.getKind() == RunQcItemKind.DUPLICATE)
+                .toList(), sysUserId);
+    }
+
+    @Override
+    @Transactional
+    public void parentResultsSaved(Collection<String> analysisIds, String sysUserId) {
+        List<String> ids = analysisIds == null ? List.of()
+                : analysisIds.stream().filter(StringUtils::isNumeric).distinct().toList();
+        if (!ids.isEmpty()) {
+            reevaluate(qcItemDAO.getDuplicatesOfAnalyses(ids), sysUserId);
+        }
+    }
+
+    private void reevaluate(List<ResultRunQcItem> duplicates, String sysUserId) {
+        Set<Long> changedRuns = new LinkedHashSet<>();
+        for (ResultRunQcItem item : duplicates) {
+            QcItemRules.Evaluation before = item.getEvaluation();
+            String detailBefore = item.getDetail();
+            evaluate(item);
+            if (item.getEvaluation() != before || !Objects.equals(item.getDetail(), detailBefore)) {
+                item.setSysUserId(sysUserId);
+                qcItemDAO.update(item);
+                log(item.getRunId(), ResultRunEvent.QC_ITEM_EVALUATED, item.getTestId(),
+                        item.getKind().name() + " " + item.getEvaluation().name(), sysUserId);
+                changedRuns.add(item.getRunId());
+            }
+        }
+        changedRuns.forEach(runId -> refreshState(runId, sysUserId));
+    }
+
+    /**
+     * FR-C10, FR-C11, FR-C13: one set of rules with S-08's field items. A blank is
+     * held to the test's blank ceiling; a duplicate to the test's RPD limit against
+     * its parent's result, a pair both below the test's limit of quantitation being
+     * neither passed nor failed. A qualitative blank must read Negative or Not
+     * detected, and a qualitative pair must agree.
+     */
+    private void evaluate(ResultRunQcItem item) {
+        org.openelisglobal.qc.valueholder.TestQcThreshold threshold = testService.getQcThreshold(item.getTestId())
+                .orElse(null);
+        QcItemRules.Outcome outcome;
+        if (item.getKind() == RunQcItemKind.BLANK) {
+            outcome = item.getObservedValue() != null
+                    ? QcItemRules.blank(item.getObservedValue(),
+                            threshold == null ? null : threshold.getBlankThreshold())
+                    : QcItemRules.qualitativeBlank(item.getObservedOutcome());
+        } else {
+            String parentValue = parentValueOf(item.getParentAnalysisId());
+            outcome = item.getObservedValue() != null
+                    ? QcItemRules.duplicate(numberOf(parentValue), item.getObservedValue(),
+                            threshold == null ? null : threshold.getRpdThreshold(), loqOf(item.getTestId()))
+                    : QcItemRules.qualitativeDuplicate(parentValue, item.getObservedOutcome());
+        }
+        item.setEvaluation(outcome.evaluation());
+        item.setDetail(outcome.detail());
+    }
+
+    private String parentValueOf(String analysisId) {
+        org.openelisglobal.analysis.valueholder.Analysis parent = StringUtils.isNumeric(analysisId)
+                ? analysisService.getMatch("id", analysisId).orElse(null)
+                : null;
+        if (parent == null) {
+            return null;
+        }
+        return resultService.getResultsByAnalysis(parent).stream().map(Result::getValue).filter(StringUtils::isNotBlank)
+                .findFirst().orElse(null);
+    }
+
+    private BigDecimal loqOf(String testId) {
+        List<org.openelisglobal.testresultcomponent.valueholder.TestResultComponent> components = testResultComponentService
+                .getActiveComponentsByTestId(testId);
+        return components.stream().filter(component -> component.getIsPrimary()).findFirst()
+                .or(() -> components.stream().findFirst())
+                .map(org.openelisglobal.testresultcomponent.valueholder.TestResultComponent::getLoq).orElse(null);
+    }
+
+    private static BigDecimal numberOf(String value) {
+        if (StringUtils.isBlank(value)) {
+            return null;
+        }
+        try {
+            return new BigDecimal(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private RunQcBlock.ControlLine controlLine(QCResult control, Map<String, QCControlLot> lots) {
@@ -816,20 +1102,45 @@ public class RunQcServiceImpl implements RunQcService {
                             + (line.observed() == null ? "" : line.observed())
                             + (line.expected() == null ? "" : " against " + line.expected());
                 }).collect(Collectors.joining("; "));
+        List<String> failingItems = qcItemDAO.getItems(List.of(run.getId())).stream()
+                .filter(item -> testId.equals(item.getTestId()) && item.getEvaluation() == QcItemRules.Evaluation.FAIL)
+                .map(this::itemLine)
+                .map(line -> "Failing " + line.kind().toLowerCase()
+                        + (line.parentAccession() == null ? "" : " of " + line.parentAccession()) + ": " + line.detail()
+                        + ".")
+                .toList();
         boolean missing = holdCausesOf(run.getId()).get(testId) == RunHoldCause.QC_MISSING;
+        String what = missing ? kindsInWords(assess(run.getId()).missing().getOrDefault(testId, List.of("CONTROL")))
+                : null;
         String verb = missing
-                ? action == RunTestAction.ACCEPT_DESPITE ? "accepted without its required control"
-                        : "rejected for a missing control"
+                ? action == RunTestAction.ACCEPT_DESPITE ? "accepted without its required " + what
+                        : "rejected for a missing " + what
                 : action == RunTestAction.ACCEPT_DESPITE ? "accepted despite the QC failure" : "rejected on QC";
-        String title = (missing ? "Missing control on " : "QC failure on ") + testName + " in " + run.getLabel() + ": "
-                + verb;
-        String cause = missing ? "The test requires a control on every run, and none was recorded on this one."
-                : "Failing control: " + (failing.isBlank() ? "not recorded" : failing) + ".";
+        String title = (missing ? "Missing " + what + " on " : "QC failure on ") + testName + " in " + run.getLabel()
+                + ": " + verb;
+        String cause;
+        if (missing) {
+            cause = "The test requires a " + what + " on every run, and none was recorded on this one.";
+        } else if (failing.isBlank() && !failingItems.isEmpty()) {
+            cause = String.join(" ", failingItems);
+        } else {
+            cause = "Failing control: " + (failing.isBlank() ? "not recorded" : failing) + "."
+                    + (failingItems.isEmpty() ? "" : " " + String.join(" ", failingItems));
+        }
         String description = testName + " in " + run.getLabel()
                 + (run.getAnalyzerId() == null ? "" : " (analyzer " + run.getAnalyzerId() + ")") + " was " + verb + ". "
                 + cause + " " + analysisIds.size() + " affected result(s)."
                 + (decision.getReason() == null ? "" : " Reason: " + decision.getReason());
         return qcViolationNceService.createNceForRunDecision(String.valueOf(decision.getId()), title, description,
                 analysisIds, sysUserId);
+    }
+
+    /** CONTROL, BLANK, DUPLICATE as "control", "control and blank", ... */
+    static String kindsInWords(List<String> kinds) {
+        List<String> words = kinds.stream().map(kind -> kind.toLowerCase()).toList();
+        if (words.size() <= 1) {
+            return words.isEmpty() ? "control" : words.get(0);
+        }
+        return String.join(", ", words.subList(0, words.size() - 1)) + " and " + words.get(words.size() - 1);
     }
 }

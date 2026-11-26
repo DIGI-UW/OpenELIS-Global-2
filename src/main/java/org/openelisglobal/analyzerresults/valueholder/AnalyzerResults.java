@@ -105,14 +105,15 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     /** A control that reports an answer, for a test and level with no QC target. */
     public static final String IMPORT_ISSUE_QC_LOT_MISSING = "qc_lot_missing";
     /**
-     * Shown, never stored: a control for this row's test failed in its run, so the
-     * value is held there (OGC-1200 FR-C4).
+     * Shown, never stored: QC for this row's test failed in its run (a control, or
+     * a blank or duplicate under a Hold policy), so the value is held there
+     * (OGC-1200 FR-C4, FR-C12).
      */
     public static final String IMPORT_ISSUE_RUN_QC_FAILED = "run_qc_failed";
     /**
-     * Shown, never stored: the row's test requires a control on every run and its
-     * run has none, under a Hold policy, so the value is held there (OGC-1200
-     * FR-H1, FR-C7).
+     * Shown, never stored: the row's test requires a control, blank or duplicate on
+     * every run and its run lacks it, under a Hold policy, so the value is held
+     * there (OGC-1200 FR-H1, FR-C7).
      */
     public static final String IMPORT_ISSUE_RUN_QC_MISSING = "run_qc_missing";
     public static final String IMPORT_ISSUE_QC_VALUE_UNSUPPORTED = "qc_value_unsupported";

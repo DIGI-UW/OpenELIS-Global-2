@@ -55,7 +55,7 @@ const OUTCOME_LABELS: Record<string, string> = {
 };
 
 /** The Carbon tag colour of a run, test or control verdict. */
-export type RunVerdictTagType = "red" | "purple" | "green" | "gray";
+export type RunVerdictTagType = "red" | "purple" | "green" | "gray" | "magenta";
 
 export const runVerdictTagType = (
   verdict?: string | null,
@@ -69,10 +69,54 @@ export const runVerdictTagType = (
       return "purple";
     case "PASS":
       return "green";
+    case "PASS_WITH_WARNING":
+      return "magenta";
     default:
       return "gray";
   }
 };
+
+const MISSING_ORDER = ["CONTROL", "BLANK", "DUPLICATE"];
+
+const missingWords = (intl: IntlShape, missing?: string[] | null) =>
+  MISSING_ORDER.filter((kind) =>
+    missing && missing.length > 0 ? missing.includes(kind) : kind === "CONTROL",
+  ).map((kind) => intl.formatMessage({ id: `run.qc.missingKind.${kind}` }));
+
+/**
+ * FR-H1: what a test lacks, as a tag: "No control", "No blank", "No blank or
+ * duplicate". With nothing named, the control, as before blanks and
+ * duplicates.
+ */
+export const missingQcTag = (
+  intl: IntlShape,
+  missing?: string[] | null,
+): string =>
+  intl.formatMessage(
+    { id: "run.qc.missingTag" },
+    {
+      items: String(
+        intl.formatList(missingWords(intl, missing), { type: "disjunction" }),
+      ),
+    },
+  );
+
+/** What a test lacks, in a sentence: "blank", "control and blank". */
+export const missingQcItems = (
+  intl: IntlShape,
+  missing?: string[] | null,
+): string =>
+  String(intl.formatList(missingWords(intl, missing), { type: "conjunction" }));
+
+/** A test's verdict in words; No control names the kinds the test lacks. */
+export const testVerdictText = (
+  intl: IntlShape,
+  verdict: string,
+  missing?: string[] | null,
+): string =>
+  verdict === "NO_CONTROL"
+    ? missingQcTag(intl, missing)
+    : intl.formatMessage({ id: `run.verdict.${verdict}` });
 
 const observedText = (intl: IntlShape, observed?: string | null) =>
   observed && OUTCOME_LABELS[observed]

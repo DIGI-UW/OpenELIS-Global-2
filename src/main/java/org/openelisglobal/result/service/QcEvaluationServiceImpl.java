@@ -7,6 +7,7 @@ import java.util.List;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.qc.service.QcItemRules;
 import org.openelisglobal.qc.valueholder.SampleItemQcProfile;
 import org.openelisglobal.qc.valueholder.TestQcThreshold;
 import org.openelisglobal.result.valueholder.QcEvaluation;
@@ -35,7 +36,6 @@ public class QcEvaluationServiceImpl implements QcEvaluationService {
 
     private static final MathContext MC = new MathContext(10, RoundingMode.HALF_UP);
     private static final BigDecimal HUNDRED = new BigDecimal("100");
-    private static final BigDecimal TWO = new BigDecimal("2");
     private static final BigDecimal DEFAULT_RPD_THRESHOLD = new BigDecimal("20");
     private static final BigDecimal DEFAULT_RECOVERY_WINDOW = new BigDecimal("20");
 
@@ -99,17 +99,7 @@ public class QcEvaluationServiceImpl implements QcEvaluationService {
     }
 
     private void evaluateBlank(Result result, BigDecimal resultValue, TestQcThreshold threshold) {
-        if (threshold == null || threshold.getBlankThreshold() == null) {
-            setEvaluation(result, QcEvaluation.N_A, "Blank threshold not configured");
-            return;
-        }
-
-        BigDecimal thresholdBd = threshold.getBlankThreshold();
-        boolean pass = resultValue.compareTo(thresholdBd) <= 0;
-
-        String detail = String.format("Result = %s (threshold %s)", resultValue.toPlainString(),
-                thresholdBd.toPlainString());
-        setEvaluation(result, pass ? QcEvaluation.PASS : QcEvaluation.FAIL, detail);
+        setEvaluation(result, QcItemRules.blank(resultValue, threshold == null ? null : threshold.getBlankThreshold()));
     }
 
     private void evaluateDuplicate(Result result, BigDecimal dupValue, TestQcThreshold threshold,
@@ -123,25 +113,7 @@ public class QcEvaluationServiceImpl implements QcEvaluationService {
                 : DEFAULT_RPD_THRESHOLD;
 
         BigDecimal parentValue = findParentResultValue(qcProfile.getParentSampleItemId(), dupAnalysis.getTest());
-        if (parentValue == null) {
-            setEvaluation(result, QcEvaluation.N_A, "Parent result not found");
-            return;
-        }
-
-        BigDecimal mean = parentValue.add(dupValue).divide(TWO, MC);
-
-        BigDecimal rpd;
-        if (mean.compareTo(BigDecimal.ZERO) == 0) {
-            rpd = BigDecimal.ZERO;
-        } else {
-            rpd = parentValue.subtract(dupValue).abs().divide(mean, MC).multiply(HUNDRED, MC);
-        }
-
-        boolean pass = rpd.compareTo(rpdLimit) <= 0;
-
-        String detail = String.format("RPD = %s%% (threshold %s%%)",
-                rpd.setScale(1, RoundingMode.HALF_UP).toPlainString(), rpdLimit.toPlainString());
-        setEvaluation(result, pass ? QcEvaluation.PASS : QcEvaluation.FAIL, detail);
+        setEvaluation(result, QcItemRules.duplicate(parentValue, dupValue, rpdLimit, null));
     }
 
     private void evaluateControl(Result result, BigDecimal resultValue, TestQcThreshold threshold,
@@ -198,6 +170,14 @@ public class QcEvaluationServiceImpl implements QcEvaluationService {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    private void setEvaluation(Result result, QcItemRules.Outcome outcome) {
+        setEvaluation(result, switch (outcome.evaluation()) {
+        case PASS -> QcEvaluation.PASS;
+        case FAIL -> QcEvaluation.FAIL;
+        case NOT_EVALUATED, BELOW_LOQ -> QcEvaluation.N_A;
+        }, outcome.detail());
     }
 
     private void setEvaluation(Result result, QcEvaluation evaluation, String detail) {

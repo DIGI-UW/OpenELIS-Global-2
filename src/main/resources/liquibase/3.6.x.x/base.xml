@@ -82,6 +82,9 @@
   <include relativeToChangelogFile="true" file="048-result-run-batch.xml"/>
   <include relativeToChangelogFile="true" file="049-result-run-of-one.xml"/>
   <include relativeToChangelogFile="true" file="050-inventory-usage-fractional.xml"/>
+  <!-- OGC-1200 slice 10a: lab blanks and duplicates on a run, and what each run of a test must carry of them -->
+  <include relativeToChangelogFile="true" file="051-result-run-qc-item.xml"/>
+  <include relativeToChangelogFile="true" file="052-test-qc-policy-blank-duplicate.xml"/>
 
   <!-- Read-only FHIR interface: explicit resource-type reader permissions -->
   <include relativeToChangelogFile="true" file="027-fhir-read-permissions.xml"/>

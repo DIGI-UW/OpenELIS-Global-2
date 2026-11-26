@@ -111,7 +111,12 @@ public class DisplayListService implements LocaleChangeListener {
         IHC_BREAST_CANCER_REPORT_CERBB2_PATTERN, IHC_BREAST_CANCER_REPORT_MOLE_SUBTYPE;
     }
 
-    private static Map<ListType, List<IdValuePair>> typeToListMap;
+    /**
+     * Filled completely before it is published, so a page read while the lists are
+     * being refreshed sees the previous lists, never a half-built map that has no
+     * list yet for its type.
+     */
+    private static volatile Map<ListType, List<IdValuePair>> typeToListMap = new HashMap<>();
     private static Map<String, List<IdValuePair>> dictionaryToListMap = new HashMap<>();
 
     @Autowired
@@ -481,109 +486,108 @@ public class DisplayListService implements LocaleChangeListener {
     }
 
     public synchronized void refreshLists() {
-        typeToListMap = new HashMap<>();
-        typeToListMap.put(ListType.NOTEBOOK_STATUS, createNoteBookStatusList());
-        typeToListMap.put(ListType.CYTOLOGY_STATUS, createCytologyStatusList());
-        typeToListMap.put(ListType.PATHOLOGY_STATUS, createPathologyStatusList());
-        typeToListMap.put(ListType.CYTOLOGY_SPECIMEN_ADEQUACY_SATISFACTION,
-                createCytologySpecimenAdequacySatisfactionList());
-        typeToListMap.put(ListType.IMMUNOHISTOCHEMISTRY_STATUS, createImmunohistochemistryStatusList());
-        typeToListMap.put(ListType.IMMUNOHISTOCHEMISTRY_REPORT_TYPES, createImmunohistochemistryReportTypeList());
-        typeToListMap.put(ListType.CYTOLOGY_REPORT_TYPES, createCytologyReportTypeList());
-        typeToListMap.put(ListType.PATHOLOGY_REQUEST_STATUS, createPathologyRequestStatusList());
-        typeToListMap.put(ListType.HOURS, createHourList());
-        typeToListMap.put(ListType.MINS, createMinList());
-        typeToListMap.put(ListType.SAMPLE_TYPE, createTypeOfSampleList());
-        typeToListMap.put(ListType.SAMPLE_TYPE_ACTIVE, createSampleTypeList(false));
-        typeToListMap.put(ListType.SAMPLE_TYPE_INACTIVE, createSampleTypeList(true));
-        typeToListMap.put(ListType.INITIAL_SAMPLE_CONDITION,
+        Map<ListType, List<IdValuePair>> fresh = new HashMap<>();
+        fresh.put(ListType.NOTEBOOK_STATUS, createNoteBookStatusList());
+        fresh.put(ListType.CYTOLOGY_STATUS, createCytologyStatusList());
+        fresh.put(ListType.PATHOLOGY_STATUS, createPathologyStatusList());
+        fresh.put(ListType.CYTOLOGY_SPECIMEN_ADEQUACY_SATISFACTION, createCytologySpecimenAdequacySatisfactionList());
+        fresh.put(ListType.IMMUNOHISTOCHEMISTRY_STATUS, createImmunohistochemistryStatusList());
+        fresh.put(ListType.IMMUNOHISTOCHEMISTRY_REPORT_TYPES, createImmunohistochemistryReportTypeList());
+        fresh.put(ListType.CYTOLOGY_REPORT_TYPES, createCytologyReportTypeList());
+        fresh.put(ListType.PATHOLOGY_REQUEST_STATUS, createPathologyRequestStatusList());
+        fresh.put(ListType.HOURS, createHourList());
+        fresh.put(ListType.MINS, createMinList());
+        fresh.put(ListType.SAMPLE_TYPE, createTypeOfSampleList());
+        fresh.put(ListType.SAMPLE_TYPE_ACTIVE, createSampleTypeList(false));
+        fresh.put(ListType.SAMPLE_TYPE_INACTIVE, createSampleTypeList(true));
+        fresh.put(ListType.INITIAL_SAMPLE_CONDITION,
                 createFromDictionaryCategoryLocalizedSort("specimen reception condition"));
-        typeToListMap.put(ListType.SAMPLE_NATURE, createFromDictionaryCategoryLocalizedSort("specimen nature"));
-        typeToListMap.put(ListType.PATIENT_PROVINCES, createPatientProvinces());
-        typeToListMap.put(ListType.PATIENT_HEALTH_REGIONS, createPatientHealthRegions());
-        typeToListMap.put(ListType.PATIENT_MARITAL_STATUS,
+        fresh.put(ListType.SAMPLE_NATURE, createFromDictionaryCategoryLocalizedSort("specimen nature"));
+        fresh.put(ListType.PATIENT_PROVINCES, createPatientProvinces());
+        fresh.put(ListType.PATIENT_HEALTH_REGIONS, createPatientHealthRegions());
+        fresh.put(ListType.PATIENT_MARITAL_STATUS,
                 createFromDictionaryCategoryLocalizedSort("Marital Status Demographic Information"));
-        typeToListMap.put(ListType.PATIENT_NATIONALITY,
+        fresh.put(ListType.PATIENT_NATIONALITY,
                 createFromDictionaryCategoryLocalizedSort("Nationality Demographic Information"));
-        typeToListMap.put(ListType.PATIENT_EDUCATION,
+        fresh.put(ListType.PATIENT_EDUCATION,
                 createFromDictionaryCategoryLocalizedSort("Education Level Demographic Information"));
-        typeToListMap.put(ListType.PATIENT_DISEASE_PROGRAMME,
+        fresh.put(ListType.PATIENT_DISEASE_PROGRAMME,
                 createFromDictionaryCategoryLocalizedSort("Patient Disease Programme"));
-        typeToListMap.put(ListType.GENDERS, createGenderList());
-        typeToListMap.put(ListType.SAMPLE_PATIENT_REFERRING_CLINIC, createReferringClinicList());
-        typeToListMap.put(ListType.QA_EVENTS, createSortedQAEvents());
-        typeToListMap.put(ListType.TEST_SECTION_ACTIVE, createTestSectionActiveList());
-        typeToListMap.put(ListType.METHODS, createMethodList());
-        typeToListMap.put(ListType.METHODS_INACTIVE, createInactiveMethod());
-        typeToListMap.put(ListType.METHOD_BY_NAME, createMethodByNameList());
-        typeToListMap.put(ListType.TEST_SECTION_INACTIVE, createInactiveTestSection());
-        typeToListMap.put(ListType.TEST_SECTION_BY_NAME, createTestSectionByNameList());
-        typeToListMap.put(ListType.HAITI_DEPARTMENTS, createAddressDepartmentList());
-        typeToListMap.put(ListType.SAMPLE_PATIENT_PAYMENT_OPTIONS,
-                createFromDictionaryCategoryLocalizedSort("patientPayment"));
-        typeToListMap.put(ListType.PATIENT_SEARCH_CRITERIA, createPatientSearchCriteria());
-        typeToListMap.put(ListType.PANELS, createPanelList());
-        typeToListMap.put(ListType.PANELS_ACTIVE, createPanelList(false));
-        typeToListMap.put(ListType.PANELS_INACTIVE, createPanelList(true));
-        typeToListMap.put(ListType.ORDERABLE_TESTS, createOrderableTestList());
-        typeToListMap.put(ListType.ALL_TESTS, createTestList());
-        typeToListMap.put(ListType.IMMUNOHISTOCHEMISTRY_MARKERS_TESTS, createImmunoHistoChemistryTestList());
-        typeToListMap.put(ListType.REJECTION_REASONS, createDictionaryListForCategory("resultRejectionReasons"));
-        typeToListMap.put(ListType.REFERRAL_REASONS, createReferralReasonList());
-        typeToListMap.put(ListType.REFERRAL_ORGANIZATIONS, createReferralOrganizationList());
-        typeToListMap.put(ListType.TEST_LOCATION_CODE, createDictionaryListForCategory("testLocationCode"));
-        typeToListMap.put(ListType.PROGRAM, createProgramList());
-        typeToListMap.put(ListType.DICTIONARY_PROGRAM, createDictionaryListForCategory("programs"));
-        typeToListMap.put(ListType.RESULT_TYPE_LOCALIZED, createLocalizedResultTypeList());
-        typeToListMap.put(ListType.RESULT_TYPE_RAW, createRawResultTypeList());
-        typeToListMap.put(ListType.RESULT_TYPE_CODES, createResultTypeCodesList());
-        typeToListMap.put(ListType.UNIT_OF_MEASURE, createUOMList());
-        typeToListMap.put(ListType.UNIT_OF_MEASURE_ACTIVE, createUOMList());
-        typeToListMap.put(ListType.UNIT_OF_MEASURE_INACTIVE, createUOMList());
-        typeToListMap.put(ListType.DICTIONARY_TEST_RESULTS, createDictionaryTestResults());
-        typeToListMap.put(ListType.SEVERITY_CONSEQUENCES_LIST, createConsequencesList());
-        typeToListMap.put(ListType.SEVERITY_RECURRENCE_LIST, createRecurrenceList());
-        typeToListMap.put(ListType.ACTION_TYPE_LIST, createActionTypeList());
-        typeToListMap.put(ListType.LABORATORY_COMPONENT, createLaboratoryComponentList());
-        typeToListMap.put(ListType.ELECTRONIC_ORDER_STATUSES, createElectronicOrderStatusList());
-        typeToListMap.put(ListType.PRACTITIONER_PERSONS, createActivePractitionerPersonsList());
-        typeToListMap.put(ListType.ORDER_PRIORITY, createSamplePriorityList());
-        typeToListMap.put(ListType.IHC_BREAST_CANCER_REPORT_INTENSITY,
+        fresh.put(ListType.GENDERS, createGenderList());
+        fresh.put(ListType.SAMPLE_PATIENT_REFERRING_CLINIC, createReferringClinicList());
+        fresh.put(ListType.QA_EVENTS, createSortedQAEvents());
+        fresh.put(ListType.TEST_SECTION_ACTIVE, createTestSectionActiveList());
+        fresh.put(ListType.METHODS, createMethodList());
+        fresh.put(ListType.METHODS_INACTIVE, createInactiveMethod());
+        fresh.put(ListType.METHOD_BY_NAME, createMethodByNameList());
+        fresh.put(ListType.TEST_SECTION_INACTIVE, createInactiveTestSection());
+        fresh.put(ListType.TEST_SECTION_BY_NAME, createTestSectionByNameList());
+        fresh.put(ListType.HAITI_DEPARTMENTS, createAddressDepartmentList());
+        fresh.put(ListType.SAMPLE_PATIENT_PAYMENT_OPTIONS, createFromDictionaryCategoryLocalizedSort("patientPayment"));
+        fresh.put(ListType.PATIENT_SEARCH_CRITERIA, createPatientSearchCriteria());
+        fresh.put(ListType.PANELS, createPanelList());
+        fresh.put(ListType.PANELS_ACTIVE, createPanelList(false));
+        fresh.put(ListType.PANELS_INACTIVE, createPanelList(true));
+        fresh.put(ListType.ORDERABLE_TESTS, createOrderableTestList());
+        fresh.put(ListType.ALL_TESTS, createTestList());
+        fresh.put(ListType.IMMUNOHISTOCHEMISTRY_MARKERS_TESTS, createImmunoHistoChemistryTestList());
+        fresh.put(ListType.REJECTION_REASONS, createDictionaryListForCategory("resultRejectionReasons"));
+        fresh.put(ListType.REFERRAL_REASONS, createReferralReasonList());
+        fresh.put(ListType.REFERRAL_ORGANIZATIONS, createReferralOrganizationList());
+        fresh.put(ListType.TEST_LOCATION_CODE, createDictionaryListForCategory("testLocationCode"));
+        fresh.put(ListType.PROGRAM, createProgramList());
+        fresh.put(ListType.DICTIONARY_PROGRAM, createDictionaryListForCategory("programs"));
+        fresh.put(ListType.RESULT_TYPE_LOCALIZED, createLocalizedResultTypeList());
+        fresh.put(ListType.RESULT_TYPE_RAW, createRawResultTypeList());
+        fresh.put(ListType.RESULT_TYPE_CODES, createResultTypeCodesList());
+        fresh.put(ListType.UNIT_OF_MEASURE, createUOMList());
+        fresh.put(ListType.UNIT_OF_MEASURE_ACTIVE, createUOMList());
+        fresh.put(ListType.UNIT_OF_MEASURE_INACTIVE, createUOMList());
+        fresh.put(ListType.DICTIONARY_TEST_RESULTS, createDictionaryTestResults());
+        fresh.put(ListType.SEVERITY_CONSEQUENCES_LIST, createConsequencesList());
+        fresh.put(ListType.SEVERITY_RECURRENCE_LIST, createRecurrenceList());
+        fresh.put(ListType.ACTION_TYPE_LIST, createActionTypeList());
+        fresh.put(ListType.LABORATORY_COMPONENT, createLaboratoryComponentList());
+        fresh.put(ListType.ELECTRONIC_ORDER_STATUSES, createElectronicOrderStatusList());
+        fresh.put(ListType.PRACTITIONER_PERSONS, createActivePractitionerPersonsList());
+        fresh.put(ListType.ORDER_PRIORITY, createSamplePriorityList());
+        fresh.put(ListType.IHC_BREAST_CANCER_REPORT_INTENSITY,
                 createDictionaryListForCategory("ihc_breast_cancer_report_intensity"));
-        typeToListMap.put(ListType.IHC_BREAST_CANCER_REPORT_CERBB2_PATTERN,
+        fresh.put(ListType.IHC_BREAST_CANCER_REPORT_CERBB2_PATTERN,
                 createDictionaryListForCategory("ihc_breast_cancer_report_cerbb2_pattern"));
-        typeToListMap.put(ListType.IHC_BREAST_CANCER_REPORT_MOLE_SUBTYPE,
+        fresh.put(ListType.IHC_BREAST_CANCER_REPORT_MOLE_SUBTYPE,
                 createDictionaryListForCategory("ihc_breast_cancer_report_molecular_subtype"));
-        typeToListMap.put(ListType.PATHOLOGY_TECHNIQUES, createDictionaryListForCategory("pathology_techniques"));
-        typeToListMap.put(ListType.PATHOLOGIST_REQUESTS, createDictionaryListForCategory("pathologist_requests"));
-        typeToListMap.put(ListType.PATHOLOGIST_CONCLUSIONS, createDictionaryListForCategory("pathologist_conclusions"));
-        typeToListMap.put(ListType.CYTOLOGY_SATISFACTORY_FOR_EVALUATION,
+        fresh.put(ListType.PATHOLOGY_TECHNIQUES, createDictionaryListForCategory("pathology_techniques"));
+        fresh.put(ListType.PATHOLOGIST_REQUESTS, createDictionaryListForCategory("pathologist_requests"));
+        fresh.put(ListType.PATHOLOGIST_CONCLUSIONS, createDictionaryListForCategory("pathologist_conclusions"));
+        fresh.put(ListType.CYTOLOGY_SATISFACTORY_FOR_EVALUATION,
                 createDictionaryListForCategory("cytology_adequacy_satisfactory"));
-        typeToListMap.put(ListType.CYTOLOGY_UN_SATISFACTORY_FOR_EVALUATION,
+        fresh.put(ListType.CYTOLOGY_UN_SATISFACTORY_FOR_EVALUATION,
                 createDictionaryListForCategory("cytology_adequacy_unsatisfactory"));
-        typeToListMap.put(ListType.CYTOLOGY_DIAGNOSIS_RESULT_EPITHELIAL_CELL_SQUAMOUS,
+        fresh.put(ListType.CYTOLOGY_DIAGNOSIS_RESULT_EPITHELIAL_CELL_SQUAMOUS,
                 createDictionaryListForCategory("cytology_epithelial_cell_abnomalit_squamous"));
-        typeToListMap.put(ListType.CYTOLOGY_DIAGNOSIS_RESULT_EPITHELIAL_CELL_GLANDULAR,
+        fresh.put(ListType.CYTOLOGY_DIAGNOSIS_RESULT_EPITHELIAL_CELL_GLANDULAR,
                 createDictionaryListForCategory("cytology_epithelial_cell_abnomalit_glandular"));
-        typeToListMap.put(ListType.CYTOLOGY_DIAGNOSIS_RESULT_NON_NEO_PLASTIC_CELLULAR,
+        fresh.put(ListType.CYTOLOGY_DIAGNOSIS_RESULT_NON_NEO_PLASTIC_CELLULAR,
                 createDictionaryListForCategory("cytology_non-neoplastic_cellular_variations"));
-        typeToListMap.put(ListType.CYTOLOGY_DIAGNOSIS_RESULT_REACTIVE_CELLULAR,
+        fresh.put(ListType.CYTOLOGY_DIAGNOSIS_RESULT_REACTIVE_CELLULAR,
                 createDictionaryListForCategory("cytology_reactive_cellular_changes"));
-        typeToListMap.put(ListType.NOTEBOOK_EXPT_TYPE, createDictionaryListForCategory("notebook_experiment_type"));
-        typeToListMap.put(ListType.ANALYZER_LIST, createAnalyzerList());
-        typeToListMap.put(ListType.CYTOLOGY_DIAGNOSIS_RESULT_ORGANISMS,
+        fresh.put(ListType.NOTEBOOK_EXPT_TYPE, createDictionaryListForCategory("notebook_experiment_type"));
+        fresh.put(ListType.ANALYZER_LIST, createAnalyzerList());
+        fresh.put(ListType.CYTOLOGY_DIAGNOSIS_RESULT_ORGANISMS,
                 createDictionaryListForCategory("cytology_diagnosis_organisms"));
-        typeToListMap.put(ListType.CYTOLOGY_DIAGNOSIS_RESULT_OTHER,
+        fresh.put(ListType.CYTOLOGY_DIAGNOSIS_RESULT_OTHER,
                 createDictionaryListForCategory("cytology_diagnosis_other"));
-        typeToListMap.put(ListType.TB_ORDER_REASONS, createDictionaryListForCategory("TB Order Reasons"));
-        typeToListMap.put(ListType.TB_DIAGNOSTIC_REASONS, createDictionaryListForCategory("TB Diagnostic Reasons"));
-        typeToListMap.put(ListType.TB_FOLLOWUP_REASONS, createDictionaryListForCategory("TB Followup Reasons"));
-        typeToListMap.put(ListType.TB_ANALYSIS_METHODS, createDictionaryListForCategory("TB Analysis Methods"));
-        typeToListMap.put(ListType.TB_SAMPLE_ASPECTS, createDictionaryListForCategory("TB Sample Aspects"));
-        typeToListMap.put(ListType.TB_FOLLOWUP_LINE1, createTBFollowupLine1List());
-        typeToListMap.put(ListType.TB_FOLLOWUP_LINE2, createTBFollowupLine2List());
-        typeToListMap.put(ListType.ARV_ORG_LIST, createArvOrgList());
-        typeToListMap.put(ListType.ACTIVE_ORG_LIST, createActiveOrganizationsList());
+        fresh.put(ListType.TB_ORDER_REASONS, createDictionaryListForCategory("TB Order Reasons"));
+        fresh.put(ListType.TB_DIAGNOSTIC_REASONS, createDictionaryListForCategory("TB Diagnostic Reasons"));
+        fresh.put(ListType.TB_FOLLOWUP_REASONS, createDictionaryListForCategory("TB Followup Reasons"));
+        fresh.put(ListType.TB_ANALYSIS_METHODS, createDictionaryListForCategory("TB Analysis Methods"));
+        fresh.put(ListType.TB_SAMPLE_ASPECTS, createDictionaryListForCategory("TB Sample Aspects"));
+        fresh.put(ListType.TB_FOLLOWUP_LINE1, createTBFollowupLine1List());
+        fresh.put(ListType.TB_FOLLOWUP_LINE2, createTBFollowupLine2List());
+        fresh.put(ListType.ARV_ORG_LIST, createArvOrgList());
+        fresh.put(ListType.ACTIVE_ORG_LIST, createActiveOrganizationsList());
+        typeToListMap = fresh;
     }
 
     /**
@@ -903,7 +907,8 @@ public class DisplayListService implements LocaleChangeListener {
 
     private List<IdValuePair> createImmunoHistoChemistryTestList() {
         ArrayList<IdValuePair> tests = new ArrayList<>();
-        String id = testSectionService.getTestSectionByName("Immunohistochemistry").getId();
+        TestSection section = testSectionService.getTestSectionByName("Immunohistochemistry");
+        String id = section == null ? null : section.getId();
         if (id == null) {
             return tests;
         }

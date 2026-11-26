@@ -132,7 +132,7 @@ test(
       await expect(
         page.getByTestId(`run-qc-missing-${target.id}`),
       ).toContainText(
-        "requires a control on every run, and none is recorded on this one",
+        "This run lacks the control this test requires on every run, so its rows are held.",
       );
       await expect(
         page.getByTestId("run-rows").getByText("Held: QC missing"),

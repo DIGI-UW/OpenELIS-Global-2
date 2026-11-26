@@ -5,8 +5,8 @@ import java.io.Serializable;
 /**
  * The run a pending analysis has a value waiting in (OGC-1200 FR-D3). Kept on
  * worklist rows, which live in the session, so it is serializable. Held when
- * the run holds the row's test, for a failed control or a required control that
- * is missing (FR-D4); {@code heldCause} says which.
+ * the run holds the row's test, for failed QC or required QC that is missing
+ * (FR-D4, FR-H1); {@code heldCause} says which.
  */
 public record WaitingRun(Long runId, String label, String source, String openedAt, boolean held,
         String heldCause) implements Serializable {
