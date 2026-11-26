@@ -65,7 +65,6 @@ const VectorOrderEnter = () => {
   // reset runs, preventing stale cross-domain lab numbers from bleeding in.
   const [localLabNumber, setLocalLabNumber] = useState("");
   const [printLabelsExpanded, setPrintLabelsExpanded] = useState(false);
-  const [errors, setErrors] = useState({});
   const [showNceForm, setShowNceForm] = useState(false);
 
   // Seed workflowType + clear patient status on mount.

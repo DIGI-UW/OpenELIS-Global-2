@@ -181,7 +181,7 @@ function SiteWideBarcodeSettings() {
       return fieldError && fieldError.defaultMessage
         ? translateServerMessage(intl, fieldError.defaultMessage)
         : null;
-    } catch (e) {
+    } catch {
       return null;
     }
   };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useEffect, useContext } from "react";
 import {
   DataTable,
   TableContainer,
@@ -25,7 +25,7 @@ import {
 } from "../utils/serverPaging";
 import ServerPageArrows from "../common/ServerPageArrows";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
-import { ConfigurationContext, NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
 
 const EOrder = ({
@@ -38,11 +38,8 @@ const EOrder = ({
 }) => {
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const { configurationProperties } = useContext(ConfigurationContext);
 
   const intl = useIntl();
-
-  const [entering, setEntering] = useState(false);
 
   useEffect(() => {}, []);
 
@@ -55,12 +52,6 @@ const EOrder = ({
         "&attemptAutoSave=true",
       "_blank",
     );
-  }
-
-  function markRowOutOfSync(index) {
-    // jQuery("#enterButton_" + index).attr("disabled", "disabled");
-    // jQuery("#editButton_" + index).attr("disabled", "disabled");
-    // jQuery("#eOrderRow_" + index).addClass("unsynced-resource");
   }
 
   function editOrder(externalOrderId, labNumber) {
@@ -208,7 +199,7 @@ const EOrder = ({
     );
   };
 
-  const renderCell = (cell, row) => {
+  const renderCell = (cell, _row) => {
     return <TableCell key={cell.id}>{cell.value}</TableCell>;
   };
 

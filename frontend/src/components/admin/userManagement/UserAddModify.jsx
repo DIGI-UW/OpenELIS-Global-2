@@ -72,7 +72,7 @@ function UserAddModify() {
   const componentMounted = useRef(false);
   const intl = useIntl();
 
-  const [saveButton, setSaveButton] = useState(true);
+  const [, setSaveButton] = useState(true);
   // The server's refusal of the login, shown under the field (OGC-1593): the
   // site's userNameCharset can be stricter than the pattern checked here.
   const [loginNameRefusal, setLoginNameRefusal] = useState(null);

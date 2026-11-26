@@ -13,7 +13,7 @@ import DeviceManagement from "./settings/DeviceManagement";
 import TemperatureThresholds from "./settings/TemperatureThresholds";
 import AlertSettings from "./settings/AlertSettings";
 
-function Settings({ intl }) {
+function Settings({ intl: _intl }) {
   const [selectedTab, setSelectedTab] = useState(0);
 
   return (

@@ -234,7 +234,7 @@ const QcTargetsSection = ({ testId }) => {
     if (trimmed.startsWith('"')) {
       try {
         trimmed = String(JSON.parse(trimmed)).trim();
-      } catch (e) {
+      } catch {
         return null;
       }
     }

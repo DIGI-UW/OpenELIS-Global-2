@@ -263,7 +263,7 @@ const normalizeAlert = (alert) => {
   let contextData = {};
   try {
     contextData = alert.contextData ? JSON.parse(alert.contextData) : {};
-  } catch (e) {
+  } catch {
     console.warn("Failed to parse alert contextData:", alert.contextData);
   }
 
@@ -501,6 +501,8 @@ function FreezerMonitoringDashboard({ intl }) {
     [handleAlertAction],
   );
 
+  // Keep for the Active Alerts Clear button introduced by PR #4008.
+  // eslint-disable-next-line no-unused-vars
   const handleResolveAlert = useCallback(
     (alertId) => handleAlertAction(alertId, "resolve"),
     [handleAlertAction],

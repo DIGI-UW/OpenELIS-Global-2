@@ -177,15 +177,6 @@ function PatientStatusReport(props) {
     };
   }, []);
 
-  const breadcrumbs = [
-    { label: "home.label", link: "/" },
-    { label: "routine.reports", link: "/RoutineReports" },
-    {
-      label: "openreports.patientTestStatus",
-      link: "/RoutineReport?type=patient&report=patientCILNSP_vreduit",
-    },
-  ];
-
   return (
     <>
       <Grid fullWidth={true}>

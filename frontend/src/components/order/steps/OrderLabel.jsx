@@ -217,11 +217,9 @@ const OrderLabel = () => {
   useEffect(() => {
     const initialStorage = {};
     const initialNotes = {};
-    let hasAnyStorage = false;
 
     samples.forEach((sample, index) => {
       if (sample.storageLocationId) {
-        hasAnyStorage = true;
         initialStorage[index] = {
           locationId: sample.storageLocationId,
           locationType: sample.storageLocationType || "device",

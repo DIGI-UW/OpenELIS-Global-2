@@ -536,9 +536,6 @@ const Index = () => {
   }
 
   function getNodeNamesByTagName(elements, tag) {
-    let allTestsMap = {};
-    let panelTestsMap = {};
-
     if (elements[tag] === undefined) {
       return [];
     }
@@ -744,7 +741,7 @@ const Index = () => {
     );
     schema
       .validate(orderFormValues, { abortEarly: false })
-      .then((validData) => {
+      .then((_validData) => {
         setErrors([]);
       })
       .catch((errors) => {

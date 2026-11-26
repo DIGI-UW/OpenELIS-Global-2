@@ -294,7 +294,7 @@ const OrderDashboardContent = () => {
       history.push(
         `${workflowPrefix}/enter?order=${encodeURIComponent(order.labNumber)}`,
       );
-    } catch (error) {
+    } catch {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -315,7 +315,7 @@ const OrderDashboardContent = () => {
       history.push(
         `${workflowPrefix}/${returnedStep}?order=${encodeURIComponent(order.labNumber)}`,
       );
-    } catch (error) {
+    } catch {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),

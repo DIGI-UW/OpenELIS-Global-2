@@ -488,7 +488,7 @@ function TestNotificationConfigMenu() {
                         headers,
                         getHeaderProps,
                         getTableProps,
-                        getSelectionProps,
+                        getSelectionProps: _getSelectionProps,
                       }) => (
                         <TableContainer>
                           <Table {...getTableProps()}>
