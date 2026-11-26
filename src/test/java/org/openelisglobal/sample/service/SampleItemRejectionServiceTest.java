@@ -1,13 +1,19 @@
 package org.openelisglobal.sample.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.IStatusService;
@@ -37,6 +43,12 @@ public class SampleItemRejectionServiceTest {
         second.setId("analysis-2");
         Note note = new Note();
         when(sampleItemService.get("1001")).thenReturn(item);
+        when(sampleItemService.getStoredCopy("1001")).thenAnswer(invocation -> {
+            SampleItem storedState = new SampleItem();
+            storedState.setStatusId(item.getStatusId());
+            storedState.setRejected(item.isRejected());
+            return storedState;
+        });
         when(analysisService.getAnalysesBySampleItem(item)).thenReturn(List.of(first, second));
         when(statusService.getStatusID(SampleStatus.SampleRejected)).thenReturn("sample-rejected");
         when(statusService.getStatusID(AnalysisStatus.SampleRejected)).thenReturn("analysis-rejected");
@@ -51,7 +63,11 @@ public class SampleItemRejectionServiceTest {
         assertEquals("analysis-rejected", first.getStatusId());
         assertEquals("analysis-rejected", second.getStatusId());
         assertEquals("17", first.getSysUserId());
-        verify(sampleItemService).update(item);
+        ArgumentCaptor<SampleItem> storedState = ArgumentCaptor.forClass(SampleItem.class);
+        verify(sampleItemService).updateAgainst(eq(item), storedState.capture());
+        assertFalse("the audit diffs against the item before rejection", storedState.getValue().isRejected());
+        assertNull(storedState.getValue().getStatusId());
+        verify(sampleItemService, never()).update(any(SampleItem.class));
         verify(analysisService).update(first);
         verify(analysisService).update(second);
         verify(noteService).insert(note);

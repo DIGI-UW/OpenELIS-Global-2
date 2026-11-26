@@ -13,6 +13,13 @@ public interface SampleItemService extends BaseObjectService<SampleItem, String>
 
     SampleItem getData(String sampleItemId);
 
+    /**
+     * A copy of the item as stored, to pass to {@code updateAgainst} after changing
+     * the loaded item in place. Take it before the first change: in the same
+     * session the audit's own re-read returns the changed instance.
+     */
+    SampleItem getStoredCopy(String sampleItemId);
+
     List<SampleItem> getSampleItemsBySampleIdAndType(String sampleId, TypeOfSample typeOfSample);
 
     List<SampleItem> getPageOfSampleItems(int startingRecNo);

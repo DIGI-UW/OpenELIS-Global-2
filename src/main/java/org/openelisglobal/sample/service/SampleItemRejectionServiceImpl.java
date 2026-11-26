@@ -42,10 +42,11 @@ public class SampleItemRejectionServiceImpl implements SampleItemRejectionServic
             throw new IllegalArgumentException("Sample item not found");
         }
 
+        SampleItem storedState = sampleItemService.getStoredCopy(item.getId());
         item.setRejected(true);
         item.setStatusId(statusService.getStatusID(SampleStatus.SampleRejected));
         item.setSysUserId(authenticatedUserId);
-        sampleItemService.update(item);
+        sampleItemService.updateAgainst(item, storedState);
 
         String rejectedStatus = statusService.getStatusID(AnalysisStatus.SampleRejected);
         for (Analysis analysis : analysisService.getAnalysesBySampleItem(item)) {

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+ <changeSet id="OGC-1681-sample-canceled-display-key" author="openelisglobal">
+  <comment>The shipped SampleCanceled sample status carried the Entered display key, so a cancelled sample item read "Entered" wherever its status name is shown, such as the order audit trail.</comment>
+  <update schemaName="clinlims" tableName="status_of_sample">
+   <column name="display_key" value="status.sample.cancelled"/>
+   <where>name = 'SampleCanceled' AND status_type = 'SAMPLE' AND display_key = 'status.sample.entered'</where>
+  </update>
+  <rollback>
+   <update schemaName="clinlims" tableName="status_of_sample">
+    <column name="display_key" value="status.sample.entered"/>
+    <where>name = 'SampleCanceled' AND status_type = 'SAMPLE' AND display_key = 'status.sample.cancelled'</where>
+   </update>
+  </rollback>
+ </changeSet>
+</databaseChangeLog>

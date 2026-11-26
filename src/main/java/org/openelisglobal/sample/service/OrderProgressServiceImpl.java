@@ -241,9 +241,10 @@ public class OrderProgressServiceImpl implements OrderProgressService {
                 if (cancelledSampleStatusId.equals(item.getStatusId())) {
                     continue;
                 }
+                SampleItem storedState = sampleItemService.getStoredCopy(item.getId());
                 item.setStatusId(cancelledSampleStatusId);
                 item.setSysUserId(sysUserId);
-                sampleItemService.update(item);
+                sampleItemService.updateAgainst(item, storedState);
             }
         }
         sample.setOrderProgressStatus(OrderProgressStatus.CANCELLED.name());

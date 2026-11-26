@@ -263,6 +263,8 @@ export const StorageSection: React.FC<
     sampleType?: string;
     editable?: boolean;
     actions?: React.ReactNode;
+    /** Changes when another section changed the item, such as an aliquot taken. */
+    refreshToken?: number;
   }
 > = ({
   open,
@@ -272,6 +274,7 @@ export const StorageSection: React.FC<
   sampleType,
   editable,
   actions,
+  refreshToken,
 }) => {
   const intl = useIntl();
   const [location, setLocation] = useState<StorageLocation | null>(null);
@@ -286,7 +289,7 @@ export const StorageSection: React.FC<
       `/rest/storage/sample-items/${sampleItemId}`,
       (body: StorageLocation) => setLocation(body || {}),
     );
-  }, [sampleItemId, refreshKey]);
+  }, [sampleItemId, refreshKey, refreshToken]);
   if (!sampleItemId) {
     return null;
   }

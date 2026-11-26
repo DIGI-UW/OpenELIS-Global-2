@@ -1,6 +1,7 @@
 package org.openelisglobal.storage.controller;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -8,17 +9,32 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.math.BigDecimal;
+import java.util.List;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.audittrail.action.workers.AuditTrailItem;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.SampleStatus;
+import org.openelisglobal.common.services.historyservices.SampleHistoryService;
+import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.sample.service.SampleService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MvcResult;
 
 public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensitiveTest {
+
+    @Autowired
+    private SampleService sampleService;
+
+    @Autowired
+    private IStatusService statusService;
 
     private ObjectMapper objectMapper;
     private MockHttpSession mockSession;
@@ -278,5 +294,75 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
                         .content("{\"sampleItemId\":\"EXT-1000\",\"amountUsed\":\"1\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.remainingQuantity").value(0))
                 .andExpect(jsonPath("$.exhausted").value(true));
+    }
+
+    @Test
+    public void disposeSampleItem_ShouldWriteOneSampleItemHistoryRow() throws Exception {
+        int before = sampleItemUpdateHistoryRows(1002);
+
+        this.mockMvc
+                .perform(post("/rest/storage/sample-items/dispose").session(mockSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"sampleItemId\":\"EXT-1002\",\"reason\":\"expired\",\"method\":\"autoclave\"}"))
+                .andExpect(status().isOk());
+
+        assertEquals("disposal must add one sample_item history row", before + 1, sampleItemUpdateHistoryRows(1002));
+    }
+
+    @Test
+    public void recordSampleUsage_ShouldWriteOneSampleItemHistoryRow() throws Exception {
+        int before = sampleItemUpdateHistoryRows(1000);
+
+        this.mockMvc.perform(post("/rest/storage/sample-items/record-usage").session(mockSession)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"sampleItemId\":\"EXT-1000\",\"amountUsed\":\"1\"}")).andExpect(status().isOk());
+
+        assertEquals("usage must add one sample_item history row", before + 1, sampleItemUpdateHistoryRows(1000));
+    }
+
+    @Test
+    public void orderAuditTrail_ShowsUsageAsRemainingQuantityAndDisposalAsStatusChange() throws Exception {
+        jdbcTemplate.update("DELETE FROM history WHERE reference_id = 1000 AND reference_table ="
+                + " (SELECT id FROM reference_tables WHERE upper(name) = 'SAMPLE_ITEM')");
+        Integer typeOfSampleId = jdbcTemplate.queryForObject("SELECT min(id) FROM type_of_sample", Integer.class);
+        assertNotNull("the test database needs a sample type", typeOfSampleId);
+        jdbcTemplate.update("UPDATE sample_item SET typeosamp_id = ? WHERE id = 1000", typeOfSampleId);
+        String sampleType = jdbcTemplate.queryForObject("SELECT description FROM type_of_sample WHERE id = ?",
+                String.class, typeOfSampleId);
+        this.mockMvc.perform(post("/rest/storage/sample-items/record-usage").session(mockSession)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"sampleItemId\":\"EXT-1000\",\"amountUsed\":\"1\"}")).andExpect(status().isOk());
+        this.mockMvc
+                .perform(post("/rest/storage/sample-items/dispose").session(mockSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"sampleItemId\":\"EXT-1000\",\"reason\":\"expired\",\"method\":\"autoclave\"}"))
+                .andExpect(status().isOk());
+
+        List<AuditTrailItem> rows = new SampleHistoryService(sampleService.get("1000")).getAuditTrailItems();
+
+        assertEquals(2, rows.size());
+        rows.forEach(row -> assertEquals(sampleType + " (EXT-1000)", row.getIdentifier()));
+        String remainingQuantityLabel = MessageUtil.getMessage("auditTrail.sampleItem.remainingQuantity");
+        AuditTrailItem usage = rows.stream().filter(row -> remainingQuantityLabel.equals(row.getAttribute()))
+                .findFirst().orElseThrow();
+        assertEquals(0, new BigDecimal(usage.getOldValue()).compareTo(BigDecimal.ONE));
+        assertEquals(0, new BigDecimal(usage.getNewValue()).compareTo(BigDecimal.ZERO));
+        String statusLabel = MessageUtil.getMessage("auditTrail.sampleItem.status");
+        AuditTrailItem disposal = rows.stream().filter(row -> statusLabel.equals(row.getAttribute())).findFirst()
+                .orElseThrow();
+        assertEquals(nameOrId("1"), disposal.getOldValue());
+        assertEquals(nameOrId(statusService.getStatusID(SampleStatus.Disposed)), disposal.getNewValue());
+    }
+
+    private String nameOrId(String statusId) {
+        String name = statusService.getStatusNameFromId(statusId);
+        return name != null ? name : statusId;
+    }
+
+    private int sampleItemUpdateHistoryRows(int sampleItemId) {
+        return jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM history h JOIN reference_tables r ON r.id = h.reference_table"
+                        + " WHERE upper(r.name) = 'SAMPLE_ITEM' AND h.reference_id = ? AND h.activity = ?",
+                Integer.class, sampleItemId, IActionConstants.AUDIT_TRAIL_UPDATE);
     }
 }

@@ -51,6 +51,8 @@ interface AliquotsSectionProps {
   sampleItemId?: string;
   open: boolean;
   onToggle: (open: boolean) => void;
+  /** Called after aliquots are created: the parent's remaining quantity dropped. */
+  onCreated?: () => void;
 }
 
 const AliquotsSection: React.FC<AliquotsSectionProps> = ({
@@ -58,6 +60,7 @@ const AliquotsSection: React.FC<AliquotsSectionProps> = ({
   sampleItemId,
   open,
   onToggle,
+  onCreated,
 }) => {
   const intl = useIntl();
   const [item, setItem] = useState<SampleItemDTO | null>(null);
@@ -116,6 +119,7 @@ const AliquotsSection: React.FC<AliquotsSectionProps> = ({
           setNotes("");
           setCount(1);
           fetchAliquots();
+          onCreated?.();
         } else {
           setMessage(
             response?.message ||

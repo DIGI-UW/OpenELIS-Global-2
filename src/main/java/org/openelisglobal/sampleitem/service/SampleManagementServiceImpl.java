@@ -186,11 +186,12 @@ public class SampleManagementServiceImpl implements SampleManagementService {
         }
 
         // Step 7: Decrement parent's remaining quantity by total amount
+        SampleItem storedParent = sampleItemService.getStoredCopy(parent.getId());
         parent.decrementRemainingQuantity(totalQuantityToTransfer);
         parent.setSysUserId(sysUserId); // Set for audit trail
 
         // Step 8: Save all entities (parent update + all aliquots insert)
-        sampleItemService.update(parent);
+        sampleItemService.updateAgainst(parent, storedParent);
         for (SampleItem aliquot : createdAliquots) {
             sampleItemService.save(aliquot);
         }

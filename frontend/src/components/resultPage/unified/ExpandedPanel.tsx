@@ -290,6 +290,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   const [eqaAnalysts, setEqaAnalysts] = useState<
     { id: string; displayName: string }[]
   >([]);
+  const [aliquotsCreated, setAliquotsCreated] = useState(0);
   useEffect(() => {
     if (!eqaSchemeId) {
       return undefined;
@@ -933,6 +934,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           sampleItemId={row.sampleItemId as string | undefined}
           open={isSectionOpen(sectionLayout, "aliquots", false)}
           onToggle={(open) => toggleSection("aliquots", open)}
+          onCreated={() => setAliquotsCreated((count) => count + 1)}
         />
 
         {domain === "CLINICAL" && (
@@ -965,6 +967,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           accessionNumber={row.accessionNumber}
           sampleType={row.sampleType}
           editable={editable}
+          refreshToken={aliquotsCreated}
         />
 
         <AttachmentsSection

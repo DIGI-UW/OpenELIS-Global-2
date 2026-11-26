@@ -129,6 +129,27 @@ public class SampleManagementServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void createAliquot_recordsTheParentsRemainingQuantityInTheAuditTrail() {
+        jdbcTemplate.update("UPDATE clinlims.sample_item SET quantity = 10, remaining_quantity = 10 WHERE id = 1");
+        String sampleItemTable = "(SELECT id FROM clinlims.reference_tables WHERE upper(name) = 'SAMPLE_ITEM')";
+        jdbcTemplate
+                .update("DELETE FROM clinlims.history WHERE reference_id = 1 AND reference_table = " + sampleItemTable);
+        org.openelisglobal.sampleitem.form.CreateAliquotForm form = new org.openelisglobal.sampleitem.form.CreateAliquotForm();
+        form.setParentSampleItemId("1");
+        form.setQuantityToTransfer(new java.math.BigDecimal("2"));
+        form.setNumberOfAliquots(1);
+
+        sampleManagementService.createAliquot(form, "1");
+
+        java.util.List<String> changes = jdbcTemplate.queryForList(
+                "SELECT convert_from(changes, 'UTF8') FROM clinlims.history WHERE reference_id = 1 AND activity = 'U'"
+                        + " AND reference_table = " + sampleItemTable,
+                String.class);
+        assertEquals(1, changes.size());
+        assertTrue(changes.get(0), changes.get(0).matches("(?s).*<remainingQuantity>10(\\.0+)?</remainingQuantity>.*"));
+    }
+
+    @Test
     public void createAliquot_withAnEnormousExponent_isRefusedBeforeDividing() {
         int itemsBefore = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM clinlims.sample_item", Integer.class);
         org.openelisglobal.sampleitem.form.CreateAliquotForm form = new org.openelisglobal.sampleitem.form.CreateAliquotForm();
