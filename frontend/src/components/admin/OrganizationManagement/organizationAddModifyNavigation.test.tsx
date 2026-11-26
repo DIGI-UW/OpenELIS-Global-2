@@ -6,7 +6,6 @@
  */
 import React from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter, Route } from "react-router-dom";
