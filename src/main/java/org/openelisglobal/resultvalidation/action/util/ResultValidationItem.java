@@ -88,6 +88,7 @@ public class ResultValidationItem implements ResultItem, Serializable {
     private boolean normalResult;
     private String normalRange;
     private String patientName;
+    private String patientInfo;
     private Double lowerCritical;
     private Double higherCritical;
     private String resultFlag;
@@ -483,6 +484,14 @@ public class ResultValidationItem implements ResultItem, Serializable {
 
     public void setPatientName(String patientName) {
         this.patientName = patientName;
+    }
+
+    public String getPatientInfo() {
+        return patientInfo;
+    }
+
+    public void setPatientInfo(String patientInfo) {
+        this.patientInfo = patientInfo;
     }
 
     public String getNormalRange() {
