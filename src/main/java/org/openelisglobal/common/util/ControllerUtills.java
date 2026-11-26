@@ -88,7 +88,7 @@ public class ControllerUtills {
         if (requestAttributes instanceof ServletRequestAttributes) {
             request = ((ServletRequestAttributes) requestAttributes).getRequest();
             if (request != null) {
-                String path = request.getRequestURI().substring(request.getContextPath().length());
+                String path = URLUtil.getRequestPath(request);
                 if (path.startsWith("/rest")) {
                     return true;
                 }

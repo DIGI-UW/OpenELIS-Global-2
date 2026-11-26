@@ -614,7 +614,28 @@ public class RunQcServiceImpl implements RunQcService {
         log(runId, eventOf(action), testId, decision.getNceId() == null ? null : "nce " + decision.getNceId(),
                 sysUserId);
         refreshState(runId, sysUserId);
+        if (action != RunTestAction.ACCEPT_DESPITE) {
+            closeSetAsideRunOfOne(runId, sysUserId);
+        }
         return decision;
+    }
+
+    /**
+     * FR-A3: a Retest or Reject dispositions a run of one's only row, so the run
+     * closes; the row's next control or value opens a fresh run of one instead of
+     * recording into the decided run.
+     */
+    private void closeSetAsideRunOfOne(Long runId, String sysUserId) {
+        ResultRun run = resultRunDAO.get(runId).orElse(null);
+        if (run == null || run.getAnalysisId() == null || run.getState() == null || !run.getState().isActive()) {
+            return;
+        }
+        Timestamp now = new Timestamp(System.currentTimeMillis());
+        run.setState(ResultRunState.COMPLETE);
+        run.setCompletedAt(now);
+        run.setLastActivityAt(now);
+        run.setSysUserId(sysUserId);
+        resultRunDAO.update(run);
     }
 
     /**
