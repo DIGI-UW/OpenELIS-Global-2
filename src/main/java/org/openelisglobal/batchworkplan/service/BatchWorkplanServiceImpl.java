@@ -442,7 +442,7 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
                 continue;
             }
             reagents.add(new ReagentOptionResponse(item.getId(), item.getName(), item.getUnits(), entry.getValue(),
-                    lotOptions(item), perTestByReagent.get(entry.getKey())));
+                    lotOptions(item, perTestByReagent.get(entry.getKey())), perTestByReagent.get(entry.getKey())));
         }
         return reagents;
     }
@@ -783,13 +783,21 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
         return (item == null ? "?" : item.getName()) + " lot " + (lot == null ? "?" : lot.getLotNumber());
     }
 
-    private List<ReagentLotOptionResponse> lotOptions(InventoryItem item) {
+    /**
+     * The reagent's usable lots, first expiry first out; the suggested one is the
+     * first that holds at least one test's quantity ({@code perTest}, any lot when
+     * no quantity is linked).
+     */
+    private List<ReagentLotOptionResponse> lotOptions(InventoryItem item, java.math.BigDecimal perTest) {
         List<InventoryLot> lots = inventoryLotService.getAvailableLotsByItemFEFO(item.getId());
         List<ReagentLotOptionResponse> options = new ArrayList<>();
-        for (int index = 0; index < lots.size(); index++) {
-            InventoryLot lot = lots.get(index);
+        boolean suggested = false;
+        for (InventoryLot lot : lots) {
+            boolean enough = perTest == null || (lot.getCurrentQuantity() != null
+                    && java.math.BigDecimal.valueOf(lot.getCurrentQuantity()).compareTo(perTest) >= 0);
             options.add(new ReagentLotOptionResponse(lot.getId(), lot.getLotNumber(), lot.getEffectiveExpirationDate(),
-                    lot.getCurrentQuantity(), item.getUnits(), index == 0));
+                    lot.getCurrentQuantity(), item.getUnits(), !suggested && enough));
+            suggested = suggested || enough;
         }
         return options;
     }

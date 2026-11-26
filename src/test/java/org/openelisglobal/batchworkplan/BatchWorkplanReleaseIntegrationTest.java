@@ -566,6 +566,8 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
         Long runId = releaseIntoRun();
         String analysisId = batchAnalysisIds().get(0);
         jdbcTemplate.update("UPDATE clinlims.inventory_lot SET current_quantity = 0.2 WHERE id = ?", reagentLotId);
+        assertFalse("a lot short of one test is not the suggested one", resultRunService.lotOptions(runId, unitViewer())
+                .orElseThrow().reagents().get(0).lots().get(0).suggested());
 
         recordInRun(analysisId);
         assertTrue("an empty lot gives nothing", usesOf(analysisId, reagentLotId).isEmpty());
@@ -584,6 +586,11 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
         fresh.setExpirationDate(Timestamp.valueOf(LocalDateTime.now().plusYears(1)));
         fresh.setSysUserId(ACTOR);
         Long freshLotId = inventoryLotService.insert(fresh);
+
+        assertEquals("the lot that holds a test is the suggested one", List.of(freshLotId),
+                resultRunService.lotOptions(runId, unitViewer()).orElseThrow().reagents().get(0).lots().stream()
+                        .filter(org.openelisglobal.batchworkplan.form.ReagentLotOptionResponse::suggested)
+                        .map(org.openelisglobal.batchworkplan.form.ReagentLotOptionResponse::id).toList());
 
         resultRunService.setReagentLot(runId, reagentId, freshLotId, unitViewer(), ACTOR);
         assertEquals("the lot chosen afterwards is used for the recorded result", List.of(0.5),
@@ -656,6 +663,63 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
         assertEquals(Double.valueOf(9.0), lotQuantity(reagentLotId));
         assertEquals("COMPLETE",
                 jdbcTemplate.queryForObject("SELECT state FROM clinlims.result_run WHERE id = ?", String.class, runId));
+    }
+
+    /**
+     * OGC-1200 FR-G5: a result whose lot use runs while the run's lot is being
+     * changed is charged once: the change uses the new lot for it, and the use
+     * waits for the change and then finds that use.
+     */
+    @Test
+    public void aResultUsedWhileTheRunsLotChangesIsChargedOnce() throws Exception {
+        jdbcTemplate.update("UPDATE clinlims.test_reagent_link SET quantity_per_test = 0.5 WHERE reagent_id = ?",
+                reagentId);
+        jdbcTemplate.update(
+                "INSERT INTO clinlims.batch_workplan_item (id, batch_workplan_id, analysis_id, sort_order)"
+                        + " VALUES (nextval('clinlims.batch_workplan_item_seq'), ?, CAST(? AS numeric), 2)",
+                batchId, createAnalysis());
+        Long runId = releaseIntoRun();
+        resultRunService.setReagentLot(runId, reagentId, reagentLotId, unitViewer(), ACTOR);
+        String analysisId = batchAnalysisIds().get(0);
+        String resultId = jdbcTemplate
+                .queryForObject("INSERT INTO clinlims.result (id, analysis_id, value, result_type, run_id, lastupdated)"
+                        + " VALUES (nextval('clinlims.result_seq'), CAST(? AS numeric), '81', 'N', ?, now())"
+                        + " RETURNING CAST(id AS VARCHAR)", String.class, analysisId, runId);
+        InventoryLot other = new InventoryLot();
+        other.setFhirUuid(UUID.randomUUID());
+        other.setInventoryItem(inventoryItemService.get(reagentId));
+        other.setLotNumber("R4-" + UUID.randomUUID().toString().substring(0, 8));
+        other.setInitialQuantity(5.0);
+        other.setCurrentQuantity(5.0);
+        other.setQcStatus(QCStatus.PASSED);
+        other.setStatus(LotStatus.ACTIVE);
+        other.setExpirationDate(Timestamp.valueOf(LocalDateTime.now().plusYears(1)));
+        other.setSysUserId(ACTOR);
+        Long otherLotId = inventoryLotService.insert(other);
+
+        org.springframework.transaction.support.TransactionTemplate tx = new org.springframework.transaction.support.TransactionTemplate(
+                txManager);
+        java.util.concurrent.CountDownLatch changed = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.ExecutorService benches = java.util.concurrent.Executors.newFixedThreadPool(2);
+        java.util.concurrent.Future<Object> change = benches.submit(() -> {
+            tx.executeWithoutResult(status -> {
+                resultRunService.setReagentLot(runId, reagentId, otherLotId, unitViewer(), ACTOR);
+                changed.countDown();
+                pauseQuietly(1500);
+            });
+            return null;
+        });
+        java.util.concurrent.Future<Object> use = benches.submit(() -> {
+            changed.await();
+            resultRunService.useRunLot(runId, resultId, ACTOR);
+            return null;
+        });
+        change.get(90, java.util.concurrent.TimeUnit.SECONDS);
+        use.get(90, java.util.concurrent.TimeUnit.SECONDS);
+        benches.shutdown();
+
+        assertEquals(List.of(0.5), usesOf(analysisId, otherLotId));
+        assertTrue("nothing is charged on the lot the run had before", usesOf(analysisId, reagentLotId).isEmpty());
     }
 
     private void saveInRun(org.springframework.transaction.support.TransactionTemplate tx, String analysisId,

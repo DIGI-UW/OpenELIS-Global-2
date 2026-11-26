@@ -134,6 +134,52 @@ describe("OGC-1200 FR-E3 a batch run's reagent lot", () => {
     );
   });
 
+  it("keeps saying so once a lot short of one test is the run's lot", () => {
+    renderPicker({
+      reagents: [
+        {
+          id: 4,
+          name: "Amylase reagent",
+          units: "mL",
+          quantityPerTest: 0.5,
+          lots: [{ id: 40, lotNumber: "LOT-LOW", currentQuantity: 0.2 }],
+        },
+      ],
+      currentLotId: 40,
+      lastUsedLotId: null,
+    });
+
+    expect(screen.getByTestId("run-lot-current-short")).toHaveTextContent(
+      "The lot recorded on this run holds less than one test uses",
+    );
+  });
+
+  it("says the run's lot is short of one test as soon as it is saved", () => {
+    utilsMock.putToOpenElisServerJsonResponse.mockImplementation(
+      (_url: string, _body: string, callback: (r: unknown) => void) =>
+        callback({ id: 7, reagentLot: "LOT-LOW" }),
+    );
+    renderPicker({
+      reagents: [
+        {
+          id: 4,
+          name: "Amylase reagent",
+          units: "mL",
+          quantityPerTest: 0.5,
+          lots: [{ id: 40, lotNumber: "LOT-LOW", currentQuantity: 0.2 }],
+        },
+      ],
+      currentLotId: null,
+      lastUsedLotId: null,
+    });
+
+    fireEvent.change(lotSelect(), { target: { value: "4:40" } });
+    fireEvent.click(screen.getByTestId("run-lot-save"));
+
+    expect(screen.queryByTestId("run-lot-short")).toBeNull();
+    expect(screen.getByTestId("run-lot-current-short")).toBeInTheDocument();
+  });
+
   it("says so when no reagent is linked to the run's tests", () => {
     renderPicker({ reagents: [], currentLotId: null, lastUsedLotId: null });
     expect(screen.getByTestId("run-lot-none")).toBeInTheDocument();

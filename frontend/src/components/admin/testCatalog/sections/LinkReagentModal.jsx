@@ -33,6 +33,7 @@ const LinkReagentModal = ({
   const [selected, setSelected] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -47,6 +48,7 @@ const LinkReagentModal = ({
     }
     const linked = new Set(linkedReagentIds.map((id) => String(id)));
     getFromOpenElisServer("/rest/inventory/items", (res) => {
+      setLoadFailed(!Array.isArray(res));
       const items = Array.isArray(res) ? res : [];
       setAvailable(
         items
@@ -113,7 +115,17 @@ const LinkReagentModal = ({
       size="md"
     >
       <Stack gap={5}>
-        {noneAvailable ? (
+        {loadFailed ? (
+          <InlineNotification
+            kind="error"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({ id: "error.title" })}
+            subtitle={intl.formatMessage({
+              id: "label.testCatalog.reagents.modal.loadError",
+            })}
+          />
+        ) : noneAvailable ? (
           <InlineNotification
             kind="info"
             lowContrast

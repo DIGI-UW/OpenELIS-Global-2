@@ -750,7 +750,7 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     @Override
     @Transactional
     public void useRunLot(Long runId, String resultId, String sysUserId) {
-        ResultRun run = runId == null ? null : baseObjectDAO.get(runId).orElse(null);
+        ResultRun run = runId == null ? null : baseObjectDAO.get(runId).map(baseObjectDAO::lockForUpdate).orElse(null);
         Result result = StringUtils.isNumeric(resultId) ? resultService.get(resultId) : null;
         if (run != null && result != null) {
             consumeRunLot(run, result, sysUserId);

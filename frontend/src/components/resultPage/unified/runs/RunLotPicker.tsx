@@ -121,6 +121,11 @@ const RunLotPicker: React.FC<RunLotPickerProps> = ({ runId, onSaved }) => {
         )
       : dated;
   };
+  const currentShort = options.reagents.some((reagent) =>
+    reagent.lots.some(
+      (lot) => lot.id === options.currentLotId && isShort(reagent, lot),
+    ),
+  );
   const pickedShort = options.reagents.some((reagent) =>
     reagent.lots.some(
       (lot) =>
@@ -150,6 +155,9 @@ const RunLotPicker: React.FC<RunLotPickerProps> = ({ runId, onSaved }) => {
           return;
         }
         setPicked("");
+        setOptions((current) =>
+          current ? { ...current, currentLotId: reagentLotId } : current,
+        );
         onSaved(response);
       },
     );
@@ -184,6 +192,11 @@ const RunLotPicker: React.FC<RunLotPickerProps> = ({ runId, onSaved }) => {
       {pickedShort && (
         <p className="unifiedFieldHint" data-testid="run-lot-short">
           <FormattedMessage id="run.lot.shortHint" />
+        </p>
+      )}
+      {currentShort && !pickedShort && (
+        <p className="unifiedFieldHint" data-testid="run-lot-current-short">
+          <FormattedMessage id="run.lot.currentShort" />
         </p>
       )}
       <div className="runLotActions">
