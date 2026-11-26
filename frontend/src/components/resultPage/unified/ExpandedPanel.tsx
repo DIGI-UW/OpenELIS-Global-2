@@ -28,6 +28,7 @@ import CriticalCallbackAction from "./CriticalCallbackAction";
 import HistorySection from "./HistorySection";
 import InterpretationSection from "./InterpretationSection";
 import ReagentsQcSection from "./ReagentsQcSection";
+import type { WaitingRun } from "./runs/WaitingTag";
 import AliquotsSection from "./AliquotsSection";
 import ReferralAction, {
   ReferralDraft,
@@ -186,6 +187,8 @@ interface ExpandedPanelProps {
     disposition: NceDisposition,
     rejectReasonId: string,
   ) => void;
+  /** OGC-1200: a control recorded on the row held or released it. */
+  onRowHoldChange?: (waitingRun: WaitingRun | null) => void;
 }
 
 const noteVisibilityTag = (noteType?: string) =>
@@ -248,6 +251,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   nceRejectReasonId,
   onNceRejectReasonChange,
   onNceApplyDisposition,
+  onRowHoldChange,
 }) => {
   const intl = useIntl();
   const { configurationProperties } = (useContext(ConfigurationContext) ||
@@ -310,6 +314,12 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   // notes and the interpretation are component-scoped on component rows;
   // legacy analysis-level notes (no component id) still show everywhere
   const rowComponentId = row.testResultComponentId as string | undefined;
+  // OGC-1200 FR-D6, FR-D7: the run the row's result is recorded in, or the
+  // open run it waits in, batched in or opened by its control.
+  const rowRunId =
+    (row.runId as number | undefined) ??
+    (row.waitingRun as { runId?: number } | undefined)?.runId ??
+    null;
   const notes = (row.analysisNotes || []).filter((note) =>
     noteVisibleOnRow(note, rowComponentId),
   );
@@ -832,6 +842,10 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
       <ReagentsQcSection
         testId={row.testId as string | undefined}
         analysisId={row.analysisId as string | undefined}
+        runId={rowRunId}
+        hasSavedResult={Boolean(row.resultId)}
+        runOfOneOpen={Boolean(row.runOfOneOpen)}
+        onRowHoldChange={onRowHoldChange}
         editable={editable}
         resultType={row.resultType}
         testSectionId={testSectionId}
@@ -964,6 +978,8 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
         <HistorySection
           analysisId={row.analysisId as string | undefined}
           componentId={rowComponentId}
+          runId={rowRunId}
+          testId={row.testId as string | undefined}
           open={isSectionOpen(sectionLayout, "history", false)}
           onToggle={(open) => toggleSection("history", open)}
         />

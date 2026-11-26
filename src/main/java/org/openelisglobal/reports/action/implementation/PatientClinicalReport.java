@@ -309,11 +309,11 @@ public class PatientClinicalReport extends PatientReport implements IReportCreat
                     .getMessage(sampleCompleteMap.get(reportItem.getAccessionNumber()) ? "report.status.complete"
                             : "report.status.partial"));
             if (reportItem.isCorrectedResult()) {
-                // The report is French only
+                String correctedResult = MessageUtil.getMessage("report.corrected.result");
                 if (reportItem.getNote() != null && reportItem.getNote().length() > 0) {
-                    reportItem.setNote("Résultat corrigé<br/>" + reportItem.getNote());
+                    reportItem.setNote(correctedResult + "<br/>" + reportItem.getNote());
                 } else {
-                    reportItem.setNote("Résultat corrigé");
+                    reportItem.setNote(correctedResult);
                 }
             }
 

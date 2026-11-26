@@ -65,12 +65,16 @@ const InterpretationSection: React.FC<InterpretationSectionProps> = ({
       `/rest/results-entry/test/${testId}/interpretations`,
       (body: BucketWithComponent[]) => {
         const all = Array.isArray(body) ? body : [];
-        const scoped = componentId
-          ? all.filter((b) => b.componentId === componentId)
-          : all;
         // a single-component test's buckets apply even when the row carries no
         // component id (legacy rows)
-        setBuckets(scoped.length > 0 ? scoped : all);
+        const scoped = componentId
+          ? all.filter(
+              (b) =>
+                b.componentId != null &&
+                String(b.componentId) === String(componentId),
+            )
+          : all;
+        setBuckets(scoped);
         setLoaded(true);
       },
     );

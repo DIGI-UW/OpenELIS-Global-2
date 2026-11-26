@@ -35,6 +35,7 @@ import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
+import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory.ValueType;
 import org.openelisglobal.patient.valueholder.Patient;
@@ -100,6 +101,8 @@ public class SpecimenTransformServiceImpl implements SpecimenTransformService {
 
         Specimen specimen = this.transformToSpecimen(sampleTest.item.getId());
         if (sampleTest.initialSampleConditionIdList != null) {
+            // Order entry supplies the current list, which may already be persisted.
+            specimen.getCondition().clear();
             for (ObservationHistory initialSampleCondition : sampleTest.initialSampleConditionIdList) {
                 specimen.addCondition(transformSampleConditionToCodeableConcept(initialSampleCondition));
             }
@@ -411,6 +414,17 @@ public class SpecimenTransformServiceImpl implements SpecimenTransformService {
 
         if (patient != null) {
             specimen.setSubject(common.createReferenceFor(ResourceType.Patient, patient.getFhirUuidAsString()));
+        }
+
+        String conditionTypeId = observationHistoryService
+                .getObservationTypeIdForType(ObservationType.INITIAL_SAMPLE_CONDITION);
+        if (conditionTypeId != null && !GenericValidator.isBlankOrNull(sampleItem.getId())) {
+            for (ObservationHistory observation : observationHistoryService
+                    .getObservationHistoriesBySampleItemId(sampleItem.getId())) {
+                if (conditionTypeId.equals(observation.getObservationHistoryTypeId())) {
+                    specimen.addCondition(transformSampleConditionToCodeableConcept(observation));
+                }
+            }
         }
 
         return specimen;

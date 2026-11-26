@@ -790,6 +790,32 @@
   gap: 1rem;
 }
 
+.runBatchBar,
+.runLotActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin: 0.5rem 0;
+}
+
+.runBatchPicks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  flex-basis: 100%;
+}
+
+.runLotPicker {
+  max-width: 32rem;
+  margin: 1rem 0 0.5rem;
+}
+
+.unifiedSelectHeader,
+.unifiedSelectCell {
+  width: 3rem;
+}
+
 .runRaw {
   max-height: 24rem;
   overflow: auto;

@@ -41,6 +41,12 @@ public class IndicatorAggregationReportingServlet extends HttpServlet {
     private LoginUserService loginService = SpringContext.getBean(LoginUserService.class);
     private final String DATE_PATTERN = "yyyy-MM-dd";
 
+    /**
+     * An indicator report is a few kilobytes of XML; the body is read within this
+     * bound.
+     */
+    static final int MAX_REPORT_BYTES = 8 * 1024 * 1024;
+
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse response) throws ServletException, IOException {
         response.setStatus(HttpServletResponse.SC_OK);
@@ -57,7 +63,12 @@ public class IndicatorAggregationReportingServlet extends HttpServlet {
         List<ReportExternalImport> insertableImportReports = new ArrayList<>();
         List<ReportExternalImport> updatableImportReports = new ArrayList<>();
 
-        Document sentIndicators = getDocument(inputStream, request.getContentLength());
+        byte[] body = BoundedRequestBody.read(inputStream, request.getContentLength(), MAX_REPORT_BYTES);
+        if (body == null) {
+            response.setStatus(HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE);
+            return;
+        }
+        Document sentIndicators = getDocument(body);
 
         if (sentIndicators == null) {
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
@@ -86,29 +97,12 @@ public class IndicatorAggregationReportingServlet extends HttpServlet {
         response.setStatus(HttpServletResponse.SC_OK);
     }
 
-    private Document getDocument(ServletInputStream inputStream, int contentLength) {
-        int charCount = 0;
-        byte[] byteBuffer = new byte[contentLength];
-
-        while (true) {
-            try {
-                int readLength = inputStream.readLine(byteBuffer, charCount, 1024);
-                // LogEvent.logFatal("IndicatorAggregationReportingServlet",
-                // String.valueOf(readLength), new String(byteBuffer).trim());
-
-                if (readLength == -1) {
-                    return DocumentHelper.parseText(new String(byteBuffer, StandardCharsets.UTF_8).trim());
-                } else {
-                    charCount += readLength;
-                }
-
-            } catch (IOException e) {
-                LogEvent.logDebug(e);
-                return null;
-            } catch (DocumentException e) {
-                LogEvent.logDebug(e);
-                return null;
-            }
+    private Document getDocument(byte[] body) {
+        try {
+            return DocumentHelper.parseText(new String(body, StandardCharsets.UTF_8).trim());
+        } catch (DocumentException e) {
+            LogEvent.logDebug(e);
+            return null;
         }
     }
 
