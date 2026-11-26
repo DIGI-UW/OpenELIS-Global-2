@@ -3,6 +3,7 @@ package org.openelisglobal.eqa.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -434,13 +435,24 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
         nameAnalytes(List.of(Map.of("results", rows)));
         for (Map<String, Object> row : rows) {
             body.append("- ").append(row.getOrDefault("testName", row.getOrDefault("analyteName", "")))
-                    .append(": reported ").append(Objects.toString(row.get("reported"), "")).append(", target ")
-                    .append(Objects.toString(row.get("target"), "")).append('\n');
+                    .append(": reported ").append(shown(row.get("reported"))).append(", target ")
+                    .append(shown(row.get("target"))).append('\n');
         }
         if (Boolean.TRUE.equals(followup.getPersistentFailureFlag())) {
             body.append("\nThis is a repeated failure across recent cycles and has been escalated.\n");
         }
         return body.append("\nPlease investigate and reply with your corrective action.").toString();
+    }
+
+    /**
+     * A number as the Performance Report prints it: the snapshot reads a stored
+     * 60.00000 back as 60.0, which the message would otherwise show.
+     */
+    private static String shown(Object value) {
+        if (value instanceof Number) {
+            return new BigDecimal(value.toString()).stripTrailingZeros().toPlainString();
+        }
+        return Objects.toString(value, "");
     }
 
     private String contactEmail(Long organizationId) {

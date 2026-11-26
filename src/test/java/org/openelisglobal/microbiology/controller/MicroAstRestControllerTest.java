@@ -68,8 +68,6 @@ public class MicroAstRestControllerTest {
         org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic ordered = new org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic();
         ordered.setAntibioticId("abx-1");
         ordered.setDisplayOrder(2);
-        ordered.setTier(1);
-        ordered.setReportBehavior("ALWAYS");
         when(service.getPanelAntibiotics("panel-1")).thenReturn(java.util.List.of(ordered));
 
         org.openelisglobal.microbiology.form.MicroAstRunAntibioticForm response = controller(service)
@@ -77,8 +75,6 @@ public class MicroAstRestControllerTest {
 
         assertEquals("abx-1", response.antibioticId);
         assertEquals(Integer.valueOf(2), response.displayOrder);
-        assertEquals(Integer.valueOf(1), response.tier);
-        assertEquals("ALWAYS", response.reportBehavior);
     }
 
     @Test
@@ -227,6 +223,8 @@ public class MicroAstRestControllerTest {
         antibiotic.setDisplayName("Ampicillin");
         when(antibiotics.get(org.mockito.ArgumentMatchers.anyString())).thenReturn(java.util.Optional.of(antibiotic));
         org.springframework.test.util.ReflectionTestUtils.setField(responses, "antibiotics", antibiotics);
+        org.springframework.test.util.ReflectionTestUtils.setField(responses, "panels",
+                org.mockito.Mockito.mock(org.openelisglobal.microbiology.dao.MicroAstPanelDAO.class));
         return new MicroAstRestController(service, responses);
     }
 

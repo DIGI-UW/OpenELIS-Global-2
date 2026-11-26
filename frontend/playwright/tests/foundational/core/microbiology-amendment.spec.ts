@@ -6,6 +6,7 @@ import {
   enterAndValidateAstRun,
   startAstRun,
 } from "../../../helpers/microbiology-ast-reporting-workflow";
+import { openMicrobiologyCaseScope } from "../../../helpers/microbiology-ui";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 const attachScreenshot = async (
@@ -29,7 +30,7 @@ test.describe("Microbiology final-report amendments", () => {
     await test.step("Verify the original issued patient report", async () => {
       const { text, pdf } = await readMicrobiologyPatientReport(page, seeded);
       expect(text).toContain("ISO-1: Escherichia coli");
-      expect(text).toContain("Ciprofloxacin (UAT) 4 ug/mL Susceptible");
+      expect(text).toContain("Ciprofloxacin (UAT) 4 mg/L Susceptible");
       await testInfo.attach("original-patient-report.pdf", {
         body: pdf,
         contentType: "application/pdf",
@@ -73,9 +74,7 @@ test.describe("Microbiology final-report amendments", () => {
     });
 
     await test.step("Record a reasoned isolate re-identification", async () => {
-      await page
-        .getByLabel("Testing section", { exact: true })
-        .selectOption("ISOLATES");
+      await openMicrobiologyCaseScope(page, "ISOLATES");
       await expect(page).toHaveURL(/scope=ISOLATES$/);
       await page.getByRole("button", { name: "Reidentify" }).click();
       const dialog = page.getByRole("dialog");
@@ -84,6 +83,9 @@ test.describe("Microbiology final-report amendments", () => {
         exact: true,
       });
       await organism.fill("Klebsiella pneumoniae (UAT)");
+      await expect(
+        dialog.getByRole("option", { name: /Klebsiella pneumoniae \(UAT\)/ }),
+      ).toBeVisible();
       await organism.press("ArrowDown");
       await organism.press("Enter");
       await dialog
@@ -117,9 +119,7 @@ test.describe("Microbiology final-report amendments", () => {
     });
 
     await test.step("Repeat susceptibility testing for the corrected organism", async () => {
-      await page
-        .getByLabel("Testing section", { exact: true })
-        .selectOption("AST");
+      await openMicrobiologyCaseScope(page, "AST");
       await expect(
         page.getByTestId(`ast-run-${seeded.astRunId}`),
       ).toContainText("Repeat required", { timeout: LONG_TIMEOUT });
@@ -133,11 +133,10 @@ test.describe("Microbiology final-report amendments", () => {
     });
 
     await test.step("Release and inspect immutable report versions", async () => {
-      await page
-        .getByLabel("Testing section", { exact: true })
-        .selectOption("AMENDMENT");
+      await openMicrobiologyCaseScope(page, "AMENDMENT");
       await expect(page).toHaveURL(/scope=AMENDMENT$/);
       await page
+        .getByTestId("microbiology-amendment-card")
         .getByRole("button", { name: "Release amended report" })
         .click();
       await expect(
@@ -155,7 +154,7 @@ test.describe("Microbiology final-report amendments", () => {
     await test.step("Verify both patient results and the restored mutation lock", async () => {
       const { text, pdf } = await readMicrobiologyPatientReport(page, seeded);
       expect(text).toContain("ISO-1: Klebsiella pneumoniae (UAT)");
-      expect(text).toContain("Ciprofloxacin (UAT) 4 ug/mL Susceptible");
+      expect(text).toContain("Ciprofloxacin (UAT) 4 mg/L Susceptible");
       expect(text).not.toContain("Escherichia coli");
       await testInfo.attach("amended-patient-report.pdf", {
         body: pdf,

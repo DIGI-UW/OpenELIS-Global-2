@@ -15,6 +15,7 @@ import MicrobiologyService from "./MicrobiologyService";
 
 const TARGET_TYPES = ["CASE", "ISOLATE", "SAMPLE_ITEM", "RESULT"];
 const METHOD_OPTIONS = ["PHONE", "SMS", "IN_PERSON", "EMAIL"];
+const OUTCOME_OPTIONS = ["CONFIRMED", "REACHED_NO_READBACK", "UNABLE_TO_REACH"];
 
 const statusTagType = (status) => {
   if (status === "CLOSED") {
@@ -36,12 +37,16 @@ const CriticalCommunicationPanel = ({
   onEntryComplete,
 }) => {
   const intl = useIntl();
+  // i18n-keys: microbiology.critical.outcomes.*
+  const outcomeLabel = (value) =>
+    intl.formatMessage({ id: `microbiology.critical.outcomes.${value}` });
   const [communications, setCommunications] = useState([]);
   const [targetType, setTargetType] = useState("CASE");
   const [targetId, setTargetId] = useState(caseId);
   const [recipient, setRecipient] = useState("");
   const [recipientContact, setRecipientContact] = useState("");
   const [communicationMethod, setCommunicationMethod] = useState("PHONE");
+  const [outcome, setOutcome] = useState("");
   const [message, setMessage] = useState("");
   const [followUpNeeded, setFollowUpNeeded] = useState(true);
   const [closingId, setClosingId] = useState("");
@@ -91,8 +96,15 @@ const CriticalCommunicationPanel = ({
   };
 
   const logCommunication = () => {
-    if (!recipient.trim() || !message.trim() || !effectiveTargetId) {
-      setError(intl.formatMessage({ id: "microbiology.critical.required" }));
+    if (
+      !recipient.trim() ||
+      !message.trim() ||
+      !effectiveTargetId ||
+      !outcome
+    ) {
+      setError(
+        intl.formatMessage({ id: "microbiology.critical.outcomeRequired" }),
+      );
       return;
     }
     setSaving(true);
@@ -104,12 +116,14 @@ const CriticalCommunicationPanel = ({
         recipient,
         recipientContact,
         communicationMethod,
+        outcome,
         message,
         followUpNeeded,
       })
       .then(() => {
         setRecipient("");
         setRecipientContact("");
+        setOutcome("");
         setMessage("");
         setFollowUpNeeded(true);
         refresh();
@@ -126,18 +140,12 @@ const CriticalCommunicationPanel = ({
       .finally(() => setSaving(false));
   };
 
-  const acknowledge = (communicationId) => {
-    setSaving(true);
-    service
-      .acknowledgeCriticalCommunication(communicationId)
-      .then(refresh)
-      .finally(() => setSaving(false));
-  };
-
   const close = (communicationId) => {
     if (!resolutionNote.trim()) {
       setError(
-        intl.formatMessage({ id: "microbiology.critical.resolutionRequired" }),
+        intl.formatMessage({
+          id: "microbiology.critical.followUpNoteRequired",
+        }),
       );
       return;
     }
@@ -165,13 +173,14 @@ const CriticalCommunicationPanel = ({
             {intl.formatMessage({ id: "microbiology.critical.title" })}
           </h3>
           <p className="microbiology-card__hint">
-            {intl.formatMessage({ id: "microbiology.critical.hint" })}
+            {intl.formatMessage({ id: "microbiology.critical.callHint" })}
           </p>
         </div>
         <Tag
           type={
             communications.some(
-              (item) => item.acknowledgementStatus !== "CLOSED",
+              (item) =>
+                item.followUpNeeded && item.acknowledgementStatus !== "CLOSED",
             )
               ? "red"
               : "gray"
@@ -277,6 +286,26 @@ const CriticalCommunicationPanel = ({
                 />
               ))}
             </Select>
+            <Select
+              id="microbiology-critical-outcome"
+              labelText={intl.formatMessage({
+                id: "microbiology.critical.outcome",
+              })}
+              value={outcome}
+              onChange={(event) => {
+                setOutcome(event.target.value);
+                setFollowUpNeeded(event.target.value !== "CONFIRMED");
+              }}
+            >
+              <SelectItem value="" text="" />
+              {OUTCOME_OPTIONS.map((value) => (
+                <SelectItem
+                  key={value}
+                  value={value}
+                  text={outcomeLabel(value)}
+                />
+              ))}
+            </Select>
             <div className="microbiology-form-grid__wide">
               <TextArea
                 id="microbiology-critical-message"
@@ -322,45 +351,39 @@ const CriticalCommunicationPanel = ({
                       communication.communicationMethod,
                       intl,
                     )}
+                    {communication.outcome &&
+                      ` · ${outcomeLabel(communication.outcome)}`}
                   </p>
-                  <Tag
-                    type={statusTagType(communication.acknowledgementStatus)}
-                    data-testid="microbiology-critical-status"
-                  >
-                    {formatMicrobiologyEnum(
-                      communication.acknowledgementStatus,
-                      intl,
-                    )}
-                  </Tag>
+                  {communication.followUpNeeded && (
+                    <Tag
+                      type={statusTagType(communication.acknowledgementStatus)}
+                      data-testid="microbiology-critical-status"
+                    >
+                      {formatMicrobiologyEnum(
+                        communication.acknowledgementStatus,
+                        intl,
+                      )}
+                    </Tag>
+                  )}
                   {communication.resolutionNote && (
                     <p>{communication.resolutionNote}</p>
                   )}
                 </div>
                 <div className="microbiology-critical-row__actions">
-                  {communication.acknowledgementStatus === "OPEN" && (
-                    <Button
-                      kind="secondary"
-                      size="sm"
-                      onClick={() => acknowledge(communication.id)}
-                      disabled={saving || isReadOnly}
-                    >
-                      {intl.formatMessage({
-                        id: "microbiology.critical.acknowledge",
-                      })}
-                    </Button>
-                  )}
-                  {communication.acknowledgementStatus === "ACKNOWLEDGED" && (
-                    <Button
-                      kind="secondary"
-                      size="sm"
-                      onClick={() => setClosingId(communication.id)}
-                      disabled={saving || isReadOnly}
-                    >
-                      {intl.formatMessage({
-                        id: "microbiology.critical.close",
-                      })}
-                    </Button>
-                  )}
+                  {communication.followUpNeeded &&
+                    communication.acknowledgementStatus !== "CLOSED" &&
+                    closingId !== communication.id && (
+                      <Button
+                        kind="secondary"
+                        size="sm"
+                        onClick={() => setClosingId(communication.id)}
+                        disabled={saving || isReadOnly}
+                      >
+                        {intl.formatMessage({
+                          id: "microbiology.critical.resolveFollowUp",
+                        })}
+                      </Button>
+                    )}
                 </div>
                 {closingId === communication.id && (
                   <div className="microbiology-form-grid__wide">
@@ -379,7 +402,7 @@ const CriticalCommunicationPanel = ({
                       disabled={saving || isReadOnly || !resolutionNote.trim()}
                     >
                       {intl.formatMessage({
-                        id: "microbiology.critical.close",
+                        id: "microbiology.critical.resolveFollowUp",
                       })}
                     </Button>
                   </div>

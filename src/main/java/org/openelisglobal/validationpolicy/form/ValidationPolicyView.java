@@ -12,10 +12,16 @@ import java.util.List;
  *                            version
  * @param blockSelfValidation whether self-validation is blocked, which keeps
  *                            every result waiting for review
+ * @param lastupdated         the stored version, which a save sends back
+ *                            (OGC-1017); null before the default is first saved
  */
 public record ValidationPolicyView(String trigger, int levels, List<Level> levelRoles, boolean enabled, int maxLevels,
-        boolean blockSelfValidation) {
+        boolean blockSelfValidation, String lastupdated) {
 
-    public record Level(int level, Integer roleId, String roleName) {
+    /**
+     * @param signers how many active users could sign this level: Validation rights
+     *                for the lab unit (any unit for the default) and the role
+     */
+    public record Level(int level, Integer roleId, String roleName, int signers) {
     }
 }

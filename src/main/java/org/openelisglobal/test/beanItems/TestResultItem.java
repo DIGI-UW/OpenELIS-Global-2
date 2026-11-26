@@ -30,6 +30,7 @@ import org.openelisglobal.analysis.valueholder.ResultFile;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.common.util.IsoDateNormalizer;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.util.YesNoBooleanDeserializer;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
@@ -396,6 +397,16 @@ public class TestResultItem implements ResultItem, Serializable {
     private boolean failedValidation = false;
     private boolean nonconforming = false;
     private WaitingRun waitingRun;
+    /**
+     * OGC-1200 FR-D6, FR-D7: the run this row's result is recorded in, or its open
+     * run of one.
+     */
+    private Long runId;
+    /**
+     * OGC-1200: the row's run of one is still open, so the row keeps its entry
+     * tools.
+     */
+    private boolean runOfOneOpen;
     private String testSortOrder = null;
     private boolean isReflexGroup = false;
     private int reflexParentGroup = 0;
@@ -1243,6 +1254,22 @@ public class TestResultItem implements ResultItem, Serializable {
         this.waitingRun = waitingRun;
     }
 
+    public Long getRunId() {
+        return runId;
+    }
+
+    public void setRunId(Long runId) {
+        this.runId = runId;
+    }
+
+    public boolean isRunOfOneOpen() {
+        return runOfOneOpen;
+    }
+
+    public void setRunOfOneOpen(boolean runOfOneOpen) {
+        this.runOfOneOpen = runOfOneOpen;
+    }
+
     public void setNonconforming(boolean nonconforming) {
         this.nonconforming = nonconforming;
     }
@@ -1323,8 +1350,9 @@ public class TestResultItem implements ResultItem, Serializable {
         return nextVisitDate;
     }
 
+    /** Stored as an ISO date (OGC-1669); shown in the site's date format. */
     public void setNextVisitDate(String nextVisitDate) {
-        this.nextVisitDate = nextVisitDate;
+        this.nextVisitDate = IsoDateNormalizer.toDisplayFormat(nextVisitDate);
     }
 
     public String getForceTechApproval() {

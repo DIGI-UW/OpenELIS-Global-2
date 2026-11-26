@@ -314,6 +314,74 @@ public class AnalyzerResultsPlacementIntegrationTest extends BaseWebContextSensi
         assertEquals("the result is saved", "2", resultOnTube(tube));
     }
 
+    /**
+     * OGC-1662 — the note box is on a test's main row only; its parts were held
+     * awaiting placement forever because none of them could carry the note.
+     */
+    @Test
+    public void aMismatchExplainedOnItsMainResultSavesItsPartsToo() {
+        acceptNew("1");
+        long tube = onlyTube();
+        awaitResultOn(tube);
+        registerPatientOnOrder("EXT-REAL-1");
+        List<AnalyzerResultItem> test = stageParts("2", "SOMEONE-ELSE", "Roe, Rick");
+        test.get(0).setNote("Instrument operator keyed the wrong patient");
+
+        acceptService.acceptAndPersist(test, "1");
+        entityManager.flush();
+
+        assertEquals("both parts are saved", Integer.valueOf(2),
+                jdbc.queryForObject(
+                        "SELECT count(*) FROM clinlims.result r JOIN clinlims.analysis a"
+                                + " ON a.id = r.analysis_id WHERE a.sampitem_id = ? AND r.value = '2'",
+                        Integer.class, tube));
+        assertEquals("nothing stays staged", Integer.valueOf(0), stagedCount(test));
+    }
+
+    @Test
+    public void anAnalysisChosenOnItsMainResultPlacesItsPartsToo() {
+        acceptNew("1");
+        long first = onlyTube();
+        awaitResultOn(first);
+        long second = addTube(ACCESSION + "-2", AnalysisStatus.NotStarted);
+        List<AnalyzerResultItem> test = stageParts("2", null, null);
+        test.get(0).setChosenAnalysisId(String.valueOf(analysisOn(second)));
+
+        acceptService.acceptAndPersist(test, "1");
+        entityManager.flush();
+
+        assertEquals("both parts are on the chosen tube's analysis", Integer.valueOf(2),
+                jdbc.queryForObject(
+                        "SELECT count(*) FROM clinlims.result r JOIN clinlims.analysis a"
+                                + " ON a.id = r.analysis_id WHERE a.sampitem_id = ? AND r.value = '2'",
+                        Integer.class, second));
+        assertEquals("nothing stays staged", Integer.valueOf(0), stagedCount(test));
+    }
+
+    private List<AnalyzerResultItem> stageParts(String value, String patientId, String patientName) {
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, is_primary, is_active,"
+                + " lastupdated) VALUES ('p1b-main', ?, 'PRIMARY', 'Main', true, 'Y', NOW()),"
+                + " ('p1b-log', ?, 'LOG', 'Log', false, 'Y', NOW())", TEST, TEST);
+        jdbc.update("INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, value, is_active, sort_order,"
+                + " component_id, lastupdated) VALUES (97331, ?, 'N', '', true, 1, 'p1b-main', NOW()),"
+                + " (97332, ?, 'N', '', true, 2, 'p1b-log', NOW())", TEST, TEST);
+        List<AnalyzerResultItem> parts = new java.util.ArrayList<>();
+        for (String component : List.of("p1b-main", "p1b-log")) {
+            String stagedId = stage(ACCESSION, ACCESSION, value, patientId, patientName);
+            jdbc.update("UPDATE clinlims.analyzer_results SET component_id = ? WHERE id = ?::numeric", component,
+                    stagedId);
+            AnalyzerResultItem part = acceptedItem(stagedId, value);
+            part.setComponentId(component);
+            parts.add(part);
+        }
+        return parts;
+    }
+
+    private Integer stagedCount(List<AnalyzerResultItem> items) {
+        return jdbc.queryForObject("SELECT count(*) FROM clinlims.analyzer_results WHERE id::text IN (?, ?)",
+                Integer.class, items.get(0).getId(), items.get(1).getId());
+    }
+
     @Test
     public void aMatchingInstrumentPatientIsSavedWithoutANote() {
         acceptNew("1");

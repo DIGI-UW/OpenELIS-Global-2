@@ -143,6 +143,24 @@ public class InventoryFefoExpiryIntegrationTest extends BaseWebContextSensitiveT
                 inventoryLotService.get(usableId).getCurrentQuantity());
     }
 
+    /**
+     * OGC-1200: a test uses a fraction of a reagent unit (0.5 mL per test on the
+     * Test Catalog); recording that use failed validation because a use had to be
+     * at least one unit.
+     */
+    @Test
+    public void consumeInventoryFEFO_recordsTheFractionOfAUnitATestUses() {
+        Long lotId = createLot("HALF-UNITS", 10, daysFromNow(30));
+
+        inventoryManagementService.consumeInventoryFEFO(itemId, 0.5, null, null, SYS_USER_ID);
+
+        assertEquals(Double.valueOf(9.5), inventoryLotService.get(lotId).getCurrentQuantity());
+        assertEquals(Double.valueOf(0.5),
+                jdbcTemplate.queryForObject(
+                        "SELECT CAST(quantity_used AS double precision) FROM clinlims.inventory_usage WHERE lot_id = ?",
+                        Double.class, lotId));
+    }
+
     @Test
     public void isInStock_doesNotCountExpiredStock() {
         createLot("EXPIRED-ONLY", 99, daysFromNow(-5));

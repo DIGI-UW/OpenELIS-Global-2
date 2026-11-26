@@ -28,6 +28,7 @@ import CriticalCallbackAction from "./CriticalCallbackAction";
 import HistorySection from "./HistorySection";
 import InterpretationSection from "./InterpretationSection";
 import ReagentsQcSection from "./ReagentsQcSection";
+import type { WaitingRun } from "./runs/WaitingTag";
 import AliquotsSection from "./AliquotsSection";
 import ReferralAction, {
   ReferralDraft,
@@ -132,6 +133,12 @@ interface ExpandedPanelProps {
   domain: ResultsDomain;
   editable: boolean;
   editing: boolean;
+  /**
+   * OGC-1200: the row is resulted from a run (its value waits there, or the
+   * run's failed control holds it), so nothing is saved from the worklist and
+   * no referral or rejection is offered.
+   */
+  inRun?: boolean;
   /** the worklist's lab unit — scopes OGC-1025 control capture. */
   testSectionId?: string;
   /** analyzerId as loaded from the server — drives the provenance tag (FR-B2). */
@@ -180,6 +187,8 @@ interface ExpandedPanelProps {
     disposition: NceDisposition,
     rejectReasonId: string,
   ) => void;
+  /** OGC-1200: a control recorded on the row held or released it. */
+  onRowHoldChange?: (waitingRun: WaitingRun | null) => void;
 }
 
 const noteVisibilityTag = (noteType?: string) =>
@@ -209,6 +218,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   domain,
   editable,
   editing,
+  inRun = false,
   testSectionId,
   loadedAnalyzerId,
   methods,
@@ -241,6 +251,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   nceRejectReasonId,
   onNceRejectReasonChange,
   onNceApplyDisposition,
+  onRowHoldChange,
 }) => {
   const intl = useIntl();
   const { configurationProperties } = (useContext(ConfigurationContext) ||
@@ -303,6 +314,12 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   // notes and the interpretation are component-scoped on component rows;
   // legacy analysis-level notes (no component id) still show everywhere
   const rowComponentId = row.testResultComponentId as string | undefined;
+  // OGC-1200 FR-D6, FR-D7: the run the row's result is recorded in, or the
+  // open run it waits in, batched in or opened by its control.
+  const rowRunId =
+    (row.runId as number | undefined) ??
+    (row.waitingRun as { runId?: number } | undefined)?.runId ??
+    null;
   const notes = (row.analysisNotes || []).filter((note) =>
     noteVisibleOnRow(note, rowComponentId),
   );
@@ -602,7 +619,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           >
             <FormattedMessage id="label.results.nce.report" />
           </Button>
-          {allowResultRejection && (
+          {allowResultRejection && !inRun && (
             <Button
               kind="ghost"
               size="sm"
@@ -617,34 +634,38 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           {/* A referred test cannot be referred again: the save has no way to
               amend an existing referral, so a second click would raise a rival
               one. The referral is edited or cancelled from Referred Out. */}
-          <Button
-            kind="ghost"
-            size="sm"
-            disabled={row.referredOut}
-            onClick={() =>
-              onReferralDraftChange(
-                referralDraft
-                  ? null
-                  : emptyReferralDraft(
-                      todayForReferral(
-                        configurationProperties?.DEFAULT_DATE_LOCALE,
-                      ),
-                    ),
-              )
-            }
-            data-testid={`referral-toggle-${rowKey}`}
-          >
-            {row.referredOut ? (
-              <FormattedMessage id="label.results.referredOut" />
-            ) : referralDraft ? (
-              <FormattedMessage id="label.results.referral.editing" />
-            ) : (
-              <FormattedMessage id="label.results.referral.refer" />
-            )}
-          </Button>
-          <span className="unifiedFieldHint">
-            <FormattedMessage id="label.results.saveHint" />
-          </span>
+          {!inRun && (
+            <>
+              <Button
+                kind="ghost"
+                size="sm"
+                disabled={row.referredOut}
+                onClick={() =>
+                  onReferralDraftChange(
+                    referralDraft
+                      ? null
+                      : emptyReferralDraft(
+                          todayForReferral(
+                            configurationProperties?.DEFAULT_DATE_LOCALE,
+                          ),
+                        ),
+                  )
+                }
+                data-testid={`referral-toggle-${rowKey}`}
+              >
+                {row.referredOut ? (
+                  <FormattedMessage id="label.results.referredOut" />
+                ) : referralDraft ? (
+                  <FormattedMessage id="label.results.referral.editing" />
+                ) : (
+                  <FormattedMessage id="label.results.referral.refer" />
+                )}
+              </Button>
+              <span className="unifiedFieldHint">
+                <FormattedMessage id="label.results.saveHint" />
+              </span>
+            </>
+          )}
         </div>
 
         {allowResultRejection && rejectReasons.length > 0 && rejectDraft && (
@@ -821,6 +842,10 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
       <ReagentsQcSection
         testId={row.testId as string | undefined}
         analysisId={row.analysisId as string | undefined}
+        runId={rowRunId}
+        hasSavedResult={Boolean(row.resultId)}
+        runOfOneOpen={Boolean(row.runOfOneOpen)}
+        onRowHoldChange={onRowHoldChange}
         editable={editable}
         resultType={row.resultType}
         testSectionId={testSectionId}
@@ -953,6 +978,8 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
         <HistorySection
           analysisId={row.analysisId as string | undefined}
           componentId={rowComponentId}
+          runId={rowRunId}
+          testId={row.testId as string | undefined}
           open={isSectionOpen(sectionLayout, "history", false)}
           onToggle={(open) => toggleSection("history", open)}
         />

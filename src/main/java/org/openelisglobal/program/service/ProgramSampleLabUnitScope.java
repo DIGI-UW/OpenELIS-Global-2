@@ -6,6 +6,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.openelisglobal.program.valueholder.ProgramSample;
 import org.openelisglobal.sample.service.SampleLabUnitScopeService;
+import org.openelisglobal.sample.valueholder.Sample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,12 @@ public class ProgramSampleLabUnitScope {
     @Transactional(readOnly = true)
     public boolean isRestricted(String sysUserId) {
         return !sampleLabUnitScopeService.restrictedSectionIds(sysUserId).isEmpty();
+    }
+
+    /** True when the user may read the order, as its cases are read. */
+    @Transactional(readOnly = true)
+    public boolean isOrderVisible(String sysUserId, Sample sample) {
+        return sampleLabUnitScopeService.isVisible(sysUserId, sample);
     }
 
     /** The cases of the list whose order the user may read, in list order. */

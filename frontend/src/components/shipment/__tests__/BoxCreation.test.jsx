@@ -14,7 +14,7 @@ vi.mock("../../common/PageBreadCrumb", () => ({
   },
 }));
 
-vi.mock("../../layout/Layout", async () => {
+vi.mock("../../layout/contexts", async () => {
   const { createContext } = await import("react");
   return {
     NotificationContext: createContext({

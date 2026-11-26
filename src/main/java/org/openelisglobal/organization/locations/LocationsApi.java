@@ -2,6 +2,8 @@ package org.openelisglobal.organization.locations;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
+import java.util.regex.Pattern;
 import org.openelisglobal.organization.service.OrganizationChangeService.FieldChange;
 
 /**
@@ -29,6 +31,20 @@ public final class LocationsApi {
     public static final String SOURCE_REGISTRY = "REGISTRY";
     public static final String SOURCE_LOCAL = "LOCAL";
     public static final String SOURCE_IMPORT = "IMPORT";
+
+    private static final Pattern FHIR_ID = Pattern
+            .compile("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
+
+    /**
+     * A FHIR id as OpenELIS writes it: a UUID in its full 8-4-4-4-12 form. Null for
+     * anything else, including the short forms UUID.fromString accepts.
+     */
+    public static UUID parseFhirId(String value) {
+        if (value == null || !FHIR_ID.matcher(value.trim()).matches()) {
+            return null;
+        }
+        return UUID.fromString(value.trim());
+    }
 
     public static final List<String> REFERRAL_STATUSES = List.of("Approved", "Under evaluation", "Suspended",
             "Not approved");
@@ -68,7 +84,8 @@ public final class LocationsApi {
     }
 
     public record Referral(String approvalStatus, String accreditationBody, String accreditationNumber,
-            String accreditationExpiry, String lastReviewDate, String nextReviewDue, String reviewNotes) {
+            String accreditationExpiry, String lastReviewDate, String nextReviewDue, String reviewNotes,
+            String fhirId) {
     }
 
     public record Site(Integer siteId, String siteType, String subtype, String environmentalZone) {
@@ -83,7 +100,7 @@ public final class LocationsApi {
             String phone, String fax, String email, String internetAddress, String contactName, String description,
             BigDecimal gpsLatitude, BigDecimal gpsLongitude, String serviceType, String source,
             List<Identifier> identifiers, List<Ward> wards, Referral referral, Site site, Long lastupdated,
-            int historyCount, boolean positionManaged) {
+            int historyCount, boolean positionManaged, String fhirId) {
     }
 
     public record SaveRequest(String id, String kind, String name, String shortName, List<String> typeIds,
@@ -123,6 +140,13 @@ public final class LocationsApi {
     }
 
     public record HistoryEntry(Integer id, String when, String user, String action, List<FieldChange> changes) {
+    }
+
+    /**
+     * This laboratory's own facility organization: the record other OpenELIS labs
+     * address referrals to, by its FHIR id.
+     */
+    public record ThisLaboratory(String id, String name, String fhirId) {
     }
 
     public record Lists(List<ListRef> categories, List<ListRef> ownerships, List<ListRef> serviceTypes,

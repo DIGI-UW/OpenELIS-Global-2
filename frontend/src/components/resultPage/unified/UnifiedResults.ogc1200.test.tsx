@@ -139,6 +139,224 @@ describe("OGC-1200 runs on the unified worklist", () => {
     expect(onOpenRun).toHaveBeenCalledWith(7);
   });
 
+  it("shows held rows by default under a Held chip that hides them when turned off", () => {
+    renderPage([
+      row({ waitingRun: { ...WAITING, held: true } }),
+      row({ id: "r-2", analysisId: "62", testName: "Urea" }),
+    ]);
+
+    const tag = screen.getByTestId("held-run-7");
+    expect(tag).toHaveTextContent("Held: QC failed in RUN-7");
+    const chip = screen.getByTestId("held-chip");
+    expect(chip).toHaveTextContent("Held (1)");
+
+    fireEvent.click(chip);
+
+    expect(screen.queryByTestId("held-run-7")).not.toBeInTheDocument();
+    expect(screen.getByText("Urea")).toBeInTheDocument();
+    expect(screen.getByTestId("held-chip")).toHaveTextContent("Held (1)");
+  });
+
+  it("releases a row held for a missing control as soon as a control recorded on it clears the hold", () => {
+    renderPage([
+      row({
+        testId: "1",
+        runId: 7,
+        runOfOneOpen: true,
+        waitingRun: {
+          ...WAITING,
+          source: "RESULT_ENTRY",
+          held: true,
+          heldCause: "QC_MISSING",
+        },
+      }),
+    ]);
+    expect(screen.getByTestId("held-run-7")).toHaveTextContent(
+      "Held: QC missing in RUN-7",
+    );
+    expect(resultField()).toBeNull();
+    const pageRoutes = utilsMock.getFromOpenElisServer.getMockImplementation();
+    utilsMock.getFromOpenElisServer.mockImplementation(
+      (endPoint: string, callback: any) =>
+        endPoint.startsWith("/rest/qc/results/control-lots")
+          ? callback([
+              {
+                id: "lot-1",
+                lotNumber: "CTL-1",
+                productName: "Control",
+                controlLevel: "NORMAL",
+              },
+            ])
+          : pageRoutes?.(endPoint, callback),
+    );
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+      (url: string, _body: string, callback: any) =>
+        url === "/rest/result-runs/of-analysis/61/controls"
+          ? callback({ id: "qc-9", runId: 7, waitingRun: null })
+          : callback({}),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /expand row/i }));
+    fireEvent.change(screen.getByTestId("qc-outcome"), {
+      target: { value: "PASS" },
+    });
+    fireEvent.change(screen.getByTestId("qc-lot"), {
+      target: { value: "lot-1" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Measured value" }), {
+      target: { value: "81" },
+    });
+    fireEvent.change(screen.getByLabelText("Expected value"), {
+      target: { value: "80" },
+    });
+    fireEvent.change(screen.getByLabelText("Uncertainty (±)"), {
+      target: { value: "8" },
+    });
+    fireEvent.click(screen.getByTestId("qc-record"));
+
+    expect(screen.queryByTestId("held-run-7")).not.toBeInTheDocument();
+    expect(resultField()).not.toBeNull();
+  });
+
+  it("shows a stored result held by its run as held, with its value and no Edit", () => {
+    renderPage([
+      row({ resultValue: "88", waitingRun: { ...WAITING, held: true } }),
+    ]);
+
+    expect(screen.getByTestId("held-run-7")).toHaveTextContent(
+      "Held: QC failed in RUN-7",
+    );
+    expect(screen.getByText("88")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Edit" }),
+    ).not.toBeInTheDocument();
+    expect(resultField()).toBeNull();
+  });
+
+  it("offers Edit on a stored result its run no longer holds", () => {
+    renderPage([row({ resultValue: "88" })]);
+
+    expect(screen.queryByTestId("held-run-7")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
+  });
+
+  it("tags a pending test batched in a workplan run and keeps it open for entry", () => {
+    const onOpenRun = renderPage([
+      row({
+        waitingRun: {
+          ...WAITING,
+          runId: 9,
+          label: "RUN-9",
+          source: "WORKPLAN",
+        },
+      }),
+    ]);
+
+    const tag = screen.getByTestId("waiting-run-9");
+    expect(tag).toHaveTextContent("Batched in RUN-9");
+    expect(tag.parentElement).toHaveTextContent("Workplan batch");
+    expect(resultField()).not.toBeNull();
+
+    fireEvent.click(tag);
+    expect(onOpenRun).toHaveBeenCalledWith(9);
+  });
+
+  it("holds a batched test its run holds, with no entry", () => {
+    renderPage([
+      row({
+        waitingRun: {
+          ...WAITING,
+          runId: 9,
+          label: "RUN-9",
+          source: "WORKPLAN",
+          held: true,
+          heldCause: "QC_MISSING",
+        },
+      }),
+    ]);
+
+    expect(screen.getByTestId("held-run-9")).toHaveTextContent(
+      "Held: QC missing in RUN-9",
+    );
+    expect(resultField()).toBeNull();
+  });
+
+  it("batches pending rows of one test picked on the worklist into a run and opens it", () => {
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+      (_url: string, _body: string, callback: any) =>
+        callback({ id: 30, status: "ACTIVE", runId: 205 }),
+    );
+    const onOpenRun = renderPage([
+      row({ testId: "5" }),
+      row({
+        id: "r-2",
+        analysisId: "62",
+        testId: "5",
+        accessionNumber: "DEV0126000000000401",
+      }),
+    ]);
+
+    fireEvent.click(
+      screen.getByLabelText("Select DEV0126000000000400 Glucose for a batch"),
+    );
+    expect(screen.getByTestId("batch-these")).toBeDisabled();
+    fireEvent.click(
+      screen.getByLabelText("Select DEV0126000000000401 Glucose for a batch"),
+    );
+    fireEvent.click(screen.getByTestId("batch-these"));
+
+    const batched = utilsMock.postToOpenElisServerJsonResponse.mock.calls.find(
+      ([url]: [string]) =>
+        url === "/rest/batch-workplans/batches/from-worklist",
+    );
+    expect(batched).toBeDefined();
+    const body = batched[1];
+    expect(JSON.parse(body)).toEqual({ analysisIds: ["61", "62"] });
+    expect(onOpenRun).toHaveBeenCalledWith(205);
+  });
+
+  it("keeps a picked row while another lab number is searched", () => {
+    renderPage([row({ testId: "5" })]);
+
+    fireEvent.click(
+      screen.getByLabelText("Select DEV0126000000000400 Glucose for a batch"),
+    );
+    const search = screen.getByRole("searchbox");
+    fireEvent.change(search, { target: { value: "DEV0126000000000401" } });
+    fireEvent.keyDown(search, { key: "Enter" });
+
+    expect(screen.getByTestId("batch-these-count")).toHaveTextContent(
+      "Rows selected for a batch: 1",
+    );
+  });
+
+  it("offers no pick on a row that is resulted, waiting or batched in a run", () => {
+    renderPage([
+      row({ testId: "5", resultValue: "88" }),
+      row({
+        id: "r-2",
+        analysisId: "62",
+        testId: "5",
+        accessionNumber: "DEV0126000000000401",
+        waitingRun: WAITING,
+      }),
+      row({
+        id: "r-3",
+        analysisId: "63",
+        testId: "5",
+        accessionNumber: "DEV0126000000000402",
+        waitingRun: {
+          ...WAITING,
+          runId: 9,
+          label: "RUN-9",
+          source: "WORKPLAN",
+        },
+      }),
+    ]);
+
+    expect(screen.queryByLabelText(/for a batch$/)).not.toBeInTheDocument();
+  });
+
   it("leaves a pending test with no waiting value open for entry", () => {
     renderPage([row()]);
 
@@ -190,6 +408,35 @@ describe("OGC-1200 runs on the unified worklist", () => {
     expect(notify.addNotification).toHaveBeenCalledWith(
       expect.objectContaining({
         message: "An analyzer value for this test is waiting in RUN-7.",
+      }),
+    );
+  });
+
+  it("shows a row whose save was refused for a failed control as held, with the server's reason", () => {
+    renderPage([row()]);
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+      (_url: string, _body: string, callback: any) =>
+        callback({
+          status: 409,
+          error:
+            "A control for this test failed in RUN-7, so its results there are held.",
+          waitingRun: { ...WAITING, held: true },
+        }),
+    );
+
+    fireEvent.change(resultField() as HTMLInputElement, {
+      target: { value: "5.4" },
+    });
+    fireEvent.click(screen.getByTestId("save-button"));
+
+    expect(screen.getByTestId("held-run-7")).toHaveTextContent(
+      "Held: QC failed in RUN-7",
+    );
+    expect(resultField()).toBeNull();
+    expect(notify.addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message:
+          "A control for this test failed in RUN-7, so its results there are held.",
       }),
     );
   });
