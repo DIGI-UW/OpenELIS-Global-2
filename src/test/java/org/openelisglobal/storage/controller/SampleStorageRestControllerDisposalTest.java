@@ -11,15 +11,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.openelisglobal.AppTestConfig;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MvcResult;
-
-import org.springframework.context.annotation.Import;
-import org.openelisglobal.AppTestConfig;
 
 @Import(AppTestConfig.class)
 public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensitiveTest {

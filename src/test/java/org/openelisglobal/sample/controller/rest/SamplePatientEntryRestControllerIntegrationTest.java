@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.openelisglobal.AppTestConfig;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory;
@@ -31,6 +32,7 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -42,11 +44,9 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 
-import org.openelisglobal.AppTestConfig;
 @Import(AppTestConfig.class)
 public class SamplePatientEntryRestControllerIntegrationTest extends BaseWebContextSensitiveTest {
 

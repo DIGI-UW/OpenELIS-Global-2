@@ -281,22 +281,21 @@ public class SampleManagementRestController extends BaseRestController {
     /**
      * Exception handler for {@code @Valid @RequestBody} validation failures.
      *
-     * <p>Spring MVC throws {@link MethodArgumentNotValidException} when a {@code @Valid}-annotated
-     * request body fails bean-validation. This handler extracts the first field error and returns
-     * the same {@code {"error":"Invalid Request","message":"<defaultMessage>"}} envelope that the
-     * {@link #handleIllegalArgumentException} handler uses, keeping the response format consistent
-     * and predictable for callers.
+     * <p>
+     * Spring MVC throws {@link MethodArgumentNotValidException} when a
+     * {@code @Valid}-annotated request body fails bean-validation. This handler
+     * extracts the first field error and returns the same {@code {"error":"Invalid
+     * Request","message":"<defaultMessage>"}} envelope that the
+     * {@link #handleIllegalArgumentException} handler uses, keeping the response
+     * format consistent and predictable for callers.
      *
      * @param e the exception
      * @return error response with 400 BAD REQUEST
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(MethodArgumentNotValidException e) {
-        String message =
-                e.getBindingResult().getFieldErrors().stream()
-                        .findFirst()
-                        .map(FieldError::getDefaultMessage)
-                        .orElse("Validation failed");
+        String message = e.getBindingResult().getFieldErrors().stream().findFirst().map(FieldError::getDefaultMessage)
+                .orElse("Validation failed");
         ErrorResponse error = new ErrorResponse("Invalid Request", message);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
