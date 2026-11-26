@@ -35,11 +35,14 @@ public class SampleEditFormValidator implements Validator {
 
         orderPartiesValidator.validate(form.getSampleOrderItems(), errors);
 
-        // maxAccessionNumber
-        String[] maxAccessionNumberArray = form.getMaxAccessionNumber().split("-");
-        if (!ValidationResults.SUCCESS.equals(AccessionNumberUtil.correctFormat(maxAccessionNumberArray[0], false))) {
+        // maxAccessionNumber is <accession>-<sample item number>. Split at the last
+        // dash: the accession may contain one itself (YEARNUM_DASH_SEVEN: 26-0000001).
+        String maxAccessionNumber = form.getMaxAccessionNumber();
+        int lastDash = maxAccessionNumber == null ? -1 : maxAccessionNumber.lastIndexOf('-');
+        if (lastDash <= 0 || !ValidationResults.SUCCESS
+                .equals(AccessionNumberUtil.correctFormat(maxAccessionNumber.substring(0, lastDash), false))) {
             errors.rejectValue("maxAccessionNumber", "error.field.accession.format");
-        } else if (!GenericValidator.isInt(maxAccessionNumberArray[1])) {
+        } else if (!GenericValidator.isInt(maxAccessionNumber.substring(lastDash + 1))) {
             errors.rejectValue("maxAccessionNumber", "error.field.accession.format");
         }
 
