@@ -63,12 +63,42 @@ public class InventoryLotRestControllerTest {
         when(sampleStorageService.getLocationsForInventoryLots(Arrays.asList(1L, 2L))).thenReturn(
                 Collections.singletonMap("2", Collections.singletonMap("hierarchicalPath", "Room > Freezer")));
 
-        List<InventoryLot> body = controller.getAll().getBody();
+        List<InventoryLot> body = controller.getAll(null).getBody();
 
+        verify(inventoryLotService, times(1)).getAll();
+        verify(inventoryLotService, never()).getByStatus(any());
         verify(sampleStorageService, times(1)).getLocationsForInventoryLots(Arrays.asList(1L, 2L));
         verify(sampleStorageService, never()).getInventoryLotLocation(anyString());
         assertNull("Lot without an assignment keeps a null location", body.get(0).getLocation());
         assertEquals("Room > Freezer", body.get(1).getLocation().get("hierarchicalPath"));
+    }
+
+    @Test
+    public void getAll_withStatus_filtersLotsAndAttachesLocations() {
+        when(inventoryLotService.getByStatus(LotStatus.ACTIVE)).thenReturn(Collections.singletonList(lot(2L)));
+        when(sampleStorageService.getLocationsForInventoryLots(Collections.singletonList(2L))).thenReturn(
+                Collections.singletonMap("2", Collections.singletonMap("hierarchicalPath", "Room > Freezer")));
+
+        ResponseEntity<List<InventoryLot>> response = controller.getAll(LotStatus.ACTIVE);
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(1, response.getBody().size());
+        assertEquals(2L, response.getBody().get(0).getId().longValue());
+        assertEquals("Room > Freezer", response.getBody().get(0).getLocation().get("hierarchicalPath"));
+        verify(inventoryLotService, never()).getAll();
+        verify(sampleStorageService, times(1)).getLocationsForInventoryLots(Collections.singletonList(2L));
+    }
+
+    @Test
+    public void getAll_withStatusAndNoMatchingLots_returnsEmptyList() {
+        when(inventoryLotService.getByStatus(LotStatus.QUARANTINED)).thenReturn(Collections.emptyList());
+
+        ResponseEntity<List<InventoryLot>> response = controller.getAll(LotStatus.QUARANTINED);
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(Collections.emptyList(), response.getBody());
+        verify(inventoryLotService, never()).getAll();
+        verify(sampleStorageService, never()).getLocationsForInventoryLots(any());
     }
 
     @Test
