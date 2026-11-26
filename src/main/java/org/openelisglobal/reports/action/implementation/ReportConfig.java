@@ -388,12 +388,6 @@ public class ReportConfig {
         return new ExportTrendsByDate();
     }
 
-    @Bean("ExportWHONETReportByDate")
-    @Scope("prototype")
-    public IReportParameterSetter exportWHONETReportByDate() {
-        return new WHONETExportRoutineByDate();
-    }
-
     @Bean("covidResultsReport")
     @Scope("prototype")
     public IReportParameterSetter covidResultsReport() {
@@ -718,12 +712,6 @@ public class ReportConfig {
     @Scope("prototype")
     public IReportCreator tbOrderExportCreator() {
         return new ExportTBOrdersByDate();
-    }
-
-    @Bean("ExportWHONETReportByDateCreator")
-    @Scope("prototype")
-    public IReportCreator exportWHONETReportByDateCreator() {
-        return new WHONETExportRoutineByDate();
     }
 
     @Bean("covidResultsReportCreator")

@@ -70,4 +70,14 @@ public class ReportImplementationFactoryTest extends BaseWebContextSensitiveTest
         assertNull("Non-existent report should return null setter",
                 ReportImplementationFactory.getParameterSetter("nonExistentReport"));
     }
+
+    @Test
+    public void testLegacyWhonetExportIsUnavailable() {
+        // OGC-782 M4: Prove the legacy WHONET reports path cannot be resolved
+        assertNull("The legacy WHONET export route should not return a creator",
+                ReportImplementationFactory.getReportCreator("ExportWHONETReportByDate"));
+
+        assertNull("The legacy WHONET export route should not return a parameter setter",
+                ReportImplementationFactory.getParameterSetter("ExportWHONETReportByDate"));
+    }
 }

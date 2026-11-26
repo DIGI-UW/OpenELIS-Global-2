@@ -33,6 +33,7 @@ import org.openelisglobal.reports.form.ReportForm;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openpdf.text.DocumentException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
@@ -42,6 +43,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.SessionAttributes;
 import org.springframework.web.bind.support.SessionStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.ModelAndView;
 
 @Controller
@@ -108,43 +110,46 @@ public class ReportController extends BaseController {
     private void printReport(HttpServletRequest request, HttpServletResponse response, ReportForm form) {
         IReportCreator reportCreator = ReportImplementationFactory.getReportCreator(request.getParameter("report"));
 
-        if (reportCreator != null && "patient".equals(request.getParameter("type"))
+        if (reportCreator == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "Report not found or has been removed: " + request.getParameter("report"));
+        }
+
+        if ("patient".equals(request.getParameter("type"))
                 && PatientCILNSPClinical_vreduit.REPORT_NAME.equals(request.getParameter("report"))
                 && printThroughQueue(request, response, form, reportCreator)) {
             return;
         }
 
-        if (reportCreator != null) {
-            reportCreator.setSystemUserId(getSysUserId(request));
-            reportCreator.setRequestedReport(request.getParameter("report"));
-            reportCreator.initializeReport(form);
-            reportCreator.setReportPath(getReportPath());
+        reportCreator.setSystemUserId(getSysUserId(request));
+        reportCreator.setRequestedReport(request.getParameter("report"));
+        reportCreator.initializeReport(form);
+        reportCreator.setReportPath(getReportPath());
 
-            HashMap<String, String> parameterMap = (HashMap<String, String>) reportCreator.getReportParameters();
-            parameterMap.put("SUBREPORT_DIR", getReportPath());
-            parameterMap.put("imagesPath", getImagesPath());
+        HashMap<String, String> parameterMap = (HashMap<String, String>) reportCreator.getReportParameters();
+        parameterMap.put("SUBREPORT_DIR", getReportPath());
+        parameterMap.put("imagesPath", getImagesPath());
 
-            try {
-                response.setContentType(reportCreator.getContentType());
-                String responseHeaderName = reportCreator.getResponseHeaderName();
-                String responseHeaderContent = reportCreator.getResponseHeaderContent();
-                if (!GenericValidator.isBlankOrNull(responseHeaderName)
-                        && !GenericValidator.isBlankOrNull(responseHeaderContent)) {
-                    response.setHeader(responseHeaderName, responseHeaderContent);
-                }
-
-                byte[] bytes = reportCreator.runReport();
-
-                response.setContentLength(bytes.length);
-
-                ServletOutputStream servletOutputStream = response.getOutputStream();
-
-                servletOutputStream.write(bytes, 0, bytes.length);
-                servletOutputStream.flush();
-                servletOutputStream.close();
-            } catch (IOException | SQLException | JRException | DocumentException | ParseException e) {
-                LogEvent.logError(e);
+        try {
+            response.setContentType(reportCreator.getContentType());
+            String responseHeaderName = reportCreator.getResponseHeaderName();
+            String responseHeaderContent = reportCreator.getResponseHeaderContent();
+            if (!GenericValidator.isBlankOrNull(responseHeaderName)
+                    && !GenericValidator.isBlankOrNull(responseHeaderContent)) {
+                response.setHeader(responseHeaderName, responseHeaderContent);
             }
+
+            byte[] bytes = reportCreator.runReport();
+
+            response.setContentLength(bytes.length);
+
+            ServletOutputStream servletOutputStream = response.getOutputStream();
+
+            servletOutputStream.write(bytes, 0, bytes.length);
+            servletOutputStream.flush();
+            servletOutputStream.close();
+        } catch (IOException | SQLException | JRException | DocumentException | ParseException e) {
+            LogEvent.logError(e);
         }
 
         if ("patient".equals(request.getParameter("type"))) {
