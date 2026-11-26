@@ -5,15 +5,33 @@
 // One form field's width, for every row field.
 $field-inline-size: 12rem;
 
+// The narrowest a stain picker in the slide tables gets: a short stain name
+// beside the picker's clear and open buttons. It grows into spare room, and
+// a longer name is cut short with an ellipsis and shown whole on hover.
+$stain-picker-min-size: 9.5rem;
+
+// A list or table that scrolls sideways on its own where the center column
+// is narrower than its columns. The region is a tab stop so a keyboard can
+// scroll it; the ring shows where focus is, in the theme's own focus color.
+%scroll-region {
+  max-inline-size: 100%;
+  overflow-x: auto;
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+}
+
 // The repeating rows of the pathology case view: one cassette, one slide, one
 // report version.
 //
-// These rows sit inside the shell's centre column, which is nine of the
+// These rows sit inside the shell's center column, which is nine of the
 // layout's sixteen. A Carbon Grid nested there still counts its own columns
 // to sixteen, so rows laid out as Grid columns wrapped inside the narrower
 // column and their controls landed on top of one another. A row is one
 // wrapping flex line instead. It needs no column arithmetic and reflows at
-// whatever width the centre column happens to have.
+// whatever width the center column happens to have.
 
 .pathology-case-view__row {
   border-block-end: 1px solid var(--cds-border-subtle);
@@ -173,9 +191,13 @@ $field-inline-size: 12rem;
 // buttons onto a line of their own. Its basis is zero, not its content: with
 // the reason field and its two buttons open, the content is wider than the
 // room, and a content-sized group would wrap the action group under it.
+// It never shrinks below its narrowest content, the stage's longest word or
+// the return control: a narrower group let the stage name run over the
+// action group's first button. Where even that does not fit beside the
+// action group, the action group wraps onto a line of its own below.
 .case-view__action-bar-status:has(> .pathology-case-view__stage-control) {
   flex: 1 1 0;
-  min-inline-size: 0;
+  min-inline-size: min-content;
 }
 
 .pathology-case-view__stage-readout {
@@ -216,18 +238,10 @@ $field-inline-size: 12rem;
   gap: spacing.$spacing-03;
 }
 
-// A stage list scrolls sideways on its own where the centre column is
+// A stage list scrolls sideways on its own where the center column is
 // narrower than its columns.
 .pathology-case-view__stage-events {
-  max-inline-size: 100%;
-  overflow-x: auto;
-
-  // The region is a tab stop so a keyboard can scroll it; the ring shows
-  // where focus is, in the theme's own focus colour.
-  &:focus-visible {
-    outline: 2px solid var(--cds-focus);
-    outline-offset: -2px;
-  }
+  @extend %scroll-region;
 }
 
 // A return's reason, under the Returned tag in a one-stage list.
@@ -320,4 +334,232 @@ $field-inline-size: 12rem;
 // A verified slide's tag and the sentence naming who checked it.
 .pathology-case-view__label-verification {
   display: inline-flex;
+}
+
+// The slides at staining and coverslipping, one table row per slide.
+//
+// The section lays its parts out in Carbon stacks, which are grids, and a
+// grid item is never narrower than its content by default. Without this the
+// table's own width set the section's width, and the table, the notices
+// above it and the toolbar ran out of the column and under the summary.
+.pathology-case-view__slide-work,
+.pathology-case-view__slide-work-body,
+.pathology-case-view__requests,
+.pathology-case-view__slides-received,
+.pathology-case-view__review-notes {
+  min-inline-size: 0;
+}
+
+// A table needs the width a paragraph does not, so the sections holding one
+// give up the empty quarter Carbon keeps at the end of an accordion's content.
+.cds--accordion__content:has(.pathology-case-view__slide-work),
+.cds--accordion__content:has(.pathology-case-view__requests),
+.cds--accordion__content:has(.pathology-case-view__slides-received) {
+  padding-inline-end: spacing.$spacing-03;
+}
+
+// A phrase list or the diagnosis menu opens over what follows its field, and
+// in the last section that is past the section's own end. A section holding
+// one shows what spills out of it rather than cutting the list short.
+.cds--accordion__item--active:has(
+    .text-macro-field,
+    .pathology-case-view__conclusion-picker
+  )
+  > .cds--accordion__wrapper,
+.cds--accordion__content:has(
+  .text-macro-field,
+  .pathology-case-view__conclusion-picker
+) {
+  overflow: visible;
+}
+
+// Where the section is still narrower than the columns, the table scrolls
+// sideways in its own region. Carbon's own wrapper would scroll first and
+// take no focus, so it lets the table overflow to the region instead.
+.pathology-case-view__slide-scroll {
+  @extend %scroll-region;
+}
+
+.pathology-case-view__slide-scroll .cds--data-table-content {
+  overflow-x: visible;
+}
+
+// The toolbar holds only the batch bar, so it takes no room until a row is
+// selected. It stays on the page, so the bar can still slide in.
+.pathology-case-view__slide-toolbar--idle > .cds--table-toolbar {
+  block-size: 0;
+  min-block-size: 0;
+  overflow: hidden;
+}
+
+// A slide's name and its tags wrap in their cell.
+.pathology-case-view__slide-table .pathology-case-view__row-identity {
+  flex-wrap: wrap;
+}
+
+// Carbon's cells keep a wide gutter on each side, made for a table that has
+// the page to itself. Here the table shares a column with the summary, so
+// the gutter is halved and the room goes to the content.
+.pathology-case-view__slide-table th,
+.pathology-case-view__slide-table td {
+  padding-inline: spacing.$spacing-03;
+}
+
+// The stain column takes the room the other columns leave.
+.pathology-case-view__slide-table th.pathology-case-view__slide-col--stain {
+  inline-size: 100%;
+}
+
+.pathology-case-view__slide-col--stain .cds--list-box__wrapper,
+.pathology-case-view__slide-col--stain .cds--form-item {
+  min-inline-size: $stain-picker-min-size;
+}
+
+// A status tag, with who recorded it and when under it.
+.pathology-case-view__slide-status {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: spacing.$spacing-02;
+}
+
+// A stained slide's stain, shown as text with the way to change it under it.
+.pathology-case-view__frozen-stain {
+  display: flex;
+  flex-direction: column;
+  gap: spacing.$spacing-02;
+}
+
+// A row's own buttons stack in their cell, each with the reason a held one
+// gives under it, and a long label wraps onto a second line rather than
+// widening the column.
+.pathology-case-view__slide-actions {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: spacing.$spacing-02;
+}
+
+.pathology-case-view__slide-actions .cds--btn {
+  block-size: auto;
+  inline-size: auto;
+  padding-inline: spacing.$spacing-03;
+  white-space: normal;
+}
+
+.pathology-case-view__slide-stamp {
+  @include type.type-style("label-01");
+
+  color: var(--cds-text-secondary);
+}
+
+// The batch confirmation, under the toolbar, naming the slides it covers.
+.pathology-case-view__batch-confirm {
+  align-items: center;
+  background-color: var(--cds-layer-accent);
+  display: flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-03;
+  padding: spacing.$spacing-04;
+}
+
+.pathology-case-view__batch-confirm-text {
+  @include type.type-style("body-compact-01");
+
+  flex-basis: 100%;
+}
+
+// The bench requests in the review section. They share the slide tables'
+// gutters, scroll region and stacked row buttons; what follows is their own.
+
+// The instruction takes the room the other columns leave, and a long word in
+// it wraps rather than widening the table.
+.pathology-case-view__slide-table
+  th.pathology-case-view__request-col--instruction {
+  inline-size: 100%;
+}
+
+.pathology-case-view__request-col--instruction {
+  overflow-wrap: anywhere;
+}
+
+// The new request and a request's Complete and Cancel rows: one cell across
+// every column, laid out as a row's wrapping line of fields, so they need no
+// column of their own at any width. The table row already draws the rule
+// under them, and the fields line up on their inputs.
+.pathology-case-view__request-form {
+  align-items: flex-end;
+  border-block-end: 0;
+}
+
+// A hovered row takes the layer-hover background, on which the link blue of
+// a ghost button falls under 4.5:1 (4.08). The new request and the Complete
+// and Cancel request rows are forms, not requests, so they keep the table's
+// background under the pointer and their buttons keep text contrast.
+.pathology-case-view__slide-table.cds--data-table
+  tbody
+  tr.pathology-case-view__request-form-row:hover {
+  background-color: transparent;
+}
+
+// The kind's three choices and the instruction take a line each.
+.pathology-case-view__request-form > .cds--form-item,
+.pathology-case-view__request-instruction {
+  flex-basis: 100%;
+}
+
+.pathology-case-view__request-buttons {
+  align-items: center;
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-03;
+}
+
+// Findings & Conclusion and Grossing.
+
+// The chosen techniques, diagnoses and markers sit under their picker as one
+// wrapping row of chips, so a long list grows downwards, never sideways.
+.pathology-case-view__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-03;
+  min-inline-size: 0;
+}
+
+// Lifts Carbon's tag width cap: a chip may run as wide as its row, its label
+// cut at the row's end rather than at a fixed width.
+.pathology-case-view__chips .cds--tag,
+.pathology-case-view__chips .cds--tag > span,
+.pathology-case-view__chips .cds--interactive--tag-children {
+  max-inline-size: 100%;
+}
+
+// Each wrapper down to the label may shrink below its text, or the text
+// runs out of both ends of the chip instead of ending in an ellipsis.
+.pathology-case-view__chips .cds--tag > span,
+.pathology-case-view__chips .cds--tag__label {
+  min-inline-size: 0;
+}
+
+.pathology-case-view__conclusion-picker {
+  display: flex;
+  flex-direction: column;
+  gap: spacing.$spacing-03;
+  min-inline-size: 0;
+}
+
+// The picker's answer line keeps its height while empty, so the chips under
+// it do not jump as a message comes and goes.
+.pathology-case-view__picker-status {
+  min-block-size: 1rem;
+}
+
+// The macroscopic description printed under Grossing once it is completed
+// under Findings & Conclusion: the text as written, line breaks kept.
+.pathology-case-view__printed-text {
+  @include type.type-style("body-01");
+
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }

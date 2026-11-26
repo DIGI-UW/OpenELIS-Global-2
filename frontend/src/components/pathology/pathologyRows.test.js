@@ -5,17 +5,23 @@ import {
   blockIdentifier,
   cassetteStateBadge,
   countedRows,
+  coverslipQcBadge,
+  coverslipSummary,
   deactivatedCount,
   embeddingSummary,
   hasVerifiableLabel,
   isDeactivatedRow,
   isEmbeddedRow,
   isLabelVerified,
+  isQcPassedRow,
+  isStainedRow,
   isUnsavedRow,
   heldOrServedItems,
   labelStreamUrl,
   microtomyGroups,
+  benchStillOwes,
   nextAfter,
+  nextAfterAll,
   nextOutstandingCassette,
   nextUnverifiedSlide,
   newRowName,
@@ -25,6 +31,9 @@ import {
   rowObjectName,
   slideIdentifier,
   slideOnBlockName,
+  optionId,
+  stainingSummary,
+  stainStatusBadge,
   stripClientKeys,
   unsavedPosition,
   unverifiedSlides,
@@ -694,5 +703,198 @@ describe("slide label verification", () => {
     expect(
       nextUnverifiedSlide(blocks, slides, { 6: stamp }, slides[1])?.id,
     ).toBe(5);
+  });
+});
+
+// FR-8.1 to FR-8.4: how far staining and coverslip QC have got is counted
+// from the slides every time, block first in list order, and never stored.
+describe("staining and coverslip QC, read from the slides", () => {
+  const blocks = [
+    { id: 1, designation: "A1", cassetteState: "BLOCK", active: true },
+    { id: 2, designation: "A2", cassetteState: "BLOCK", active: true },
+  ];
+  const slide = (id, designation, blockId, overrides = {}) => ({
+    id,
+    designation,
+    blockId,
+    active: true,
+    ...overrides,
+  });
+
+  it("counts the stained slides in use and names the rest under their blocks, pending and unsatisfactory alike", () => {
+    const slides = [
+      slide(5, "1", 1, { stainStatus: "STAINED" }),
+      slide(6, "2", 1, { stainStatus: "UNSATISFACTORY" }),
+      slide(7, "1", 2),
+      slide(8, "3", 1, { active: false }),
+      { blockId: 1, designation: "" },
+    ];
+
+    const summary = stainingSummary(blocks, slides);
+
+    expect(summary.done).toBe(1);
+    expect(summary.total).toBe(3);
+    expect(summary.recorded).toBe(2);
+    expect(summary.complete).toBe(false);
+    expect(summary.outstanding.map((entry) => entry.name)).toEqual([
+      "A1.2",
+      "A2.1",
+    ]);
+    expect(summary.outstanding[0].slide.id).toBe(6);
+    expect(summary.names).toEqual(["A1.2", "A2.1"]);
+  });
+
+  it("is complete once every slide in use reads Stained, and never with no slide at all", () => {
+    expect(
+      stainingSummary(blocks, [slide(5, "1", 1, { stainStatus: "STAINED" })])
+        .complete,
+    ).toBe(true);
+    expect(stainingSummary(blocks, []).complete).toBe(false);
+    expect(stainingSummary(blocks, undefined).total).toBe(0);
+  });
+
+  it("counts a slide through coverslip QC only once it passed and, where staining is tracked, reads Stained", () => {
+    const slides = [
+      slide(5, "1", 1, { stainStatus: "STAINED", coverslipQc: "PASS" }),
+      slide(6, "2", 1, { stainStatus: "STAINED", coverslipQc: "FAIL" }),
+      slide(7, "1", 2, { coverslipQc: "PASS" }),
+      slide(9, "4", 1, { stainStatus: "STAINED" }),
+    ];
+
+    const tracked = coverslipSummary(blocks, slides, { stainingTracked: true });
+    expect(tracked.done).toBe(1);
+    expect(tracked.recorded).toBe(3);
+    expect(tracked.outstanding.map((entry) => entry.name)).toEqual([
+      "A1.2",
+      "A2.1",
+      "A1.4",
+    ]);
+
+    // With staining switched off no slide is ever marked stained, so a pass
+    // is all coverslipping can ask for.
+    const untracked = coverslipSummary(blocks, slides, {
+      stainingTracked: false,
+    });
+    expect(untracked.done).toBe(2);
+  });
+
+  it("reads Stained and Passed from the row's own values only", () => {
+    expect(isStainedRow({ stainStatus: "STAINED" })).toBe(true);
+    expect(isStainedRow({ stainStatus: "UNSATISFACTORY" })).toBe(false);
+    expect(isStainedRow({})).toBe(false);
+    expect(isQcPassedRow({ coverslipQc: "PASS" })).toBe(true);
+    expect(isQcPassedRow({ coverslipQc: "FAIL" })).toBe(false);
+  });
+
+  // The server sends the slides block by block; the screen names them in the
+  // order it was given and never sorts them again.
+  it("names slides in the order the case lists them, not in name order", () => {
+    const slides = [
+      slide(7, "1", 2, { stainStatus: "UNSATISFACTORY", coverslipQc: "FAIL" }),
+      slide(6, "2", 1, { stainStatus: "UNSATISFACTORY", coverslipQc: "FAIL" }),
+      slide(5, "1", 1, { stainStatus: "UNSATISFACTORY", coverslipQc: "FAIL" }),
+    ];
+    const given = ["A2.1", "A1.2", "A1.1"];
+
+    expect(
+      stainingSummary(blocks, slides).outstanding.map((entry) => entry.name),
+    ).toEqual(given);
+    expect(
+      coverslipSummary(blocks, slides, {
+        stainingTracked: true,
+      }).outstanding.map((entry) => entry.name),
+    ).toEqual(given);
+  });
+});
+
+describe("benchStillOwes", () => {
+  it("owes the slide work up to and at coverslipping, and not from the pathologist on", () => {
+    ["MICROTOMY", "STAINING", "COVERSLIPPING"].forEach((status) =>
+      expect(benchStillOwes(status)).toBe(true),
+    );
+    ["READY_PATHOLOGIST", "UNDER_REVIEW", "COMPLETED", undefined, "X"].forEach(
+      (status) => expect(benchStillOwes(status)).toBe(false),
+    );
+  });
+});
+
+describe("the badge a slide's stain status and coverslip QC are shown with", () => {
+  it("shows Stained and Passed as finished, Unsatisfactory and Failed as failures, in words as well as color", () => {
+    expect(stainStatusBadge({ stainStatus: "STAINED" }, "STAINING")).toEqual({
+      kind: "complete",
+      textKey: "pathology.badge.stained",
+    });
+    expect(
+      stainStatusBadge({ stainStatus: "UNSATISFACTORY" }, "STAINING"),
+    ).toEqual({ kind: "critical", textKey: "pathology.badge.unsatisfactory" });
+    expect(coverslipQcBadge({ coverslipQc: "PASS" }, "COVERSLIPPING")).toEqual({
+      kind: "complete",
+      textKey: "pathology.badge.qcPassed",
+    });
+    expect(coverslipQcBadge({ coverslipQc: "FAIL" }, "COVERSLIPPING")).toEqual({
+      kind: "critical",
+      textKey: "common.failed",
+    });
+  });
+
+  it("reads nothing recorded as Pending or Awaiting, in the pending color, while the bench still owes it, through coverslipping", () => {
+    ["MICROTOMY", "STAINING", "COVERSLIPPING"].forEach((status) => {
+      expect(stainStatusBadge({}, status)).toEqual({
+        kind: "pending",
+        textKey: "common.pending",
+      });
+      expect(coverslipQcBadge({}, status)).toEqual({
+        kind: "pending",
+        textKey: "pathology.badge.qcAwaiting",
+      });
+    });
+  });
+
+  it("reads nothing recorded as Not recorded, in gray, once the case has left the bench", () => {
+    ["READY_PATHOLOGIST", "COMPLETED"].forEach((status) => {
+      expect(stainStatusBadge({}, status)).toEqual({
+        kind: "none",
+        textKey: "common.notRecorded",
+      });
+      expect(coverslipQcBadge({}, status)).toEqual({
+        kind: "none",
+        textKey: "common.notRecorded",
+      });
+    });
+  });
+
+  it("shows no badge for nothing recorded where the case's stage is not known", () => {
+    expect(stainStatusBadge({}, undefined)).toBeNull();
+    expect(coverslipQcBadge({}, null)).toBeNull();
+    expect(stainStatusBadge({ stainStatus: "STAINED" })).not.toBeNull();
+  });
+});
+
+describe("nextAfterAll", () => {
+  const rows = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }];
+
+  it("moves on from the last row worked, skipping every row worked and wrapping to the first", () => {
+    expect(nextAfterAll(rows, [{ id: 2 }])?.id).toBe(3);
+    expect(nextAfterAll(rows, [{ id: 1 }, { id: 3 }])?.id).toBe(4);
+    expect(nextAfterAll(rows, [{ id: "3" }, { id: 4 }])?.id).toBe(1);
+  });
+
+  it("finds none once every row was worked, and the first when none of them is on the list", () => {
+    expect(nextAfterAll(rows, rows)).toBeUndefined();
+    expect(nextAfterAll(rows, [{ id: 9 }])?.id).toBe(1);
+    expect(nextAfterAll([], [{ id: 1 }])).toBeUndefined();
+  });
+});
+
+describe("optionId", () => {
+  it("answers the served item's own id for a choice, and null once cleared", () => {
+    const items = [
+      { id: 31, value: "H&E" },
+      { id: "32", value: "PAS" },
+    ];
+    expect(optionId(items, "31")).toBe(31);
+    expect(optionId(items, "32")).toBe("32");
+    expect(optionId(items, "")).toBeNull();
+    expect(optionId(undefined, "31")).toBeNull();
   });
 });

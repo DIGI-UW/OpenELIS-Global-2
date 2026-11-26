@@ -7,12 +7,16 @@ import {
 import { createProgramOrder } from "../../../helpers/program-order";
 import {
   moveCaseToStage,
+  readCase,
+  saveCaseThroughApi,
   type PathologyStageId,
 } from "../../../helpers/seed-pathology-data";
 import {
   expectStage as expectSummaryStage,
+  pickerOptions,
   STAGE_LABELS,
 } from "../../../helpers/pathology-case-view";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 import {
   LONG_TIMEOUT,
   NAV_TIMEOUT,
@@ -72,6 +76,14 @@ interface CaseScreen {
   reachPathologist(page: Page, program: CaseProgram): Promise<void>;
   technician(page: Page): Promise<Locator>;
   pathologist(page: Page, program: CaseProgram): Promise<Locator>;
+  /** Assign the first pathologist offered; returns the name chosen. */
+  choosePathologist(page: Page, program: CaseProgram): Promise<string>;
+  /** The pathologist control shows `name` as the one assigned. */
+  expectPathologist(
+    page: Page,
+    program: CaseProgram,
+    name: string,
+  ): Promise<void>;
   release(page: Page): Promise<Locator>;
   saveButton(page: Page): Locator;
   /**
@@ -108,6 +120,17 @@ const nativeSelectScreen: CaseScreen = {
   },
   async pathologist(page, program) {
     return page.getByLabel(program.pathologistLabel, { exact: true });
+  },
+  async choosePathologist(page, program) {
+    const pathologist = await this.pathologist(page, program);
+    const name = await firstOptionLabel(pathologist);
+    await pathologist.selectOption({ label: name });
+    return name;
+  },
+  async expectPathologist(page, program, name) {
+    await expect(
+      (await this.pathologist(page, program)).locator("option:checked"),
+    ).toHaveText(name);
   },
   async release(page) {
     return page.getByRole("checkbox", { name: "Ready For release" });
@@ -151,9 +174,24 @@ const caseViewShellScreen: CaseScreen = {
   async expectStage(page, _program, label) {
     await expectSummaryStage(page, label);
   },
-  // The pathologist's sections stay locked until the case reaches their stage.
+  // Findings, where the release is, open at the stage the findings are
+  // written at: Under Pathologist Review where the laboratory uses it, which
+  // the move begins. A release needs both descriptions, so they are written
+  // through the case save before the screen is read again.
   async reachPathologist(page, program) {
-    await this.setStage(page, program, program.workingStage);
+    const caseId = /\/PathologyCaseView\/(\d+)/.exec(page.url())?.[1];
+    if (!caseId) {
+      throw new Error(`Not on a pathology case: ${page.url()}`);
+    }
+    const readingStage =
+      (await readCase(page, caseId)).readingStage ?? "READY_PATHOLOGIST";
+    await this.setStage(page, program, STAGE_LABELS[readingStage]);
+    await saveCaseThroughApi(page, caseId, await readCase(page, caseId), {
+      grossExam: "Skin, punch biopsy, 4 mm.",
+      microscopyExam: "Unremarkable epidermis and dermis.",
+    });
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expectSummaryStage(page, STAGE_LABELS[readingStage]);
   },
   async technician(page) {
     await expandSection(page, "pathology-section-grossing");
@@ -161,7 +199,24 @@ const caseViewShellScreen: CaseScreen = {
   },
   async pathologist(page, program) {
     await expandSection(page, "pathology-section-review");
-    return page.getByLabel(program.pathologistLabel, { exact: true });
+    // The picker's label names its list as well as its box.
+    return page.getByRole("combobox", {
+      name: program.pathologistLabel,
+      exact: true,
+    });
+  },
+  // A typed picker: the first name it offers is typed in and picked.
+  async choosePathologist(page, program) {
+    const pathologist = await this.pathologist(page, program);
+    const [name] = await pickerOptions(pathologist);
+    if (!name) {
+      throw new Error("The stack offers no pathologist to assign");
+    }
+    await chooseCarbonOption(pathologist, name);
+    return name;
+  },
+  async expectPathologist(page, program, name) {
+    await expect(await this.pathologist(page, program)).toHaveValue(name);
   },
   async release(page) {
     await expandSection(page, "pathology-section-findings");
@@ -342,9 +397,7 @@ async function assignAndSave(page: Page, program: CaseProgram) {
     throw new Error("The stack offers only one technician to assign");
   }
   await technician.selectOption(otherTechnician);
-  const pathologist = await screen.pathologist(page, program);
-  const pathologistName = await firstOptionLabel(pathologist);
-  await pathologist.selectOption({ label: pathologistName });
+  const pathologistName = await screen.choosePathologist(page, program);
 
   await saveCase(page, program);
   return { otherTechnician, pathologistName };
@@ -372,11 +425,11 @@ for (const program of PROGRAMS) {
         await expect(await program.screen.technician(page)).toHaveValue(
           saved.otherTechnician,
         );
-        await expect(
-          (await program.screen.pathologist(page, program)).locator(
-            "option:checked",
-          ),
-        ).toHaveText(saved.pathologistName);
+        await program.screen.expectPathologist(
+          page,
+          program,
+          saved.pathologistName,
+        );
       });
     });
 
@@ -406,10 +459,7 @@ for (const program of PROGRAMS) {
       await test.step("assign a pathologist and tick release", async () => {
         await openCase(page, program, labNo, patientName);
         await program.screen.reachPathologist(page, program);
-        const pathologist = await program.screen.pathologist(page, program);
-        await pathologist.selectOption({
-          label: await firstOptionLabel(pathologist),
-        });
+        await program.screen.choosePathologist(page, program);
         // Offered only once both a technician and a pathologist are assigned.
         const release = await program.screen.release(page);
         await expect(release).toBeVisible({ timeout: UI_TIMEOUT });

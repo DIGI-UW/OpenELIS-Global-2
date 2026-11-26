@@ -1,81 +1,133 @@
 import React from "react";
 import {
-  Button,
   Checkbox,
-  DismissibleTag,
   FilterableMultiSelect,
   Stack,
   TextArea,
 } from "@carbon/react";
-import { ArrowLeft, ArrowRight } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
+import MacroTextArea from "../../common/textMacro/MacroTextArea";
+import ConclusionPicker from "../ConclusionPicker";
+import SelectionChips from "../SelectionChips";
 import "../pathologyCaseView.scss";
 
+const NARRATIVE_MAX = 255;
+
+const isBlank = (text) => !text || !String(text).trim();
+
+const itemName = (item) => (item ? item.value : "");
+
 /**
- * FR-12 to FR-13: what the pathologist read down the microscope, the
- * techniques that produced it, the coded and free-text conclusions, and the
- * two decisions that close the reading — refer for immunohistochemistry, and
+ * The picker's own items in place of the stored ones, matched by id: Carbon
+ * compares selections by value, and a stored item read with other fields
+ * would otherwise never show as ticked. A stored item the list no longer
+ * holds is kept as it is, so the next pick does not drop it.
+ */
+const selectedFrom = (items, stored) =>
+  (stored ?? []).map(
+    (chosen) =>
+      (items ?? []).find((item) => String(item.id) === String(chosen.id)) ??
+      chosen,
+  );
+
+/**
+ * FR-12 to FR-13: what the pathologist read under the microscope, the
+ * techniques that produced it, the coded and narrative conclusions, and the
+ * two decisions that close the reading: refer for immunohistochemistry, and
  * release.
  *
- * The three multiselects are remounted with the form version for the reason
- * given in ReviewSection; the two checkboxes are controlled for the same
- * reason, since an uncontrolled box keeps the tick a discard has just thrown
- * away.
+ * From Ready for Pathologist on, the macroscopic description is completed
+ * here and not under Grossing, so the case holds one such field at a time.
+ *
+ * The pickers are controlled by the case, so a removed chip unticks its item
+ * and a discard puts back what was stored. The checkboxes are controlled for
+ * the same reason: an uncontrolled box keeps the tick a discard has just
+ * thrown away.
  */
 const FindingsSection = ({
   caseInfo,
   updateCase,
   readOnly,
   techniques,
-  conclusions,
   immunoHistoChemistryTests,
-  pagination,
-  currentApiPage,
-  totalApiPages,
-  previousPage,
-  nextPage,
-  onPreviousPage,
-  onNextPage,
   formVersion,
+  canAddDiagnosis,
 }) => {
   const intl = useIntl();
 
-  // Carbon labels a tag's close button from title, and falls back to
-  // dismissTooltipLabel only once the tag's own text has been ellipsised, so
-  // both have to be given or the button reads Carbon's English "Dismiss".
-  const removeLabel = (name) =>
-    intl.formatMessage({ id: "common.removeSelection" }, { name });
-
-  const removeFrom = (listKey, index) =>
+  const removeFrom = (listKey, id) =>
     updateCase((prev) => ({
       [listKey]: (prev[listKey] ?? []).filter(
-        (_, position) => position !== index,
+        (item) => String(item.id) !== String(id),
       ),
     }));
 
+  const chips = (listKey, testId, fallbackFocusId) => (
+    <SelectionChips
+      items={caseInfo[listKey] ?? []}
+      label={itemName}
+      onRemove={(item) => removeFrom(listKey, item.id)}
+      readOnly={readOnly}
+      testId={testId}
+      fallbackFocusId={fallbackFocusId}
+    />
+  );
+
+  const noTechniques = Array.isArray(techniques) && techniques.length === 0;
+  const referred = Boolean(caseInfo.referredToIhc);
+  const markersOffered =
+    referred || Boolean(caseInfo.referToImmunoHistoChemistry);
+  // The markers the order already holds as referral analyses are shown as
+  // referred and not offered again: the save would not order them twice.
+  const referredIds = new Set(
+    (caseInfo.ihcReferredTestIds ?? []).map((id) => String(id)),
+  );
+  const referredMarkers = referred
+    ? (immunoHistoChemistryTests ?? []).filter((item) =>
+        referredIds.has(String(item.id)),
+      )
+    : [];
+  const markersToOrder = (immunoHistoChemistryTests ?? []).filter(
+    (item) => !referredIds.has(String(item.id)),
+  );
+
   // i18n-keys: pathology.locked.release*
   //
-  // Which assignment is missing, not merely that one is: a hint that names a
+  // Which condition is missing, not merely that one is: a hint that names a
   // condition the case already satisfies sends the pathologist to check a
   // field that is already filled in (S-7.4).
   //
   // Whether a release would be taken is the server's answer, by the rule it
-  // refuses one on, so that reason comes first: no assignment changes it. A
-  // case set to Completed without a release may still be released once.
+  // refuses one on, so that reason comes first: nothing on this form changes
+  // it. A case set to Completed without a release may still be released once.
+  // The server refuses a release without both descriptions, so the box says
+  // so before the save is tried.
   const releaseBlockedKey = !caseInfo.releasable
     ? caseInfo.status === "COMPLETED"
       ? "pathology.locked.caseCompleted"
       : "pathology.error.releaseBeforeReview"
-    : !caseInfo.assignedPathologistId
-      ? "pathology.locked.releaseNoPathologist"
-      : !caseInfo.assignedTechnicianId
-        ? "pathology.locked.releaseNoTechnician"
-        : null;
+    : isBlank(caseInfo.grossExam) || isBlank(caseInfo.microscopyExam)
+      ? "pathology.error.releaseWithoutDescriptions"
+      : !caseInfo.assignedPathologistId
+        ? "pathology.locked.releaseNoPathologist"
+        : !caseInfo.assignedTechnicianId
+          ? "pathology.locked.releaseNoTechnician"
+          : null;
 
   return (
     <Stack gap={6}>
-      <TextArea
+      <MacroTextArea
+        id="grossExam"
+        context="PATHOLOGY_GROSS_DESCRIPTION"
+        disabled={readOnly}
+        rows={6}
+        labelText={intl.formatMessage({ id: "pathology.label.grossExam" })}
+        value={caseInfo.grossExam ?? ""}
+        onChange={(e) => updateCase({ grossExam: e.target.value })}
+      />
+      <MacroTextArea
         id="microscopyExam"
+        context="PATHOLOGY_MICROSCOPIC_DESCRIPTION"
         disabled={readOnly}
         rows={6}
         labelText={intl.formatMessage({
@@ -89,11 +141,16 @@ const FindingsSection = ({
           <FilterableMultiSelect
             key={"techniques-" + formVersion}
             id="techniques"
-            disabled={readOnly}
+            disabled={readOnly || noTechniques}
             titleText={<FormattedMessage id="pathology.label.techniques" />}
-            items={techniques}
-            itemToString={(item) => (item ? item.value : "")}
-            initialSelectedItems={caseInfo.techniques}
+            helperText={
+              noTechniques
+                ? intl.formatMessage({ id: "pathology.empty.noTechniques" })
+                : undefined
+            }
+            items={techniques ?? []}
+            itemToString={itemName}
+            selectedItems={selectedFrom(techniques, caseInfo.techniques)}
             onChange={(changes) =>
               updateCase({ techniques: changes.selectedItems })
             }
@@ -101,108 +158,83 @@ const FindingsSection = ({
             selectionFeedback="top-after-reopen"
           />
         </div>
-        <div className="pathology-case-view__chips">
-          {(caseInfo.techniques ?? []).map((technique, index) => (
-            <DismissibleTag
-              key={index}
-              text={technique.value}
-              disabled={readOnly}
-              onClose={() => removeFrom("techniques", index)}
-              title={removeLabel(technique.value)}
-              dismissTooltipLabel={removeLabel(technique.value)}
-            />
-          ))}
-        </div>
+        {chips("techniques", "findings-technique-chips", "techniques-input")}
       </div>
-      {pagination && (
-        <Stack gap={3}>
-          <span className="cds--type-helper-text-01">
-            {currentApiPage} / {totalApiPages}
-          </span>
-          <Stack orientation="horizontal" gap={3}>
-            <Button
-              hasIconOnly
-              iconDescription={intl.formatMessage({
-                id: "pagination.backward",
-              })}
-              disabled={previousPage === null}
-              onClick={onPreviousPage}
-              renderIcon={ArrowLeft}
-              size="sm"
-            />
-            <Button
-              hasIconOnly
-              iconDescription={intl.formatMessage({
-                id: "pagination.forward",
-              })}
-              disabled={nextPage === null}
-              renderIcon={ArrowRight}
-              onClick={onNextPage}
-              size="sm"
-            />
-          </Stack>
-        </Stack>
-      )}
-      <div className="pathology-case-view__picker-row">
-        <div className="pathology-case-view__field-group">
-          <FilterableMultiSelect
-            key={"conclusion-" + formVersion}
-            id="conclusion"
-            disabled={readOnly}
-            titleText={<FormattedMessage id="pathology.label.conclusion" />}
-            items={conclusions}
-            itemToString={(item) => (item ? item.value : "")}
-            initialSelectedItems={caseInfo.conclusions}
-            onChange={(changes) =>
-              updateCase({ conclusions: changes.selectedItems })
-            }
-            placeholder={intl.formatMessage({ id: "common.select" })}
-            selectionFeedback="top-after-reopen"
-          />
-        </div>
-        <div className="pathology-case-view__chips">
-          {(caseInfo.conclusions ?? []).map((conclusion, index) => (
-            <DismissibleTag
-              key={index}
-              text={conclusion.value}
-              disabled={readOnly}
-              onClose={() => removeFrom("conclusions", index)}
-              title={removeLabel(conclusion.value)}
-              dismissTooltipLabel={removeLabel(conclusion.value)}
-            />
-          ))}
-        </div>
-      </div>
+      <ConclusionPicker
+        value={caseInfo.conclusions ?? []}
+        onChange={(next) => updateCase({ conclusions: next })}
+        readOnly={readOnly}
+        canAddDiagnosis={canAddDiagnosis}
+      />
       <TextArea
         id="conclusionText"
         disabled={readOnly}
         labelText={intl.formatMessage({
-          id: "pathology.label.textconclusion",
+          id: "pathology.label.narrativeConclusion",
         })}
+        enableCounter
+        maxCount={NARRATIVE_MAX}
         value={caseInfo.conclusionText ?? ""}
         onChange={(e) => updateCase({ conclusionText: e.target.value })}
       />
-      <Checkbox
-        labelText={intl.formatMessage({ id: "pathology.label.refer" })}
-        id="referToImmunoHistoChemistry"
-        disabled={readOnly}
-        checked={Boolean(caseInfo.referToImmunoHistoChemistry)}
-        onChange={() =>
-          updateCase({
-            referToImmunoHistoChemistry: !caseInfo.referToImmunoHistoChemistry,
-          })
-        }
-      />
-      {caseInfo.referToImmunoHistoChemistry && (
+      {/*
+        A referral once saved is not withdrawn from this side, so the box
+        shows it ticked and fixed. Markers can still be added to it.
+      */}
+      {referred ? (
+        <Checkbox
+          id="referToImmunoHistoChemistry"
+          labelText={intl.formatMessage({ id: "pathology.label.referIhc" })}
+          checked
+          disabled
+          readOnly
+          helperText={
+            <span data-testid="findings-ihc-referred">
+              {intl.formatMessage({ id: "pathology.label.ihcReferred" })}
+            </span>
+          }
+        />
+      ) : (
+        <Checkbox
+          id="referToImmunoHistoChemistry"
+          labelText={intl.formatMessage({ id: "pathology.label.referIhc" })}
+          disabled={readOnly}
+          checked={Boolean(caseInfo.referToImmunoHistoChemistry)}
+          onChange={() =>
+            updateCase({
+              referToImmunoHistoChemistry:
+                !caseInfo.referToImmunoHistoChemistry,
+            })
+          }
+        />
+      )}
+      {referredMarkers.length > 0 && (
+        <div className="pathology-case-view__field-group">
+          <p className="cds--label">
+            {intl.formatMessage({ id: "pathology.label.ihcMarkersReferred" })}
+          </p>
+          <SelectionChips
+            items={referredMarkers}
+            label={itemName}
+            readOnly
+            testId="findings-ihc-referred-markers"
+          />
+        </div>
+      )}
+      {markersOffered && (
         <div className="pathology-case-view__picker-row">
           <div className="pathology-case-view__field-group">
             <FilterableMultiSelect
               key={"ihctests-" + formVersion}
               id="ihctests"
               disabled={readOnly}
-              titleText={<FormattedMessage id="label.button.select.test" />}
-              items={immunoHistoChemistryTests}
-              itemToString={(item) => (item ? item.value : "")}
+              titleText={<FormattedMessage id="pathology.label.ihcMarkers" />}
+              items={markersToOrder}
+              itemToString={itemName}
+              selectedItems={selectedFrom(
+                markersToOrder,
+                caseInfo.immunoHistoChemistryTestIds,
+              )}
               onChange={(changes) =>
                 updateCase({
                   immunoHistoChemistryTestIds: changes.selectedItems,
@@ -212,18 +244,11 @@ const FindingsSection = ({
               selectionFeedback="top-after-reopen"
             />
           </div>
-          <div className="pathology-case-view__chips">
-            {(caseInfo.immunoHistoChemistryTestIds ?? []).map((test, index) => (
-              <DismissibleTag
-                key={index}
-                text={test.value}
-                disabled={readOnly}
-                onClose={() => removeFrom("immunoHistoChemistryTestIds", index)}
-                title={removeLabel(test.value)}
-                dismissTooltipLabel={removeLabel(test.value)}
-              />
-            ))}
-          </div>
+          {chips(
+            "immunoHistoChemistryTestIds",
+            "findings-ihc-marker-chips",
+            "ihctests-input",
+          )}
         </div>
       )}
       {/*

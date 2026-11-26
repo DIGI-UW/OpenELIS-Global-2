@@ -171,7 +171,8 @@ public class PathologyStagesTest {
 
     /**
      * With every stage switched on and the specimen flagged, a case walks the whole
-     * bench one stage at a time and stops at the pathologist.
+     * bench one stage at a time and stops once the pathologist has begun the
+     * review.
      */
     @Test
     public void next_withEverythingOnAndFlagged_isTheFollowingStageUpToThePathologist() {
@@ -184,7 +185,7 @@ public class PathologyStagesTest {
         expected.put(MICROTOMY, Optional.of(STAINING));
         expected.put(STAINING, Optional.of(COVERSLIPPING));
         expected.put(COVERSLIPPING, Optional.of(READY_PATHOLOGIST));
-        expected.put(READY_PATHOLOGIST, Optional.empty());
+        expected.put(READY_PATHOLOGIST, Optional.of(UNDER_REVIEW));
         expected.put(UNDER_REVIEW, Optional.empty());
         expected.put(COMPLETED, Optional.empty());
 
@@ -230,11 +231,12 @@ public class PathologyStagesTest {
     }
 
     /**
-     * From the pathologist's queue on, the bench has nothing to send the case to.
+     * Once the review has begun the bench has nothing to send the case to; the
+     * queue itself moves on only to the review (see the reading-stage tests).
      */
     @Test
     public void next_isEmptyFromThePathologistsQueueOn() {
-        for (PathologyStatus stage : List.of(READY_PATHOLOGIST, UNDER_REVIEW, COMPLETED)) {
+        for (PathologyStatus stage : List.of(UNDER_REVIEW, COMPLETED)) {
             assertEquals(stage + " is moved on by the pathologist, not by the bench", Optional.empty(),
                     PathologyStages.next(stage, EVERY_STAGE_ON, true));
         }
@@ -290,5 +292,34 @@ public class PathologyStagesTest {
                 PathologyStages.previous(ACCESSIONED, EVERY_STAGE_ON, true));
         assertEquals("a signed-out case is not returned, it is reopened", Optional.empty(),
                 PathologyStages.previous(COMPLETED, EVERY_STAGE_ON, true));
+    }
+
+    /**
+     * From the queue the pathologist begins the review where the deployment uses
+     * that stage; where it does not, the queue is the reading stage and nothing
+     * follows it but the release.
+     */
+    @Test
+    public void next_fromReadyForPathologist_isUnderReviewWhenOn_andEmptyWhenOff() {
+        assertEquals("with review on, the queue moves on to review", Optional.of(UNDER_REVIEW),
+                PathologyStages.next(READY_PATHOLOGIST, EVERY_STAGE_ON, false));
+        assertEquals("with review off, nothing follows the queue", Optional.empty(),
+                PathologyStages.next(READY_PATHOLOGIST, status -> status != UNDER_REVIEW, false));
+    }
+
+    /** A case under review leaves it only by a release or a return. */
+    @Test
+    public void next_fromUnderReview_isEmpty() {
+        assertEquals("with review on", Optional.empty(), PathologyStages.next(UNDER_REVIEW, EVERY_STAGE_ON, true));
+        assertEquals("with review off, a case parked there", Optional.empty(),
+                PathologyStages.next(UNDER_REVIEW, status -> status != UNDER_REVIEW, true));
+    }
+
+    /** The stage at which the findings are written. */
+    @Test
+    public void readingStage_isUnderReviewWhenOn_andReadyForPathologistWhenOff() {
+        assertEquals("with review on", UNDER_REVIEW, PathologyStages.readingStage(EVERY_STAGE_ON));
+        assertEquals("with review off", READY_PATHOLOGIST,
+                PathologyStages.readingStage(status -> status != UNDER_REVIEW));
     }
 }
