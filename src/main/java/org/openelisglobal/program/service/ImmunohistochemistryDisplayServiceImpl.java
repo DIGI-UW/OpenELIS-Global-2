@@ -23,6 +23,7 @@ import org.openelisglobal.program.valueholder.pathology.PathologyTechnique.Techn
 import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -32,6 +33,8 @@ public class ImmunohistochemistryDisplayServiceImpl implements Immunohistochemis
 
     @Autowired
     private SampleService sampleService;
+    @Autowired
+    private SampleItemService sampleItemService;
     @Autowired
     private ImmunohistochemistrySampleService immunohistochemistrySampleService;
     @Autowired
@@ -91,6 +94,8 @@ public class ImmunohistochemistryDisplayServiceImpl implements Immunohistochemis
         displayItem.setFirstName(patient.getPerson().getFirstName());
         displayItem.setLastName(patient.getPerson().getLastName());
         displayItem.setLabNumber(immunohistochemistrySample.getSample().getAccessionNumber());
+        displayItem.setSampleItemSortOrders(SampleItemSortOrders
+                .of(sampleItemService.getSampleItemsBySampleId(immunohistochemistrySample.getSample().getId())));
         displayItem.setImmunohistochemistrySampleId(immunohistochemistrySample.getId());
         displayItem.setPatientPK(patient.getId());
         displayItem.setProgramQuestionnaire(questionnaireStorageService

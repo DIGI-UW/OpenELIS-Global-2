@@ -12,6 +12,7 @@ import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.program.service.SampleItemSortOrders;
 import org.openelisglobal.program.valueholder.cytology.CytologyCaseViewDisplayItem;
 import org.openelisglobal.program.valueholder.cytology.CytologyDiagnosis;
 import org.openelisglobal.program.valueholder.cytology.CytologyDiagnosis.CytologyDiagnosisResultType;
@@ -20,6 +21,7 @@ import org.openelisglobal.program.valueholder.cytology.CytologySample;
 import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -28,6 +30,9 @@ public class CytologyDisplayServiceImpl implements CytologyDisplayService {
 
     @Autowired
     private SampleService sampleService;
+
+    @Autowired
+    private SampleItemService sampleItemService;
 
     @Autowired
     private CytologySampleService cytologySampleService;
@@ -60,6 +65,8 @@ public class CytologyDisplayServiceImpl implements CytologyDisplayService {
         displayItem.setFirstName(patient.getPerson().getFirstName());
         displayItem.setLastName(patient.getPerson().getLastName());
         displayItem.setLabNumber(cytologySample.getSample().getAccessionNumber());
+        displayItem.setSampleItemSortOrders(SampleItemSortOrders
+                .of(sampleItemService.getSampleItemsBySampleId(cytologySample.getSample().getId())));
         displayItem.setPathologySampleId(cytologySample.getId());
         displayItem.setPatientPK(patient.getId());
         displayItem.setProgramQuestionnaire(questionnaireStorageService

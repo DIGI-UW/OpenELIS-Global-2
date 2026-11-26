@@ -36,6 +36,18 @@ public class CytologyCaseViewDisplayItem extends CytologyDisplayItem {
 
     private List<CytologyReport> reports;
 
+    // sort orders of the sample's items, used to address one specimen label per
+    // item (labNo.<sortOrder>) when printing
+    private List<String> sampleItemSortOrders;
+
+    public List<String> getSampleItemSortOrders() {
+        return sampleItemSortOrders;
+    }
+
+    public void setSampleItemSortOrders(List<String> sampleItemSortOrders) {
+        this.sampleItemSortOrders = sampleItemSortOrders;
+    }
+
     public String getAge() {
         return age;
     }
