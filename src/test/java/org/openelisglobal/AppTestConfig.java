@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.NonNull;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
 import org.hl7.fhir.r4.model.Questionnaire;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.itech.fhir.dataexport.api.service.DataExportService;
@@ -30,7 +29,6 @@ import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.RequesterService;
 import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.util.Versioning;
-import org.openelisglobal.config.ControllerSetup;
 import org.openelisglobal.configuration.service.CatalogImportServiceImpl;
 import org.openelisglobal.configuration.service.ConfigurationInitializationService;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
@@ -75,6 +73,7 @@ import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.validation.Validator;
@@ -589,19 +588,5 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Override
     public Validator getValidator() {
         return mvcValidator();
-    }
-
-    /**
-     * {@code org.openelisglobal.config.*} is excluded from the component scan
-     * (regex filter on line ~156) because it also matched
-     * {@code org.openelisglobal.configuration.*} when using a plain package prefix.
-     * Register {@link ControllerSetup} explicitly so its
-     * {@code handleMethodArgumentNotValid} override is invoked for
-     * {@code @Valid @RequestBody} failures instead of the default Spring 6 RFC-9457
-     * Problem Details handler, which omits field-level error details.
-     */
-    @Bean
-    public ControllerSetup controllerSetup() {
-        return new ControllerSetup();
     }
 }

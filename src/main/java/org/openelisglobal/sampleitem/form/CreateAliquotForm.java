@@ -45,7 +45,7 @@ public class CreateAliquotForm {
     private String parentSampleItemId;
 
     @NotNull(message = "Quantity to transfer is required")
-    @DecimalMin(value = "0.001", inclusive = true, message = "Quantity must be at least 0.001")
+    @DecimalMin(value = "0.001", inclusive = true, message = "Quantity to transfer must be greater than 0")
     private BigDecimal quantityToTransfer;
 
     @Min(value = 1, message = "Number of aliquots must be at least 1")

@@ -33,7 +33,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -274,6 +276,29 @@ public class SampleManagementRestController extends BaseRestController {
             LogEvent.logError(this.getClass().getName(), "cancelTest", "Error cancelling test: " + e.getMessage());
             throw e;
         }
+    }
+
+    /**
+     * Exception handler for {@code @Valid @RequestBody} validation failures.
+     *
+     * <p>Spring MVC throws {@link MethodArgumentNotValidException} when a {@code @Valid}-annotated
+     * request body fails bean-validation. This handler extracts the first field error and returns
+     * the same {@code {"error":"Invalid Request","message":"<defaultMessage>"}} envelope that the
+     * {@link #handleIllegalArgumentException} handler uses, keeping the response format consistent
+     * and predictable for callers.
+     *
+     * @param e the exception
+     * @return error response with 400 BAD REQUEST
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(MethodArgumentNotValidException e) {
+        String message =
+                e.getBindingResult().getFieldErrors().stream()
+                        .findFirst()
+                        .map(FieldError::getDefaultMessage)
+                        .orElse("Validation failed");
+        ErrorResponse error = new ErrorResponse("Invalid Request", message);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
     /**
