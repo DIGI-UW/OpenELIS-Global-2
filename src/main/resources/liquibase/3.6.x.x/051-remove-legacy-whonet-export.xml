@@ -4,7 +4,7 @@
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <changeSet author="system" id="049-remove-legacy-whonet-export-menu">
+    <changeSet author="system" id="051-remove-legacy-whonet-export-menu">
         <comment>Remove legacy whonet export menu entry</comment>
 
         <delete tableName="menu" schemaName="clinlims">

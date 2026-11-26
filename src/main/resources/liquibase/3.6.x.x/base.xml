@@ -90,5 +90,5 @@
   <!-- M8 consumes the case structure and site routing above, including on fresh installs. -->
   <include file="liquibase/3.5.x.x/125-amr-v2-environmental-migration.xml"/>
   <!-- #3983: remove legacy Reports-based WHONET export menu entry -->
-  <include relativeToChangelogFile="true" file="049-remove-legacy-whonet-export.xml"/>
+  <include relativeToChangelogFile="true" file="051-remove-legacy-whonet-export.xml"/>
 </databaseChangeLog>
