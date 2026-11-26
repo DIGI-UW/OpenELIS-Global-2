@@ -82,6 +82,8 @@
   <include relativeToChangelogFile="true" file="048-result-run-batch.xml"/>
   <include relativeToChangelogFile="true" file="049-result-run-of-one.xml"/>
   <include relativeToChangelogFile="true" file="050-inventory-usage-fractional.xml"/>
+  <!-- Durable attribution for manual Retry/Dismiss on undelivered analyzer results. -->
+  <include relativeToChangelogFile="true" file="051-analyzer-delivery-action.xml"/>
 
   <!-- Read-only FHIR interface: explicit resource-type reader permissions -->
   <include relativeToChangelogFile="true" file="027-fhir-read-permissions.xml"/>
