@@ -52,6 +52,7 @@ import org.openelisglobal.sample.service.SamplePatientEntryService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.validator.SamplePatientEntryFormValidator;
 import org.openelisglobal.sample.valueholder.OrderPriority;
+import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sample.valueholder.SampleAdditionalField;
 import org.openelisglobal.sample.valueholder.SampleAdditionalField.AdditionalFieldName;
 import org.openelisglobal.spring.util.SpringContext;
@@ -282,33 +283,7 @@ public class SamplePatientEntryController extends BaseSampleEntryController {
                 LogEvent.logError(e);
             }
 
-            if (sampleOrder.getPriority().equals(OrderPriority.STAT)) {
-                List<String> systemUserIds = userRoleService.getUserIdsForRole(Constants.ROLE_RESULTS);
-                List<Analysis> analyses = sampleService
-                        .getAnalysis(sampleService.getSampleByAccessionNumber(sampleOrder.getLabNo()));
-                String message = MessageUtil.getMessage("notification.order.stat",
-                        AlphanumAccessionValidator.convertAlphaNumLabNumForDisplay(sampleOrder.getLabNo()));
-                StringBuffer sb = new StringBuffer(message);
-                for (String userId : systemUserIds) {
-                    List<Analysis> userAnalyses = userService.filterAnalysesByLabUnitRoles(userId, analyses,
-                            Constants.ROLE_RESULTS);
-                    if (userAnalyses != null && !userAnalyses.isEmpty()) {
-                        List<String> tests = userAnalyses.stream().map(a -> a.getTest().getLocalizedName())
-                                .collect(Collectors.toList());
-                        String testString = String.join(", ", tests);
-                        sb.append(testString);
-                        try {
-                            Notification notification = new Notification();
-                            notification.setMessage(sb.toString());
-                            notification.setUser(systemUserService.getUserById(userId));
-                            notification.setCreatedDate(OffsetDateTime.now());
-                            notification.setReadAt(null);
-                            notificationDAO.save(notification);
-                        } catch (Exception e) {
-                        }
-                    }
-                }
-            }
+            sendStatOrderNotifications(sampleOrder);
 
             // String fhir_json = fhirTransformService.CreateFhirFromOESample(updateData,
             // patientUpdate, patientInfo, form, request);
@@ -455,6 +430,45 @@ public class SamplePatientEntryController extends BaseSampleEntryController {
             updateData.setPatientErrors(patientUpdate.preparePatientData(request, patientInfo));
         } else {
             updateData.setPatientErrors(new BaseErrors());
+        }
+    }
+
+    void sendStatOrderNotifications(SampleOrderItem sampleOrder) {
+        if (sampleOrder == null || !OrderPriority.STAT.equals(sampleOrder.getPriority())) {
+            return;
+        }
+        Sample statSample = sampleService.getSampleByAccessionNumber(sampleOrder.getLabNo());
+        if (statSample == null) {
+            return;
+        }
+        List<Analysis> analyses = sampleService.getAnalysis(statSample);
+        if (analyses == null || analyses.isEmpty()) {
+            return;
+        }
+        List<String> systemUserIds = userRoleService.getUserIdsForRole(Constants.ROLE_RESULTS);
+        if (systemUserIds == null || systemUserIds.isEmpty()) {
+            return;
+        }
+        String message = MessageUtil.getMessage("notification.order.stat",
+                AlphanumAccessionValidator.convertAlphaNumLabNumForDisplay(sampleOrder.getLabNo()));
+        String prefix = (message != null && message.endsWith(" ")) ? message : message + " ";
+        for (String userId : systemUserIds) {
+            List<Analysis> userAnalyses = userService.filterAnalysesByLabUnitRoles(userId, analyses,
+                    Constants.ROLE_RESULTS);
+            if (userAnalyses != null && !userAnalyses.isEmpty()) {
+                List<String> tests = userAnalyses.stream().map(a -> a.getTest().getLocalizedName())
+                        .collect(Collectors.toList());
+                String testString = String.join(", ", tests);
+                try {
+                    Notification notification = new Notification();
+                    notification.setMessage(prefix + testString);
+                    notification.setUser(systemUserService.getUserById(userId));
+                    notification.setCreatedDate(OffsetDateTime.now());
+                    notification.setReadAt(null);
+                    notificationDAO.save(notification);
+                } catch (Exception e) {
+                }
+            }
         }
     }
 

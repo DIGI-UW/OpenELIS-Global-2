@@ -85,7 +85,7 @@ public class ElectronicOrderDAOImpl extends BaseDAOImpl<ElectronicOrder, String>
     @Override
     public List<ElectronicOrder> getAllElectronicOrdersContainingValueOrderedBy(String searchValue, SortOrder order) {
 
-        String sql = "from ElectronicOrder eo join eo.patient patient join patient.person person  where"
+        String sql = "select eo from ElectronicOrder eo join eo.patient patient join patient.person person  where"
                 + " lower(eo.data) like concat('%', lower(:searchValue), '%') or"
                 + " lower(person.firstName) like concat('%', lower(:searchValue), '%') or"
                 + " lower(person.lastName) like concat('%', lower(:searchValue), '%') or patient.id in"
@@ -112,18 +112,9 @@ public class ElectronicOrderDAOImpl extends BaseDAOImpl<ElectronicOrder, String>
             break;
         }
         try {
-
-            Query query = entityManager.unwrap(Session.class).createQuery(sql);
+            Query<ElectronicOrder> query = entityManager.unwrap(Session.class).createQuery(sql, ElectronicOrder.class);
             query.setParameter("searchValue", searchValue);
-            // query.setParameter("order", order.getValue());
-            List records = query.list();
-            List<ElectronicOrder> eOrders = new ArrayList<>();
-            for (int i = 0; i < records.size(); i++) {
-                Object[] oArray = (Object[]) records.get(i);
-                ElectronicOrder eo = (ElectronicOrder) oArray[0];
-                eOrders.add(eo);
-            }
-            return eOrders;
+            return query.list();
         } catch (HibernateException e) {
             handleException(e, "getAllElectronicOrdersContainingValue");
         }
@@ -134,7 +125,7 @@ public class ElectronicOrderDAOImpl extends BaseDAOImpl<ElectronicOrder, String>
     public List<ElectronicOrder> getAllElectronicOrdersMatchingAnyValue(List<String> identifierValues,
             String patientValue, SortOrder order) {
 
-        String hql = "from ElectronicOrder eo join eo.patient patient join patient.person person where"
+        String hql = "select eo from ElectronicOrder eo join eo.patient patient join patient.person person where"
                 + " lower(eo.externalId) in (:identifierValues) or lower(person.firstName) ="
                 + " lower(:patientValue) or lower(person.lastName) = lower(:patientValue) or patient.id"
                 + " in (SELECT identity.patientId FROM PatientIdentity identity WHERE"
@@ -160,19 +151,10 @@ public class ElectronicOrderDAOImpl extends BaseDAOImpl<ElectronicOrder, String>
             break;
         }
         try {
-
-            Query<?> query = entityManager.unwrap(Session.class).createQuery(hql);
+            Query<ElectronicOrder> query = entityManager.unwrap(Session.class).createQuery(hql, ElectronicOrder.class);
             query.setParameterList("identifierValues", identifierValues);
             query.setParameter("patientValue", patientValue);
-            // query.setParameter("order", order.getValue());
-            List<?> records = query.list();
-            List<ElectronicOrder> eOrders = new ArrayList<>();
-            for (int i = 0; i < records.size(); i++) {
-                Object[] oArray = (Object[]) records.get(i);
-                ElectronicOrder eo = (ElectronicOrder) oArray[0];
-                eOrders.add(eo);
-            }
-            return eOrders;
+            return query.list();
         } catch (HibernateException e) {
             handleException(e, "getAllElectronicOrdersMatchingAnyValue");
         }
@@ -183,7 +165,7 @@ public class ElectronicOrderDAOImpl extends BaseDAOImpl<ElectronicOrder, String>
     public List<ElectronicOrder> getElectronicOrdersContainingValueExludedByOrderedBy(String searchValue,
             List<String> excludedStatuses, SortOrder sortOrder) {
 
-        String sql = "from ElectronicOrder eo join eo.patient patient join patient.person person  where"
+        String sql = "select eo from ElectronicOrder eo join eo.patient patient join patient.person person  where"
                 + " lower(eo.data) like concat('%', lower(:searchValue), '%') or"
                 + " lower(person.firstName) like concat('%', lower(:searchValue), '%') or"
                 + " lower(person.lastName) like concat('%', lower(:searchValue), '%') or"
@@ -211,19 +193,10 @@ public class ElectronicOrderDAOImpl extends BaseDAOImpl<ElectronicOrder, String>
             break;
         }
         try {
-
-            Query<?> query = entityManager.unwrap(Session.class).createQuery(sql);
+            Query<ElectronicOrder> query = entityManager.unwrap(Session.class).createQuery(sql, ElectronicOrder.class);
             query.setParameter("searchValue", searchValue);
             query.setParameter("excludedStatuses", excludedStatuses);
-            // query.setParameter("order", order.getValue());
-            List<?> records = query.list();
-            List<ElectronicOrder> eOrders = new ArrayList<>();
-            for (int i = 0; i < records.size(); i++) {
-                Object[] oArray = (Object[]) records.get(i);
-                ElectronicOrder eo = (ElectronicOrder) oArray[0];
-                eOrders.add(eo);
-            }
-            return eOrders;
+            return query.list();
         } catch (HibernateException e) {
             handleException(e, "getAllElectronicOrdersContainingValue");
         }
@@ -233,7 +206,7 @@ public class ElectronicOrderDAOImpl extends BaseDAOImpl<ElectronicOrder, String>
     @Override
     public List<ElectronicOrder> getAllElectronicOrdersContainingValuesOrderedBy(String accessionNumber,
             String patientLastName, String patientFirstName, String gender, SortOrder order) {
-        String sql = "from ElectronicOrder eo " + "join eo.patient patient " + "join patient.person person  ";
+        String sql = "select eo from ElectronicOrder eo " + "join eo.patient patient " + "join patient.person person  ";
         boolean whereClauseStarted = false;
         if (!GenericValidator.isBlankOrNull(accessionNumber)) {
             sql += getWherePrefix(whereClauseStarted)
@@ -283,8 +256,7 @@ public class ElectronicOrderDAOImpl extends BaseDAOImpl<ElectronicOrder, String>
             break;
         }
         try {
-
-            Query<?> query = entityManager.unwrap(Session.class).createQuery(sql);
+            Query<ElectronicOrder> query = entityManager.unwrap(Session.class).createQuery(sql, ElectronicOrder.class);
             if (!GenericValidator.isBlankOrNull(accessionNumber)) {
                 query.setParameter("accessionNumber", accessionNumber);
             }
@@ -297,15 +269,7 @@ public class ElectronicOrderDAOImpl extends BaseDAOImpl<ElectronicOrder, String>
             if (!GenericValidator.isBlankOrNull(gender)) {
                 query.setParameter("gender", gender);
             }
-            // query.setParameter("order", order.getValue());
-            List<?> records = query.list();
-            List<ElectronicOrder> eOrders = new ArrayList<>();
-            for (int i = 0; i < records.size(); i++) {
-                Object[] oArray = (Object[]) records.get(i);
-                ElectronicOrder eo = (ElectronicOrder) oArray[0];
-                eOrders.add(eo);
-            }
-            return eOrders;
+            return query.list();
         } catch (HibernateException e) {
             handleException(e, "getAllElectronicOrdersContainingValue");
         }

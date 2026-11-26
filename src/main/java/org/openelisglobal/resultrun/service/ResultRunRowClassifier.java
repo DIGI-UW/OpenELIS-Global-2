@@ -201,7 +201,10 @@ public class ResultRunRowClassifier {
         return name.isEmpty() ? row.getTestName() : name;
     }
 
-    private String catalogNameOf(String testId) {
+    /**
+     * The test as the catalog names it, in the user's language; empty when unknown.
+     */
+    public String catalogNameOf(String testId) {
         Test test = testService.get(testId);
         if (test == null) {
             return "";
