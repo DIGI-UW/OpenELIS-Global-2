@@ -293,4 +293,41 @@ describe("InstrumentDetailPage analyzer context", () => {
       ),
     ).toBeVisible();
   });
+
+  it("links an analyte whose latest control was recorded on a run to that run (OGC-1200 FR-G2)", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) =>
+      callback(
+        url === "/rest/qc/dashboard/instruments/42"
+          ? {
+              instrumentId: "42",
+              instrumentName: "GeneXpert - Main Lab",
+              complianceColor: "GREEN",
+              analyteDetails: [
+                {
+                  testId: "1",
+                  testName: "Glucose",
+                  latestZScore: 0.4,
+                  lastRunTime: "2026-11-25T08:00:00Z",
+                  lastRunId: 42,
+                },
+                {
+                  testId: "2",
+                  testName: "Cholesterol",
+                  latestZScore: 0.1,
+                  lastRunTime: "2026-11-25T08:00:00Z",
+                },
+              ],
+              activeControlLots: 1,
+            }
+          : [],
+      ),
+    );
+
+    renderPage();
+
+    const link = await screen.findByTestId("analyte-run-1");
+    expect(link).toHaveTextContent("Latest control on RUN-42");
+    expect(link).toHaveAttribute("href", "/Results?run=42");
+    expect(screen.queryByTestId("analyte-run-2")).not.toBeInTheDocument();
+  });
 });

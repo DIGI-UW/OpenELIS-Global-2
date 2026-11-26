@@ -65,6 +65,9 @@ public interface ResultRunDAO extends BaseDAO<ResultRun, Long> {
     /** The run each of the results was recorded in, by result id. */
     java.util.Map<String, Long> getRunIdsOfResults(Collection<String> resultIds);
 
+    /** The results recorded in a run. */
+    List<org.openelisglobal.result.valueholder.Result> getResultsOfRun(Long runId);
+
     /** How many analyses have a value recorded in the run. */
     int countResultedAnalyses(Long runId);
 

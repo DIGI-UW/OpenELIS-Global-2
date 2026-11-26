@@ -134,6 +134,16 @@ public class ResultRunDAOImpl extends BaseDAOImpl<ResultRun, Long> implements Re
     }
 
     @Override
+    public List<org.openelisglobal.result.valueholder.Result> getResultsOfRun(Long runId) {
+        try {
+            return session().createQuery("FROM Result r WHERE r.runId = :runId ORDER BY r.id",
+                    org.openelisglobal.result.valueholder.Result.class).setParameter("runId", runId).list();
+        } catch (RuntimeException e) {
+            throw new LIMSRuntimeException("Error finding the results of run " + runId, e);
+        }
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public java.util.Map<String, Long> getRunIdsOfResults(Collection<String> resultIds) {
         java.util.Map<String, Long> runs = new java.util.HashMap<>();
