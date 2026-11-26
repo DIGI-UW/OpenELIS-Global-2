@@ -298,7 +298,7 @@ public class SiteInformationRestController extends BaseController {
         if (localizationService.languageChanged(localization, newLocalization)) {
             Errors errors;
             for (Locale locale : newLocalization.getAllActiveLocales()) {
-                localization.setLocalizedValue(locale, newLocalization.getLocalizedValue(locale));
+                localization.setLocalizedValue(locale.getLanguage(), newLocalization.getLocalizedValue(locale));
             }
             try {
                 localizationService.update(localization);

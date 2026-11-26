@@ -163,7 +163,7 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
                     Localization localization = SpringContext.getBean(LocalizationService.class)
                             .get(siteInformation.getValue());
                     for (Locale locale : propertyHolder.getLocales()) {
-                        localization.setLocalizedValue(locale, propertyHolder.getValue(locale));
+                        localization.setLocalizedValue(locale.getLanguage(), propertyHolder.getValue(locale));
                     }
                     SpringContext.getBean(LocalizationService.class).save(localization);
                 } else if (property.getPropertyType().equals("connection")) {
