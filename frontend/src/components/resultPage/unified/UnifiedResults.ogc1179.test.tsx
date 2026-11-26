@@ -309,9 +309,16 @@ describe("OGC-1179 — unified Results worklist", () => {
     });
     expect(interpField.value).toBe("Clinically normal range.");
 
-    fireEvent.click(screen.getByTestId("save-button"));
+    fireEvent.click(screen.getAllByTestId("save-button")[0]);
 
-    expect(interpField.value).toBe("Clinically normal range.");
+    expect(utilsMock.postToOpenElisServerJsonResponse).toHaveBeenCalled();
+    expect(
+      (
+        screen.getByLabelText(
+          "Interpretation (free text)",
+        ) as HTMLTextAreaElement
+      ).value,
+    ).toBe("Clinically normal range.");
   });
 
   /**
