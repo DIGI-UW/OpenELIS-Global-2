@@ -3,13 +3,19 @@ package org.openelisglobal.dictionary.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
+import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.test.annotation.Rollback;
 
 @Rollback
@@ -21,9 +27,32 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
     @Autowired
     DictionaryCategoryService dictionaryCategoryService;
 
+    @Autowired
+    LocalizationService localizationService;
+
     @Before
     public void setup() throws Exception {
         executeDataSetWithStateManagement("testdata/dictionary.xml");
+    }
+
+    /** Shipped in the vector dictionaries; fr.json translates it as "Paludisme". */
+    private static final String SHIPPED_KEY = "dictionary.vecPathogens.malaria";
+
+    private final List<String> shippedEntryIds = new ArrayList<>();
+
+    @After
+    public void resetLocaleAndShippedRows() {
+        LocaleContextHolder.resetLocaleContext();
+        for (String id : shippedEntryIds) {
+            Integer labelId = jdbcTemplate.queryForObject("SELECT name_localization_id FROM dictionary WHERE id = ?",
+                    Integer.class, Integer.parseInt(id));
+            jdbcTemplate.update("DELETE FROM dictionary WHERE id = ?", Integer.parseInt(id));
+            if (labelId != null) {
+                jdbcTemplate.update("DELETE FROM localization_value WHERE localization_id = ?", labelId);
+                jdbcTemplate.update("DELETE FROM localization WHERE id = ?", labelId);
+            }
+        }
+        shippedEntryIds.clear();
     }
 
     @Test
@@ -242,5 +271,120 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
         dictionary.setLocalAbbreviation("DE4");
         dictionary.setSysUserId("1");
         return dictionary;
+    }
+
+    @Test
+    public void update_renamedEntry_localizedNameIsTheNewName() {
+        String id = insertLabelledEntry();
+        Dictionary entry = dictionaryService.get(id);
+        entry.setDictEntry("Renamed Entry");
+        entry.setSysUserId("1");
+
+        dictionaryService.update(entry, false);
+
+        LocaleContextHolder.setLocale(Locale.ENGLISH);
+        Dictionary stored = dictionaryService.get(id);
+        assertEquals("Renamed Entry", stored.getLocalizedName());
+        assertEquals("Renamed Entry", stored.getLocalizedDictionaryName().getLocalizedValue("en"));
+    }
+
+    @Test
+    public void update_renamedEntry_keepsTheFrenchValue() {
+        String id = insertLabelledEntry();
+        Dictionary entry = dictionaryService.get(id);
+        entry.setDictEntry("Renamed Entry");
+        entry.setSysUserId("1");
+
+        dictionaryService.update(entry, false);
+
+        assertEquals("Nom localisé 7", dictionaryService.get(id).getLocalizedDictionaryName().getLocalizedValue("fr"));
+    }
+
+    @Test
+    public void update_unchangedName_keepsAnEnglishLabelThatDiffersFromTheEntry() {
+        String id = insertLabelledEntry();
+        Dictionary entry = dictionaryService.get(id);
+        entry.setLocalAbbreviation("DE7X");
+        entry.setSysUserId("1");
+
+        dictionaryService.update(entry, false);
+
+        Dictionary stored = dictionaryService.get(id);
+        assertEquals("DE7X", stored.getLocalAbbreviation());
+        assertEquals("Localized Name 7", stored.getLocalizedDictionaryName().getLocalizedValue("en"));
+    }
+
+    @Test
+    public void update_renamedEntryWithoutALocalization_createsAndLinksOne() {
+        Dictionary entry = dictionaryService.get("2");
+        assertNull(entry.getLocalizedDictionaryName());
+        entry.setDictEntry("Renamed Entry 2");
+        entry.setSysUserId("1");
+
+        dictionaryService.update(entry, false);
+
+        Localization label = dictionaryService.get("2").getLocalizedDictionaryName();
+        assertEquals("Renamed Entry 2", label == null ? null : label.getLocalizedValue("en"));
+    }
+
+    @Test
+    public void update_renamedShippedEntry_englishShowsTheNewNameAndFrenchKeepsTheCatalogueTranslation() {
+        String id = insertShippedEntry();
+        Dictionary entry = dictionaryService.get(id);
+        entry.setDictEntry("Malaria (falciparum)");
+        entry.setSysUserId("1");
+
+        dictionaryService.update(entry, false);
+
+        Dictionary stored = dictionaryService.get(id);
+        LocaleContextHolder.setLocale(Locale.ENGLISH);
+        assertEquals("Malaria (falciparum)", stored.getLocalizedName());
+        LocaleContextHolder.setLocale(Locale.FRENCH);
+        assertEquals("Paludisme", stored.getLocalizedName());
+    }
+
+    /**
+     * A shipped entry as the configuration loader leaves it: display key and a
+     * system English value.
+     */
+    private String insertShippedEntry() {
+        Dictionary dictionary = new Dictionary();
+        dictionary.setSortOrder(8);
+        dictionary.setDictionaryCategory(dictionaryCategoryService.getDictionaryCategoryByName("CA3"));
+        dictionary.setDictEntry("Malaria");
+        dictionary.setNameKey(SHIPPED_KEY);
+        dictionary.setIsActive("Y");
+        dictionary.setLocalAbbreviation("MAL");
+        dictionary.setSysUserId("1");
+        String id = dictionaryService.insert(dictionary);
+        shippedEntryIds.add(id);
+
+        Localization label = localizationService.get(dictionaryService.get(id).getLocalizedDictionaryName().getId());
+        label.setSystemValue("en", "Malaria", true);
+        label.setSysUserId("1");
+        localizationService.update(label);
+        return id;
+    }
+
+    /**
+     * An entry made through the admin, so it has a localization row, with its
+     * English label and a French value set afterwards.
+     */
+    private String insertLabelledEntry() {
+        Dictionary dictionary = new Dictionary();
+        dictionary.setSortOrder(7);
+        dictionary.setDictionaryCategory(dictionaryCategoryService.getDictionaryCategoryByName("CA3"));
+        dictionary.setDictEntry("Dictionary Entry 7");
+        dictionary.setIsActive("Y");
+        dictionary.setLocalAbbreviation("DE7");
+        dictionary.setSysUserId("1");
+        String id = dictionaryService.insert(dictionary);
+
+        Localization label = localizationService.get(dictionaryService.get(id).getLocalizedDictionaryName().getId());
+        label.setLocalizedValue("en", "Localized Name 7");
+        label.setLocalizedValue("fr", "Nom localisé 7");
+        label.setSysUserId("1");
+        localizationService.update(label);
+        return id;
     }
 }

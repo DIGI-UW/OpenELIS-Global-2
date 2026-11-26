@@ -31,11 +31,11 @@ vi.mock("../../utils/Utils", async (importOriginal) => {
   };
 });
 
-const entry = (id, dictEntry) => ({
+const entry = (id, dictEntry, isActive = "Y") => ({
   id: String(id),
   dictEntry,
   localAbbreviation: "",
-  isActive: "Y",
+  isActive,
   loincCode: "",
   dictionaryCategory: { categoryName: "General" },
   lastupdated: "2026-01-01",
@@ -185,5 +185,84 @@ describe("Dictionary menu refresh", () => {
     expect(within(dialog).getByRole("button", { name: "Add" })).toBeDisabled();
     fireEvent.click(within(dialog).getByRole("button", { name: "Add" }));
     expect(postToOpenElisServerFullResponse).not.toHaveBeenCalled();
+  });
+});
+
+describe("Dictionary menu deactivate gate", () => {
+  const deactivateButton = () =>
+    document.querySelector('[data-cy="deactivateButton"]');
+  const selectRowOf = (name) =>
+    fireEvent.click(
+      within(screen.getByText(name).closest("tr")).getByLabelText("selectRow"),
+    );
+
+  beforeEach(() => {
+    menuList = {
+      menuList: [entry(1, "Entry A"), entry(2, "Entry Retired", "N")],
+    };
+    getFromOpenElisServer.mockReset();
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.startsWith("/rest/DictionaryMenu")) return callback(menuList);
+      if (url.startsWith("/rest/SearchDictionaryMenu"))
+        return callback(menuList);
+      return callback([]);
+    });
+    postToOpenElisServer.mockReset();
+    postToOpenElisServer.mockImplementation((url, body, callback) =>
+      callback("200"),
+    );
+  });
+
+  it("keeps Deactivate disabled when only an inactive row is selected", async () => {
+    renderScreen();
+    await screen.findByText("Entry Retired");
+
+    selectRowOf("Entry Retired");
+
+    expect(deactivateButton()).toBeDisabled();
+    fireEvent.click(deactivateButton());
+    expect(postToOpenElisServer).not.toHaveBeenCalled();
+  });
+
+  it("enables Deactivate when an active row is selected", async () => {
+    renderScreen();
+    await screen.findByText("Entry A");
+
+    selectRowOf("Entry A");
+
+    expect(deactivateButton()).toBeEnabled();
+  });
+
+  it("sends only the active ids when active and inactive rows are selected", async () => {
+    renderScreen();
+    await screen.findByText("Entry A");
+
+    selectRowOf("Entry A");
+    selectRowOf("Entry Retired");
+    fireEvent.click(deactivateButton());
+
+    expect(postToOpenElisServer).toHaveBeenCalledOnce();
+    expect(postToOpenElisServer.mock.calls[0][0]).toBe(
+      "/rest/DeleteDictionary?ID=1",
+    );
+  });
+
+  it("keeps Deactivate disabled on a search result deactivated a moment ago", async () => {
+    renderScreen();
+    await screen.findByText("Entry A");
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "Entry" },
+    });
+    selectRowOf("Entry A");
+    // The search reread knows Entry A is inactive; the browse copy does not.
+    menuList = { menuList: [entry(1, "Entry A", "N")] };
+    fireEvent.click(deactivateButton());
+    await waitFor(() => expect(deactivateButton()).toBeDisabled());
+
+    selectRowOf("Entry A");
+
+    expect(deactivateButton()).toBeDisabled();
+    fireEvent.click(deactivateButton());
+    expect(postToOpenElisServer).toHaveBeenCalledOnce();
   });
 });

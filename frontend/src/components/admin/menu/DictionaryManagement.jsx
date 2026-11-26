@@ -139,18 +139,22 @@ function DictionaryManagement() {
     };
   }, [panelSearchTerm, startingRecNo]);
 
+  // Only an active entry on screen can be deactivated; the list not shown may be stale.
+  const activeSelectedIds = () => {
+    const rowsOnScreen = isSearching ? searchedMenuList : dictionaryMenuList;
+    return selectedRowIds.filter((id) =>
+      rowsOnScreen.some((row) => row.id === id && row.isActive === "Y"),
+    );
+  };
+
   useEffect(() => {
     if (selectedRowIds.length === 1) {
       setModifyButton(false);
     } else {
       setModifyButton(true);
     }
-    if (selectedRowIds.length === 0) {
-      setDeactivateButton(true);
-    } else {
-      setDeactivateButton(false);
-    }
-  }, [selectedRowIds]);
+    setDeactivateButton(activeSelectedIds().length === 0);
+  }, [selectedRowIds, dictionaryMenuList, searchedMenuList, isSearching]);
 
   const yesOrNo = [
     {
@@ -444,9 +448,10 @@ function DictionaryManagement() {
 
   const handleDeactivation = async (event) => {
     event.preventDefault();
-    if (selectedRowIds.length > 0) {
+    const activeIds = activeSelectedIds();
+    if (activeIds.length > 0) {
       postToOpenElisServer(
-        `/rest/DeleteDictionary?ID=${selectedRowIds.join(",")}`,
+        `/rest/DeleteDictionary?ID=${activeIds.join(",")}`,
         {},
         handleDelete,
       );
