@@ -179,10 +179,10 @@ public class TestModifyEntryController extends BaseController {
             bean.setHasDictionaryValues(
                     TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(bean.getResultType()));
             if (bean.isHasDictionaryValues()) {
-                bean.setDictionaryValues(createDictionaryValues(testService, test));
+                List<TestResult> testResultList = testService.getPossibleTestResults(test);
+                bean.setDictionaryValues(createDictionaryValues(testResultList));
                 bean.setReferenceValue(createReferenceValueForDictionaryType(test));
-                bean.setDictionaryIds(createDictionaryIds(testService, test));
-                bean.setReferenceId(createReferenceIdForDictionaryType(test));
+                bean.setDictionaryIds(createDictionaryIds(testResultList));
                 bean.setReferenceId(getDictionaryIdByDictEntry(bean.getReferenceValue(), bean.getDictionaryIds(),
                         bean.getDictionaryValues()));
             }
@@ -255,9 +255,8 @@ public class TestModifyEntryController extends BaseController {
                 null);
     }
 
-    private List<String> createDictionaryValues(TestService testService, Test test) {
+    private List<String> createDictionaryValues(List<TestResult> testResultList) {
         List<String> dictionaryList = new ArrayList<>();
-        List<TestResult> testResultList = testService.getPossibleTestResults(test);
         for (TestResult testResult : testResultList) {
             CollectionUtils.addIgnoreNull(dictionaryList, getDictionaryValue(testResult));
         }
@@ -286,20 +285,8 @@ public class TestModifyEntryController extends BaseController {
         return null;
     }
 
-    private String createReferenceIdForDictionaryType(Test test) {
-        List<ResultLimit> resultLimits = SpringContext.getBean(ResultLimitService.class).getResultLimits(test);
-
-        if (resultLimits.isEmpty()) {
-            return "n/a";
-        }
-
-        return SpringContext.getBean(ResultLimitService.class).getDisplayReferenceRange(resultLimits.get(0), null,
-                null);
-    }
-
-    private List<String> createDictionaryIds(TestService testService, Test test) {
+    private List<String> createDictionaryIds(List<TestResult> testResultList) {
         List<String> dictionaryList = new ArrayList<>();
-        List<TestResult> testResultList = testService.getPossibleTestResults(test);
         for (TestResult testResult : testResultList) {
             CollectionUtils.addIgnoreNull(dictionaryList, getDictionaryId(testResult));
         }
