@@ -41,13 +41,13 @@ export function seedFreezerWithOpenAlert(name: string): void {
   psql(
     `INSERT INTO ${SCHEMA}.freezer ` +
       `(id, name, protocol, slave_id, temperature_register, target_temperature, warning_threshold, critical_threshold, active) ` +
-      `VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM ${SCHEMA}.freezer), ` +
+      `VALUES (nextval('${SCHEMA}.freezer_seq'), ` +
       `${esc(name)}, 'RTU', 1, 0, -20, -15, -10, true);`,
   );
   psql(
     `INSERT INTO ${SCHEMA}.alert ` +
       `(id, alert_type, alert_entity_type, alert_entity_id, severity, status, start_time, last_updated, message, duplicate_count) ` +
-      `VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM ${SCHEMA}.alert), ` +
+      `VALUES (nextval('${SCHEMA}.alert_seq'), ` +
       `'FREEZER_TEMPERATURE', 'Freezer', (SELECT id FROM ${SCHEMA}.freezer WHERE name = ${esc(name)}), ` +
       `'CRITICAL', 'OPEN', now(), now(), 'E2E cold-storage alert', 0);`,
   );
