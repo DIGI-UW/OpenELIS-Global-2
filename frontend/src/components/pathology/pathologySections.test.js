@@ -2,7 +2,11 @@ import { createIntl } from "react-intl";
 import messages from "../../languages/en.json";
 import { PATHOLOGY_STAGES } from "./pathologyStages";
 import { SECTION_STATE } from "../caseView/sectionState";
-import { embeddingSummary } from "./pathologyRows";
+import {
+  coverslipSummary,
+  embeddingSummary,
+  stainingSummary,
+} from "./pathologyRows";
 import {
   PATHOLOGY_SECTIONS,
   grossingComplete,
@@ -27,6 +31,15 @@ import {
   switchedOn,
   verifyLabelLock,
   sectionIdOfStage,
+  sectionHoldsRecords,
+  batchHold,
+  redoNotice,
+  slideWorkLock,
+  slideWorkReading,
+  slideWorkStatement,
+  slideWorkSummaries,
+  COVERSLIPPING_SECTION_ID,
+  STAINING_SECTION_ID,
 } from "./pathologySections";
 
 const intl = createIntl({ locale: "en", messages });
@@ -1510,10 +1523,15 @@ describe("advanceBlockedReason", () => {
     });
 
     it("holds no other stage for an unchecked label", () => {
+      // Stained, so staining's own rule has nothing to say about them.
+      const stained = slides.map((slide) => ({
+        ...slide,
+        stainStatus: "STAINED",
+      }));
       expect(
         advanceBlockedReason(
           intl,
-          { blocks, slides },
+          { blocks, slides: stained },
           { storedStatus: "STAINING" },
         ),
       ).toBe(null);
@@ -1532,7 +1550,7 @@ describe("advanceBlockedReason", () => {
       advanceBlockedReason(
         intl,
         { grossExam: "", slides: [] },
-        { storedStatus: "STAINING" },
+        { storedStatus: "PROCESSING" },
       ),
     ).toBe(null);
   });
@@ -1801,5 +1819,563 @@ describe("sectionIdOfStage", () => {
     expect(sectionIdOfStage("UNDER_REVIEW")).toBe("pathology-section-review");
     expect(sectionIdOfStage("COMPLETED")).toBe("pathology-section-reports");
     expect(sectionIdOfStage("SOMETHING_NEW")).toBeNull();
+  });
+});
+
+// FR-8: staining and coverslipping, read from the slides. Three slides on
+// two blocks, so every rule below names them block first ("A1.1").
+const slideWorkBlocks = [
+  { id: 1, designation: "A1", cassetteState: "BLOCK", active: true },
+  { id: 2, designation: "A2", cassetteState: "BLOCK", active: true },
+];
+const workSlide = (id, designation, blockId, overrides = {}) => ({
+  id,
+  designation,
+  blockId,
+  stainId: "31",
+  active: true,
+  ...overrides,
+});
+
+describe("advanceBlockedReason at staining and coverslipping (FR-8)", () => {
+  const atStaining = (slides, options = {}) =>
+    advanceBlockedReason(
+      intl,
+      { blocks: slideWorkBlocks, slides },
+      { storedStatus: "STAINING", ...options },
+    );
+  const atCoverslipping = (slides, options = {}) =>
+    advanceBlockedReason(
+      intl,
+      { blocks: slideWorkBlocks, slides },
+      { storedStatus: "COVERSLIPPING", ...options },
+    );
+
+  it("holds staining back until every slide in use is stained, naming the ones that are not", () => {
+    const blocked = atStaining([
+      workSlide(5, "1", 1, { stainStatus: "STAINED" }),
+      workSlide(6, "2", 1),
+      workSlide(7, "1", 2, { stainStatus: "UNSATISFACTORY" }),
+    ]);
+
+    expect(blocked.key).toBe("pathology.locked.stainingIncomplete");
+    expect(intl.formatMessage({ id: blocked.key }, blocked.values)).toContain(
+      "A1.2, A2.1",
+    );
+  });
+
+  it("names the slides that hold the primary in the order the case lists them", () => {
+    const blocked = atCoverslipping([
+      workSlide(7, "1", 2, { stainStatus: "STAINED" }),
+      workSlide(5, "1", 1, { stainStatus: "STAINED" }),
+    ]);
+
+    expect(intl.formatMessage({ id: blocked.key }, blocked.values)).toContain(
+      "A2.1, A1.1",
+    );
+  });
+
+  it("lets a case with every slide in use stained leave staining", () => {
+    expect(
+      atStaining([
+        workSlide(5, "1", 1, { stainStatus: "STAINED" }),
+        workSlide(6, "2", 1, { active: false }),
+      ]),
+    ).toBe(null);
+  });
+
+  it("holds either stage with no slide in use as microtomy holds it, so retiring every slide does not open the gate", () => {
+    const retired = [workSlide(5, "1", 1, { active: false })];
+
+    expect(atStaining(retired)).toEqual({
+      key: "pathology.locked.microtomyIncomplete",
+    });
+    expect(atCoverslipping([])).toEqual({
+      key: "pathology.locked.microtomyIncomplete",
+    });
+  });
+
+  it("holds coverslipping back until every slide passed QC, naming a failed and an unchecked one", () => {
+    const blocked = atCoverslipping([
+      workSlide(5, "1", 1, { stainStatus: "STAINED", coverslipQc: "PASS" }),
+      workSlide(6, "2", 1, { stainStatus: "STAINED", coverslipQc: "FAIL" }),
+      workSlide(7, "1", 2, { stainStatus: "STAINED" }),
+    ]);
+
+    expect(blocked.key).toBe("pathology.locked.coverslipQcIncomplete");
+    expect(intl.formatMessage({ id: blocked.key }, blocked.values)).toContain(
+      "A1.2, A2.1",
+    );
+  });
+
+  it("asks a passed slide to read Stained too, unless the laboratory does not track staining", () => {
+    const passedUnstained = [workSlide(5, "1", 1, { coverslipQc: "PASS" })];
+
+    expect(atCoverslipping(passedUnstained)?.key).toBe(
+      "pathology.locked.coverslipQcIncomplete",
+    );
+    expect(
+      atCoverslipping(passedUnstained, {
+        configurationProperties: {
+          PATHOLOGY_STAGE_STAINING_ENABLED: "false",
+        },
+      }),
+    ).toBe(null);
+  });
+
+  it("says a request in flight and then unsaved work before the slides", () => {
+    const pending = [workSlide(5, "1", 1)];
+
+    expect(atStaining(pending, { moving: true }).key).toBe(
+      "pathology.locked.requestInFlight",
+    );
+    expect(atStaining(pending, { dirty: true }).key).toBe(
+      "pathology.locked.saveBeforeTransition",
+    );
+  });
+
+  it("holds no other stage for an unstained or unchecked slide", () => {
+    expect(
+      advanceBlockedReason(
+        intl,
+        { blocks: slideWorkBlocks, slides: [workSlide(5, "1", 1)] },
+        { storedStatus: "PROCESSING" },
+      ),
+    ).toBe(null);
+  });
+});
+
+describe("slideWorkLock", () => {
+  const stained = workSlide(5, "1", 1, { stainStatus: "STAINED" });
+  const pending = workSlide(6, "2", 1);
+  const unstainedNoStain = workSlide(7, "3", 1, { stainId: null });
+
+  it.each([
+    [{ status: "COMPLETED" }, "pathology.locked.caseCompleted"],
+    [{ status: "READY_PATHOLOGIST" }, "pathology.locked.slideWorkAfterBench"],
+    [{ status: "UNDER_REVIEW" }, "pathology.locked.slideWorkAfterBench"],
+    [{ status: "STAINING", saving: true }, "pathology.locked.requestInFlight"],
+    [{ status: "STAINING", moving: true }, "pathology.locked.requestInFlight"],
+    [{ status: "STAINING", dirty: true }, "pathology.locked.saveBeforeMarking"],
+  ])("holds the whole section with %o and says why", (state, reasonKey) => {
+    const lock = { disabled: true, reasonKey, own: false };
+    expect(
+      slideWorkLock({ ...state, action: "stained", slide: pending }),
+    ).toEqual(lock);
+    expect(slideWorkLock(state)).toEqual(lock);
+  });
+
+  it("takes marks at staining and coverslipping, the stages the bench still owes them", () => {
+    ["STAINING", "COVERSLIPPING"].forEach((status) => {
+      expect(
+        slideWorkLock({ status, action: "unsatisfactory", slide: pending }),
+      ).toEqual({ disabled: false, reasonKey: null, own: false });
+    });
+  });
+
+  it("says past the bench before unsaved work, since saving does not change it", () => {
+    expect(
+      slideWorkLock({ status: "READY_PATHOLOGIST", dirty: true }).reasonKey,
+    ).toBe("pathology.locked.slideWorkAfterBench");
+  });
+
+  it("holds Mark stained on a slide with no stain saved as the row's own reason, and nothing else on it", () => {
+    expect(
+      slideWorkLock({
+        status: "STAINING",
+        action: "stained",
+        slide: unstainedNoStain,
+      }),
+    ).toEqual({
+      disabled: true,
+      reasonKey: "pathology.locked.stainMissing",
+      own: true,
+    });
+    expect(
+      slideWorkLock({
+        status: "STAINING",
+        action: "unsatisfactory",
+        slide: unstainedNoStain,
+      }).disabled,
+    ).toBe(false);
+  });
+
+  it("holds Pass and Fail on an unstained slide where staining is tracked, and not where it is not", () => {
+    ["pass", "fail"].forEach((action) => {
+      expect(
+        slideWorkLock({ status: "COVERSLIPPING", action, slide: pending }),
+      ).toEqual({
+        disabled: true,
+        reasonKey: "pathology.locked.qcBeforeStain",
+        own: true,
+      });
+      expect(
+        slideWorkLock({
+          status: "COVERSLIPPING",
+          action,
+          slide: pending,
+          stainingTracked: false,
+        }).disabled,
+      ).toBe(false);
+      expect(
+        slideWorkLock({ status: "COVERSLIPPING", action, slide: stained })
+          .disabled,
+      ).toBe(false);
+    });
+  });
+
+  it("says the section's reason before the slide's own", () => {
+    expect(
+      slideWorkLock({
+        status: "STAINING",
+        dirty: true,
+        action: "stained",
+        slide: unstainedNoStain,
+      }).reasonKey,
+    ).toBe("pathology.locked.saveBeforeMarking");
+  });
+});
+
+describe("batchHold", () => {
+  const stained = workSlide(5, "1", 1, { stainStatus: "STAINED" });
+  const pending = workSlide(6, "2", 1);
+  const unstainedNoStain = workSlide(7, "1", 2, { stainId: null });
+
+  it("names the selected slides a batch cannot be applied to, by the row's own rule", () => {
+    expect(
+      batchHold(
+        slideWorkBlocks,
+        [stained, pending, unstainedNoStain],
+        "stained",
+      ),
+    ).toEqual({
+      key: "pathology.locked.stainMissingFor",
+      values: { designations: "A2.1" },
+    });
+    expect(batchHold(slideWorkBlocks, [stained, pending], "pass")).toEqual({
+      key: "pathology.locked.qcBeforeStainFor",
+      values: { designations: "A1.2" },
+    });
+  });
+
+  it("holds nothing when every selected slide can take the batch", () => {
+    expect(batchHold(slideWorkBlocks, [stained, pending], "stained")).toBe(
+      null,
+    );
+    expect(batchHold(slideWorkBlocks, [stained, pending], "pass", false)).toBe(
+      null,
+    );
+  });
+});
+
+describe("redoNotice", () => {
+  const slides = [
+    workSlide(5, "1", 1, { stainStatus: "UNSATISFACTORY" }),
+    workSlide(6, "2", 1, { stainStatus: "STAINED", coverslipQc: "FAIL" }),
+    workSlide(7, "1", 2, { stainStatus: "UNSATISFACTORY", active: false }),
+  ];
+
+  it("names the slides its own stage's rule finds broken, and says they hold the case where the gate of the case's stage waits for them", () => {
+    expect(redoNotice("STAINING", slideWorkBlocks, slides, "STAINING")).toEqual(
+      {
+        titleKey: "pathology.banner.unsatisfactorySlidesHere",
+        values: { designations: "A1.1" },
+        recipeKey: "pathology.banner.restainOrRecut",
+      },
+    );
+    expect(
+      redoNotice("COVERSLIPPING", slideWorkBlocks, slides, "COVERSLIPPING"),
+    ).toEqual({
+      titleKey: "pathology.banner.failedQcSlidesHere",
+      values: { designations: "A1.2" },
+      recipeKey: "pathology.banner.recoverslipOrRecut",
+    });
+  });
+
+  it("says an unsatisfactory slide holds a case at coverslipping too, where the coverslip gate asks for a stained slide", () => {
+    expect(
+      redoNotice("STAINING", slideWorkBlocks, slides, "COVERSLIPPING").titleKey,
+    ).toBe("pathology.banner.unsatisfactorySlidesHere");
+    // With staining untracked the coverslip gate asks only for a pass, so a
+    // passed slide holds nothing there, whatever its stain status.
+    const passed = [
+      workSlide(5, "1", 1, {
+        stainStatus: "UNSATISFACTORY",
+        coverslipQc: "PASS",
+      }),
+    ];
+    expect(
+      redoNotice("STAINING", slideWorkBlocks, passed, "COVERSLIPPING", false)
+        .titleKey,
+    ).toBe("pathology.banner.unsatisfactorySlides");
+    expect(
+      redoNotice("STAINING", slideWorkBlocks, passed, "COVERSLIPPING").titleKey,
+    ).toBe("pathology.banner.unsatisfactorySlidesHere");
+  });
+
+  it("does not say a failed coverslip holds a case returned to staining, whose gate asks only for a stain", () => {
+    expect(
+      redoNotice("COVERSLIPPING", slideWorkBlocks, slides, "STAINING").titleKey,
+    ).toBe("pathology.banner.failedQcSlides");
+  });
+
+  it("names the broken slides in the order the case lists them", () => {
+    const listed = [
+      workSlide(7, "1", 2, { stainStatus: "UNSATISFACTORY" }),
+      workSlide(5, "1", 1, { stainStatus: "UNSATISFACTORY" }),
+    ];
+    expect(
+      redoNotice("STAINING", slideWorkBlocks, listed, "STAINING").values,
+    ).toEqual({ designations: "A2.1, A1.1" });
+  });
+
+  it("gives no way back once the case has left the bench, and no notice with nothing broken", () => {
+    expect(
+      redoNotice("STAINING", slideWorkBlocks, slides, "READY_PATHOLOGIST"),
+    ).toEqual({
+      titleKey: "pathology.banner.unsatisfactorySlides",
+      values: { designations: "A1.1" },
+      recipeKey: null,
+    });
+    expect(
+      redoNotice("COVERSLIPPING", slideWorkBlocks, [slides[0]], "STAINING"),
+    ).toBe(null);
+  });
+});
+
+describe("the staining and coverslipping badges, rail steps and summary lines", () => {
+  const slides = [
+    workSlide(5, "1", 1, { stainStatus: "STAINED", coverslipQc: "PASS" }),
+    workSlide(6, "2", 1, { stainStatus: "STAINED" }),
+    workSlide(7, "1", 2),
+  ];
+  const caseAt = (status, rows = slides) => ({
+    status,
+    grossExam: "Described",
+    blocks: slideWorkBlocks,
+    slides: rows,
+  });
+  const nothingRecorded = [workSlide(5, "1", 1), workSlide(6, "2", 1)];
+  const sectionsAt = (status, configurationProperties) =>
+    deriveCaseSections({
+      intl,
+      status,
+      isPathologist: false,
+      decalcificationRequired: true,
+      configurationProperties,
+    });
+  const railAt = (status, rows) =>
+    deriveRailItems(sectionsAt(status), {
+      intl,
+      status,
+      reportCount: 0,
+      openRequestNames: [],
+      caseInfo: caseAt(status, rows),
+    });
+  const item = (items, id) => items.find((entry) => entry.id === id);
+
+  it("badges each section with how many slides are done, and Complete once all are", () => {
+    const sections = sectionsAt("STAINING");
+
+    expect(
+      sectionBadge(byId(sections, STAINING_SECTION_ID), {
+        caseInfo: caseAt("STAINING"),
+      }),
+    ).toEqual({
+      kind: "partial",
+      textKey: "pathology.badge.stainedOf",
+      values: { stained: 2, total: 3 },
+    });
+    expect(
+      sectionBadge(byId(sections, COVERSLIPPING_SECTION_ID), {
+        caseInfo: caseAt("STAINING"),
+      }),
+    ).toEqual({
+      kind: "partial",
+      textKey: "pathology.badge.qcPassedOf",
+      values: { passed: 1, total: 3 },
+    });
+    expect(
+      sectionBadge(byId(sections, STAINING_SECTION_ID), {
+        caseInfo: caseAt("STAINING", [slides[0]]),
+      }),
+    ).toEqual({ kind: "complete", textKey: "common.complete" });
+    expect(
+      sectionBadge(byId(sections, STAINING_SECTION_ID), {
+        caseInfo: caseAt("STAINING", []),
+      }),
+    ).toBeNull();
+  });
+
+  it("shows no count on a case that left the bench with nothing recorded, and reads it Not recorded in the summary", () => {
+    ["READY_PATHOLOGIST", "COMPLETED"].forEach((status) => {
+      const sections = sectionsAt(status);
+      expect(
+        sectionBadge(byId(sections, STAINING_SECTION_ID), {
+          caseInfo: caseAt(status, nothingRecorded),
+        }),
+      ).toBeNull();
+      expect(
+        slideWorkStatement(intl, {
+          stage: "COVERSLIPPING",
+          summary: coverslipSummary(slideWorkBlocks, nothingRecorded),
+          status,
+        }).value,
+      ).toBe(messages["common.notRecorded"]);
+    });
+  });
+
+  it("keeps counting at the bench even with nothing recorded, since the bench still owes the work", () => {
+    expect(
+      slideWorkReading(
+        stainingSummary(slideWorkBlocks, nothingRecorded),
+        "COVERSLIPPING",
+      ),
+    ).toBe("count");
+    expect(
+      slideWorkReading(
+        stainingSummary(slideWorkBlocks, nothingRecorded),
+        "READY_PATHOLOGIST",
+      ),
+    ).toBe("notRecorded");
+    expect(
+      slideWorkReading(stainingSummary(slideWorkBlocks, []), "STAINING"),
+    ).toBe("none");
+  });
+
+  it("names the outstanding slides on the rail once the case stands at the stage, and leaves the step not complete", () => {
+    const items = railAt("STAINING", slides);
+    const staining = item(items, STAINING_SECTION_ID);
+
+    expect(staining.complete).toBe(false);
+    expect(staining.pendingTitle).toBe(
+      intl.formatMessage(
+        { id: "pathology.badge.outstanding" },
+        { designations: "A2.1" },
+      ),
+    );
+    expect(item(items, COVERSLIPPING_SECTION_ID).pendingLabel).toBeUndefined();
+  });
+
+  it("keeps the staining step open and named at coverslipping while a slide is still unstained", () => {
+    const staining = item(railAt("COVERSLIPPING", slides), STAINING_SECTION_ID);
+
+    expect(staining.complete).toBe(false);
+    expect(staining.pendingTitle).toContain("A2.1");
+  });
+
+  it("ticks both steps by passage once the case has left the bench, recorded or not, and names nothing", () => {
+    [slides, nothingRecorded].forEach((rows) => {
+      const items = railAt("READY_PATHOLOGIST", rows);
+      [STAINING_SECTION_ID, COVERSLIPPING_SECTION_ID].forEach((id) => {
+        expect(item(items, id).complete).toBe(true);
+        expect(item(items, id).pendingLabel).toBeUndefined();
+      });
+    });
+  });
+
+  it("reads the summary line as a count, names the outstanding on hover at the stage, and N/A with the stage switched off", () => {
+    const staining = slideWorkStatement(intl, {
+      stage: "STAINING",
+      summary: stainingSummary(slideWorkBlocks, slides),
+      status: "STAINING",
+    });
+    expect(staining.value).toBe(
+      intl.formatMessage(
+        { id: "pathology.badge.stainedOf" },
+        { stained: 2, total: 3 },
+      ),
+    );
+    expect(staining.title).toContain("A2.1");
+
+    const earlier = slideWorkStatement(intl, {
+      stage: "COVERSLIPPING",
+      summary: coverslipSummary(slideWorkBlocks, slides, {
+        stainingTracked: true,
+      }),
+      status: "STAINING",
+    });
+    expect(earlier.title).toBeUndefined();
+
+    expect(
+      slideWorkStatement(intl, {
+        stage: "COVERSLIPPING",
+        summary: coverslipSummary(slideWorkBlocks, slides),
+        status: "STAINING",
+        configurationProperties: {
+          PATHOLOGY_STAGE_COVERSLIPPING_ENABLED: "false",
+        },
+      }).value,
+    ).toBe(messages["caseView.badge.notApplicable"]);
+    expect(
+      slideWorkStatement(intl, {
+        stage: "STAINING",
+        summary: stainingSummary([], []),
+        status: "STAINING",
+      }).value,
+    ).toBeNull();
+  });
+
+  it("reads whether staining is tracked once, for both summaries", () => {
+    const off = { PATHOLOGY_STAGE_STAINING_ENABLED: "false" };
+    const passedUnstained = {
+      blocks: slideWorkBlocks,
+      slides: [workSlide(5, "1", 1, { coverslipQc: "PASS" })],
+    };
+
+    expect(slideWorkSummaries(passedUnstained, off).stainingTracked).toBe(
+      false,
+    );
+    expect(
+      slideWorkSummaries(passedUnstained, off).COVERSLIPPING.complete,
+    ).toBe(true);
+    expect(slideWorkSummaries(passedUnstained, {}).COVERSLIPPING.complete).toBe(
+      false,
+    );
+  });
+});
+
+describe("sectionHoldsRecords, for a stage switched off with work on record", () => {
+  it("counts any slide for microtomy, a stain status for staining and a QC result for coverslipping", () => {
+    const plain = { slides: [{ id: 5, active: false }] };
+    const stained = { slides: [{ id: 5, stainStatus: "UNSATISFACTORY" }] };
+    const checked = { slides: [{ id: 5, coverslipQc: "FAIL" }] };
+
+    expect(sectionHoldsRecords("pathology-section-microtomy", plain)).toBe(
+      true,
+    );
+    expect(sectionHoldsRecords(STAINING_SECTION_ID, plain)).toBe(false);
+    expect(sectionHoldsRecords(STAINING_SECTION_ID, stained)).toBe(true);
+    expect(sectionHoldsRecords(COVERSLIPPING_SECTION_ID, stained)).toBe(false);
+    expect(sectionHoldsRecords(COVERSLIPPING_SECTION_ID, checked)).toBe(true);
+    expect(sectionHoldsRecords("pathology-section-grossing", checked)).toBe(
+      false,
+    );
+    expect(sectionHoldsRecords(STAINING_SECTION_ID, undefined)).toBe(false);
+  });
+
+  it("shows staining read-only and not tracked when the stage is off and a slide carries a status, and locked otherwise", () => {
+    const off = { PATHOLOGY_STAGE_STAINING_ENABLED: "false" };
+    const derive = (caseInfo) =>
+      byId(
+        deriveCaseSections({
+          intl,
+          status: "COVERSLIPPING",
+          isPathologist: false,
+          configurationProperties: off,
+          decalcificationRequired: true,
+          sectionHasRows: (section) =>
+            sectionHoldsRecords(section.id, caseInfo),
+        }),
+        STAINING_SECTION_ID,
+      );
+
+    const withRecords = derive({ slides: [{ id: 5, stainStatus: "STAINED" }] });
+    expect(withRecords.state).toBe(SECTION_STATE.READ_ONLY);
+    expect(withRecords.readOnlyBecauseUntracked).toBe(true);
+
+    const without = derive({ slides: [{ id: 5 }] });
+    expect(without.state).toBe(SECTION_STATE.DISABLED);
+    expect(without.lockedHintKey).toBe("pathology.locked.stageDisabled");
   });
 });

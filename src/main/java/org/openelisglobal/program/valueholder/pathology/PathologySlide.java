@@ -2,6 +2,8 @@ package org.openelisglobal.program.valueholder.pathology;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -52,9 +54,38 @@ public class PathologySlide extends BaseObject<Integer> {
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String stainId;
 
-    /** How far the staining of this slide has got. */
+    /** What staining found for this slide; null while it has not been stained. */
+    @Enumerated(EnumType.STRING)
     @Column(name = "stain_status", length = 24)
-    private String stainStatus;
+    private StainStatus stainStatus;
+
+    /** When the stain status was last recorded, by the server clock. */
+    @Column(name = "stain_status_at")
+    private Timestamp stainStatusAt;
+
+    /**
+     * The signed-in user who last recorded the stain status, as a system user id.
+     */
+    @Column(name = "stain_status_by", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String stainStatusBy;
+
+    /**
+     * The coverslip quality check of this slide; null while it has not been
+     * checked.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "coverslip_qc", length = 8)
+    private CoverslipQc coverslipQc;
+
+    /** When the coverslip check was recorded, by the server clock. */
+    @Column(name = "coverslip_qc_at")
+    private Timestamp coverslipQcAt;
+
+    /** The signed-in user who recorded the coverslip check, as a system user id. */
+    @Column(name = "coverslip_qc_by", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String coverslipQcBy;
 
     /** False once the row has been deactivated; rows are never deleted. */
     @Column(name = "active", nullable = false)
@@ -155,12 +186,52 @@ public class PathologySlide extends BaseObject<Integer> {
         this.stainId = stainId;
     }
 
-    public String getStainStatus() {
+    public StainStatus getStainStatus() {
         return stainStatus;
     }
 
-    public void setStainStatus(String stainStatus) {
+    public void setStainStatus(StainStatus stainStatus) {
         this.stainStatus = stainStatus;
+    }
+
+    public Timestamp getStainStatusAt() {
+        return stainStatusAt;
+    }
+
+    public void setStainStatusAt(Timestamp stainStatusAt) {
+        this.stainStatusAt = stainStatusAt;
+    }
+
+    public String getStainStatusBy() {
+        return stainStatusBy;
+    }
+
+    public void setStainStatusBy(String stainStatusBy) {
+        this.stainStatusBy = stainStatusBy;
+    }
+
+    public CoverslipQc getCoverslipQc() {
+        return coverslipQc;
+    }
+
+    public void setCoverslipQc(CoverslipQc coverslipQc) {
+        this.coverslipQc = coverslipQc;
+    }
+
+    public Timestamp getCoverslipQcAt() {
+        return coverslipQcAt;
+    }
+
+    public void setCoverslipQcAt(Timestamp coverslipQcAt) {
+        this.coverslipQcAt = coverslipQcAt;
+    }
+
+    public String getCoverslipQcBy() {
+        return coverslipQcBy;
+    }
+
+    public void setCoverslipQcBy(String coverslipQcBy) {
+        this.coverslipQcBy = coverslipQcBy;
     }
 
     public boolean isActive() {

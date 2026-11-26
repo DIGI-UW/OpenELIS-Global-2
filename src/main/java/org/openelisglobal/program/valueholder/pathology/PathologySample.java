@@ -253,7 +253,9 @@ public class PathologySample extends ProgramSample {
 
     /**
      * Names each slide by the identifier written on it and by its parent block,
-     * with the level it was cut at and the stain it carries.
+     * with the level it was cut at, the stain it carries and what staining and the
+     * coverslip check found. Who recorded those and when is left out: those are the
+     * history row's own user and time.
      */
     public String getSlides_Audit() {
         if (slides == null) {
@@ -265,7 +267,9 @@ public class PathologySample extends ProgramSample {
                     + ", Stain: " + dictionaryName(e.getStainId()) + ", Active: " + e.isActive() + ", File Type: "
                     + StringUtils.defaultString(e.getFileType()) + ", Label verified: "
                     + (e.getLabelVerifiedAt() == null ? ""
-                            : DateUtil.convertTimestampToStringDateAndConfiguredHourTime(e.getLabelVerifiedAt())))
+                            : DateUtil.convertTimestampToStringDateAndConfiguredHourTime(e.getLabelVerifiedAt()))
+                    + ", Stain status: " + (e.getStainStatus() == null ? "" : e.getStainStatus().name())
+                    + ", Coverslip QC: " + (e.getCoverslipQc() == null ? "" : e.getCoverslipQc().name()))
                     .collect(Collectors.toList()), "; ");
         }
     }

@@ -679,6 +679,10 @@ export interface CaseSlide {
   barcode?: string;
   level?: string | null;
   stainId?: string | null;
+  /** STAINED or UNSATISFACTORY once staining recorded one, else null. */
+  stainStatus?: string | null;
+  /** PASS or FAIL once the coverslip was checked, else null. */
+  coverslipQc?: string | null;
   active?: boolean;
   location?: string;
 }
@@ -687,6 +691,12 @@ export interface CaseSlide {
 export interface SlideLabelVerification {
   verifiedAt?: string;
   verifiedBy?: string;
+}
+
+/** Who recorded a slide's stain status or coverslip QC, and when. */
+export interface SlideStamp {
+  at?: string;
+  by?: string;
 }
 
 /** The parts of a stored case the stage moves below read and post back. */
@@ -704,6 +714,14 @@ export interface StoredPathologyCase {
   slides?: CaseSlide[];
   /** Who checked each slide's label against its block and when, by slide id. */
   labelVerifications?: Record<string, SlideLabelVerification | null>;
+  /** Who marked each slide's stain status and when, by slide id. */
+  stainStamps?: Record<string, SlideStamp | null>;
+  /** Who checked each slide's coverslip and when, by slide id. */
+  coverslipQcStamps?: Record<string, SlideStamp | null>;
+  /** The coverslipping batch written on the case's entry into the stage. */
+  coverslipRunReference?: string | null;
+  /** Whether the batch can still be written: once, while the case is there. */
+  coverslipRunReferenceEditable?: boolean;
   reports?: unknown[];
   techniques?: { id?: string }[];
   requests?: { id?: string; status?: string }[];
@@ -759,6 +777,8 @@ export interface CaseSaveChanges {
   cassetteTissueTypeId?: string;
   /** Cut one new slide (level 1, no stain) under the block with this id. */
   addSlideUnder?: number | string;
+  /** The stain to save on existing slides, by slide id. */
+  slideStains?: Record<string, string>;
   /** The free-text conclusion the pathologist writes before signing out. */
   conclusionText?: string;
   /**
@@ -787,7 +807,10 @@ export async function saveCaseThroughApi(
       tissueTypeId: changes.cassetteTissueTypeId ?? null,
     });
   }
-  const slides = [...(stored.slides ?? [])];
+  const slides = (stored.slides ?? []).map((slide) => {
+    const stainId = changes.slideStains?.[String(slide.id)];
+    return stainId === undefined ? slide : { ...slide, stainId };
+  });
   if (changes.addSlideUnder !== undefined) {
     slides.push({
       blockId: changes.addSlideUnder,
@@ -868,17 +891,195 @@ export async function verifySlideLabels(
   return verified;
 }
 
+/** The slides of a case that are saved and in use. */
+function slidesInUse(stored: StoredPathologyCase): CaseSlide[] {
+  return (stored.slides ?? []).filter(
+    (slide) => slide.id != null && slide.active !== false,
+  );
+}
+
+/**
+ * The stain this worker gives a slide that has none before marking it, added
+ * once by ensureStain and reused, so a run adds one setup entry rather than
+ * one per case.
+ */
+let setupStain: Stain | undefined;
+
+/**
+ * Whether the laboratory tracks staining, as the authenticated configuration
+ * the case view boots with says. Where it does not, no slide is ever marked
+ * stained and its coverslip is checked without.
+ */
+async function stainingTracked(page: Page): Promise<boolean> {
+  const config = await apiGet<Record<string, string>>(
+    page,
+    `${API_PREFIX}/rest/configuration-properties`,
+  );
+  return (
+    String(config.PATHOLOGY_STAGE_STAINING_ENABLED ?? "true")
+      .trim()
+      .toLowerCase() !== "false"
+  );
+}
+
+/** Which slides a mark is given to: some by id, or all those it applies to. */
+export interface SlideWorkOptions {
+  /** Only these slides; by default every slide in use the mark changes. */
+  slideIds?: (number | string)[];
+}
+
+/**
+ * Record what staining found for slides of a case, by slide id, through the
+ * endpoint the staining section posts to, exactly as one row's action or a
+ * batch does. The server takes it only while the case stands at Staining or
+ * Coverslipping, and a slide marked STAINED must carry a stain. Throws with
+ * the server's body when the mark is refused.
+ */
+export async function recordStainStatus(
+  page: Page,
+  seeded: Pick<SeededPathologyCase, "pathologySampleId">,
+  slideIds: (number | string)[],
+  status: "STAINED" | "UNSATISFACTORY",
+): Promise<void> {
+  const caseId = seeded.pathologySampleId;
+  await apiPost(
+    page,
+    `${casePath(caseId)}/slides/stain-status`,
+    { slideIds: slideIds.map(Number), status },
+    `Marking slides ${slideIds.join(", ")} of case ${caseId} ${status}`,
+  );
+}
+
+/**
+ * Record how the coverslip check of slides of a case went, by slide id,
+ * through the endpoint the coverslipping section posts to. The server takes
+ * it only while the case stands at Coverslipping. Throws with the server's
+ * body when the result is refused.
+ */
+export async function recordCoverslipQc(
+  page: Page,
+  seeded: Pick<SeededPathologyCase, "pathologySampleId">,
+  slideIds: (number | string)[],
+  result: "PASS" | "FAIL",
+): Promise<void> {
+  const caseId = seeded.pathologySampleId;
+  await apiPost(
+    page,
+    `${casePath(caseId)}/slides/coverslip-qc`,
+    { slideIds: slideIds.map(Number), result },
+    `Recording coverslip QC ${result} for slides ${slideIds.join(", ")} of case ${caseId}`,
+  );
+}
+
+/**
+ * Mark slides of a case stained through the endpoint the staining section
+ * posts to, as the bench does once the stain is on the slide. A slide with no
+ * stain saved is first given this worker's own stain through the case save,
+ * since the server marks a slide stained only with the stain it carries.
+ * By default every slide in use not yet stained is marked; slides already
+ * stained are left as they are. The server takes the mark only while the case
+ * stands at Staining or Coverslipping. Returns the barcodes of the slides it
+ * marked.
+ */
+export async function stainSlides(
+  page: Page,
+  seeded: Pick<SeededPathologyCase, "pathologySampleId">,
+  options: SlideWorkOptions = {},
+): Promise<string[]> {
+  const caseId = seeded.pathologySampleId;
+  let stored = await readCase(page, caseId);
+  const wanted = options.slideIds?.map(String);
+  const chosen = () =>
+    slidesInUse(stored).filter((slide) =>
+      wanted
+        ? wanted.includes(String(slide.id))
+        : slide.stainStatus !== "STAINED",
+    );
+
+  const unstained = chosen().filter((slide) => !slide.stainId);
+  if (unstained.length > 0) {
+    setupStain ??= await ensureStain(page);
+    await saveCaseThroughApi(page, caseId, stored, {
+      slideStains: Object.fromEntries(
+        unstained.map((slide) => [String(slide.id), setupStain!.id]),
+      ),
+    });
+    stored = await readCase(page, caseId);
+  }
+
+  const slides = chosen();
+  if (slides.length > 0) {
+    await recordStainStatus(
+      page,
+      seeded,
+      slides.map((slide) => slide.id!),
+      "STAINED",
+    );
+  }
+  return slides.map((slide) => slide.barcode ?? String(slide.id));
+}
+
+/**
+ * Pass the coverslip QC of slides of a case through the endpoint the
+ * coverslipping section posts to. Where the laboratory tracks staining a
+ * slide's coverslip is checked only once it is stained, so any slide that is
+ * not is marked stained first through stainSlides. By default every slide in
+ * use whose QC has not passed is passed. The server takes the result only
+ * while the case stands at Coverslipping. Returns the barcodes of the slides
+ * it passed.
+ */
+export async function passCoverslipQc(
+  page: Page,
+  seeded: Pick<SeededPathologyCase, "pathologySampleId">,
+  options: SlideWorkOptions = {},
+): Promise<string[]> {
+  const caseId = seeded.pathologySampleId;
+  const wanted = options.slideIds?.map(String);
+  const chosen = (stored: StoredPathologyCase) =>
+    slidesInUse(stored).filter((slide) =>
+      wanted ? wanted.includes(String(slide.id)) : slide.coverslipQc !== "PASS",
+    );
+
+  let stored = await readCase(page, caseId);
+  if (await stainingTracked(page)) {
+    const notStained = chosen(stored).filter(
+      (slide) => slide.stainStatus !== "STAINED",
+    );
+    if (notStained.length > 0) {
+      await stainSlides(page, seeded, {
+        slideIds: notStained.map((slide) => slide.id!),
+      });
+      stored = await readCase(page, caseId);
+    }
+  }
+
+  const slides = chosen(stored);
+  if (slides.length > 0) {
+    await recordCoverslipQc(
+      page,
+      seeded,
+      slides.map((slide) => slide.id!),
+      "PASS",
+    );
+  }
+  return slides.map((slide) => slide.barcode ?? String(slide.id));
+}
+
 /**
  * Bring a case to a stage for a test's setup, doing the bench's work on the
  * way rather than going round it: the server refuses to send a case on from
  * grossing until it is described and has a cassette, from embedding until
- * every cassette is a block, and from microtomy until a slide is cut and
- * every slide's label is checked against its block, so a blank description
- * is filled in and a cassette cut through the case save, each outstanding
- * cassette is embedded through its own endpoint, and one slide is cut under
- * the first block through the case save and every label checked through
- * verifySlideLabels, exactly as the screen would. Nothing is done at the target stage itself, so a case brought
- * to microtomy arrives there with no slide. A target
+ * every cassette is a block, from microtomy until a slide is cut and every
+ * slide's label is checked against its block, from staining until every
+ * slide is stained, and from coverslipping until every slide's coverslip
+ * passed QC. So a blank description is filled in and a cassette cut through
+ * the case save, each outstanding cassette is embedded through its own
+ * endpoint, one slide is cut under the first block through the case save and
+ * every label checked through verifySlideLabels, every slide is marked
+ * stained through stainSlides and passed through passCoverslipQc, exactly as
+ * the screen would. Nothing is done at the target stage itself, so a case
+ * brought to microtomy arrives there with no slide, and one brought to
+ * coverslipping with its slides stained but not yet checked. A target
  * behind the case is reached by returning it, one stage at a time, with a
  * reason.
  *
@@ -978,6 +1179,16 @@ export async function moveCaseToStage(
         });
       }
       await verifySlideLabels(page, seeded);
+    }
+
+    // The marks are taken only while the case stands at these stages, so
+    // they are made here, before the case is sent on, never after.
+    if (stored.status === "STAINING") {
+      await stainSlides(page, seeded);
+    }
+
+    if (stored.status === "COVERSLIPPING") {
+      await passCoverslipQc(page, seeded);
     }
 
     const now = await moveCaseOnce(page, caseId, "advance", stored.status);

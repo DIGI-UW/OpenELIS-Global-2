@@ -14,6 +14,7 @@ import org.junit.function.ThrowingRunnable;
 import org.mockito.Mockito;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.program.controller.pathology.PathologyController;
+import org.openelisglobal.program.controller.pathology.PathologySlideWorkRestController;
 import org.openelisglobal.program.controller.pathology.PathologyStageRestController;
 import org.openelisglobal.program.service.ProgramSampleLabUnitScope;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
@@ -80,6 +81,15 @@ abstract class PathologyControllerTestSupport extends BaseWebContextSensitiveTes
         @Bean
         PathologyStageRestController pathologyStageRestController(ApplicationContext context) {
             return context.getParent().getAutowireCapableBeanFactory().createBean(PathologyStageRestController.class);
+        }
+
+        /**
+         * Staining and the coverslip check, built the same way over the same services.
+         */
+        @Bean
+        PathologySlideWorkRestController pathologySlideWorkRestController(ApplicationContext context) {
+            return context.getParent().getAutowireCapableBeanFactory()
+                    .createBean(PathologySlideWorkRestController.class);
         }
 
         /**
