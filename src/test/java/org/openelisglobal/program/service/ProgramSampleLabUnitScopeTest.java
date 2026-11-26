@@ -5,6 +5,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -71,6 +74,18 @@ public class ProgramSampleLabUnitScopeTest {
                 () -> scope.requireVisible(SCOPED, other));
         assertEquals(HttpStatus.NOT_FOUND, refused.getStatusCode());
         assertThrows(ResponseStatusException.class, () -> scope.requireVisible(SCOPED, null));
+    }
+
+    /**
+     * The prior results panel asks about each order once, rather than about each
+     * case, and the order is asked about with the rule its cases are read by.
+     */
+    @Test
+    public void isOrderVisible_asksTheOrdersLabUnitScope() {
+        scope.isOrderVisible(SCOPED, other.getSample());
+
+        verify(sampleLabUnitScopeService).isVisible(SCOPED, other.getSample());
+        verify(sampleLabUnitScopeService, never()).restrictedSectionIds(any());
     }
 
     private static ProgramSample programSample(int id, String sampleId) {

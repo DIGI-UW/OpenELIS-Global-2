@@ -169,17 +169,18 @@ public class QCResultDAOImpl extends BaseDAOImpl<QCResult, String> implements QC
      * that one.
      *
      * <p>
-     * Returns {testSectionId, testId, source, totalRuns, failedRuns, lastRun}.
-     * Aggregated in SQL: a busy lab unit runs controls all day and this must not
-     * pull every row into memory to count them.
+     * Returns {testSectionId, testId, source, totalRuns, failedRuns, lastRun,
+     * lastRunId}, the last being the latest result run a control of the group was
+     * recorded on (OGC-1200 FR-G2). Aggregated in SQL: a busy lab unit runs
+     * controls all day and this must not pull every row into memory to count them.
      */
     @Override
     @Transactional(readOnly = true)
     public List<Object[]> summariseBenchQc(Timestamp startDate, Timestamp endDate, QCSource source)
             throws LIMSRuntimeException {
         String hql = "SELECT r.testSectionId, r.testId, r.source, COUNT(r.id),"
-                + " SUM(CASE WHEN r.qualitativeOutcome IN (:failing) THEN 1 ELSE 0 END), MAX(r.runDateTime)"
-                + " FROM QCResult r WHERE r.source IN (:sources)"
+                + " SUM(CASE WHEN r.qualitativeOutcome IN (:failing) THEN 1 ELSE 0 END), MAX(r.runDateTime),"
+                + " MAX(r.runId)" + " FROM QCResult r WHERE r.source IN (:sources)"
                 + " AND r.runDateTime >= :startDate AND r.runDateTime < :endDate"
                 + " GROUP BY r.testSectionId, r.testId, r.source ORDER BY MAX(r.runDateTime) DESC";
         try {

@@ -322,3 +322,100 @@ describe("module menu entries", () => {
     expect(screen.getByText("Specimen Follow-up")).toBeInTheDocument();
   });
 });
+
+describe("section boundary styling (#4817)", () => {
+  it("renders a divider before a top-level menu item that immediately follows a section heading", () => {
+    const { container } = render(
+      <MemoryRouter initialEntries={["/"]}>
+        <IntlProvider locale="en" messages={messages}>
+          <SideNav expanded aria-label="Side navigation">
+            <SideNavItems>
+              <ConfiguredSideNav
+                menus={menus([
+                  {
+                    elementId: "menu_reports",
+                    displayKey: "sidenav.label.reports",
+                    presentationStyle: "section",
+                    childMenus: [
+                      {
+                        elementId: "menu_reports_routine",
+                        displayKey: "sidenav.label.reports.routine",
+                        actionURL: "/reports/routine",
+                      },
+                    ],
+                  },
+                  {
+                    elementId: "menu_admin",
+                    displayKey: "sidenav.label.admin",
+                    actionURL: "/MasterListsPage",
+                  },
+                ])}
+              />
+            </SideNavItems>
+          </SideNav>
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+
+    const items = container.querySelector(".cds--side-nav__items");
+    const children = [...items.children];
+
+    // Reports section: divider, then section heading, then child menu item
+    expect(children[0]).toHaveClass("cds--side-nav__divider");
+    expect(children[1]).toHaveClass("configured-nav-section");
+    expect(children[2].querySelector("#menu_reports_routine_nav")).toBeTruthy();
+
+    // Divider separating reports section from the following top-level Admin item
+    expect(children[3]).toHaveClass("cds--side-nav__divider");
+    expect(children[4].querySelector("#menu_admin_nav")).toBeTruthy();
+
+    expect(children.every((child) => child.tagName === "LI")).toBe(true);
+  });
+
+  it("does not render duplicate dividers between consecutive top-level items after a section", () => {
+    const { container } = render(
+      <MemoryRouter initialEntries={["/"]}>
+        <IntlProvider locale="en" messages={messages}>
+          <SideNav expanded aria-label="Side navigation">
+            <SideNavItems>
+              <ConfiguredSideNav
+                menus={menus([
+                  {
+                    elementId: "menu_reports",
+                    displayKey: "sidenav.label.reports",
+                    presentationStyle: "section",
+                    childMenus: [
+                      {
+                        elementId: "menu_reports_routine",
+                        displayKey: "sidenav.label.reports.routine",
+                        actionURL: "/reports/routine",
+                      },
+                    ],
+                  },
+                  {
+                    elementId: "menu_admin",
+                    displayKey: "sidenav.label.admin",
+                    actionURL: "/MasterListsPage",
+                  },
+                  {
+                    elementId: "menu_help",
+                    displayKey: "banner.menu.help",
+                    actionURL: "/Help",
+                  },
+                ])}
+              />
+            </SideNavItems>
+          </SideNav>
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+
+    const items = container.querySelector(".cds--side-nav__items");
+    const children = [...items.children];
+
+    expect(children).toHaveLength(6);
+    expect(children[3]).toHaveClass("cds--side-nav__divider");
+    expect(children[4].querySelector("#menu_admin_nav")).toBeTruthy();
+    expect(children[5].querySelector("#menu_help_nav")).toBeTruthy();
+  });
+});

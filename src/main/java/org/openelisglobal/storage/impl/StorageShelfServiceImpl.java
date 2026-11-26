@@ -64,6 +64,12 @@ public class StorageShelfServiceImpl extends BaseObjectServiceImpl<StorageShelf,
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public StorageShelf findByCodeAndParentDevice(String code, StorageDevice parentDevice) {
+        return storageShelfDao.findByCodeAndParentDevice(code, parentDevice);
+    }
+
+    @Override
     public Optional<StorageShelf> getShelf(int id) {
         return storageShelfDao.get(id);
     }

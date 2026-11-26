@@ -24,7 +24,9 @@ interface WaitingTagProps {
  * The value is not shown here and the row cannot be entered; the tag opens
  * the run, where the value is reviewed. When the run holds the test, for a
  * failed control or a required control that is missing, the row is held and the
- * tag says so, and why, in red (FR-D4).
+ * tag says so, and why, in red (FR-D4). A row batched in a workplan run reads
+ * "Batched in RUN-x" and stays open to entry, which records into the run
+ * (FR-D5).
  */
 const WaitingTag: React.FC<WaitingTagProps> = ({ run, onOpenRun }) => {
   const intl = useIntl();
@@ -55,7 +57,9 @@ const WaitingTag: React.FC<WaitingTagProps> = ({ run, onOpenRun }) => {
         {intl.formatMessage(
           {
             id: !run.held
-              ? "run.tag.waiting"
+              ? run.source === "WORKPLAN"
+                ? "run.tag.batched"
+                : "run.tag.waiting"
               : run.heldCause === "QC_MISSING"
                 ? "run.tag.heldQcMissing"
                 : "run.tag.heldQcFailed",

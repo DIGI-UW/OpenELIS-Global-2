@@ -1,5 +1,11 @@
 import React from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../languages/en.json";
@@ -95,7 +101,7 @@ const renderEntry = (rows: any[], runEntry: RunEntry) => {
       return callback([]);
     },
   );
-  render(
+  return render(
     <IntlProvider locale="en" messages={messages}>
       <UnifiedResults
         embedded
@@ -264,6 +270,56 @@ describe("OGC-1200 slice 3: a run row accepted through Results Entry", () => {
     expect(sent.testResult.analysisLastupdated).toBe("1700000000000");
     expect(sent.testResult.analyzerId).toBe("9");
     expect(runEntry.onAccepted).toHaveBeenCalledTimes(1);
+  });
+
+  it("a row closed while its value saves still tells the run, and updates nothing closed", async () => {
+    const runEntry = entry();
+    const { unmount } = renderEntry([CREATININE], runEntry);
+    let answer: ((response: unknown) => void) | undefined;
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+      (url: string, _body: string, callback: any) => {
+        if (url.endsWith("/result")) {
+          answer = callback;
+        }
+      },
+    );
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    fireEvent.click(screen.getAllByTestId("save-button")[0]);
+    unmount();
+    await act(async () => {});
+    answer?.({ analysisLastupdated: "1700000000999", analysisStatusId: "7" });
+
+    expect(runEntry.onAccepted).toHaveBeenCalledTimes(1);
+    expect(notify.addNotification).not.toHaveBeenCalled();
+    expect(errors).not.toHaveBeenCalled();
+    errors.mockRestore();
+  });
+
+  it("a row closed while its value saves says so when the save is refused", async () => {
+    const runEntry = entry();
+    const { unmount } = renderEntry([CREATININE], runEntry);
+    let answer: ((response: unknown) => void) | undefined;
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+      (url: string, _body: string, callback: any) => {
+        if (url.endsWith("/result")) {
+          answer = callback;
+        }
+      },
+    );
+
+    fireEvent.click(screen.getAllByTestId("save-button")[0]);
+    unmount();
+    await act(async () => {});
+    answer?.({ status: 409, error: "RUN-7 holds this test." });
+
+    expect(runEntry.onAccepted).not.toHaveBeenCalled();
+    expect(notify.addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message:
+          "The result for DEV0126000000000400 was not saved: RUN-7 holds this test.",
+      }),
+    );
   });
 
   it("does not tell the run when the server refuses the value", () => {

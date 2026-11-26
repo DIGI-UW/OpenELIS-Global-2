@@ -358,6 +358,9 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
         }
 
+        if (acceptedRun == null && StringUtils.isNotBlank(item.getResultValue())) {
+            resultRunService.holdRunsOfOneMissingControl(List.of(analysis.getId()), getSysUserId(request));
+        }
         Optional<Long> holdingRun = holdingRun(acceptedRun, analysis);
         if (holdingRun.isPresent()) {
             WaitingRun held = resultRunService.heldRun(holdingRun.get(),
@@ -422,13 +425,19 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         ResultUtil.createAnalysisOnlyUpdates(dataSet, request);
         ResultUtil.holdOpenWhileRequiredComponentsBlank(dataSet);
 
+        IResultUpdate workplanRuns = null;
         if (runValue.isPresent()) {
             recordRunProvenance(dataSet, analysisId, runValue.get());
         } else {
+            workplanRuns = resultRunService.recordIntoWorkplanRuns(resultsOf(dataSet), getSysUserId(request));
             runQcService.detachFromDecidedRuns(resultsOf(dataSet));
         }
 
         List<IResultUpdate> updaters = new ArrayList<>(ResultUpdateRegister.getRegisteredUpdaters());
+        if (workplanRuns != null) {
+            updaters.add(workplanRuns);
+            updaters.add(resultRunService.recordRunsOfOne(getSysUserId(request)));
+        }
         updaters.add(acknowledgementService.acknowledgementRecorder(alerts,
                 runValue.isPresent() ? ResultEntryAcknowledgement.SOURCE_ANALYZER_REVIEW
                         : ResultEntryAcknowledgement.SOURCE_RESULTS_ENTRY,

@@ -257,6 +257,29 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
         assertTrue("Should contain test 2 analyte detail", foundCholesterol);
     }
 
+    /**
+     * OGC-1200 FR-G2: an analyte whose latest control was recorded on a run names
+     * that run, which the instrument page links to the run on the Results page.
+     */
+    @Test
+    public void getInstrumentComplianceStatus_analyteDetailNamesTheRunOfItsLatestControl() {
+        Long runId = jdbcTemplate
+                .queryForObject("INSERT INTO clinlims.result_run (id, source, state, opened_at, last_activity_at)"
+                        + " VALUES (nextval('clinlims.result_run_seq'), 'ANALYZER', 'COMPLETE', now(), now())"
+                        + " RETURNING id", Long.class);
+        jdbcTemplate.update("UPDATE clinlims.qc_result SET run_id = ? WHERE instrument_id = 100 AND test_id = 1",
+                runId);
+
+        List<AnalyteDetail> analyteDetails = dashboardService.getInstrumentComplianceStatus("100").getAnalyteDetails();
+
+        AnalyteDetail glucose = analyteDetails.stream().filter(detail -> "1".equals(detail.getTestId())).findFirst()
+                .orElseThrow();
+        AnalyteDetail cholesterol = analyteDetails.stream().filter(detail -> "2".equals(detail.getTestId())).findFirst()
+                .orElseThrow();
+        assertEquals(runId, glucose.getLastRunId());
+        assertNull("a control recorded on no run names no run", cholesterol.getLastRunId());
+    }
+
     // ==================== Single Instrument ====================
 
     @Test
