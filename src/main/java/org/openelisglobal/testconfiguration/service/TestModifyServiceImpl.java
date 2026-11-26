@@ -126,9 +126,9 @@ public class TestModifyServiceImpl implements TestModifyService {
             set.sampleTypeTest.setTestId(set.test.getId());
             typeOfSampleTestService.insert(set.sampleTypeTest);
 
+            Test nonTransiantTest = testService.getTestById(set.test.getId());
             for (PanelItem item : set.panelItems) {
                 item.setSysUserId(currentUserId);
-                Test nonTransiantTest = testService.getTestById(set.test.getId());
                 item.setTest(nonTransiantTest);
                 panelItemService.insert(item);
                 if (item.getPanel() != null) {
@@ -150,7 +150,6 @@ public class TestModifyServiceImpl implements TestModifyService {
 
             for (TestResult testResult : set.testResults) {
                 testResult.setSysUserId(currentUserId);
-                Test nonTransiantTest = testService.getTestById(set.test.getId());
                 testResult.setTest(nonTransiantTest);
                 testResultService.insert(testResult);
                 if (testResult.getDefault()) {
