@@ -25,8 +25,8 @@ import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 /**
- * Security slice tests for {@link TestRestController}.
- * Verifies that endpoints require RECEPTION or ADMIN roles (issue #3966).
+ * Security slice tests for {@link TestRestController}. Verifies that endpoints
+ * require RECEPTION or ADMIN roles (issue #3966).
  */
 @WebAppConfiguration
 @ContextConfiguration(classes = { TestRestControllerSecurityTest.TestConfig.class })
