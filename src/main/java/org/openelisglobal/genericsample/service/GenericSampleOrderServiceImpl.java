@@ -48,6 +48,7 @@ import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.genericsample.form.GenericSampleImportResult;
 import org.openelisglobal.genericsample.form.GenericSampleImportResult.ImportRow;
+import org.openelisglobal.genericsample.form.GenericSampleImportResult.ImportRowError;
 import org.openelisglobal.genericsample.form.GenericSampleOrderForm;
 import org.openelisglobal.notebook.service.NoteBookSampleService;
 import org.openelisglobal.notebook.service.NoteBookService;
@@ -1229,6 +1230,14 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
                 Map<String, String> row = dataRows.get(i);
                 int rowNumber = i + 2; // 1-based for user display (row 1 is header, row 2 is first data)
 
+                int sampleQuantity = parseSampleQuantity(findValue(row, "samplequantity", "numberofsamples", "qty"));
+                ImportRowError quantityError = sampleQuantityError(rowNumber, sampleQuantity);
+                if (quantityError != null) {
+                    invalidCount++;
+                    result.addError(quantityError);
+                    continue;
+                }
+
                 GenericSampleOrderForm.DefaultFields defaultFields = new GenericSampleOrderForm.DefaultFields();
                 List<String> rowErrors = validateAndPopulateRow(row, defaultFields, rowNumber);
 
@@ -1246,8 +1255,6 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
 
                 if (rowErrors.isEmpty()) {
                     validCount++;
-                    int sampleQuantity = parseSampleQuantity(
-                            findValue(row, "samplequantity", "numberofsamples", "qty"));
                     totalSamples += sampleQuantity;
 
                     ImportRow importRow = new ImportRow(rowNumber, defaultFields, sampleQuantity);
@@ -1282,7 +1289,7 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
             String contentType, String sysUserId) {
         Map<String, Object> result = new HashMap<>();
         List<String> createdAccessionNumbers = new ArrayList<>();
-        List<String> errors = new ArrayList<>();
+        List<Object> errors = new ArrayList<>();
         int totalCreated = 0;
         int totalFailed = 0;
 
@@ -1316,6 +1323,12 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
 
                 // Get sample quantity (look for column with sample quantity)
                 int sampleQuantity = parseSampleQuantity(findValue(row, "samplequantity", "numberofsamples", "qty"));
+                ImportRowError quantityError = sampleQuantityError(rowNumber, sampleQuantity);
+                if (quantityError != null) {
+                    totalFailed++;
+                    errors.add(quantityError);
+                    continue;
+                }
 
                 // Create samples based on quantity
                 // Each sample will auto-generate its own accession number in its own
@@ -1469,7 +1482,7 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
             StringBuilder errorMsg = new StringBuilder("Import failed and transaction rolled back. ");
             if (!errors.isEmpty()) {
                 errorMsg.append("Errors encountered: ");
-                errorMsg.append(String.join("; ", errors));
+                errorMsg.append(errors.stream().map(String::valueOf).collect(Collectors.joining("; ")));
                 errorMsg.append(". ");
             }
             errorMsg.append("Root cause: ").append(e.getMessage());
@@ -1804,6 +1817,19 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
             }
         }
         return null;
+    }
+
+    /**
+     * Each sample of a row is committed on its own, so a row's quantity bounds the
+     * work one row can ask for.
+     */
+    static final int MAX_SAMPLES_PER_ROW = 500;
+
+    private ImportRowError sampleQuantityError(int rowNumber, int quantity) {
+        return quantity > MAX_SAMPLES_PER_ROW
+                ? new ImportRowError(rowNumber, "sampleQuantity", "import.error.sampleQuantityLimit",
+                        Map.of("row", rowNumber, "quantity", quantity, "maximum", MAX_SAMPLES_PER_ROW))
+                : null;
     }
 
     private int parseSampleQuantity(String quantityStr) {

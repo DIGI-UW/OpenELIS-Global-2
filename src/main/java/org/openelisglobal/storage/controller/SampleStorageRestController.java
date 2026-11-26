@@ -7,15 +7,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.IStatusService;
-import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.common.util.ControllerUtills;
-import org.openelisglobal.sampleitem.dao.SampleItemDAO;
-import org.openelisglobal.sampleitem.valueholder.SampleItem;
-import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
-import org.openelisglobal.storage.dao.SampleStorageMovementDAO;
 import org.openelisglobal.storage.form.SampleAssignmentForm;
 import org.openelisglobal.storage.form.SampleDisposalForm;
 import org.openelisglobal.storage.form.SampleMovementForm;
@@ -23,7 +17,6 @@ import org.openelisglobal.storage.form.SampleUsageForm;
 import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.storage.service.StorageDashboardService;
 import org.openelisglobal.storage.service.StorageLocationService;
-import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
 import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageShelf;
@@ -59,15 +52,6 @@ public class SampleStorageRestController extends BaseRestController {
     private StorageLocationService storageLocationService;
 
     @Autowired
-    private SampleStorageAssignmentDAO sampleStorageAssignmentDAO;
-
-    @Autowired
-    private SampleStorageMovementDAO sampleStorageMovementDAO;
-
-    @Autowired
-    private SampleItemDAO sampleItemDAO;
-
-    @Autowired
     private StorageDashboardService storageDashboardService;
 
     @Autowired
@@ -77,14 +61,14 @@ public class SampleStorageRestController extends BaseRestController {
      * Get all SampleItems with storage assignments GET /rest/storage/sample-items
      * Supports filtering by location and status (FR-065) Supports pagination
      * (OGC-150)
-     * 
+     *
      * Response fields: - id: Numeric ID (String representation) - primary
      * identifier - sampleItemId: @deprecated Use 'id' field instead. Kept for
      * backward compatibility. - sampleItemExternalId: External ID - user-friendly
      * identifier (e.g., "EXT-1765401458866") - sampleAccessionNumber: Parent Sample
      * accession number - status: Current status ("active" or "disposed") -
      * location: Hierarchical location path (e.g., "Main Lab > Freezer 1 > Shelf A")
-     * 
+     *
      * @param countOnly If "true", returns metrics only
      * @param location  Optional location filter (hierarchical path substring)
      * @param status    Optional status filter (active, disposed, etc.)
@@ -112,45 +96,8 @@ public class SampleStorageRestController extends BaseRestController {
             }
 
             if ("true".equals(countOnly)) {
-                // Return count metrics only
-                List<SampleStorageAssignment> allAssignments = sampleStorageAssignmentDAO.getAll();
-
-                long totalSampleItems = allAssignments.stream()
-                        .filter(assignment -> assignment.getSampleItemId() != null).count();
-                long active = 0;
-                long disposed = 0;
-
-                // Load SampleItem for each assignment to check status
-                // sampleItem is now @Transient, so we need to load it manually
-                // assignment.getSampleItemId() is Integer, sampleItemDAO.get() expects String
-                for (SampleStorageAssignment assignment : allAssignments) {
-                    if (assignment.getSampleItemId() != null) {
-                        String sampleItemIdStr = assignment.getSampleItemId().toString();
-                        Optional<SampleItem> sampleItemOpt = sampleItemDAO.get(sampleItemIdStr);
-                        if (sampleItemOpt.isPresent()) {
-                            SampleItem sampleItem = sampleItemOpt.get();
-                            if (sampleItem.getStatusId() == null
-                                    || !statusService.matches(sampleItem.getStatusId(), SampleStatus.Disposed)) {
-                                active++;
-                            } else {
-                                disposed++;
-                            }
-                        }
-                    }
-                }
-
-                // Count unique storage locations (rooms, devices, shelves, racks)
-                long storageLocations = storageLocationService.getRooms().size()
-                        + storageLocationService.getAllDevices().size() + storageLocationService.getAllShelves().size()
-                        + storageLocationService.getAllRacks().size();
-
-                Map<String, Object> metrics = new HashMap<>();
-                metrics.put("totalSampleItems", totalSampleItems);
-                metrics.put("active", active);
-                metrics.put("disposed", disposed);
-                metrics.put("storageLocations", storageLocations);
-
-                List<Map<String, Object>> response = new ArrayList<>();
+                Map<String, Long> metrics = sampleStorageService.getStorageMetrics();
+                List<Map<String, Long>> response = new ArrayList<>();
                 response.add(metrics);
                 return ResponseEntity.ok(response);
             } else if (StringUtils.hasText(location) || StringUtils.hasText(status)) {
@@ -265,10 +212,10 @@ public class SampleStorageRestController extends BaseRestController {
 
     /**
      * Assign SampleItem to storage position POST /rest/storage/sample-items/assign
-     * 
+     *
      * Accepts: External ID, accession number, or numeric ID (flexible identifier
      * resolution via resolveSampleItem())
-     * 
+     *
      * @param form SampleAssignmentForm containing sampleItemId (flexible
      *             identifier), locationId, locationType, etc.
      * @return Assignment details including hierarchical location path
@@ -536,18 +483,17 @@ public class SampleStorageRestController extends BaseRestController {
     /**
      * Dispose SampleItem POST /rest/storage/sample-items/dispose Marks sample as
      * disposed and clears storage location
-     * 
+     *
      * Accepts: External ID, accession number, or numeric ID (flexible identifier
      * resolution via resolveSampleItem()) Response includes sampleItemId (numeric
      * ID) for consistency with other endpoints.
-     * 
+     *
      * @param form SampleDisposalForm containing sampleItemId (flexible identifier),
      *             reason, method, notes
      * @return Disposal details including previous location and disposal timestamp
      */
     @PostMapping("/dispose")
-    public ResponseEntity<Map<String, Object>> disposeSampleItem(@Valid @RequestBody SampleDisposalForm form,
-            HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>> disposeSampleItem(@Valid @RequestBody SampleDisposalForm form) {
         try {
             // Log incoming request for debugging
             if (logger.isDebugEnabled()) {
@@ -555,10 +501,7 @@ public class SampleStorageRestController extends BaseRestController {
                         form.getMethod());
             }
 
-            // OGC-738b: thread the acting user's id through so the global audit
-            // emission (via SampleItemService.update) and the movement row both
-            // reflect who actually performed the disposal.
-            String sysUserId = ControllerUtills.getSysUserId(request);
+            String sysUserId = ControllerUtills.getSysUserId();
             if (sysUserId == null) {
                 Map<String, Object> error = new HashMap<>();
                 error.put("message", "Authentication required for disposal");
@@ -567,7 +510,7 @@ public class SampleStorageRestController extends BaseRestController {
 
             // Service layer handles all business logic
             Map<String, Object> response = sampleStorageService.disposeSampleItem(form.getSampleItemId(),
-                    form.getReason(), form.getMethod(), form.getNotes(), sysUserId);
+                    form.getReason(), form.getMethod(), form.getNotes());
 
             // Log successful disposal
             if (logger.isInfoEnabled()) {

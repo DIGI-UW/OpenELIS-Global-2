@@ -526,19 +526,24 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             if (waiting.isPresent()) {
                 Map<String, Object> refusal = new HashMap<>();
                 refusal.put("error",
-                        MessageUtil.getMessage(waiting.get().held() ? "run.refusal.held" : "run.refusal.waiting",
-                                new String[] { waiting.get().label() }));
+                        MessageUtil.getMessage(waiting.get().refusalKey(), new String[] { waiting.get().label() }));
                 refusal.put("waitingRun", waiting.get());
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(refusal);
             }
         }
 
+        resultRunService.holdRunsOfOneMissingControl(
+                actionDataSet.getModifiedItems().stream().filter(item -> StringUtils.isNotBlank(item.getResultValue()))
+                        .map(TestResultItem::getAnalysisId).filter(Objects::nonNull).toList(),
+                getSysUserId(request));
         Map<String, Long> holding = runQcService.entryHoldingRuns(actionDataSet.getModifiedItems().stream()
                 .map(TestResultItem::getAnalysisId).filter(Objects::nonNull).toList());
         if (!holding.isEmpty()) {
             Map<String, Object> refusal = new HashMap<>();
-            WaitingRun held = resultRunService.heldRun(holding.values().iterator().next());
-            refusal.put("error", MessageUtil.getMessage("run.refusal.held", new String[] { held.label() }));
+            TestResultItem heldItem = actionDataSet.getModifiedItems().stream()
+                    .filter(item -> holding.containsKey(item.getAnalysisId())).findFirst().orElseThrow();
+            WaitingRun held = resultRunService.heldRun(holding.get(heldItem.getAnalysisId()), heldItem.getTestId());
+            refusal.put("error", heldRowRefusal(heldItem, held));
             refusal.put("waitingRun", held);
             return ResponseEntity.status(HttpStatus.CONFLICT).body(refusal);
         }
@@ -558,9 +563,12 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                 statusRuleSet, request);
         ResultUtil.createAnalysisOnlyUpdates(actionDataSet, request);
         ResultUtil.holdOpenWhileRequiredComponentsBlank(actionDataSet);
-        runQcService.detachFromDecidedRuns(java.util.stream.Stream
+        List<Result> savedResults = java.util.stream.Stream
                 .concat(actionDataSet.getNewResults().stream(), actionDataSet.getModifiedResults().stream())
-                .map(resultSet -> resultSet.result).toList());
+                .map(resultSet -> resultSet.result).toList();
+        updaters.add(resultRunService.recordIntoWorkplanRuns(savedResults, getSysUserId(request)));
+        updaters.add(resultRunService.recordRunsOfOne(getSysUserId(request)));
+        runQcService.detachFromDecidedRuns(savedResults);
 
         try {
             List<Analysis> reflexAnalysises = logbookPersistService.persistDataSet(actionDataSet, updaters,
@@ -577,40 +585,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             }
             List<Analysis> newResultAnalyses = actionDataSet.getNewResults().stream().map(a -> a.result.getAnalysis())
                     .collect(Collectors.toList());
-            List<String> systemUserIds = userRoleService.getUserIdsForRole(Constants.ROLE_VALIDATION);
-            String message = MessageUtil.getMessage("notification.result.stat");
-            StringBuffer sb = new StringBuffer(message);
-            for (String userId : systemUserIds) {
-                // Pool-anchored analyses have analysis.sampleItem == null; resolve
-                // the owning Sample via AnalysisAnchorService so vector orders
-                // don't NPE in this STAT-notification path.
-                List<Analysis> userAnalyses = userService
-                        .filterAnalysesByLabUnitRoles(userId, newResultAnalyses, Constants.ROLE_VALIDATION).stream()
-                        .filter(a -> {
-                            Sample s = analysisAnchorService.resolveSample(a);
-                            return s != null && OrderPriority.STAT.equals(s.getPriority());
-                        }).collect(Collectors.toList());
-
-                if (userAnalyses != null && !userAnalyses.isEmpty()) {
-                    List<String> userTests = userAnalyses.stream().map(a -> {
-                        Sample s = analysisAnchorService.resolveSample(a);
-                        String accession = s != null ? s.getAccessionNumber() : "";
-                        return AlphanumAccessionValidator.convertAlphaNumLabNumForDisplay(accession) + " - "
-                                + a.getTest().getLocalizedName();
-                    }).collect(Collectors.toList());
-                    String testString = String.join(", ", userTests);
-                    sb.append(testString);
-                    try {
-                        Notification notification = new Notification();
-                        notification.setMessage(sb.toString());
-                        notification.setUser(systemUserService.getUserById(userId));
-                        notification.setCreatedDate(OffsetDateTime.now());
-                        notification.setReadAt(null);
-                        notificationDAO.save(notification);
-                    } catch (Exception e) {
-                    }
-                }
-            }
+            sendStatResultNotifications(newResultAnalyses);
 
             String currentUser = getSysUserId(request);
             // Reflex / calculated tests triggered by this result entry: surface in
@@ -685,6 +660,15 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             params.put("type", form.getType());
         }
         return ResponseEntity.ok(reflexMap);
+    }
+
+    /**
+     * OGC-1200: a page save is refused whole when one of its rows is held, so the
+     * refusal names that row's lab number and test as well as the run.
+     */
+    static String heldRowRefusal(TestResultItem heldItem, WaitingRun held) {
+        return MessageUtil.getMessage("run.refusal.heldRow", new String[] { heldItem.getAccessionNumber(),
+                heldItem.getTestName(), MessageUtil.getMessage(held.refusalKey(), new String[] { held.label() }) });
     }
 
     private String findLogBookForward(String forward) {
@@ -840,6 +824,48 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                         Long.valueOf(item.getEqaAnalystId()), sysUserId);
             } catch (RuntimeException e) {
                 LogEvent.logError("recording the EQA analyst for analysis " + item.getAnalysisId(), e);
+            }
+        }
+    }
+
+    void sendStatResultNotifications(List<Analysis> newResultAnalyses) {
+        if (newResultAnalyses == null || newResultAnalyses.isEmpty()) {
+            return;
+        }
+        List<String> systemUserIds = userRoleService.getUserIdsForRole(Constants.ROLE_VALIDATION);
+        if (systemUserIds == null || systemUserIds.isEmpty()) {
+            return;
+        }
+        String message = MessageUtil.getMessage("notification.result.stat");
+        String prefix = (message != null && message.endsWith(" ")) ? message : message + " ";
+        for (String userId : systemUserIds) {
+            // Pool-anchored analyses have analysis.sampleItem == null; resolve
+            // the owning Sample via AnalysisAnchorService so vector orders
+            // don't NPE in this STAT-notification path.
+            List<Analysis> userAnalyses = userService
+                    .filterAnalysesByLabUnitRoles(userId, newResultAnalyses, Constants.ROLE_VALIDATION).stream()
+                    .filter(a -> {
+                        Sample s = analysisAnchorService.resolveSample(a);
+                        return s != null && OrderPriority.STAT.equals(s.getPriority());
+                    }).collect(Collectors.toList());
+
+            if (userAnalyses != null && !userAnalyses.isEmpty()) {
+                List<String> userTests = userAnalyses.stream().map(a -> {
+                    Sample s = analysisAnchorService.resolveSample(a);
+                    String accession = s != null ? s.getAccessionNumber() : "";
+                    return AlphanumAccessionValidator.convertAlphaNumLabNumForDisplay(accession) + " - "
+                            + a.getTest().getLocalizedName();
+                }).collect(Collectors.toList());
+                String testString = String.join(", ", userTests);
+                try {
+                    Notification notification = new Notification();
+                    notification.setMessage(prefix + testString);
+                    notification.setUser(systemUserService.getUserById(userId));
+                    notification.setCreatedDate(OffsetDateTime.now());
+                    notification.setReadAt(null);
+                    notificationDAO.save(notification);
+                } catch (Exception e) {
+                }
             }
         }
     }
