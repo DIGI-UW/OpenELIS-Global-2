@@ -2,6 +2,7 @@ package org.openelisglobal.common.services;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.lang.reflect.InvocationTargetException;
@@ -11,6 +12,7 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
@@ -63,5 +65,35 @@ public class DisplayListServiceRefreshTest extends BaseWebContextSensitiveTest {
         }
         lists.refreshLists();
         assertNotNull(lists.getList(ListType.TEST_SECTION_INACTIVE));
+    }
+
+    /**
+     * A lab without an Immunohistochemistry unit still rebuilds its lists: the
+     * unit's marker list is empty, and nothing stops the refresh.
+     */
+    @Test
+    public void aLabWithoutAnImmunohistochemistryUnitStillRefreshesItsLists() {
+        DisplayListService lists = new DisplayListService();
+        beanFactory.autowireBean(lists);
+        TestSectionService sections = (TestSectionService) ReflectionTestUtils.getField(lists, "testSectionService");
+        TestSectionService withoutIhc = (TestSectionService) Proxy.newProxyInstance(getClass().getClassLoader(),
+                new Class<?>[] { TestSectionService.class }, (proxy, method, args) -> {
+                    if ("getTestSectionByName".equals(method.getName()) && "Immunohistochemistry".equals(args[0])) {
+                        return null;
+                    }
+                    try {
+                        return method.invoke(sections, args);
+                    } catch (InvocationTargetException e) {
+                        throw e.getCause();
+                    }
+                });
+        ReflectionTestUtils.setField(lists, "testSectionService", withoutIhc);
+        try {
+            lists.refreshLists();
+            assertTrue(lists.getList(ListType.IMMUNOHISTOCHEMISTRY_MARKERS_TESTS).isEmpty());
+            assertNotNull(lists.getList(ListType.TEST_SECTION_INACTIVE));
+        } finally {
+            ReflectionTestUtils.setField(lists, "testSectionService", sections);
+        }
     }
 }

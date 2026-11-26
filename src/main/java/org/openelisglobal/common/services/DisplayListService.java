@@ -907,7 +907,8 @@ public class DisplayListService implements LocaleChangeListener {
 
     private List<IdValuePair> createImmunoHistoChemistryTestList() {
         ArrayList<IdValuePair> tests = new ArrayList<>();
-        String id = testSectionService.getTestSectionByName("Immunohistochemistry").getId();
+        TestSection section = testSectionService.getTestSectionByName("Immunohistochemistry");
+        String id = section == null ? null : section.getId();
         if (id == null) {
             return tests;
         }
