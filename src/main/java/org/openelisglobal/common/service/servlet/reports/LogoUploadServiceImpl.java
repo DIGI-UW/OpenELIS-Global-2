@@ -1,9 +1,13 @@
 package org.openelisglobal.common.service.servlet.reports;
 
+import java.awt.Dimension;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.util.Iterator;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.image.service.ImageService;
 import org.openelisglobal.image.valueholder.Image;
@@ -20,6 +24,11 @@ public class LogoUploadServiceImpl implements LogoUploadService {
     private static final long MAX_LOGO_BYTES = 500L * 1024L;
 
     private static final int MIN_LOGO_PIXELS = 64;
+
+    /**
+     * Decoding allocates a raster of the declared size, so the size is read first.
+     */
+    private static final int MAX_LOGO_PIXELS = 2048;
 
     @Autowired
     private ImageService imageService;
@@ -38,6 +47,11 @@ public class LogoUploadServiceImpl implements LogoUploadService {
         BufferedImage decoded;
         try {
             bytes = file.getBytes();
+            Dimension declared = declaredSize(bytes);
+            if (declared != null && (declared.width > MAX_LOGO_PIXELS || declared.height > MAX_LOGO_PIXELS)) {
+                throw new IllegalArgumentException(
+                        "Logo must be at most " + MAX_LOGO_PIXELS + "\u00d7" + MAX_LOGO_PIXELS + " pixels");
+            }
             decoded = ImageIO.read(new ByteArrayInputStream(bytes));
         } catch (IOException e) {
             LogEvent.logError(e);
@@ -51,6 +65,23 @@ public class LogoUploadServiceImpl implements LogoUploadService {
                     "Logo must be at least " + MIN_LOGO_PIXELS + "\u00d7" + MIN_LOGO_PIXELS + " pixels");
         }
         return bytes;
+    }
+
+    /** The size the image header declares, read without decoding the pixels. */
+    private static Dimension declaredSize(byte[] bytes) throws IOException {
+        try (ImageInputStream input = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(input);
+            if (!readers.hasNext()) {
+                return null;
+            }
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(input);
+                return new Dimension(reader.getWidth(0), reader.getHeight(0));
+            } finally {
+                reader.dispose();
+            }
+        }
     }
 
     @Override

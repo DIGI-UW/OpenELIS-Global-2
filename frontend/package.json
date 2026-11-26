@@ -28,7 +28,7 @@
     "formik": "^2.2.9",
     "history": "^4.10.1",
     "html2canvas": "1.4.1",
-    "i18next": "^21.10.0",
+    "i18next": "^27.2.6",
     "jsonpath-plus": "^10.4.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
