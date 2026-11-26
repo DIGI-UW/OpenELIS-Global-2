@@ -530,9 +530,9 @@ public abstract class Accessioner implements IAccessioner {
         return patientInDB != null || createNewPatient();
     }
 
-    private Patient findPatientByIndentifiers() {
+    Patient findPatientByIndentifiers() {
         Patient aPatient;
-        if (patientIdentifier != "") {
+        if (!GenericValidator.isBlankOrNull(patientIdentifier)) {
             aPatient = patientService.getPatientByNationalId(patientIdentifier);
         } else {
             String externalId = projectFormMapper.getSiteSubjectNumber();
