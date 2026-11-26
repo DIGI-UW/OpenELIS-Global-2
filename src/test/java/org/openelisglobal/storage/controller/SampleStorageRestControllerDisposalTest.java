@@ -18,6 +18,10 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MvcResult;
 
+import org.springframework.context.annotation.Import;
+import org.openelisglobal.AppTestConfig;
+
+@Import(AppTestConfig.class)
 public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensitiveTest {
 
     private ObjectMapper objectMapper;

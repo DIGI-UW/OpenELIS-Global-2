@@ -42,9 +42,12 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 
+import org.openelisglobal.AppTestConfig;
+@Import(AppTestConfig.class)
 public class SamplePatientEntryRestControllerIntegrationTest extends BaseWebContextSensitiveTest {
 
     private static final ObjectMapper JSON = new ObjectMapper();
