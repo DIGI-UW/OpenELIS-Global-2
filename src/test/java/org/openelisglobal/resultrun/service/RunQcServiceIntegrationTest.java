@@ -176,6 +176,17 @@ public class RunQcServiceIntegrationTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void anUnjudgedControlDoesNotPassOrHoldUnlessPolicyRequires() {
+        QCResult control = analyzerControl(OTHER_TEST, "50");
+
+        assertNull(control.getRunVerdict());
+        assertTrue(runQcService.heldTestIds(run.getId()).isEmpty());
+        assertEquals(RunTestVerdict.NOT_REQUIRED, runQcService.testVerdicts(run.getId()).get(OTHER_TEST));
+        assertEquals(ResultRunState.OPEN, resultRunService.get(run.getId()).getState());
+        assertEquals(List.of(ResultRunEvent.CONTROL_RECORDED), events());
+    }
+
+    @Test
     public void aLaterPassingControlDoesNotClearTheHold() {
         analyzerControl(TEST, "120");
         analyzerControl(TEST, "101");

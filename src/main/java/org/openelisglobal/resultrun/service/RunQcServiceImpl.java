@@ -136,13 +136,14 @@ public class RunQcServiceImpl implements RunQcService {
      * recorded, No control when the test requires one per run, else Not required.
      */
     static RunTestVerdict verdictOf(List<QCResult> covering, TestQcPolicy policy) {
-        if (covering.isEmpty()) {
-            return policy != null && policy.isControlRequired() ? RunTestVerdict.NO_CONTROL
-                    : RunTestVerdict.NOT_REQUIRED;
+        if (covering.stream().anyMatch(control -> control.getRunVerdict() == RunControlVerdict.FAIL)) {
+            return RunTestVerdict.FAIL;
         }
-        return covering.stream().anyMatch(control -> control.getRunVerdict() == RunControlVerdict.FAIL)
-                ? RunTestVerdict.FAIL
-                : RunTestVerdict.PASS;
+        if (!covering.isEmpty()
+                && covering.stream().allMatch(control -> control.getRunVerdict() == RunControlVerdict.PASS)) {
+            return RunTestVerdict.PASS;
+        }
+        return policy != null && policy.isControlRequired() ? RunTestVerdict.NO_CONTROL : RunTestVerdict.NOT_REQUIRED;
     }
 
     @Override
