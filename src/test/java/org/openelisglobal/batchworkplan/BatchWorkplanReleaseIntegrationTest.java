@@ -9,6 +9,7 @@ import static org.junit.Assert.fail;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -93,6 +94,8 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
     private org.openelisglobal.inventory.service.InventoryManagementService inventoryManagementService;
     @Autowired
     private org.openelisglobal.result.service.ResultService resultService;
+    @Autowired
+    private org.springframework.transaction.PlatformTransactionManager txManager;
 
     private String testId;
     private String testSectionId;
@@ -528,6 +531,9 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
         String first = batchAnalysisIds().get(0);
         String usedOnRow = batchAnalysisIds().get(1);
 
+        assertEquals("the lot picker knows what one test uses", 0, new java.math.BigDecimal("0.5").compareTo(
+                resultRunService.lotOptions(runId, unitViewer()).orElseThrow().reagents().get(0).quantityPerTest()));
+
         recordInRun(first);
         assertEquals("the result uses half a unit of the run's lot", List.of(0.5), usesOf(first, reagentLotId));
         assertEquals(Double.valueOf(9.5), lotQuantity(reagentLotId));
@@ -595,7 +601,96 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
                 .recordIntoWorkplanRuns(List.of(result), ACTOR);
         jdbcTemplate.update("UPDATE clinlims.result SET run_id = ? WHERE id = CAST(? AS numeric)", result.getRunId(),
                 resultId);
-        update.transactionalUpdate(null);
+        new org.springframework.transaction.support.TransactionTemplate(txManager)
+                .executeWithoutResult(status -> update.transactionalUpdate(null));
+        update.postTransactionalCommitUpdate(null);
+    }
+
+    /**
+     * OGC-1200 FR-G5: two results saved into one run that carries a lot at the same
+     * moment both save, and each uses the lot once. Each save has stored its result
+     * in the run, which holds the run's row through its foreign key, before either
+     * updates the run; the second updates it while the first is still open.
+     */
+    @Test
+    public void twoResultsSavedIntoOneRunAtOnceBothSaveAndEachUsesTheLot() throws Exception {
+        jdbcTemplate.update("UPDATE clinlims.test_reagent_link SET quantity_per_test = 0.5 WHERE reagent_id = ?",
+                reagentId);
+        jdbcTemplate.update(
+                "INSERT INTO clinlims.batch_workplan_item (id, batch_workplan_id, analysis_id, sort_order)"
+                        + " VALUES (nextval('clinlims.batch_workplan_item_seq'), ?, CAST(? AS numeric), 2)",
+                batchId, createAnalysis());
+        Long runId = releaseIntoRun();
+        List<String> analyses = batchAnalysisIds();
+        org.springframework.transaction.support.TransactionTemplate tx = new org.springframework.transaction.support.TransactionTemplate(
+                txManager);
+        java.util.concurrent.CountDownLatch firstStored = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch secondStored = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch firstUpdated = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.ExecutorService benches = java.util.concurrent.Executors.newFixedThreadPool(2);
+        java.util.concurrent.Future<Object> first = benches.submit(() -> {
+            saveInRun(tx, analyses.get(0), () -> {
+                firstStored.countDown();
+                awaitQuietly(secondStored);
+            }, () -> {
+                firstUpdated.countDown();
+                pauseQuietly(1000);
+            });
+            return null;
+        });
+        java.util.concurrent.Future<Object> second = benches.submit(() -> {
+            firstStored.await();
+            saveInRun(tx, analyses.get(1), () -> {
+                secondStored.countDown();
+                awaitQuietly(firstUpdated);
+            }, () -> {
+            });
+            return null;
+        });
+        first.get(90, java.util.concurrent.TimeUnit.SECONDS);
+        second.get(90, java.util.concurrent.TimeUnit.SECONDS);
+        benches.shutdown();
+
+        assertEquals(List.of(0.5), usesOf(analyses.get(0), reagentLotId));
+        assertEquals(List.of(0.5), usesOf(analyses.get(1), reagentLotId));
+        assertEquals(Double.valueOf(9.0), lotQuantity(reagentLotId));
+        assertEquals("COMPLETE",
+                jdbcTemplate.queryForObject("SELECT state FROM clinlims.result_run WHERE id = ?", String.class, runId));
+    }
+
+    private void saveInRun(org.springframework.transaction.support.TransactionTemplate tx, String analysisId,
+            Runnable stored, Runnable updated) {
+        List<org.openelisglobal.common.services.registration.interfaces.IResultUpdate> update = new ArrayList<>();
+        tx.executeWithoutResult(status -> {
+            String resultId = jdbcTemplate
+                    .queryForObject("INSERT INTO clinlims.result (id, analysis_id, value, result_type, lastupdated)"
+                            + " VALUES (nextval('clinlims.result_seq'), CAST(? AS numeric), '81', 'N', now())"
+                            + " RETURNING CAST(id AS VARCHAR)", String.class, analysisId);
+            org.openelisglobal.result.valueholder.Result result = resultService.get(resultId);
+            update.add(resultRunService.recordIntoWorkplanRuns(List.of(result), ACTOR));
+            jdbcTemplate.update("UPDATE clinlims.result SET run_id = ? WHERE id = CAST(? AS numeric)",
+                    result.getRunId(), resultId);
+            stored.run();
+            update.get(0).transactionalUpdate(null);
+            updated.run();
+        });
+        update.get(0).postTransactionalCommitUpdate(null);
+    }
+
+    private static void awaitQuietly(java.util.concurrent.CountDownLatch latch) {
+        try {
+            latch.await(15, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private static void pauseQuietly(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private List<Double> usesOf(String analysisId, Long lotId) {

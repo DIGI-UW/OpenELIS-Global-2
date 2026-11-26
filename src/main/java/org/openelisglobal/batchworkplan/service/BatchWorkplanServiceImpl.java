@@ -422,11 +422,16 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
 
     private List<ReagentOptionResponse> reagentOptions(List<BatchTestRef> tests) {
         Map<Long, List<String>> testNamesByReagent = new LinkedHashMap<>();
+        Map<Long, java.math.BigDecimal> perTestByReagent = new HashMap<>();
         for (BatchTestRef test : tests) {
             for (TestReagentLink link : testReagentLinkService.getByTestId(test.testId())) {
                 if (link.getReagentId() != null) {
                     testNamesByReagent.computeIfAbsent(link.getReagentId(), k -> new ArrayList<>())
                             .add(test.testName());
+                    if (link.getQuantityPerTest() != null && link.getQuantityPerTest().signum() > 0) {
+                        perTestByReagent.merge(link.getReagentId(), link.getQuantityPerTest(),
+                                java.math.BigDecimal::max);
+                    }
                 }
             }
         }
@@ -437,7 +442,7 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
                 continue;
             }
             reagents.add(new ReagentOptionResponse(item.getId(), item.getName(), item.getUnits(), entry.getValue(),
-                    lotOptions(item)));
+                    lotOptions(item), perTestByReagent.get(entry.getKey())));
         }
         return reagents;
     }

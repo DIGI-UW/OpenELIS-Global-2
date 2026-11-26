@@ -24,6 +24,7 @@ public class ResultRunDAOImpl extends BaseDAOImpl<ResultRun, Long> implements Re
     private static final List<ResultRunState> ACTIVE = List.of(ResultRunState.OPEN, ResultRunState.HELD);
     /** Advisory lock namespace for an analysis's run of one (OGC-1200). */
     private static final int RUN_OF_ONE_LOCK = 1200;
+    private static final int RUN_LOCK = 1201;
 
     public ResultRunDAOImpl() {
         super(ResultRun.class);
@@ -106,6 +107,15 @@ public class ResultRunDAOImpl extends BaseDAOImpl<ResultRun, Long> implements Re
         }
         return getReusableRunsOfOne(List.of(analysisId)).stream().findFirst()
                 .flatMap(row -> get(((Number) row[1]).longValue()));
+    }
+
+    @Override
+    public ResultRun lockForUpdate(ResultRun run) {
+        session().createNativeQuery("SELECT CAST(pg_advisory_xact_lock(:namespace, hashtext(:run)) AS text)")
+                .setParameter("namespace", RUN_LOCK).setParameter("run", String.valueOf(run.getId())).getSingleResult();
+        ResultRun managed = entityManager.contains(run) ? run : entityManager.find(ResultRun.class, run.getId());
+        entityManager.refresh(managed);
+        return managed;
     }
 
     @Override

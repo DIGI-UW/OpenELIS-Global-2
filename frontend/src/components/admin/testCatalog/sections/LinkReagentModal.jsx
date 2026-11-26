@@ -119,7 +119,10 @@ const LinkReagentModal = ({
             lowContrast
             hideCloseButton
             title={intl.formatMessage({
-              id: "label.testCatalog.reagents.modal.allLinked",
+              id:
+                linkedReagentIds.length > 0
+                  ? "label.testCatalog.reagents.modal.allLinked"
+                  : "label.testCatalog.reagents.modal.noneActive",
             })}
           />
         ) : (

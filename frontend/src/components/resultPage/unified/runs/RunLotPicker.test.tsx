@@ -103,6 +103,37 @@ describe("OGC-1200 FR-E3 a batch run's reagent lot", () => {
     expect(onSaved).not.toHaveBeenCalled();
   });
 
+  it("flags a lot holding less than one test uses, and says so once it is picked (FR-G5)", () => {
+    renderPicker({
+      reagents: [
+        {
+          id: 4,
+          name: "Amylase reagent",
+          units: "mL",
+          quantityPerTest: 0.5,
+          lots: [
+            { id: 40, lotNumber: "LOT-LOW", currentQuantity: 0.2 },
+            { id: 41, lotNumber: "LOT-FULL", currentQuantity: 20 },
+          ],
+        },
+      ],
+      currentLotId: null,
+      lastUsedLotId: null,
+    });
+
+    const options = Array.from(lotSelect().options).map((o) => o.text);
+    expect(options).toContain(
+      "Amylase reagent: LOT-LOW (less than one test: 0.2 mL left)",
+    );
+    expect(options).toContain("Amylase reagent: LOT-FULL");
+    fireEvent.change(lotSelect(), { target: { value: "4:41" } });
+    expect(screen.queryByTestId("run-lot-short")).toBeNull();
+    fireEvent.change(lotSelect(), { target: { value: "4:40" } });
+    expect(screen.getByTestId("run-lot-short")).toHaveTextContent(
+      "This lot holds less than one test uses",
+    );
+  });
+
   it("says so when no reagent is linked to the run's tests", () => {
     renderPicker({ reagents: [], currentLotId: null, lastUsedLotId: null });
     expect(screen.getByTestId("run-lot-none")).toBeInTheDocument();

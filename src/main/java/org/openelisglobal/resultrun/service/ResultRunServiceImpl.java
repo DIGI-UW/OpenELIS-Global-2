@@ -55,6 +55,7 @@ import org.openelisglobal.resultrun.service.ResultRunRowClassifier.ClassifiedRow
 import org.openelisglobal.resultrun.valueholder.ResultRun;
 import org.openelisglobal.resultrun.valueholder.ResultRunSource;
 import org.openelisglobal.resultrun.valueholder.ResultRunState;
+import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
@@ -631,7 +632,7 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     public Optional<ResultRunHeader> setReagentLot(Long runId, Long reagentId, Long reagentLotId, RunViewer viewer,
             String sysUserId) {
         Optional<ResultRun> open = openWorkplanRun(runId, viewer);
-        open.ifPresent(run -> {
+        open.map(baseObjectDAO::lockForUpdate).ifPresent(run -> {
             batchWorkplanService.setRunReagentLot(run.getBatchWorkplanId(), reagentId, reagentLotId, sysUserId);
             run.setReagentLotId(reagentLotId);
             run.setLastActivityAt(Timestamp.from(Instant.now()));
@@ -681,8 +682,12 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     @Override
     @Transactional
     public void workplanResultSaved(Long runId, String sysUserId) {
-        ResultRun run = runId == null ? null : baseObjectDAO.get(runId).orElse(null);
-        if (run == null || run.getSource() != ResultRunSource.WORKPLAN || !run.getState().isActive()) {
+        ResultRun found = runId == null ? null : baseObjectDAO.get(runId).orElse(null);
+        if (found == null || found.getSource() != ResultRunSource.WORKPLAN) {
+            return;
+        }
+        ResultRun run = baseObjectDAO.lockForUpdate(found);
+        if (!run.getState().isActive()) {
             return;
         }
         Timestamp now = Timestamp.from(Instant.now());
@@ -715,13 +720,21 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
         return new IResultUpdate() {
             @Override
             public void transactionalUpdate(IResultSaveService saveService) {
-                placed.forEach(result -> baseObjectDAO.get(result.getRunId())
-                        .ifPresent(run -> consumeRunLot(run, result, sysUserId)));
                 touched.forEach(runId -> workplanResultSaved(runId, sysUserId));
             }
 
             @Override
             public void postTransactionalCommitUpdate(IResultSaveService saveService) {
+                ResultRunService runs = SpringContext.getBean(ResultRunService.class);
+                for (Result result : placed) {
+                    try {
+                        runs.useRunLot(result.getRunId(), result.getId(), sysUserId);
+                    } catch (RuntimeException e) {
+                        LogEvent.logError(ResultRunServiceImpl.class.getSimpleName(), "useRunLot",
+                                "Result " + result.getId() + " used nothing from the lot of run " + result.getRunId()
+                                        + ": " + e.getMessage());
+                    }
+                }
             }
         };
     }
@@ -734,6 +747,16 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
      * quantity any more is logged and skipped: the use is a stock record and never
      * stops the result.
      */
+    @Override
+    @Transactional
+    public void useRunLot(Long runId, String resultId, String sysUserId) {
+        ResultRun run = runId == null ? null : baseObjectDAO.get(runId).orElse(null);
+        Result result = StringUtils.isNumeric(resultId) ? resultService.get(resultId) : null;
+        if (run != null && result != null) {
+            consumeRunLot(run, result, sysUserId);
+        }
+    }
+
     private void consumeRunLot(ResultRun run, Result result, String sysUserId) {
         Analysis analysis = result.getAnalysis();
         if (run.getReagentLotId() == null || StringUtils.isBlank(result.getValue()) || analysis == null
@@ -742,6 +765,9 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
             return;
         }
         InventoryLot lot = inventoryLotService.getMatch("id", run.getReagentLotId()).orElse(null);
+        if (lot != null) {
+            inventoryLotService.refreshForUpdate(lot);
+        }
         Long reagentId = lot == null || lot.getInventoryItem() == null ? null : lot.getInventoryItem().getId();
         if (reagentId == null) {
             return;

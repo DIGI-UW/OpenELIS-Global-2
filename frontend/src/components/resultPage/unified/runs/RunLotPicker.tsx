@@ -18,13 +18,22 @@ interface LotOption {
   id: number;
   lotNumber: string;
   expirationDate?: string | number | null;
+  currentQuantity?: number | null;
 }
 
 interface ReagentOption {
   id: number;
   name: string;
+  units?: string | null;
+  quantityPerTest?: number | null;
   lots: LotOption[];
 }
+
+/** FR-G5: a lot holding less than one test uses gives the run's results nothing. */
+const isShort = (reagent: ReagentOption, lot: LotOption) =>
+  reagent.quantityPerTest != null &&
+  lot.currentQuantity != null &&
+  lot.currentQuantity < reagent.quantityPerTest;
 
 interface RunLotOptions {
   reagents: ReagentOption[];
@@ -97,10 +106,27 @@ const RunLotPicker: React.FC<RunLotPickerProps> = ({ runId, onSaved }) => {
           { id: "run.lot.optionNoExpiry" },
           { reagent: reagent.name, lot: lot.lotNumber },
         );
-    return lot.expirationDate && new Date(lot.expirationDate).getTime() <= soon
-      ? intl.formatMessage({ id: "run.lot.expiringSoon" }, { option: text })
-      : text;
+    const dated =
+      lot.expirationDate && new Date(lot.expirationDate).getTime() <= soon
+        ? intl.formatMessage({ id: "run.lot.expiringSoon" }, { option: text })
+        : text;
+    return isShort(reagent, lot)
+      ? intl.formatMessage(
+          { id: "run.lot.short" },
+          {
+            option: dated,
+            left: lot.currentQuantity,
+            units: reagent.units ?? "",
+          },
+        )
+      : dated;
   };
+  const pickedShort = options.reagents.some((reagent) =>
+    reagent.lots.some(
+      (lot) =>
+        pickValue(reagent.id, lot.id) === picked && isShort(reagent, lot),
+    ),
+  );
   const lastUsed = options.reagents.flatMap((reagent) =>
     reagent.lots
       .filter((lot) => lot.id === options.lastUsedLotId)
@@ -155,6 +181,11 @@ const RunLotPicker: React.FC<RunLotPickerProps> = ({ runId, onSaved }) => {
           )),
         )}
       </Select>
+      {pickedShort && (
+        <p className="unifiedFieldHint" data-testid="run-lot-short">
+          <FormattedMessage id="run.lot.shortHint" />
+        </p>
+      )}
       <div className="runLotActions">
         {lastUsed && (
           <Button
