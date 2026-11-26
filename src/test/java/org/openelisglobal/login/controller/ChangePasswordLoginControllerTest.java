@@ -1,3 +1,4 @@
+
 package org.openelisglobal.login.controller;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -35,65 +36,115 @@ public class ChangePasswordLoginControllerTest extends BaseWebContextSensitiveTe
         executeDataSetWithStateManagement("testdata/system-user.xml");
     }
 
-    private MockHttpServletRequestBuilder changePasswordRequest(String currentPassword, String newPassword,
-            boolean apiCall) {
+    private MockHttpServletRequestBuilder changePasswordRequest(
+            String currentPassword, String newPassword, boolean apiCall) {
+
         return post("/ChangePasswordLogin" + (apiCall ? "?apiCall=true" : ""))
-                .contentType(MediaType.APPLICATION_FORM_URLENCODED).param("loginName", "admin")
-                .param("password", currentPassword).param("newPassword", newPassword)
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .param("loginName", "admin")
+                .param("password", currentPassword)
+                .param("newPassword", newPassword)
                 .param("confirmPassword", newPassword);
     }
 
     @Test
-    public void changePassword_apiCallWrongCurrentPassword_returns401AndLeavesPasswordUnchanged() throws Exception {
-        mockMvc.perform(changePasswordRequest("wrongPASS9!", NEW_PASSWORD, true)).andExpect(status().isUnauthorized())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.error").value("login.error.password.current.incorrect"));
+    public void changePassword_apiCallWrongCurrentPassword_returns401AndLeavesPasswordUnchanged()
+            throws Exception {
 
-        Assert.assertTrue("original password must still be valid",
+        mockMvc.perform(changePasswordRequest("wrongPASS9!", NEW_PASSWORD, true))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error")
+                        .value("login.error.password.current.incorrect"));
+
+        Assert.assertTrue(
+                "original password must still be valid",
                 loginService.getValidatedLogin("admin", CURRENT_PASSWORD).isPresent());
-        Assert.assertFalse("rejected new password must not authenticate",
+
+        Assert.assertFalse(
+                "rejected new password must not authenticate",
                 loginService.getValidatedLogin("admin", NEW_PASSWORD).isPresent());
     }
 
     @Test
-    public void changePassword_apiCallCorrectCurrentPassword_returns200AndChangesPassword() throws Exception {
-        mockMvc.perform(changePasswordRequest(CURRENT_PASSWORD, NEW_PASSWORD, true)).andExpect(status().isOk())
+    public void changePassword_apiCallCorrectCurrentPassword_returns200AndChangesPassword()
+            throws Exception {
+
+        mockMvc.perform(changePasswordRequest(CURRENT_PASSWORD, NEW_PASSWORD, true))
+                .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.success").value(true));
 
-        Assert.assertTrue("new password must authenticate after change",
+        Assert.assertTrue(
+                "new password must authenticate after change",
                 loginService.getValidatedLogin("admin", NEW_PASSWORD).isPresent());
-        Assert.assertFalse("old password must no longer authenticate",
+
+        Assert.assertFalse(
+                "old password must no longer authenticate",
                 loginService.getValidatedLogin("admin", CURRENT_PASSWORD).isPresent());
     }
 
     @Test
     public void changePassword_apiCallMismatchedConfirmPassword_returns401AndLeavesPasswordUnchanged()
             throws Exception {
-        mockMvc.perform(post("/ChangePasswordLogin?apiCall=true").contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .param("loginName", "admin").param("password", CURRENT_PASSWORD).param("newPassword", NEW_PASSWORD)
-                .param("confirmPassword", "otherPASS2$")).andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("login.error.password.notmatch"));
 
-        Assert.assertTrue("original password must still be valid",
+        mockMvc.perform(post("/ChangePasswordLogin?apiCall=true")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .param("loginName", "admin")
+                .param("password", CURRENT_PASSWORD)
+                .param("newPassword", NEW_PASSWORD)
+                .param("confirmPassword", "otherPASS2$"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error")
+                        .value("login.error.password.notmatch"));
+
+        Assert.assertTrue(
+                "original password must still be valid",
                 loginService.getValidatedLogin("admin", CURRENT_PASSWORD).isPresent());
     }
 
     @Test
-    public void changePassword_legacyWrongCurrentPassword_forwardsToJspWithoutRedirect() throws Exception {
-        mockMvc.perform(changePasswordRequest("wrongPASS9!", NEW_PASSWORD, false)).andExpect(status().isOk())
+    public void changePassword_apiCallReusingCurrentPassword_returns401AndLeavesPasswordUnchanged()
+            throws Exception {
+
+        mockMvc.perform(changePasswordRequest(CURRENT_PASSWORD, CURRENT_PASSWORD, true))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error")
+                        .value("login.error.password.reuse"));
+
+        Assert.assertTrue(
+                "original password must still be valid after password reuse is rejected",
+                loginService.getValidatedLogin("admin", CURRENT_PASSWORD).isPresent());
+
+        Assert.assertFalse(
+                "rejected password change must not alter the stored password",
+                loginService.getValidatedLogin("admin", NEW_PASSWORD).isPresent());
+    }
+
+    @Test
+    public void changePassword_legacyWrongCurrentPassword_forwardsToJspWithoutRedirect()
+            throws Exception {
+
+        mockMvc.perform(changePasswordRequest("wrongPASS9!", NEW_PASSWORD, false))
+                .andExpect(status().isOk())
                 .andExpect(forwardedUrl("/pages/common/formTemplate.jsp"));
 
-        Assert.assertTrue("original password must still be valid",
+        Assert.assertTrue(
+                "original password must still be valid",
                 loginService.getValidatedLogin("admin", CURRENT_PASSWORD).isPresent());
     }
 
     @Test
-    public void changePassword_legacyCorrectCurrentPassword_redirectsToLoginPage() throws Exception {
-        mockMvc.perform(changePasswordRequest(CURRENT_PASSWORD, NEW_PASSWORD, false))
-                .andExpect(status().is3xxRedirection()).andExpect(redirectedUrl("/LoginPage"));
+    public void changePassword_legacyCorrectCurrentPassword_redirectsToLoginPage()
+            throws Exception {
 
-        Assert.assertTrue("new password must authenticate after change",
+        mockMvc.perform(changePasswordRequest(CURRENT_PASSWORD, NEW_PASSWORD, false))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/LoginPage"));
+
+        Assert.assertTrue(
+                "new password must authenticate after change",
                 loginService.getValidatedLogin("admin", NEW_PASSWORD).isPresent());
     }
 }
