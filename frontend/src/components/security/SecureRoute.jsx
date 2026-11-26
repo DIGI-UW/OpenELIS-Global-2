@@ -152,7 +152,7 @@ function SecureRoute(props) {
       {loading && <Loading />}
       {!loading && !userSessionDetails.authenticated && <Loading />}
       {!loading && userSessionDetails.authenticated && permissionGranted && (
-        <>{!stillThereOpen && <Route {...props} />}</>
+        <Route {...props} />
       )}
     </>
   );

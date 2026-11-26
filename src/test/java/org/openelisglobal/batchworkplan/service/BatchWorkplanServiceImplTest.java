@@ -178,6 +178,73 @@ public class BatchWorkplanServiceImplTest {
     }
 
     @Test
+    public void batchFromWorklist_releasesPendingRowsOfOneTestAsARunAtOnce() {
+        List<Analysis> requested = Arrays.asList(analysis("11", "A-001"), analysis("12", "A-002"));
+        requested.get(1).setTest(requested.get(0).getTest());
+        when(batchWorkplanItemDAO.getExistingAnalysisIds(anyList(), anyList())).thenReturn(Collections.emptySet());
+        when(analysisService.getAnalysesByIdsWithDetails(Arrays.asList("11", "12"))).thenReturn(requested);
+        when(userService.filterAnalysesByLabUnitRoles("42", requested, Constants.ROLE_RESULTS)).thenReturn(requested);
+        ArgumentCaptor<BatchWorkplan> inserted = ArgumentCaptor.forClass(BatchWorkplan.class);
+        when(batchWorkplanDAO.insert(inserted.capture())).thenAnswer(invocation -> {
+            BatchWorkplan batch = invocation.getArgument(0);
+            batch.setId(7L);
+            return 7L;
+        });
+        when(batchWorkplanDAO.getWithItems(7L)).thenAnswer(invocation -> Optional.of(inserted.getValue()));
+        when(batchWorkplanDAO.update(any(BatchWorkplan.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        BatchWorkplanResponse response = service.batchFromWorklist(Arrays.asList("11", "12"), "42");
+
+        assertEquals(BatchWorkplanStatus.ACTIVE, response.getStatus());
+        assertEquals(BatchWorkplanStatus.ACTIVE, inserted.getValue().getStatus());
+        assertNotNull(inserted.getValue().getGeneratedAt());
+        verify(resultRunService).openWorkplanRun(eq(7L), any(), any(), any(), any(), eq("42"));
+    }
+
+    @Test
+    public void createBatch_takesAnAnalysisACompletedBatchLeftWithoutAResult() {
+        BatchWorkplanRequest request = new BatchWorkplanRequest();
+        request.setAnalysisIds(Arrays.asList("11"));
+        List<Analysis> requested = Arrays.asList(analysis("11", "A-001"));
+        when(batchWorkplanItemDAO.getExistingAnalysisIds(anyList(), anyList())).thenReturn(Collections.emptySet());
+        when(analysisService.getAnalysesByIdsWithDetails(Arrays.asList("11"))).thenReturn(requested);
+        when(userService.filterAnalysesByLabUnitRoles("42", requested, Constants.ROLE_RESULTS)).thenReturn(requested);
+        when(batchWorkplanDAO.insert(any(BatchWorkplan.class))).thenReturn(7L);
+        when(batchWorkplanDAO.getWithItems(7L)).thenReturn(Optional.empty());
+
+        service.createBatch(request, "42");
+
+        ArgumentCaptor<List<BatchWorkplanStatus>> holding = ArgumentCaptor.forClass(List.class);
+        verify(batchWorkplanItemDAO).getExistingAnalysisIds(anyList(), holding.capture());
+        assertEquals(Arrays.asList(BatchWorkplanStatus.DRAFT, BatchWorkplanStatus.ACTIVE), holding.getValue());
+    }
+
+    @Test
+    public void batchFromWorklist_refusesRowsOfDifferentTests() {
+        when(analysisService.getAnalysesByIdsWithDetails(Arrays.asList("11", "12")))
+                .thenReturn(Arrays.asList(analysis("11", "A-001"), analysis("12", "A-002")));
+        try {
+            service.batchFromWorklist(Arrays.asList("11", "12"), "42");
+            fail("Expected rows of two tests to be refused");
+        } catch (IllegalArgumentException expected) {
+            assertEquals("Rows of different tests cannot be batched together", expected.getMessage());
+        }
+        verify(batchWorkplanDAO, never()).insert(any(BatchWorkplan.class));
+        verify(resultRunService, never()).openWorkplanRun(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    public void batchFromWorklist_refusesASingleRow() {
+        try {
+            service.batchFromWorklist(Arrays.asList("11"), "42");
+            fail("Expected a single row to be refused");
+        } catch (IllegalArgumentException expected) {
+            assertEquals("Select two or more pending rows of one test to batch them", expected.getMessage());
+        }
+        verify(batchWorkplanDAO, never()).insert(any(BatchWorkplan.class));
+    }
+
+    @Test
     public void transitionBatch_activeToCompleted_setsCompletedTimestamp() {
         BatchWorkplan batch = new BatchWorkplan();
         batch.setId(8L);

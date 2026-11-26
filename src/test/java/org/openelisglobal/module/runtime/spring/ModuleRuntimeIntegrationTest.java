@@ -16,6 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.sql.DataSource;
 import org.junit.After;
@@ -38,6 +39,7 @@ import org.openelisglobal.module.testkit.ModuleJarBuilder;
 import org.openelisglobal.reports.action.implementation.IReportCreator;
 import org.openelisglobal.reports.action.implementation.ModuleReportCreator;
 import org.openelisglobal.reports.action.implementation.ReportImplementationFactory;
+import org.openelisglobal.reports.action.implementation.ReportRegistry;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.rolemodule.service.RoleModuleService;
 import org.openelisglobal.security.DaemonContextExecutor;
@@ -104,7 +106,7 @@ public class ModuleRuntimeIntegrationTest {
     private static ModuleRegistry registryForRoot;
 
     @Configuration
-    @Import(ModuleWebMvcConfiguration.class)
+    @Import({ ModuleWebMvcConfiguration.class, ReportRegistry.class })
     static class RootConfig {
         @Bean
         ModuleRegistry moduleRegistry() {
@@ -183,6 +185,7 @@ public class ModuleRuntimeIntegrationTest {
         DataSource dataSource() {
             return mock(DataSource.class);
         }
+
     }
 
     private static final String PKG = "org.openelisglobal.module.ctx";
@@ -366,6 +369,25 @@ public class ModuleRuntimeIntegrationTest {
         Class<?> sink = Class.forName(PKG + ".EventSink", true, registry.find("ctx").orElseThrow().classLoader());
         assertEquals("4711", sink.getField("lastSample").get(null));
         assertEquals(1, ROOT_REFRESHES.get());
+    }
+
+    @Test
+    public void builtInReportTakesPriorityOverModuleReportWithSameId() throws Exception {
+        Path directory = temp.newFolder("modules").toPath();
+        startRoot(directory);
+
+        // Register a module provider for a core report ID.
+        ReportProvider moduleProvider = mock(ReportProvider.class);
+        when(moduleProvider.reportIds()).thenReturn(Set.of("activityReportByTest"));
+
+        registry.extensions().register(ReportProvider.class, "test-module", moduleProvider, 0);
+        // Register the built-in report after the module provider.
+        IReportCreator builtInReport = mock(IReportCreator.class);
+
+        root.getBeanFactory().registerSingleton("activityReportByTestCreator", builtInReport);
+        IReportCreator actual = ReportImplementationFactory.getReportCreator("activityReportByTest");
+
+        assertSame("Built-in report should take priority over module report", builtInReport, actual);
     }
 
     @Test

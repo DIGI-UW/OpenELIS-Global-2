@@ -397,6 +397,16 @@ public class TestResultItem implements ResultItem, Serializable {
     private boolean failedValidation = false;
     private boolean nonconforming = false;
     private WaitingRun waitingRun;
+    /**
+     * OGC-1200 FR-D6, FR-D7: the run this row's result is recorded in, or its open
+     * run of one.
+     */
+    private Long runId;
+    /**
+     * OGC-1200: the row's run of one is still open, so the row keeps its entry
+     * tools.
+     */
+    private boolean runOfOneOpen;
     private String testSortOrder = null;
     private boolean isReflexGroup = false;
     private int reflexParentGroup = 0;
@@ -1242,6 +1252,22 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setWaitingRun(WaitingRun waitingRun) {
         this.waitingRun = waitingRun;
+    }
+
+    public Long getRunId() {
+        return runId;
+    }
+
+    public void setRunId(Long runId) {
+        this.runId = runId;
+    }
+
+    public boolean isRunOfOneOpen() {
+        return runOfOneOpen;
+    }
+
+    public void setRunOfOneOpen(boolean runOfOneOpen) {
+        this.runOfOneOpen = runOfOneOpen;
     }
 
     public void setNonconforming(boolean nonconforming) {
