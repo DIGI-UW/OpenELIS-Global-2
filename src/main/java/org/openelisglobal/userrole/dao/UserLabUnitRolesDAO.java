@@ -15,8 +15,18 @@
  */
 package org.openelisglobal.userrole.dao;
 
+import java.util.List;
 import org.openelisglobal.common.dao.BaseDAO;
+import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
 
 public interface UserLabUnitRolesDAO extends BaseDAO<UserLabUnitRoles, Integer> {
+
+    /**
+     * Active users holding the role on the lab unit (by id) or on AllLabUnits, in
+     * one query against lab_unit_roles/lab_unit_role_map/lab_roles joined to
+     * system_user — not every user's lab-unit roles loaded and checked one at a
+     * time.
+     */
+    List<IdValuePair> getActiveUsersWithRoleOnLabUnit(String roleId, String labUnitId);
 }

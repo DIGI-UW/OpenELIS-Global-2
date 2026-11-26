@@ -41,6 +41,7 @@ import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl.ResultType;
+import org.openelisglobal.userrole.service.LabUnitStaffService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -48,6 +49,11 @@ import org.springframework.stereotype.Service;
 public class CytologySampleServiceImpl extends AuditableBaseObjectServiceImpl<CytologySample, Integer>
         implements CytologySampleService {
 
+    // the test section whose Results role a technician on these cases needs
+    private static final String LAB_UNIT = "Cytology";
+
+    @Autowired
+    private LabUnitStaffService labUnitStaffService;
     @Autowired
     protected CytologySampleDAO baseObjectDAO;
 
@@ -151,6 +157,8 @@ public class CytologySampleServiceImpl extends AuditableBaseObjectServiceImpl<Cy
             cytologySample.setCytoPathologist(systemUserService.get(form.getAssignedCytoPathologistId()));
         }
         if (!GenericValidator.isBlankOrNull(form.getAssignedTechnicianId())) {
+            labUnitStaffService.checkTechnician(form.getAssignedTechnicianId(), cytologySample.getTechnician(),
+                    LAB_UNIT);
             cytologySample.setTechnician(systemUserService.get(form.getAssignedTechnicianId()));
         }
         cytologySample.setStatus(form.getStatus());
