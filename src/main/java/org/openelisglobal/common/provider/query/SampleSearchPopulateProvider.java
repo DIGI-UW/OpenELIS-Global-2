@@ -48,12 +48,27 @@ import org.openelisglobal.spring.util.SpringContext;
  */
 public class SampleSearchPopulateProvider extends BaseQueryProvider {
 
-    protected SampleService sampleService = SpringContext.getBean(SampleService.class);
-    protected AnalysisService analysisService = SpringContext.getBean(AnalysisService.class);
-    protected IStatusService statusService = SpringContext.getBean(IStatusService.class);
-    protected SampleHumanService sampleHumanService = SpringContext.getBean(SampleHumanService.class);
-    protected SampleOrganizationService sampleOrganizationService = SpringContext
-            .getBean(SampleOrganizationService.class);
+    protected SampleService sampleService;
+    protected AnalysisService analysisService;
+    protected IStatusService statusService;
+    protected SampleHumanService sampleHumanService;
+    protected SampleOrganizationService sampleOrganizationService;
+
+    public SampleSearchPopulateProvider() {
+        this(SpringContext.getBean(SampleService.class), SpringContext.getBean(AnalysisService.class),
+                SpringContext.getBean(IStatusService.class), SpringContext.getBean(SampleHumanService.class),
+                SpringContext.getBean(SampleOrganizationService.class));
+    }
+
+    SampleSearchPopulateProvider(SampleService sampleService, AnalysisService analysisService,
+            IStatusService statusService, SampleHumanService sampleHumanService,
+            SampleOrganizationService sampleOrganizationService) {
+        this.sampleService = sampleService;
+        this.analysisService = analysisService;
+        this.statusService = statusService;
+        this.sampleHumanService = sampleHumanService;
+        this.sampleOrganizationService = sampleOrganizationService;
+    }
 
     /**
      * @throws LIMSInvalidConfigurationException
@@ -77,16 +92,14 @@ public class SampleSearchPopulateProvider extends BaseQueryProvider {
         if (!GenericValidator.isBlankOrNull(loinc) && !GenericValidator.isBlankOrNull(patientId)) {
             sample = getSampleForPatientIdAndLoinc(patientId, loinc, unvalidatedTestOnly);
         } else if (!GenericValidator.isBlankOrNull(accessionNo) && !GenericValidator.isBlankOrNull(loinc)) {
-            sample = getSampleByAccessionNumberAndTestId(accessionNo, testId, unvalidatedTestOnly);
+            sample = getSampleByAccessionNumberAndTestLoinc(accessionNo, loinc, unvalidatedTestOnly);
 
-            StatusSet statusSet = SpringContext.getBean(IStatusService.class)
-                    .getStatusSetForAccessionNumber(accessionNo);
+            StatusSet statusSet = statusService.getStatusSetForAccessionNumber(accessionNo);
             patientId = statusSet.getPatientId();
         } else if (!GenericValidator.isBlankOrNull(accessionNo)) {
-            sample = this.getSampleByAccessionNumberAndTestLoinc(accessionNo, loinc, unvalidatedTestOnly);
+            sample = getSampleByAccessionNumberAndTestId(accessionNo, testId, unvalidatedTestOnly);
 
-            StatusSet statusSet = SpringContext.getBean(IStatusService.class)
-                    .getStatusSetForAccessionNumber(accessionNo);
+            StatusSet statusSet = statusService.getStatusSetForAccessionNumber(accessionNo);
             patientId = statusSet.getPatientId();
         } else if (!GenericValidator.isBlankOrNull(testId) && !GenericValidator.isBlankOrNull(patientId)) {
             sample = getSampleForPatientIdAndTestId(patientId, testId, unvalidatedTestOnly);
@@ -104,6 +117,9 @@ public class SampleSearchPopulateProvider extends BaseQueryProvider {
 
     private Sample getSampleByAccessionNumberAndTestId(String accessionNo, String testId, boolean unvalidatedTestOnly) {
         Sample sample = sampleService.getSampleByAccessionNumber(accessionNo);
+        if (sample == null) {
+            return null;
+        }
         if (GenericValidator.isBlankOrNull(testId) || (sampleService.sampleContainsTest(sample.getId(), testId)
                 && (!unvalidatedTestOnly || testNotFinialized(testId, sample.getId())))) {
             return sample;
@@ -114,6 +130,9 @@ public class SampleSearchPopulateProvider extends BaseQueryProvider {
     private Sample getSampleByAccessionNumberAndTestLoinc(String accessionNo, String loinc,
             boolean unvalidatedTestOnly) {
         Sample sample = sampleService.getSampleByAccessionNumber(accessionNo);
+        if (sample == null) {
+            return null;
+        }
         if (GenericValidator.isBlankOrNull(loinc) || (sampleService.sampleContainsTestWithLoinc(sample.getId(), loinc)
                 && (!unvalidatedTestOnly || testWithLoincNotFinialized(loinc, sample.getId())))) {
             return sample;
@@ -123,13 +142,12 @@ public class SampleSearchPopulateProvider extends BaseQueryProvider {
 
     private boolean testNotFinialized(String testId, String sampleId) {
         List<String> statusList = new ArrayList<>();
-        statusList.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected));
-        statusList.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled));
-        statusList
-                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming_depricated));
-        statusList.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted));
-        statusList.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance));
-        statusList.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected));
+        statusList.add(statusService.getStatusID(AnalysisStatus.BiologistRejected));
+        statusList.add(statusService.getStatusID(AnalysisStatus.Canceled));
+        statusList.add(statusService.getStatusID(AnalysisStatus.NonConforming_depricated));
+        statusList.add(statusService.getStatusID(AnalysisStatus.NotStarted));
+        statusList.add(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
+        statusList.add(statusService.getStatusID(AnalysisStatus.TechnicalRejected));
         List<Analysis> analysises = analysisService.getAnalysesBySampleIdTestIdAndStatusId(Arrays.asList(sampleId),
                 Arrays.asList(testId), statusList);
         for (Analysis analysis : analysises) {
@@ -142,13 +160,12 @@ public class SampleSearchPopulateProvider extends BaseQueryProvider {
 
     private boolean testWithLoincNotFinialized(String loinc, String sampleId) {
         Set<String> statusList = new HashSet<>();
-        statusList.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected));
-        statusList.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled));
-        statusList
-                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming_depricated));
-        statusList.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted));
-        statusList.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance));
-        statusList.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected));
+        statusList.add(statusService.getStatusID(AnalysisStatus.BiologistRejected));
+        statusList.add(statusService.getStatusID(AnalysisStatus.Canceled));
+        statusList.add(statusService.getStatusID(AnalysisStatus.NonConforming_depricated));
+        statusList.add(statusService.getStatusID(AnalysisStatus.NotStarted));
+        statusList.add(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
+        statusList.add(statusService.getStatusID(AnalysisStatus.TechnicalRejected));
 
         List<Analysis> analysises = analysisService.getAnalysesBySampleIdAndStatusId(sampleId, statusList);
         for (Analysis analysis : analysises) {
