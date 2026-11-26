@@ -265,8 +265,9 @@ public class TestModifyServiceImpl implements TestModifyService {
             Localization name = test.getLocalizedTestName();
             Localization reportingName = test.getLocalizedReportingName();
             for (Locale locale : localizationService.getAllActiveLocales()) {
-                name.setLocalizedValue(locale, nameLocalization.getLocalizedValue(locale).trim());
-                reportingName.setLocalizedValue(locale, reportingNameLocalization.getLocalizedValue(locale).trim());
+                name.setLocalizedValue(locale.getLanguage(), nameLocalization.getLocalizedValue(locale).trim());
+                reportingName.setLocalizedValue(locale.getLanguage(),
+                        reportingNameLocalization.getLocalizedValue(locale).trim());
             }
             name.setSysUserId(userId);
             reportingName.setSysUserId(userId);
