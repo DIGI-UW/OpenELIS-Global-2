@@ -70,11 +70,14 @@ public class CommonValidationsRestControllerTest {
     private MockMvc mockMvc;
     private AutowireCapableBeanFactory originalFactory;
 
+    private Object originalMessageUtil;
+
     @Before
     public void setUp() throws Exception {
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
 
         originalFactory = (AutowireCapableBeanFactory) ReflectionTestUtils.getField(SpringContext.class, "factory");
+        originalMessageUtil = ReflectionTestUtils.getField(MessageUtil.class, "instance");
         AutowireCapableBeanFactory mockFactory = mock(AutowireCapableBeanFactory.class);
         ReflectionTestUtils.setField(SpringContext.class, "factory", mockFactory);
 
@@ -121,6 +124,7 @@ public class CommonValidationsRestControllerTest {
     @After
     public void tearDown() {
         ReflectionTestUtils.setField(SpringContext.class, "factory", originalFactory);
+        ReflectionTestUtils.setField(MessageUtil.class, "instance", originalMessageUtil);
     }
 
     // -------------------------------------------------------------------------
