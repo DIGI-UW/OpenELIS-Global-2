@@ -50,4 +50,12 @@ public interface QuestionnaireStorageService {
 
     /** Null-safe variant of {@link #getQuestionnaireResponse(String)}. */
     Optional<QuestionnaireResponse> getQuestionnaireResponse(UUID uuid);
+
+    /**
+     * Finds the QuestionnaireResponse for a given ServiceRequest (from an
+     * electronic order), checking the FHIR store first when configured, then
+     * matching local responses.
+     */
+    Optional<QuestionnaireResponse> getQuestionnaireResponseForServiceRequest(String serviceRequestId,
+            String patientFhirUuid);
 }

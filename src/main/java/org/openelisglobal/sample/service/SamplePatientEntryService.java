@@ -2,10 +2,13 @@ package org.openelisglobal.sample.service;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
+import org.hl7.fhir.r4.model.Task;
+import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.labelpreset.dto.OrderLabelPersistRequest;
 import org.openelisglobal.labelpreset.valueholder.OrderLabelRequest;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
+import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
 
 public interface SamplePatientEntryService {
@@ -40,4 +43,11 @@ public interface SamplePatientEntryService {
      * tests and panels still only requested on a sample type.
      */
     List<String> getTestNamesWithRangeNotApplied(org.openelisglobal.sample.valueholder.Sample sample);
+
+    /**
+     * Resolves an imported QuestionnaireResponse from an electronic order and
+     * prefills the order item's additionalQuestions and matching programId when not
+     * already present with a meaningful ID.
+     */
+    void resolveAndPrefillQuestionnaireResponse(SampleOrderItem sampleOrder, Task task, ElectronicOrder eOrder);
 }
