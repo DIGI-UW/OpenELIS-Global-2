@@ -113,6 +113,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -133,6 +134,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/rest/order")
+@PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
 public class OrderSearchRestController extends BaseRestController {
 
     @Lazy
@@ -693,6 +695,8 @@ public class OrderSearchRestController extends BaseRestController {
         }
     }
 
+    // Results and Validation load the order context on their pages too.
+    @PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS', 'VALIDATION', 'ADMIN')")
     @GetMapping(value = "/search", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> searchOrder(@RequestParam(required = false) String labNumber,
             HttpServletRequest request) {
