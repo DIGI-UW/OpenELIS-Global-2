@@ -1398,7 +1398,9 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
     }
 
     /** Signed out: on Completed and released, so nothing on the case changes. */
-    private boolean isSignedOut(PathologySample pathologySample) {
+    @Transactional
+    @Override
+    public boolean isSignedOut(PathologySample pathologySample) {
         return pathologySample.getStatus() == PathologyStatus.COMPLETED && hasBeenReleased(pathologySample);
     }
 
@@ -1928,7 +1930,8 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
      * history.activity is a one-character code, so the verb travels in the changes
      * payload, which never carries anything about the patient.
      */
-    private void recordRowEvent(String referenceTableName, String referenceId, String activity,
+    @Override
+    public void recordRowEvent(String referenceTableName, String referenceId, String activity,
             Map<String, Object> payload, String sysUserId) {
         ReferenceTables referenceTable = referenceTablesService.getReferenceTableByName(referenceTableName);
         if (referenceTable == null) {

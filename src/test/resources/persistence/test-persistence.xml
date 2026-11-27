@@ -132,6 +132,7 @@
         <class>org.openelisglobal.program.valueholder.pathology.PathologyConclusion</class>
         <class>org.openelisglobal.program.valueholder.pathology.PathologyBlock</class>
         <class>org.openelisglobal.program.valueholder.pathology.PathologyStageEvent</class>
+        <class>org.openelisglobal.program.valueholder.pathology.PathologyConsultation</class>
 
         <!-- Sample Storage Management entities (001-sample-storage) - annotation-based -->
         <class>org.openelisglobal.storage.valueholder.StorageRoom</class>

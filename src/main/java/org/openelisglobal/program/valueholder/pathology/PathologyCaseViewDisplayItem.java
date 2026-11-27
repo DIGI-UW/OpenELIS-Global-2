@@ -53,6 +53,12 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
 
     private List<RequestView> requests;
 
+    private List<ConsultationView> consultations;
+
+    private boolean takesConsultations;
+
+    private List<String> secondOpinionSuggestedFor;
+
     private List<ConclusionEntry> conclusions;
 
     private String conclusionText;
@@ -287,6 +293,30 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
 
     public void setRequests(List<RequestView> requests) {
         this.requests = requests;
+    }
+
+    public List<ConsultationView> getConsultations() {
+        return consultations;
+    }
+
+    public void setConsultations(List<ConsultationView> consultations) {
+        this.consultations = consultations;
+    }
+
+    public boolean isTakesConsultations() {
+        return takesConsultations;
+    }
+
+    public void setTakesConsultations(boolean takesConsultations) {
+        this.takesConsultations = takesConsultations;
+    }
+
+    public List<String> getSecondOpinionSuggestedFor() {
+        return secondOpinionSuggestedFor;
+    }
+
+    public void setSecondOpinionSuggestedFor(List<String> secondOpinionSuggestedFor) {
+        this.secondOpinionSuggestedFor = secondOpinionSuggestedFor;
     }
 
     public String getAssignedTechnicianId() {
@@ -544,5 +574,19 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
     public record RequestView(Integer id, String kind, Integer targetBlockId, Integer targetSlideId, String targetName,
             String stainId, String stainName, String priority, String instruction, String status, String cancelReason,
             Integer resultBlockId, Integer resultSlideId, String resultName, String raisedAt, String raisedBy) {
+    }
+
+    /**
+     * One second opinion as the case view shows it (FR-11), every name already
+     * rendered: who was asked, the reason by its name in the user's language (empty
+     * when none was given or the id names no entry), the before-treatment answer,
+     * who asked and when, and, once answered, the outcome with its note and who
+     * gave it and when. Status and outcome are the names of their values. The
+     * answer time also comes as epoch milliseconds, null while not answered, so the
+     * screen can tell the latest answer from an earlier one.
+     */
+    public record ConsultationView(Integer id, String status, String consultedUserId, String consultedUser,
+            String reason, boolean preTreatment, SlideStampView requested, String outcome, String outcomeNote,
+            SlideStampView answered, Long answeredAtMillis) {
     }
 }

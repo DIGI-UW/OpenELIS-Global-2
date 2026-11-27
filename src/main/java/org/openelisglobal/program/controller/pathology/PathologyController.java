@@ -221,7 +221,8 @@ public class PathologyController extends PathologyRestController {
                 return true;
             }
             if (cause.getMessage() != null && (cause.getMessage().contains("pathology_block_designation_uk")
-                    || cause.getMessage().contains("pathology_slide_designation_uk"))) {
+                    || cause.getMessage().contains("pathology_slide_designation_uk")
+                    || cause.getMessage().contains("pathology_consultation_awaited_uk"))) {
                 return true;
             }
         }

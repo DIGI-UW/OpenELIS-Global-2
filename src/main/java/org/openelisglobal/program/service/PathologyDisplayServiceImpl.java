@@ -26,12 +26,14 @@ import org.openelisglobal.program.util.PathologyRowOrder;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistrySample;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem;
+import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.ConsultationView;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.LabelVerificationView;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.RequestView;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.SlideStampView;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.StageEventView;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion.ConclusionType;
+import org.openelisglobal.program.valueholder.pathology.PathologyConsultation;
 import org.openelisglobal.program.valueholder.pathology.PathologyDisplayItem;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
@@ -70,6 +72,8 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
     private SystemUserService systemUserService;
     @Autowired
     private ImmunohistochemistrySampleService immunohistochemistrySampleService;
+    @Autowired
+    private PathologyConsultationService pathologyConsultationService;
 
     @Override
     @Transactional
@@ -177,6 +181,11 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
         displayItem.setTechniques(DictionaryEntryNames.namedPairs(dictionaryService, pathologySample.getTechniques()
                 .stream().filter(e -> e.getType() == TechniqueType.DICTIONARY).map(PathologyTechnique::getValue)));
         displayItem.setRequests(requestViews(pathologySample, users));
+        List<PathologyConsultation> consultations = pathologyConsultationService.getForCase(pathologySample.getId());
+        displayItem.setConsultations(consultationViews(consultations, users));
+        displayItem.setTakesConsultations(pathologyConsultationService.takesConsultations(pathologySample));
+        displayItem.setSecondOpinionSuggestedFor(
+                pathologyConsultationService.suggestedFor(pathologySample, consultations));
 
         SampleOrderService sampleOrderService = new SampleOrderService(pathologySample.getSample());
         SampleOrderItem sampleItem = sampleOrderService.getSampleOrderItem();
@@ -257,6 +266,30 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
                     pathologySample.nameOfBlock(request.getResultBlockId())
                             .or(() -> pathologySample.nameOfSlide(request.getResultSlideId())).orElse(null),
                     raised == null ? null : raised.at(), raised == null ? null : raised.by());
+        }).collect(Collectors.toList());
+    }
+
+    /**
+     * Every second opinion on the case, newest first as stored, with each user
+     * looked up once across these, the requests and the slide stamps. A reason id
+     * that names no entry is left empty.
+     */
+    private List<ConsultationView> consultationViews(List<PathologyConsultation> consultations,
+            Map<String, SystemUser> users) {
+        Function<SystemUser, SystemUser> lookedUp = user -> user == null ? null
+                : users.computeIfAbsent(user.getId(), systemUserService::get);
+        return consultations.stream().map(consultation -> {
+            SystemUser requestedBy = lookedUp.apply(consultation.getRequestedBy());
+            SystemUser consultedUser = lookedUp.apply(consultation.getConsultedUser());
+            SlideStampView answered = SlideStampView.of(consultation.getAnsweredAt(), consultedUser);
+            return new ConsultationView(consultation.getId(), nameOf(consultation.getStatus()),
+                    consultedUser == null ? null : consultedUser.getId(),
+                    consultedUser == null ? null : consultedUser.getDisplayName(),
+                    DictionaryEntryNames.localizedNameOf(dictionaryService, consultation.getReasonDictionaryId())
+                            .orElse(null),
+                    consultation.isPreTreatment(), SlideStampView.of(consultation.getRequestedAt(), requestedBy),
+                    nameOf(consultation.getOutcome()), consultation.getOutcomeNote(), answered,
+                    consultation.getAnsweredAt() == null ? null : consultation.getAnsweredAt().getTime());
         }).collect(Collectors.toList());
     }
 

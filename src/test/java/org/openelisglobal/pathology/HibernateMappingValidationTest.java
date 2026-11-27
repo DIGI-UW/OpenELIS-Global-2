@@ -28,6 +28,7 @@ import org.openelisglobal.program.valueholder.pathology.CassetteState;
 import org.openelisglobal.program.valueholder.pathology.CoverslipQc;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion;
+import org.openelisglobal.program.valueholder.pathology.PathologyConsultation;
 import org.openelisglobal.program.valueholder.pathology.PathologyReport;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
@@ -65,6 +66,7 @@ public class HibernateMappingValidationTest {
         sources.addAnnotatedClass(PathologyConclusion.class);
         sources.addAnnotatedClass(PathologyReport.class);
         sources.addAnnotatedClass(PathologyStageEvent.class);
+        sources.addAnnotatedClass(PathologyConsultation.class);
 
         // The programme, sample and staff a case points at, and everything their
         // own mappings reach.

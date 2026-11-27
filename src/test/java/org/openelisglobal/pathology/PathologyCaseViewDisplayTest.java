@@ -8,6 +8,7 @@ import static org.junit.Assert.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -22,6 +23,7 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
 import org.openelisglobal.program.service.PathologyDisplayService;
@@ -610,6 +612,161 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
                 .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
         assertEquals(row + ": the reading stage", readingStage, read.getReadingStage());
         assertEquals(row + ": whether the findings are open", open, read.isFindingsOpen());
+    }
+
+    /**
+     * The second opinions on the case are listed newest first with every name
+     * already rendered: who was asked and who asked, the reason, the stamps and the
+     * outcome with its note (FR-11).
+     */
+    @Test
+    public void theCaseListsItsSecondOpinions_newestFirst_withNamesReasonAndStamps() {
+        try (PathologyConsultationFixture people = PathologyConsultationFixture.seed(jdbcTemplate)) {
+            Timestamp askedFirst = Timestamp.valueOf("2026-03-02 09:15:00");
+            Timestamp answeredFirst = Timestamp.valueOf("2026-03-03 14:40:00");
+            Timestamp askedLater = Timestamp.valueOf("2026-03-05 11:05:00");
+            insertConsultation(9501, 1002, 1003, null, false, "ANSWERED", "DISAGREE", "Grade 2, not grade 1",
+                    askedFirst, answeredFirst);
+            insertConsultation(9502, 1002, 1003, PathologyConsultationFixture.DIFFICULT_DIAGNOSIS, true, "REQUESTED",
+                    null, null, askedLater, null);
+
+            List<PathologyCaseViewDisplayItem.ConsultationView> listed = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS).getConsultations();
+
+            assertEquals("newest first", List.of(9502, 9501), listed.stream()
+                    .map(PathologyCaseViewDisplayItem.ConsultationView::id).collect(Collectors.toList()));
+            String asker = systemUserService.get("1002").getDisplayName();
+            String asked = systemUserService.get("1003").getDisplayName();
+
+            PathologyCaseViewDisplayItem.ConsultationView awaited = listed.get(0);
+            assertEquals("REQUESTED", awaited.status());
+            assertEquals("1003", awaited.consultedUserId());
+            assertEquals(asked, awaited.consultedUser());
+            assertEquals("the reason by its name", "Difficult diagnosis", awaited.reason());
+            assertTrue(awaited.preTreatment());
+            assertEquals("when and by whom it was asked",
+                    new SlideStampView(DateUtil.convertTimestampToStringDateAndConfiguredHourTime(askedLater), asker),
+                    awaited.requested());
+            assertNull("no outcome yet", awaited.outcome());
+            assertNull(awaited.outcomeNote());
+            assertNull("no answer stamp yet", awaited.answered());
+            assertNull("no answer time yet", awaited.answeredAtMillis());
+
+            PathologyCaseViewDisplayItem.ConsultationView answered = listed.get(1);
+            assertEquals("ANSWERED", answered.status());
+            assertNull("no reason was given", answered.reason());
+            assertFalse(answered.preTreatment());
+            assertEquals("DISAGREE", answered.outcome());
+            assertEquals("Grade 2, not grade 1", answered.outcomeNote());
+            assertEquals("the answer is stamped with the pathologist asked",
+                    new SlideStampView(DateUtil.convertTimestampToStringDateAndConfiguredHourTime(answeredFirst),
+                            asked),
+                    answered.answered());
+            assertEquals("the answer time to order answers by", Long.valueOf(answeredFirst.getTime()),
+                    answered.answeredAtMillis());
+            assertEquals(
+                    new SlideStampView(DateUtil.convertTimestampToStringDateAndConfiguredHourTime(askedFirst), asker),
+                    answered.requested());
+        }
+    }
+
+    /**
+     * A second opinion asked for without a reason reads with no reason, and one
+     * whose reason has since been retired from the dictionary still reads that
+     * reason's name; neither fails the case read.
+     */
+    @Test
+    public void aRowWithNoReason_isLeftEmpty_andARetiredReasonIsStillNamed() {
+        try (PathologyConsultationFixture people = PathologyConsultationFixture.seed(jdbcTemplate)) {
+            insertConsultation(9503, 1002, 1003, null, true, "ANSWERED", "AGREE", null,
+                    Timestamp.valueOf("2026-03-04 10:00:00"), Timestamp.valueOf("2026-03-04 12:00:00"));
+            insertConsultation(9504, 1002, 1003, PathologyConsultationFixture.OLD_REASON, true, "REQUESTED", null, null,
+                    Timestamp.valueOf("2026-03-05 11:05:00"), null);
+
+            List<PathologyCaseViewDisplayItem.ConsultationView> listed = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS).getConsultations();
+
+            assertEquals("both rows are listed, newest first", List.of(9504, 9503), listed.stream()
+                    .map(PathologyCaseViewDisplayItem.ConsultationView::id).collect(Collectors.toList()));
+            assertEquals("the retired reason is still named", "Old reason", listed.get(0).reason());
+            assertNull("a row with no reason reads empty", listed.get(1).reason());
+        }
+    }
+
+    /**
+     * Whether a second opinion can be asked for follows where the case stands, and
+     * what the laboratory's rule suggests follows the coded conclusions (FR-11.5).
+     */
+    @Test
+    public void theCaseSaysWhetherASecondOpinionCanBeRequested_andWhatTheRuleSuggests() {
+        String ruleBefore = ConfigurationProperties.getInstance()
+                .getPropertyValue(Property.PATHOLOGY_SECOND_OPINION_SUGGEST_CODES);
+        try (StageSwitches switches = StageSwitches.allOn();
+                PathologyConsultationFixture people = PathologyConsultationFixture.seed(jdbcTemplate)) {
+            ConfigurationProperties.getInstance().setPropertyValue(Property.PATHOLOGY_SECOND_OPINION_SUGGEST_CODES,
+                    "C");
+            insertCaseRow("pathology_conclusion", 9601, PathologyFindingsDictionary.ADENOCARCINOMA);
+            insertCaseRow("pathology_conclusion", 9602, PathologyFindingsDictionary.CHRONIC_GASTRITIS);
+
+            for (PathologyStatus stage : List.of(PathologyStatus.ACCESSIONED, PathologyStatus.GROSSING,
+                    PathologyStatus.DECALCIFICATION, PathologyStatus.PROCESSING, PathologyStatus.EMBEDDING,
+                    PathologyStatus.MICROTOMY, PathologyStatus.STAINING, PathologyStatus.COVERSLIPPING)) {
+                PathologyCaseRows.storeAt(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS, stage);
+                PathologyCaseViewDisplayItem onTheBench = pathologyDisplayService
+                        .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+                assertFalse("a case on the bench at " + stage + " takes none", onTheBench.isTakesConsultations());
+                assertEquals("and suggests none at " + stage, List.of(), onTheBench.getSecondOpinionSuggestedFor());
+            }
+
+            for (String reviewOn : List.of("true", "false")) {
+                ConfigurationProperties.getInstance().setPropertyValue(Property.PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED,
+                        reviewOn);
+                for (PathologyStatus stage : List.of(PathologyStatus.READY_PATHOLOGIST, PathologyStatus.UNDER_REVIEW,
+                        PathologyStatus.COMPLETED)) {
+                    PathologyCaseRows.storeAt(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS, stage);
+                    PathologyCaseViewDisplayItem reached = pathologyDisplayService
+                            .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+                    String where = stage + " with review " + reviewOn;
+                    assertTrue("a case at " + where + " takes one", reached.isTakesConsultations());
+                    assertEquals("and the rule suggests the coded diagnosis that starts with C at " + where,
+                            List.of("C80.1 Adenocarcinoma"), reached.getSecondOpinionSuggestedFor());
+                }
+            }
+
+            ConfigurationProperties.getInstance().setPropertyValue(Property.PATHOLOGY_SECOND_OPINION_SUGGEST_CODES, "");
+            assertEquals("with no rule nothing is suggested", List.of(), pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS).getSecondOpinionSuggestedFor());
+            ConfigurationProperties.getInstance().setPropertyValue(Property.PATHOLOGY_SECOND_OPINION_SUGGEST_CODES,
+                    "C");
+
+            ConfigurationProperties.getInstance().setPropertyValue(Property.PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED,
+                    "true");
+            jdbcTemplate.update("UPDATE clinlims.pathology_request SET status = 'COMPLETED' WHERE id = ?", 301);
+            PathologyCaseRows.storeAt(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS, PathologyStatus.UNDER_REVIEW);
+            PathologySampleForm release = formWithRunReference(null);
+            release.setRelease(true);
+            pathologySampleService.updateWithFormValues(CASE_WITH_TWO_SPECIMEN_ITEMS, release);
+            PathologyCaseViewDisplayItem signedOut = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+            assertEquals("setup: signed out", PathologyStatus.COMPLETED, signedOut.getStatus());
+            assertFalse("a signed-out case takes none", signedOut.isTakesConsultations());
+            assertEquals("and suggests none", List.of(), signedOut.getSecondOpinionSuggestedFor());
+        } finally {
+            ConfigurationProperties.getInstance().setPropertyValue(Property.PATHOLOGY_SECOND_OPINION_SUGGEST_CODES,
+                    ruleBefore == null ? "" : ruleBefore);
+            PathologyCaseRows.clearStageHistory(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS);
+        }
+    }
+
+    private void insertConsultation(int id, int requestedBy, int consultedUser, String reasonId, boolean preTreatment,
+            String status, String outcome, String note, Timestamp requestedAt, Timestamp answeredAt) {
+        jdbcTemplate.update(
+                "INSERT INTO clinlims.pathology_consultation (id, pathology_sample_id, requested_by,"
+                        + " consulted_user_id, reason_dictionary_id, pre_treatment, status, outcome, outcome_note,"
+                        + " requested_at, answered_at, last_updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now())",
+                id, CASE_WITH_TWO_SPECIMEN_ITEMS, requestedBy, consultedUser,
+                reasonId == null ? null : Integer.valueOf(reasonId), preTreatment, status, outcome, note, requestedAt,
+                answeredAt);
     }
 
     /**

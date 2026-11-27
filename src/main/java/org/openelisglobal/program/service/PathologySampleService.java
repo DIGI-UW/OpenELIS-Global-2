@@ -2,6 +2,7 @@ package org.openelisglobal.program.service;
 
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
@@ -338,6 +339,9 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
      */
     boolean isReleasable(PathologySample pathologySample);
 
+    /** Signed out: on Completed and released, so nothing on the case changes. */
+    boolean isSignedOut(PathologySample pathologySample);
+
     /**
      * The stage at which the findings are written on this deployment: Under
      * Pathologist Review where it uses that stage, else Ready for Pathologist.
@@ -350,6 +354,14 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
      * Completed and never released.
      */
     boolean findingsOpen(PathologySample pathologySample);
+
+    /**
+     * Writes the audit entry an event on a row beside the case leaves behind: the
+     * verb and its facts travel as a JSON payload against the row's reference
+     * table, and never carry anything about the patient.
+     */
+    void recordRowEvent(String referenceTableName, String referenceId, String activity, Map<String, Object> payload,
+            String sysUserId);
 
     /**
      * The tests the case's order already holds as immunohistochemistry referral
