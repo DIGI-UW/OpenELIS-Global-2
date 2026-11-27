@@ -241,8 +241,10 @@ const caseViewShellScreen: CaseScreen = {
       timeout: UI_TIMEOUT,
     });
     const readBack = this.afterSave!(page);
+    // The question's own buttons stand in the bar where the primary was.
+    await expect(page.getByTestId("sign-out-confirm")).toBeVisible();
     await page
-      .getByTestId("sign-out-confirm")
+      .locator(".case-view__action-bar-actions")
       .getByRole("button", { name: "Sign out", exact: true })
       .click();
     await (await reportTab).close();

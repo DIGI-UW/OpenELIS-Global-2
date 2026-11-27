@@ -21,6 +21,7 @@ import {
   FINDINGS_SECTION,
   REVIEW_SECTION,
   STAGE_LABELS,
+  actionBarButton,
   addDiagnosisControl,
   advanceCase,
   diagnosisBox,
@@ -427,12 +428,11 @@ test.describe.serial("Pathology findings and conclusion", () => {
     const reportTab = page.context().waitForEvent("page", {
       timeout: UI_TIMEOUT,
     });
-    await signOutConfirm(page)
-      .getByRole("button", {
-        name: text("pathology.action.confirmSignOut"),
-        exact: true,
-      })
-      .click();
+    await expect(signOutConfirm(page)).toBeVisible();
+    await actionBarButton(
+      page,
+      text("pathology.action.confirmSignOut"),
+    ).click();
     await (await reportTab).close();
     await expectStage(page, STAGE_LABELS.COMPLETED);
 

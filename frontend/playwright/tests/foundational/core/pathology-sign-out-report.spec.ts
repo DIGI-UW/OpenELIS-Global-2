@@ -19,6 +19,8 @@ import {
 import {
   FINDINGS_SECTION,
   STAGE_LABELS,
+  actionBarButton,
+  actionBarButtons,
   criticalResultBanner,
   diagnosisChips,
   expandSection,
@@ -209,11 +211,35 @@ async function newestVersion(page: Page, caseId: string) {
   return Math.max(...reports.map((entry) => entry.version));
 }
 
+/** The sign-out question's Sign out, which stands in the bar for the primary. */
 function signOutButton(page: Page) {
-  return signOutConfirm(page).getByRole("button", {
-    name: text("pathology.action.confirmSignOut"),
-    exact: true,
-  });
+  return actionBarButton(page, text("pathology.action.confirmSignOut"));
+}
+
+/** The reopen row's Reopen, which stands in the bar for the primary. */
+function reopenButton(page: Page) {
+  return actionBarButton(page, text("pathology.action.confirmReopen"));
+}
+
+/** Neither the page nor the action bar scrolls sideways at any of `widths`. */
+async function expectNoSidewaysScrollAt(page: Page, widths: number[]) {
+  for (const width of widths) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(async () => {
+      const overflow = await page.evaluate(() => {
+        const root = document.documentElement;
+        const bar = document.querySelector(".case-view__action-bar")!;
+        return {
+          page: root.scrollWidth - root.clientWidth,
+          bar: bar.scrollWidth - bar.clientWidth,
+        };
+      });
+      expect(overflow, `no sideways scroll at ${width}`).toEqual({
+        page: 0,
+        bar: 0,
+      });
+    }).toPass({ timeout: UI_TIMEOUT });
+  }
 }
 
 /**
@@ -560,10 +586,7 @@ test.describe("Pathology sign-out and report versions", () => {
     await primaryAction(page).click();
     const reason = page.locator("#reopenReason");
     await expect(reason).toBeFocused();
-    const confirm = reopenRow(page).getByRole("button", {
-      name: text("pathology.action.confirmReopen"),
-      exact: true,
-    });
+    const confirm = reopenButton(page);
     await expect(confirm).toBeDisabled();
     await expect(reopenRow(page)).toContainText(
       text("pathology.error.reopenReasonRequired"),
@@ -670,9 +693,8 @@ test.describe("Pathology sign-out and report versions", () => {
 
     // Cancel puts focus back on the primary and sends nothing.
     await primaryAction(page).click();
-    await signOutConfirm(page)
-      .getByRole("button", { name: text("common.cancel") })
-      .click();
+    await expect(signOutConfirm(page)).toBeVisible();
+    await actionBarButton(page, text("common.cancel")).click();
     await expect(signOutConfirm(page)).toHaveCount(0);
     await expect(primaryAction(page)).toBeFocused();
 
@@ -683,12 +705,7 @@ test.describe("Pathology sign-out and report versions", () => {
 
     await primaryAction(page).click();
     await page.locator("#reopenReason").fill(REOPEN_REASON);
-    await reopenRow(page)
-      .getByRole("button", {
-        name: text("pathology.action.confirmReopen"),
-        exact: true,
-      })
-      .click();
+    await reopenButton(page).click();
     await expectStage(page, STAGE_LABELS[seeded.readingStage]);
     await expect(sectionHeader(page, FINDINGS_SECTION)).toBeFocused({
       timeout: UI_TIMEOUT,
@@ -697,6 +714,110 @@ test.describe("Pathology sign-out and report versions", () => {
       "aria-expanded",
       "true",
     );
+  });
+
+  test("a question in the bar holds only its own two buttons, and Cancel gives focus back to the primary", async ({
+    page,
+  }) => {
+    const seeded = await seedReadyCase(page);
+    await openCase(page, seeded);
+    const cancel = text("common.cancel");
+
+    // The sign-out question: Cancel, then Sign out where the primary was.
+    await expect(primaryAction(page)).toHaveText(
+      text("pathology.action.signOut"),
+    );
+    await expect(primaryAction(page)).toBeEnabled({ timeout: UI_TIMEOUT });
+    await primaryAction(page).click();
+    await expect(signOutConfirm(page)).toBeVisible();
+    await expect(actionBarButtons(page)).toHaveText([
+      cancel,
+      text("pathology.action.confirmSignOut"),
+    ]);
+    await expect(signOutButton(page)).toBeFocused();
+    await expectNoSidewaysScrollAt(page, DESKTOP_WIDTHS);
+    await actionBarButton(page, cancel).click();
+    await expect(signOutConfirm(page)).toHaveCount(0);
+    await expect(actionBarButtons(page)).toHaveText([
+      text("caseView.action.discard"),
+      text("caseView.action.saveDraft"),
+      text("pathology.action.signOut"),
+    ]);
+    await expect(primaryAction(page)).toBeFocused();
+
+    // The reopen row, once the case is signed out: Cancel, then Reopen.
+    await signOutCase(page, seeded);
+    await openCase(page, seeded);
+    await expectStage(page, STAGE_LABELS.COMPLETED);
+    await expect(primaryAction(page)).toHaveText(
+      text("pathology.action.reopen"),
+    );
+    await primaryAction(page).click();
+    await expect(page.locator("#reopenReason")).toBeFocused();
+    await expect(actionBarButtons(page)).toHaveText([
+      cancel,
+      text("pathology.action.confirmReopen"),
+    ]);
+    await expectNoSidewaysScrollAt(page, DESKTOP_WIDTHS);
+    await actionBarButton(page, cancel).click();
+    await expect(reopenRow(page)).toHaveCount(0);
+    await expect(actionBarButtons(page)).toHaveText([
+      text("caseView.action.discard"),
+      text("pathology.action.reopen"),
+    ]);
+    await expect(primaryAction(page)).toBeFocused();
+  });
+
+  test("Generate report and Upload report share one top, with the upload hint under Upload report, at 1480, 1366 and 1280", async ({
+    page,
+  }) => {
+    await onApplication(page);
+    // No findings yet, so Generate is held with its reason, which must not
+    // push the two buttons out of line.
+    const seeded = await createPathologyCase(page);
+    const section = page.locator(`#${REPORTS_SECTION}`);
+    for (const width of DESKTOP_WIDTHS) {
+      await page.setViewportSize({ width, height: 900 });
+      await openCase(page, seeded);
+      await expandSection(page, REPORTS_SECTION);
+      const generate = reportGenerateButton(page);
+      // Carbon's uploader also holds a hidden file input with the same name,
+      // and its own hidden copy of the hint: take the button and the hint
+      // that are on screen.
+      const upload = reportUpload(page).locator("button", {
+        hasText: text("pathology.action.uploadReport"),
+      });
+      const hint = section.locator("#reportUploadHint");
+      await expect(hint).toHaveText(text("clinicalAttachment.uploadHint"));
+      await expect(
+        section.getByText(text("pathology.error.reportNeedsFindings")),
+      ).toBeVisible();
+      await expect(upload).toBeVisible();
+      await expect(hint).toBeVisible();
+      const [g, u, h] = await Promise.all([
+        generate.boundingBox(),
+        upload.boundingBox(),
+        hint.boundingBox(),
+      ]);
+      expect(
+        Math.abs(g!.y - u!.y),
+        `Generate and Upload share a top at ${width}`,
+      ).toBeLessThan(1);
+      // The hint is the upload button's: right under it, starting at its
+      // left edge, never under Generate.
+      const gap = h!.y - (u!.y + u!.height);
+      expect(
+        gap,
+        `the hint is under Upload at ${width}`,
+      ).toBeGreaterThanOrEqual(0);
+      expect(gap, `the hint is close under Upload at ${width}`).toBeLessThan(
+        17,
+      );
+      expect(
+        Math.abs(h!.x - u!.x),
+        `the hint starts at Upload's left edge at ${width}`,
+      ).toBeLessThan(2);
+    }
   });
 
   test("reports at 1480, 1366 and 1280 do not scroll sideways, and pass axe", async ({

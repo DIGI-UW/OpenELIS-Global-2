@@ -151,6 +151,70 @@ describe("ReportsSection", () => {
     expect(screen.queryByRole("group")).not.toBeInTheDocument();
   });
 
+  it("theRegenerateQuestion_takesThePlaceOfTheReportButtons", async () => {
+    const { container, onGenerate, onUpload } = renderSection({
+      reports: [row(1, "DRAFT")],
+    });
+
+    await userEvent.click(generateButton());
+
+    expect(
+      screen.getByRole("group", {
+        name: "Generate a new version? Version 1 stays in the list as superseded.",
+      }),
+    ).toBeInTheDocument();
+    // Neither can be pressed past the question: neither is rendered.
+    expect(screen.queryByTestId("report-generate")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("report-upload")).not.toBeInTheDocument();
+    expect(fileInput(container)).toBeNull();
+    expect(onGenerate).not.toHaveBeenCalled();
+    expect(onUpload).not.toHaveBeenCalled();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Generate new version" }),
+    );
+    expect(onGenerate).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("group")).not.toBeInTheDocument();
+    expect(generateButton()).toBeInTheDocument();
+    expect(uploadButton()).toBeInTheDocument();
+  });
+
+  it("theRegenerateQuestion_takesThePlaceOfTheReportButtons_cancel", async () => {
+    const { onGenerate } = renderSection({ reports: [row(1, "DRAFT")] });
+
+    await userEvent.click(generateButton());
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(onGenerate).not.toHaveBeenCalled();
+    expect(screen.queryByRole("group")).not.toBeInTheDocument();
+    expect(uploadButton()).toBeEnabled();
+    // Generate is rendered again, a new element, and takes focus.
+    await waitFor(() => expect(generateButton()).toHaveFocus());
+  });
+
+  it("theUploadHint_isUnderTheUploadButton", () => {
+    renderSection({ dirty: true });
+    const HINT = "JPEG, PNG, or PDF, up to 10 MB.";
+
+    // The shown hint stands in the uploader's own block, after its button,
+    // so it reads as that button's and not as Generate's. The held
+    // Generate's reason is not in that block.
+    const shown = document.getElementById("reportUploadHint");
+    const uploadBlock = screen.getByTestId("report-upload");
+    expect(shown).toHaveTextContent(HINT);
+    const follows = (before, after) =>
+      Boolean(
+        before.compareDocumentPosition(after) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+    expect(uploadBlock).toContainElement(shown);
+    expect(follows(uploadButton(), shown)).toBe(true);
+    expect(uploadBlock).not.toContainElement(screen.getByText(SAVE_FIRST));
+    // A screen reader hears it once, as the upload button's description.
+    expect(shown).toHaveAttribute("aria-hidden", "true");
+    expect(uploadButton()).toHaveAccessibleDescription(HINT);
+  });
+
   it("aReopenedCase_whoseOnlyGeneratedVersionIsVoided_generatesWithoutAsking", async () => {
     // A voided version is never superseded: the question would be false, so
     // the generate goes as a first one does.
@@ -375,23 +439,20 @@ describe("ReportsSection", () => {
   });
 
   it("busy_disablesEveryControl", async () => {
-    const { container, rerender } = renderSection({
-      reports: [row(3, "EXTERNAL"), row(2, "EXTERNAL"), row(1, "DRAFT")],
-    });
-    // Both questions open, so their buttons are held too; version 2 keeps
-    // its own Withdraw button on the screen.
-    await userEvent.click(generateButton());
+    const reports = [row(3, "EXTERNAL"), row(2, "EXTERNAL"), row(1, "DRAFT")];
+    const { container, rerender, unmount } = renderSection({ reports });
+    // The withdraw question open, so its buttons are held too; version 2
+    // keeps its own Withdraw button on the screen.
     await userEvent.click(screen.getByTestId("report-withdraw-3"));
 
     // Unsaved work as well: a send in flight is named first, with no words.
     rerender({ busy: true, dirty: true });
 
-    const buttons = screen.getAllByRole("button");
+    let buttons = screen.getAllByRole("button");
     expect(buttons.map((button) => button.textContent)).toEqual(
       expect.arrayContaining([
         "Generate report",
         "Upload report",
-        "Generate new version",
         "Withdraw",
         "Cancel",
       ]),
@@ -405,6 +466,19 @@ describe("ReportsSection", () => {
     // In flight is not a reason to explain: the answer is on its way.
     expect(generateButton()).not.toHaveAttribute("aria-describedby");
     expect(generateButton()).not.toHaveAttribute("title");
+    unmount();
+
+    // The regenerate question, which stands where Generate and Upload were.
+    const view = renderSection({ reports });
+    await userEvent.click(generateButton());
+    view.rerender({ busy: true });
+    buttons = screen.getAllByRole("button");
+    expect(buttons.map((button) => button.textContent)).toEqual(
+      expect.arrayContaining(["Generate new version", "Cancel"]),
+    );
+    for (const button of buttons) {
+      expect(button).toBeDisabled();
+    }
   });
 
   it("focus_returnsToGenerate_whenTheSendEnds", async () => {

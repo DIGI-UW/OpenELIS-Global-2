@@ -42,6 +42,7 @@ const GENERATE_ID = "reportGenerate";
 const GENERATE_REASON_ID = "reportGenerateReason";
 const REGENERATE_CONFIRM_ID = "reportRegenerateConfirm";
 const REGENERATE_TEXT_ID = "reportRegenerateText";
+const UPLOAD_HINT_ID = "reportUploadHint";
 const reportLinkId = (id) => `reportLink${id}`;
 const withdrawId = (version) => `reportWithdraw${version}`;
 const withdrawConfirmId = (version) => `reportWithdrawConfirm${version}`;
@@ -136,17 +137,18 @@ const ReportsSection = ({
   };
 
   // The new tab is opened by the caller inside this click, so the click
-  // reaches it directly rather than after a state change.
+  // reaches it directly rather than after a state change. The question took
+  // the place of Generate, so focus goes to it once it is rendered again.
   const confirmRegenerate = () => {
     focusAfterSend.current = generateButton;
     onGenerate();
     setRegenerateOpen(false);
-    generateRef.current?.focus();
+    focusFirstOf("#" + GENERATE_ID);
   };
 
   const cancelRegenerate = () => {
     setRegenerateOpen(false);
-    generateRef.current?.focus();
+    focusFirstOf("#" + GENERATE_ID);
   };
 
   const chooseFile = async (event) => {
@@ -256,64 +258,9 @@ const ReportsSection = ({
     <Stack gap={5} className="pathology-case-view__reports">
       {/* No heading of its own: the accordion header above already names
           this section, and repeating the word under it says nothing. */}
-      <div className="pathology-case-view__report-actions">
-        <div className="pathology-case-view__report-generate">
-          <Button
-            kind="primary"
-            size="md"
-            id={GENERATE_ID}
-            data-testid="report-generate"
-            ref={generateRef}
-            disabled={generateDisabled}
-            title={heldText ?? undefined}
-            aria-describedby={heldText ? GENERATE_REASON_ID : undefined}
-            onClick={pressGenerate}
-          >
-            <FormattedMessage id="pathology.action.generateReport" />
-          </Button>
-          {heldText && (
-            <span id={GENERATE_REASON_ID} className="case-view__locked-hint">
-              {heldText}
-            </span>
-          )}
-        </div>
-        <div
-          ref={uploadRef}
-          className="pathology-case-view__report-upload"
-          data-testid="report-upload"
-        >
-          <FileUploader
-            ref={uploaderRef}
-            labelDescription={intl.formatMessage({
-              id: "clinicalAttachment.uploadHint",
-            })}
-            buttonLabel={intl.formatMessage({
-              id: "pathology.action.uploadReport",
-            })}
-            iconDescription={intl.formatMessage({
-              id: "pathology.action.uploadReport",
-            })}
-            multiple={false}
-            accept={["image/jpeg", "image/png", "application/pdf"]}
-            disabled={busy}
-            name=""
-            buttonKind="tertiary"
-            size="md"
-            filenameStatus="edit"
-            onChange={chooseFile}
-          />
-          {uploadError && (
-            <p
-              className="pathology-case-view__report-upload-error"
-              role="alert"
-            >
-              {uploadError}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {regenerateOpen && newestGenerated && (
+      {/* While the regenerate question is open it takes the place of the
+          row of buttons, so neither can be pressed past it. */}
+      {regenerateOpen && newestGenerated ? (
         <div role="group" aria-labelledby={REGENERATE_TEXT_ID}>
           <Stack gap={3}>
             <p id={REGENERATE_TEXT_ID}>
@@ -343,6 +290,80 @@ const ReportsSection = ({
             </div>
           </Stack>
         </div>
+      ) : (
+        <Stack gap={3}>
+          <div className="pathology-case-view__report-actions">
+            <div className="pathology-case-view__report-generate">
+              <Button
+                kind="primary"
+                size="md"
+                id={GENERATE_ID}
+                data-testid="report-generate"
+                ref={generateRef}
+                disabled={generateDisabled}
+                title={heldText ?? undefined}
+                aria-describedby={heldText ? GENERATE_REASON_ID : undefined}
+                onClick={pressGenerate}
+              >
+                <FormattedMessage id="pathology.action.generateReport" />
+              </Button>
+            </div>
+            {/* The uploader's own description is hidden from view (Carbon
+                sets it above the button, out of line with Generate) and
+                stays the button's description; the hint under the button
+                is the one shown. */}
+            <div
+              ref={uploadRef}
+              className="pathology-case-view__report-upload"
+              data-testid="report-upload"
+            >
+              <FileUploader
+                ref={uploaderRef}
+                labelDescription={intl.formatMessage({
+                  id: "clinicalAttachment.uploadHint",
+                })}
+                buttonLabel={intl.formatMessage({
+                  id: "pathology.action.uploadReport",
+                })}
+                iconDescription={intl.formatMessage({
+                  id: "pathology.action.uploadReport",
+                })}
+                multiple={false}
+                accept={["image/jpeg", "image/png", "application/pdf"]}
+                disabled={busy}
+                name=""
+                buttonKind="tertiary"
+                size="md"
+                filenameStatus="edit"
+                onChange={chooseFile}
+              />
+              {/* Under its own button. Read once, as the upload button's
+                  description, not again here. */}
+              <p
+                id={UPLOAD_HINT_ID}
+                className="pathology-case-view__hint"
+                aria-hidden="true"
+              >
+                <FormattedMessage id="clinicalAttachment.uploadHint" />
+              </p>
+              {uploadError && (
+                <p
+                  className="pathology-case-view__report-upload-error"
+                  role="alert"
+                >
+                  {uploadError}
+                </p>
+              )}
+            </div>
+          </div>
+          {/* The reason is a sentence of any length: under the row, it
+              cannot push Upload report below Generate report. */}
+          {heldText && (
+            <span id={GENERATE_REASON_ID} className="case-view__locked-hint">
+              {heldText}
+            </span>
+          )}
+        </Stack>
       )}
 
       {rows.length === 0 ? (

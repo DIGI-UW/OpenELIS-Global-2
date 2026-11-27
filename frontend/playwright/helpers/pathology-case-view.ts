@@ -367,10 +367,27 @@ export function overlaps(
  * The action bar's one primary button, whose label names where the case goes
  * next ("Begin grossing", "Send for processing"). From Ready for Pathologist
  * it is "Begin review" where the laboratory uses the review stage and the
- * case read offers it, and there is none after that.
+ * case read offers it, and there is none after that. While a question the
+ * primary opened is open (sign out, reopen), the question's own affirmative
+ * button stands here in its place.
  */
 export function primaryAction(page: Page) {
   return page.locator(".case-view__action-bar-actions .cds--btn--primary");
+}
+
+/**
+ * The buttons at the right end of the action bar: Discard changes, Save
+ * draft and the primary, or only the two of a question the primary opened.
+ */
+export function actionBarButtons(page: Page) {
+  return page.locator(".case-view__action-bar-actions").getByRole("button");
+}
+
+/** One of the action bar's buttons, by its whole name. */
+export function actionBarButton(page: Page, name: string) {
+  return page
+    .locator(".case-view__action-bar-actions")
+    .getByRole("button", { name, exact: true });
 }
 
 /** The control in the action bar's status slot that opens the return row. */
@@ -873,12 +890,15 @@ export async function pickDiagnosis(page: Page, query: string, label: string) {
   await expect(diagnosisBox(page)).toBeFocused();
 }
 
-/** The sign-out confirmation the action bar asks before it signs a case out. */
+/**
+ * The words of the sign-out confirmation the action bar asks before it signs
+ * a case out; its two buttons are the bar's (see actionBarButton).
+ */
 export function signOutConfirm(page: Page) {
   return page.getByTestId("sign-out-confirm");
 }
 
-/** The stage event row that records a reopen. */
+/** The reopen reason the action bar asks for; its buttons are the bar's. */
 export function reopenRow(page: Page) {
   return page.getByTestId("reopen-row");
 }

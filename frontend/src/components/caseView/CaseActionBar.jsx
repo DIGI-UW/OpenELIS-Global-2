@@ -58,10 +58,19 @@ let nextReasonId = 0;
  * canSaveDraft false leaves Save draft out: a case that can no longer be
  * edited has nothing a draft could store.
  *
- * primary shape: { labelKey, disabledReasonKey, disabledReasonValues,
+ * primary shape: { id, labelKey, disabledReasonKey, disabledReasonValues,
  * onClick }. It is always rendered as the Carbon primary button kind, so the
  * bar's one-primary hierarchy cannot be undermined by a caller choosing a
- * different kind for it.
+ * different kind for it. The id lets a screen hand focus back to the primary
+ * by selector once it is rendered again.
+ *
+ * A question the primary opened takes the place of the control that opened
+ * it: while `question` is given, its own buttons stand at the right end of
+ * the bar where the primary was, and Discard changes, Save draft and the
+ * primary are not rendered, so nothing beside the question can be pressed
+ * past it. The question's words go in the status slot. question shape:
+ * { actions, labelledBy }; with labelledBy the bar is a group named by the
+ * question's words.
  */
 const CaseActionBar = ({
   status = null,
@@ -71,6 +80,7 @@ const CaseActionBar = ({
   onSaveDraft,
   canSaveDraft = true,
   primary,
+  question = null,
 }) => {
   const intl = useIntl();
   const [reasonId] = useState(() => `case-action-bar-reason-${nextReasonId++}`);
@@ -86,7 +96,11 @@ const CaseActionBar = ({
     : null;
 
   return (
-    <div className="case-view__action-bar">
+    <div
+      className="case-view__action-bar"
+      role={question?.labelledBy ? "group" : undefined}
+      aria-labelledby={question?.labelledBy}
+    >
       {/*
         The Prompt is rendered from the bar's own markup rather than returned
         by useUnsavedChangesGuard. A hook that handed back an element would
@@ -114,29 +128,36 @@ const CaseActionBar = ({
         )}
       </div>
       <div className="case-view__action-bar-actions">
-        <Button kind="ghost" disabled={!dirty} onClick={onDiscard}>
-          <FormattedMessage id="caseView.action.discard" />
-        </Button>
-        {canSaveDraft && (
-          <Button kind="secondary" disabled={saving} onClick={onSaveDraft}>
-            <FormattedMessage id="caseView.action.saveDraft" />
-          </Button>
-        )}
-        {primary && (
-          <Button
-            kind="primary"
-            disabled={primaryDisabled}
-            onClick={primary.onClick}
-            title={primaryDisabled ? reasonText : undefined}
-            aria-describedby={primaryDisabled ? reasonId : undefined}
-          >
-            <FormattedMessage id={primary.labelKey} />
-          </Button>
-        )}
-        {primaryDisabled && (
-          <span id={reasonId} className="case-view__locked-hint">
-            {reasonText}
-          </span>
+        {question ? (
+          question.actions
+        ) : (
+          <>
+            <Button kind="ghost" disabled={!dirty} onClick={onDiscard}>
+              <FormattedMessage id="caseView.action.discard" />
+            </Button>
+            {canSaveDraft && (
+              <Button kind="secondary" disabled={saving} onClick={onSaveDraft}>
+                <FormattedMessage id="caseView.action.saveDraft" />
+              </Button>
+            )}
+            {primary && (
+              <Button
+                kind="primary"
+                id={primary.id}
+                disabled={primaryDisabled}
+                onClick={primary.onClick}
+                title={primaryDisabled ? reasonText : undefined}
+                aria-describedby={primaryDisabled ? reasonId : undefined}
+              >
+                <FormattedMessage id={primary.labelKey} />
+              </Button>
+            )}
+            {primaryDisabled && (
+              <span id={reasonId} className="case-view__locked-hint">
+                {reasonText}
+              </span>
+            )}
+          </>
         )}
       </div>
     </div>

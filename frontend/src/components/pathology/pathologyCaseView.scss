@@ -595,6 +595,20 @@ $stain-picker-min-size: 9.5rem;
   min-inline-size: 0;
 }
 
+// Carbon sets the uploader's description above its button, which would set
+// Upload report lower than Generate report beside it. It is hidden from view
+// only, so the button keeps it as its description; the same words are shown
+// under the button.
+.pathology-case-view__report-upload .cds--label-description {
+  @include visually-hidden.visually-hidden;
+}
+
+// Carbon keeps a margin above its list of chosen files even while the list
+// is empty, which would set the hint a line away from its button.
+.pathology-case-view__report-upload .cds--file-container:empty {
+  display: none;
+}
+
 .pathology-case-view__report-upload-error {
   @include type.type-style("helper-text-01");
 

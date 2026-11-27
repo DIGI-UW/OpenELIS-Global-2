@@ -1822,6 +1822,42 @@ describe("sending a case to the pathologist with open bench requests", () => {
     await waitFor(() => expect(sendAnyway()).toHaveFocus());
   });
 
+  it("aQuestionInTheBar_leavesOnlyItsOwnButtons_sendAnyway", async () => {
+    servedCase = caseAtStage("COVERSLIPPING", { requests: OPEN_TWO });
+    renderCaseView();
+    await loaded();
+
+    fireEvent.click(sendToPathologist());
+
+    // Cancel, then Send anyway last where the primary was; Discard changes,
+    // Save draft and the primary are not rendered while it is open.
+    expect(within(actionGroup()).getAllByRole("button")).toEqual([
+      cancelSend(),
+      sendAnyway(),
+    ]);
+    expect(sendAnyway()).toHaveClass("cds--btn--secondary");
+    expect(cancelSend()).toHaveClass("cds--btn--ghost");
+    expect(
+      screen.getByRole("group", {
+        name: intl.formatMessage(
+          { id: "pathology.banner.openRequests" },
+          { count: 2 },
+        ),
+      }),
+    ).toHaveClass("case-view__action-bar");
+
+    fireEvent.click(cancelSend());
+    expect(
+      within(actionGroup())
+        .getAllByRole("button")
+        .map((button) => button.textContent),
+    ).toEqual([
+      messages["caseView.action.discard"],
+      messages["caseView.action.saveDraft"],
+      messages["pathology.action.sendToPathologist"],
+    ]);
+  });
+
   it("tells two open requests with the same instruction apart by what each is asked of", async () => {
     servedCase = caseAtStage("COVERSLIPPING", {
       requests: [

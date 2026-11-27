@@ -5483,13 +5483,9 @@ describe("sign-out, reopen and the reports from the case view", () => {
     await waitFor(() => expect(confirmGroup()).not.toBeNull());
   };
 
+  // The question's own buttons stand in the bar where the primary was.
   const confirmSignOut = () =>
-    fireEvent.click(
-      within(confirmGroup()).getByText(
-        messages["pathology.action.confirmSignOut"],
-        { selector: "button" },
-      ),
-    );
+    fireEvent.click(barButton("pathology.action.confirmSignOut"));
 
   const answerSave = async (status, body) => {
     const callback = postToOpenElisServerFullResponse.mock.calls.at(-1)[2];
@@ -5520,24 +5516,22 @@ describe("sign-out, reopen and the reports from the case view", () => {
 
     expect(postToOpenElisServerFullResponse).not.toHaveBeenCalled();
     expect(openSpy).not.toHaveBeenCalled();
+    // The bar is the question while it is open, named by its words.
     const group = screen.getByRole("group", {
       name: intl.formatMessage(
         { id: "pathology.confirm.signOut" },
         { labNumber: "ACC9" },
       ),
     });
-    expect(group).toBe(confirmGroup());
+    expect(group).toHaveClass("case-view__action-bar");
+    expect(group).toContainElement(confirmGroup());
     expect(
       within(group).queryByText(messages["pathology.confirm.signOutCritical"], {
         exact: false,
       }),
     ).toBeNull();
     await waitFor(() =>
-      expect(
-        within(group).getByText(messages["pathology.action.confirmSignOut"], {
-          selector: "button",
-        }),
-      ).toHaveFocus(),
+      expect(barButton("pathology.action.confirmSignOut")).toHaveFocus(),
     );
   });
 
@@ -5684,10 +5678,7 @@ describe("sign-out, reopen and the reports from the case view", () => {
     fireEvent.click(barButton("pathology.action.reopen"));
     await waitFor(() => expect(reopenRow()).not.toBeNull());
   };
-  const reopenConfirm = () =>
-    within(reopenRow()).getByText(messages["pathology.action.confirmReopen"], {
-      selector: "button",
-    });
+  const reopenConfirm = () => barButton("pathology.action.confirmReopen");
 
   it("reopen_asksForAReason_andIsHeldWithoutOne", async () => {
     await loadedAsPathologist(signedOutCase());
@@ -5793,7 +5784,9 @@ describe("sign-out, reopen and the reports from the case view", () => {
     const reads = holdCaseReads();
     await answerSave(200, { finalReport: SIGNED_OUT_FINAL });
     expect(reads.count()).toBe(1);
-    expect(barButton("pathology.action.signOut")).toBeDisabled();
+    // The question stays in the bar, held, until the read back.
+    expect(barButton("pathology.action.confirmSignOut")).toBeDisabled();
+    expect(barButton("pathology.action.signOut")).toBeNull();
 
     addNotification.mockClear();
     await reads.fail();
@@ -5818,7 +5811,8 @@ describe("sign-out, reopen and the reports from the case view", () => {
     fireEvent.click(reopenConfirm());
     const reopenReads = holdCaseReads();
     await answerJson("/reopen", { status: "UNDER_REVIEW" });
-    expect(barButton("pathology.action.reopen")).toBeDisabled();
+    expect(barButton("pathology.action.confirmReopen")).toBeDisabled();
+    expect(barButton("pathology.action.reopen")).toBeNull();
 
     await reopenReads.fail();
 
@@ -5844,9 +5838,11 @@ describe("sign-out, reopen and the reports from the case view", () => {
     const reads = holdCaseReads();
     await answerSave(200, { finalReport: SIGNED_OUT_FINAL });
 
-    fireEvent.click(barButton("pathology.action.signOut"));
-    expect(confirmGroup()).toBeNull();
-    fireEvent.click(barButton("caseView.action.saveDraft"));
+    // The question is still the bar, its buttons held; Save draft is not
+    // there to press.
+    expect(confirmGroup()).not.toBeNull();
+    expect(barButton("caseView.action.saveDraft")).toBeNull();
+    fireEvent.click(barButton("pathology.action.confirmSignOut"));
     expect(postToOpenElisServerFullResponse).toHaveBeenCalledTimes(1);
     await reads.fail();
 
@@ -5874,10 +5870,7 @@ describe("sign-out, reopen and the reports from the case view", () => {
     // button, as a fast double click does: the second meets the hold.
     await loadedAsPathologist(readyToSignOut());
     await openSignOut();
-    const confirm = within(confirmGroup()).getByText(
-      messages["pathology.action.confirmSignOut"],
-      { selector: "button" },
-    );
+    const confirm = barButton("pathology.action.confirmSignOut");
 
     act(() => {
       confirm.click();
@@ -5905,17 +5898,80 @@ describe("sign-out, reopen and the reports from the case view", () => {
     expect(tab.close).not.toHaveBeenCalled();
   });
 
+  const barButtonNames = () =>
+    within(actionGroup())
+      .getAllByRole("button")
+      .map((button) => button.textContent);
+
+  it("aQuestionInTheBar_leavesOnlyItsOwnButtons_signOut", async () => {
+    await loadedAsPathologist(readyToSignOut());
+    // Unsaved work, so Discard changes would be live beside the question.
+    fireEvent.change(document.getElementById("microscopyExam"), {
+      target: { value: "Benign naevus, margins clear" },
+    });
+
+    await openSignOut();
+
+    expect(barButtonNames()).toEqual([
+      messages["common.cancel"],
+      messages["pathology.action.confirmSignOut"],
+    ]);
+    expect(barButton("pathology.action.confirmSignOut")).toHaveClass(
+      "cds--btn--primary",
+    );
+    expect(barButton("common.cancel")).toHaveClass("cds--btn--ghost");
+    expect(
+      document.querySelector(".case-view__action-bar-status"),
+    ).toContainElement(confirmGroup());
+  });
+
+  it("aQuestionInTheBar_leavesOnlyItsOwnButtons_reopen", async () => {
+    await loadedAsPathologist(signedOutCase());
+
+    await openReopenRow();
+
+    expect(barButtonNames()).toEqual([
+      messages["common.cancel"],
+      messages["pathology.action.confirmReopen"],
+    ]);
+    expect(barButton("pathology.action.confirmReopen")).toHaveClass(
+      "cds--btn--primary",
+    );
+    expect(
+      document.querySelector(".case-view__action-bar-status"),
+    ).toContainElement(reopenRow());
+  });
+
+  it("cancelInTheBar_bringsTheBarBack", async () => {
+    const { unmount } = await loadedAsPathologist(readyToSignOut());
+    await openSignOut();
+    fireEvent.click(barButton("common.cancel"));
+    expect(barButtonNames()).toEqual([
+      messages["caseView.action.discard"],
+      messages["caseView.action.saveDraft"],
+      messages["pathology.action.signOut"],
+    ]);
+    unmount();
+
+    // A signed-out case has no Save draft to bring back.
+    await loadedAsPathologist(signedOutCase());
+    await openReopenRow();
+    fireEvent.click(barButton("common.cancel"));
+    expect(barButtonNames()).toEqual([
+      messages["caseView.action.discard"],
+      messages["pathology.action.reopen"],
+    ]);
+  });
+
   it("cancel_closesEitherRow_andSendsNothing", async () => {
     const { unmount } = await loadedAsPathologist(readyToSignOut());
     await openSignOut();
-    const signOutPrimary = barButton("pathology.action.signOut");
-    fireEvent.click(
-      within(confirmGroup()).getByText(messages["common.cancel"], {
-        selector: "button",
-      }),
-    );
+    fireEvent.click(barButton("common.cancel"));
     expect(confirmGroup()).toBeNull();
-    await waitFor(() => expect(signOutPrimary).toHaveFocus());
+    // The primary is rendered again, a new element, and takes focus.
+    await waitFor(() =>
+      expect(barButton("pathology.action.signOut")).toHaveFocus(),
+    );
     expect(postToOpenElisServerFullResponse).not.toHaveBeenCalled();
     expect(openSpy).not.toHaveBeenCalled();
     unmount();
@@ -5926,14 +5982,11 @@ describe("sign-out, reopen and the reports from the case view", () => {
     fireEvent.change(document.getElementById("reopenReason"), {
       target: { value: "Margin misreported" },
     });
-    const reopenPrimary = barButton("pathology.action.reopen");
-    fireEvent.click(
-      within(reopenRow()).getByText(messages["common.cancel"], {
-        selector: "button",
-      }),
-    );
+    fireEvent.click(barButton("common.cancel"));
     expect(reopenRow()).toBeNull();
-    await waitFor(() => expect(reopenPrimary).toHaveFocus());
+    await waitFor(() =>
+      expect(barButton("pathology.action.reopen")).toHaveFocus(),
+    );
     expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
 
     // Opened again, the reason typed before is gone.
@@ -6092,10 +6145,8 @@ describe("sign-out, reopen and the reports from the case view", () => {
       error: "bad file",
     });
     expect(
-      within(screen.getByTestId("report-upload").parentElement).getAllByText(
-        messages["clinicalAttachment.uploadHint"],
-      ).length,
-    ).toBeGreaterThan(1);
+      within(screen.getByTestId("report-upload")).getByRole("alert"),
+    ).toHaveTextContent(messages["clinicalAttachment.uploadHint"]);
     await reads.land();
     expect(screen.getAllByTestId(/^report-row-/)).toHaveLength(1);
   });

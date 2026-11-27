@@ -67,6 +67,45 @@ describe("CaseActionBar", () => {
     expect(screen.getAllByRole("button")).toHaveLength(3);
   });
 
+  it("aQuestionInTheBar_leavesOnlyItsOwnButtons", () => {
+    renderBar({
+      dirty: true,
+      status: <p id="question-words">Sign out this case?</p>,
+      primary: { labelKey: "pathology.label.release", onClick: vi.fn() },
+      question: {
+        labelledBy: "question-words",
+        actions: (
+          <>
+            <button type="button">No</button>
+            <button type="button">Yes</button>
+          </>
+        ),
+      },
+    });
+
+    expect(
+      screen.getAllByRole("button").map((button) => button.textContent),
+    ).toEqual(["No", "Yes"]);
+    expect(
+      screen.getByRole("group", { name: "Sign out this case?" }),
+    ).toHaveClass("case-view__action-bar");
+  });
+
+  it("gives the primary the id it is handed, to be found again by it", () => {
+    renderBar({
+      primary: {
+        id: "casePrimary",
+        labelKey: "pathology.label.release",
+        onClick: vi.fn(),
+      },
+    });
+
+    expect(
+      screen.getByRole("button", { name: messages["pathology.label.release"] }),
+    ).toHaveAttribute("id", "casePrimary");
+    expect(screen.queryByRole("group")).toBeNull();
+  });
+
   it("renders exactly two buttons when no primary action is given", () => {
     renderBar();
 

@@ -161,6 +161,11 @@ const REOPEN_HINT_ID = "reopenConfirmReason";
 
 const REPORTS_SECTION_ID = "pathology-section-reports";
 
+// The action bar's primary. A question it opens takes its place, so once the
+// question closes the primary is a new element, found again by this id.
+const PRIMARY_ID = "casePrimaryAction";
+const PRIMARY = "#" + PRIMARY_ID;
+
 const TISSUE_TYPES_URL = "/rest/dictionary/category/pathology_tissue_types";
 
 // Where focus lands once a request change has been read back: the table's
@@ -281,7 +286,7 @@ function PathologyCaseView() {
   const [returnReason, setReturnReason] = useState("");
   // The confirmation before sending the case to the pathologist with open
   // requests, which shares the status slot with the return row, one at a
-  // time, and the primary that opened it, where Cancel puts focus back.
+  // time.
   const [sendConfirmOpen, setSendConfirmOpen] = useState(false);
   // The sign-out confirmation and the reopen row, which share the status
   // slot with the return row and the send confirmation, one at a time.
@@ -290,7 +295,6 @@ function PathologyCaseView() {
   const [reopenReason, setReopenReason] = useState("");
   // What the server said about the last refused upload, beside the uploader.
   const [uploadError, setUploadError] = useState(null);
-  const primaryButton = useRef(null);
   // A request started from a Microtomy row: its kind and target, and a nonce
   // so each press opens the new request again (see RequestsTable).
   const [requestPrefill, setRequestPrefill] = useState(null);
@@ -702,8 +706,12 @@ function PathologyCaseView() {
   //
   // Focus follows the case to the section of the stage it now stands at, or
   // to the return control where that section is not this person's to open.
-  const moveCase = (direction, payload, toastKey, startedBy) =>
-    sendHeld({
+  //
+  // The send question stays in the bar, held, until the case is read back;
+  // an answer that ends it closes it only then.
+  const moveCase = (direction, payload, toastKey, startedBy) => {
+    let closeSend = false;
+    return sendHeld({
       path: "/" + direction,
       body: { from: stage, ...payload },
       startedBy,
@@ -719,7 +727,7 @@ function PathologyCaseView() {
           });
           setReturnOpen(false);
           setReturnReason("");
-          setSendConfirmOpen(false);
+          closeSend = true;
           // Begin review opens Findings & Conclusion and lands in the reading
           // itself, not on its header: the pathologist pressed it to write the
           // microscopic description, the macroscopic one being already
@@ -756,8 +764,8 @@ function PathologyCaseView() {
           // closed rather than left naming a different target.
           setReturnOpen(false);
           setReturnReason("");
-          setSendConfirmOpen(false);
-          return direction === "return" ? [RETURN_STAGE_BUTTON] : null;
+          closeSend = true;
+          return direction === "return" ? [RETURN_STAGE_BUTTON] : [PRIMARY];
         }
         // A request opened behind the page: the confirmation is shown, or
         // stays, listing what the case read after this refusal holds open.
@@ -769,7 +777,13 @@ function PathologyCaseView() {
         }
         return null;
       },
+    }).then((outcome) => {
+      if (closeSend) {
+        setSendConfirmOpen(false);
+      }
+      return outcome;
     });
+  };
 
   // Records a stain status or a coverslip QC result on one slide or a batch
   // (FR-8.2). The toast names only the slides the mark changed, since the
@@ -888,7 +902,6 @@ function PathologyCaseView() {
   // asks first, inline, since nothing is destroyed; every other move goes at
   // once. The return row closes, as the status slot holds one row at a time.
   const advanceCase = (event) => {
-    primaryButton.current = event?.currentTarget ?? null;
     if (
       caseInfo.nextStage === "READY_PATHOLOGIST" &&
       openRequestRows.length > 0
@@ -921,8 +934,7 @@ function PathologyCaseView() {
 
   const cancelSend = () => {
     setSendConfirmOpen(false);
-    const primary = primaryButton.current;
-    setTimeout(() => primary?.isConnected && primary.focus());
+    focusFirstOf(PRIMARY);
   };
 
   // Opens a section whose header is collapsed. CaseSection seeds its open
@@ -1190,7 +1202,9 @@ function PathologyCaseView() {
     const tab = openPendingTab(
       intl.formatMessage({ id: "pathology.tab.preparingReport" }),
     );
+    // The question stays in the bar, held, until the hold is let go.
     const release = holdBar((read) => {
+      setSignOutOpen(false);
       if (!read) {
         toast(NotificationKinds.error, "pathology.error.reloadCase");
       }
@@ -1214,7 +1228,6 @@ function PathologyCaseView() {
           return;
         }
         setNotificationVisible(true);
-        setSignOutOpen(false);
         if (!saved) {
           tab.close();
           addNotification({
@@ -1228,6 +1241,7 @@ function PathologyCaseView() {
             ),
           });
           release();
+          focusFirstOf(PRIMARY);
           return;
         }
         if (body?.finalReport) {
@@ -1255,8 +1269,7 @@ function PathologyCaseView() {
     );
   };
 
-  const openSignOut = (event) => {
-    primaryButton.current = event?.currentTarget ?? null;
+  const openSignOut = () => {
     setReturnOpen(false);
     setReturnReason("");
     setSendConfirmOpen(false);
@@ -1264,18 +1277,12 @@ function PathologyCaseView() {
     focusFirstOf("#" + SIGN_OUT_CONFIRM_BUTTON_ID);
   };
 
-  const backToPrimary = () => {
-    const primary = primaryButton.current;
-    setTimeout(() => primary?.isConnected && primary.focus());
-  };
-
   const cancelSignOut = () => {
     setSignOutOpen(false);
-    backToPrimary();
+    focusFirstOf(PRIMARY);
   };
 
-  const openReopen = (event) => {
-    primaryButton.current = event?.currentTarget ?? null;
+  const openReopen = () => {
     setReturnOpen(false);
     setReturnReason("");
     setReopenOpen(true);
@@ -1285,22 +1292,25 @@ function PathologyCaseView() {
   const cancelReopen = () => {
     setReopenOpen(false);
     setReopenReason("");
-    backToPrimary();
+    focusFirstOf(PRIMARY);
   };
 
   // A reopen is sent as a return is, naming the stage the page shows, so a
   // page someone else has overtaken is refused and read back. Once the case
   // is read back the toast names the final version it shows newly voided.
+  //
+  // The row stays in the bar, held, until the case is read back; an answer
+  // that ends it closes it only then.
   const reopenCase = (event) => {
     const before = currentReport(caseInfo.reports);
+    let closeRow = false;
     sendHeld({
       path: "/reopen",
       body: { from: stage, reason: reopenReason.trim() },
       startedBy: event?.currentTarget,
       onAnswer: (response, ok) => {
         if (ok) {
-          setReopenOpen(false);
-          setReopenReason("");
+          closeRow = true;
           setFindingsOpenRequest((count) => count + 1);
           return [sectionHeader(FINDINGS_SECTION_ID)];
         }
@@ -1316,12 +1326,16 @@ function PathologyCaseView() {
             }),
         });
         if (conflict) {
-          setReopenOpen(false);
-          setReopenReason("");
+          closeRow = true;
+          return [PRIMARY];
         }
         return null;
       },
     }).then(({ ok, read }) => {
+      if (closeRow) {
+        setReopenOpen(false);
+        setReopenReason("");
+      }
       if (!ok) {
         return;
       }
@@ -1624,15 +1638,16 @@ function PathologyCaseView() {
       : null);
 
   // FR-10.11: the case goes to the pathologist with requests open only once
-  // the person has seen each one. Inline in the status slot, not a modal, as
+  // the person has seen each one. Inline in the action bar, not a modal, as
   // nothing is destroyed; Send anyway is held as the primary is.
+  //
+  // Each question the primary opens takes the primary's place: its words in
+  // the status slot, its two buttons at the right end of the bar, the
+  // affirmative one last, as the primary is. A reason it is held for sits
+  // with the words.
   const sendConfirmShown = sendConfirmOpen && openRequestRows.length > 0;
   const sendConfirmation = (
-    <div
-      id={SEND_CONFIRM_ID}
-      role="group"
-      aria-labelledby={SEND_CONFIRM_TEXT_ID}
-    >
+    <div id={SEND_CONFIRM_ID}>
       <Stack gap={3}>
         <p id={SEND_CONFIRM_TEXT_ID}>
           <FormattedMessage
@@ -1655,53 +1670,48 @@ function PathologyCaseView() {
             </ListItem>
           ))}
         </UnorderedList>
-        <div className="pathology-case-view__stage-control">
-          <Button
-            kind="secondary"
-            size="sm"
-            id={SEND_ANYWAY_ID}
-            disabled={Boolean(advanceBlocked)}
-            title={blockedText(advanceBlocked) ?? undefined}
-            aria-label={intl.formatMessage(
-              { id: "pathology.action.sendAnywayOf" },
-              { name: openNames.join(", ") },
-            )}
-            aria-describedby={advanceBlocked ? SEND_ANYWAY_HINT_ID : undefined}
-            onClick={sendAnyway}
-          >
-            <FormattedMessage id="pathology.action.sendAnyway" />
-          </Button>
-          {/* Held while the move is out, as the return row's Cancel is. */}
-          <Button
-            kind="ghost"
-            size="sm"
-            id={SEND_ANYWAY_CANCEL_ID}
-            disabled={held}
-            onClick={cancelSend}
-          >
-            <FormattedMessage id="common.cancel" />
-          </Button>
-          {advanceBlocked && (
-            <span id={SEND_ANYWAY_HINT_ID} className="case-view__locked-hint">
-              {blockedText(advanceBlocked)}
-            </span>
-          )}
-        </div>
+        {advanceBlocked && (
+          <span id={SEND_ANYWAY_HINT_ID} className="case-view__locked-hint">
+            {blockedText(advanceBlocked)}
+          </span>
+        )}
       </Stack>
     </div>
   );
+  const sendConfirmActions = (
+    <>
+      {/* Held while the move is out, as the return row's Cancel is. */}
+      <Button
+        kind="ghost"
+        id={SEND_ANYWAY_CANCEL_ID}
+        disabled={held}
+        onClick={cancelSend}
+      >
+        <FormattedMessage id="common.cancel" />
+      </Button>
+      <Button
+        kind="secondary"
+        id={SEND_ANYWAY_ID}
+        disabled={Boolean(advanceBlocked)}
+        title={blockedText(advanceBlocked) ?? undefined}
+        aria-label={intl.formatMessage(
+          { id: "pathology.action.sendAnywayOf" },
+          { name: openNames.join(", ") },
+        )}
+        aria-describedby={advanceBlocked ? SEND_ANYWAY_HINT_ID : undefined}
+        onClick={sendAnyway}
+      >
+        <FormattedMessage id="pathology.action.sendAnyway" />
+      </Button>
+    </>
+  );
 
-  // D12: the sign-out asks once, inline in the status slot as the send
+  // D12: the sign-out asks once, inline in the action bar as the send
   // confirmation does, naming the case and what follows; a critical form
   // adds that a critical result will be raised.
   const signOutShown = signOutOpen && action === "signOut";
   const signOutConfirmation = (
-    <div
-      id={SIGN_OUT_CONFIRM_ID}
-      data-testid="sign-out-confirm"
-      role="group"
-      aria-labelledby={SIGN_OUT_CONFIRM_TEXT_ID}
-    >
+    <div id={SIGN_OUT_CONFIRM_ID} data-testid="sign-out-confirm">
       <Stack gap={3}>
         <p id={SIGN_OUT_CONFIRM_TEXT_ID}>
           <FormattedMessage
@@ -1715,35 +1725,35 @@ function PathologyCaseView() {
             </>
           )}
         </p>
-        <div className="pathology-case-view__stage-control">
-          <Button
-            kind="secondary"
-            size="sm"
-            id={SIGN_OUT_CONFIRM_BUTTON_ID}
-            disabled={Boolean(signOutBlocked)}
-            title={blockedText(signOutBlocked) ?? undefined}
-            aria-describedby={signOutBlocked ? SIGN_OUT_HINT_ID : undefined}
-            onClick={signOut}
-          >
-            <FormattedMessage id="pathology.action.confirmSignOut" />
-          </Button>
-          <Button
-            kind="ghost"
-            size="sm"
-            id={SIGN_OUT_CANCEL_ID}
-            disabled={held}
-            onClick={cancelSignOut}
-          >
-            <FormattedMessage id="common.cancel" />
-          </Button>
-          {signOutBlocked && (
-            <span id={SIGN_OUT_HINT_ID} className="case-view__locked-hint">
-              {blockedText(signOutBlocked)}
-            </span>
-          )}
-        </div>
+        {signOutBlocked && (
+          <span id={SIGN_OUT_HINT_ID} className="case-view__locked-hint">
+            {blockedText(signOutBlocked)}
+          </span>
+        )}
       </Stack>
     </div>
+  );
+  const signOutActions = (
+    <>
+      <Button
+        kind="ghost"
+        id={SIGN_OUT_CANCEL_ID}
+        disabled={held}
+        onClick={cancelSignOut}
+      >
+        <FormattedMessage id="common.cancel" />
+      </Button>
+      <Button
+        kind="primary"
+        id={SIGN_OUT_CONFIRM_BUTTON_ID}
+        disabled={Boolean(signOutBlocked)}
+        title={blockedText(signOutBlocked) ?? undefined}
+        aria-describedby={signOutBlocked ? SIGN_OUT_HINT_ID : undefined}
+        onClick={signOut}
+      >
+        <FormattedMessage id="pathology.action.confirmSignOut" />
+      </Button>
+    </>
   );
 
   // S-8.3: the reason a signed-out case is reopened, asked inline as the
@@ -1775,9 +1785,25 @@ function PathologyCaseView() {
         value={reopenReason}
         onChange={(e) => setReopenReason(e.target.value)}
       />
+      {reopenConfirmBlocked && (
+        <span id={REOPEN_HINT_ID} className="case-view__locked-hint">
+          {blockedText(reopenConfirmBlocked)}
+        </span>
+      )}
+    </div>
+  );
+  const reopenActions = (
+    <>
       <Button
-        kind="secondary"
-        size="sm"
+        kind="ghost"
+        id={REOPEN_CANCEL_ID}
+        disabled={held}
+        onClick={cancelReopen}
+      >
+        <FormattedMessage id="common.cancel" />
+      </Button>
+      <Button
+        kind="primary"
         id={REOPEN_CONFIRM_ID}
         disabled={Boolean(reopenConfirmBlocked)}
         title={blockedText(reopenConfirmBlocked) ?? undefined}
@@ -1786,22 +1812,22 @@ function PathologyCaseView() {
       >
         <FormattedMessage id="pathology.action.confirmReopen" />
       </Button>
-      <Button
-        kind="ghost"
-        size="sm"
-        id={REOPEN_CANCEL_ID}
-        disabled={held}
-        onClick={cancelReopen}
-      >
-        <FormattedMessage id="common.cancel" />
-      </Button>
-      {reopenConfirmBlocked && (
-        <span id={REOPEN_HINT_ID} className="case-view__locked-hint">
-          {blockedText(reopenConfirmBlocked)}
-        </span>
-      )}
-    </div>
+    </>
   );
+
+  // At most one of the three is open; the reopen row is named by its field's
+  // own label, so the bar is not named for it.
+  const barQuestion =
+    (sendConfirmShown && {
+      actions: sendConfirmActions,
+      labelledBy: SEND_CONFIRM_TEXT_ID,
+    }) ||
+    (signOutShown && {
+      actions: signOutActions,
+      labelledBy: SIGN_OUT_CONFIRM_TEXT_ID,
+    }) ||
+    (reopenShown && { actions: reopenActions }) ||
+    null;
 
   // The stage as text, and the return beside it. A return is not
   // destructive, so its reason is asked for inline rather than in a modal,
@@ -2116,7 +2142,8 @@ function PathologyCaseView() {
                     onDiscard={reloadCase}
                     onSaveDraft={save}
                     canSaveDraft={!caseInfo.signedOut}
-                    primary={primary}
+                    primary={primary && { ...primary, id: PRIMARY_ID }}
+                    question={barQuestion}
                   />
                 }
               >
