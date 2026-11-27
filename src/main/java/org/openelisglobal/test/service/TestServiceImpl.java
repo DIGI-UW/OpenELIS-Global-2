@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.Vector;
 import java.util.function.Function;
@@ -586,6 +587,12 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     @Transactional(readOnly = true)
     public Test getActiveTestById(Integer id) {
         return getBaseObjectDAO().getActiveTestById(id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Test> getTestsByIds(Set<String> ids) {
+        return getBaseObjectDAO().getTestsByIds(ids);
     }
 
     @Override
