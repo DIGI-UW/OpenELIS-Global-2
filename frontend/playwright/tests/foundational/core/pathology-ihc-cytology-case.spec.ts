@@ -31,8 +31,9 @@ import {
  * lists. From the dashboard the case opens in its case view, where the bench
  * sets the stage, the assigned technician and the assigned (cyto)pathologist
  * and saves. Reloading the case view must show what was saved, the dashboard
- * row must carry the new stage, and ticking "Ready For release" and saving
- * completes the case.
+ * row must carry the new stage, and completing the case (ticking "Ready For
+ * release" and saving on Immunohistochemistry and Cytology, signing it out
+ * from the action bar on Pathology) lands it at Completed.
  *
  * Each test seeds its own order with a per-run patient name and works only on
  * that case, so dashboards holding other cases do not affect it.
@@ -41,9 +42,10 @@ import {
  * Pathology runs on the case-view shell: the case is sent on one stage at a
  * time, each move doing the bench's work for that stage first, so the test
  * takes the case to the stage it needs through the same move endpoints the
- * screen posts to and reads the case again; the assignment and release
- * controls sit in accordion sections that unlock with the stage and are
- * expanded before use, and the case is saved with Save draft. Each program
+ * screen posts to and reads the case again; the assignment controls sit in
+ * accordion sections that unlock with the stage and are expanded before use,
+ * the case is saved with Save draft and signed out from the action bar. Each
+ * program
  * names the screen driver that knows which of the two it is talking to.
  */
 
@@ -72,7 +74,7 @@ interface CaseProgram {
 interface CaseScreen {
   setStage(page: Page, program: CaseProgram, label: string): Promise<void>;
   expectStage(page: Page, program: CaseProgram, label: string): Promise<void>;
-  /** Bring the case to where a pathologist can be assigned and release it. */
+  /** Bring the case to where a pathologist can be assigned and sign it out. */
   reachPathologist(page: Page, program: CaseProgram): Promise<void>;
   technician(page: Page): Promise<Locator>;
   pathologist(page: Page, program: CaseProgram): Promise<Locator>;
@@ -84,7 +86,8 @@ interface CaseScreen {
     program: CaseProgram,
     name: string,
   ): Promise<void>;
-  release(page: Page): Promise<Locator>;
+  /** Complete the case the way the screen does, and wait for its save. */
+  complete(page: Page, program: CaseProgram): Promise<void>;
   saveButton(page: Page): Locator;
   /**
    * Registered before the save is clicked and awaited after the toast: a
@@ -132,8 +135,13 @@ const nativeSelectScreen: CaseScreen = {
       (await this.pathologist(page, program)).locator("option:checked"),
     ).toHaveText(name);
   },
-  async release(page) {
-    return page.getByRole("checkbox", { name: "Ready For release" });
+  // Offered only once both a technician and a pathologist are assigned.
+  async complete(page, program) {
+    const release = page.getByRole("checkbox", { name: "Ready For release" });
+    await expect(release).toBeVisible({ timeout: UI_TIMEOUT });
+    await page.locator('label[for="release"]').click();
+    await expect(release).toBeChecked();
+    await saveCase(page, program);
   },
   saveButton(page) {
     return page.locator("#pathology_save2");
@@ -174,9 +182,9 @@ const caseViewShellScreen: CaseScreen = {
   async expectStage(page, _program, label) {
     await expectSummaryStage(page, label);
   },
-  // Findings, where the release is, open at the stage the findings are
-  // written at: Under Pathologist Review where the laboratory uses it, which
-  // the move begins. A release needs both descriptions, so they are written
+  // Findings open at the stage the findings are written at: Under
+  // Pathologist Review where the laboratory uses it, which the move begins.
+  // A sign-out needs both descriptions and a conclusion, so they are written
   // through the case save before the screen is read again.
   async reachPathologist(page, program) {
     const caseId = /\/PathologyCaseView\/(\d+)/.exec(page.url())?.[1];
@@ -189,6 +197,7 @@ const caseViewShellScreen: CaseScreen = {
     await saveCaseThroughApi(page, caseId, await readCase(page, caseId), {
       grossExam: "Skin, punch biopsy, 4 mm.",
       microscopyExam: "Unremarkable epidermis and dermis.",
+      conclusionText: "Benign skin.",
     });
     await page.reload({ waitUntil: "domcontentloaded" });
     await expectSummaryStage(page, STAGE_LABELS[readingStage]);
@@ -218,9 +227,31 @@ const caseViewShellScreen: CaseScreen = {
   async expectPathologist(page, program, name) {
     await expect(await this.pathologist(page, program)).toHaveValue(name);
   },
-  async release(page) {
-    await expandSection(page, "pathology-section-findings");
-    return page.getByRole("checkbox", { name: "Ready For release" });
+  // The sign-out sends the form as it stands, the pathologist just chosen
+  // included. It asks first, then opens the final report in a tab of its
+  // own, which is closed here.
+  async complete(page) {
+    const signOut = page.locator(
+      ".case-view__action-bar-actions .cds--btn--primary",
+    );
+    await expect(signOut).toHaveText("Sign out & finalize");
+    await expect(signOut).toBeEnabled({ timeout: UI_TIMEOUT });
+    await signOut.click();
+    const reportTab = page.context().waitForEvent("page", {
+      timeout: UI_TIMEOUT,
+    });
+    const readBack = this.afterSave!(page);
+    await page
+      .getByTestId("sign-out-confirm")
+      .getByRole("button", { name: "Sign out", exact: true })
+      .click();
+    await (await reportTab).close();
+    await expect(
+      page
+        .locator(".cds--toast-notification")
+        .filter({ hasText: "Case signed out" }),
+    ).not.toHaveCount(0, { timeout: UI_TIMEOUT });
+    await readBack;
   },
   saveButton(page) {
     return page.getByRole("button", { name: "Save draft" });
@@ -451,27 +482,24 @@ for (const program of PROGRAMS) {
       });
     });
 
-    test(`ticking Ready For release on a ${program.name} case completes it`, async ({
+    test(`completing a ${program.name} case lands it at Completed`, async ({
       page,
     }) => {
       const { labNo, patientName } = await test.step("seed the order", () =>
         seedCase(page, program));
-      await test.step("assign a pathologist and tick release", async () => {
+      await test.step("assign a pathologist", async () => {
         await openCase(page, program, labNo, patientName);
         await program.screen.reachPathologist(page, program);
         await program.screen.choosePathologist(page, program);
-        // Offered only once both a technician and a pathologist are assigned.
-        const release = await program.screen.release(page);
-        await expect(release).toBeVisible({ timeout: UI_TIMEOUT });
-        await page.locator('label[for="release"]').click();
-        await expect(release).toBeChecked();
       });
 
-      await test.step("save", () => saveCase(page, program));
+      await test.step("complete the case", () =>
+        program.screen.complete(page, program));
 
       await test.step("the reloaded case is Completed", async () => {
         await page.reload({ waitUntil: "domcontentloaded" });
         await expectCaseLoaded(page, patientName);
+        await expect(page).toHaveURL(program.caseViewPath);
         await program.screen.expectStage(page, program, "Completed");
       });
     });

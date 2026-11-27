@@ -35,6 +35,7 @@ import {
   saveDraft,
   searchDiagnoses,
   sectionHeader,
+  signOutConfirm,
   slidesReceivedTable,
   techniqueChips,
 } from "../../../helpers/pathology-case-view";
@@ -416,20 +417,36 @@ test.describe.serial("Pathology findings and conclusion", () => {
     );
     await expect(page.locator("#reviewNotes")).toHaveValue(NOTES_WRITTEN);
 
-    const release = page.locator("#release");
-    await expect(release).toBeEnabled();
-    await page.locator('label[for="release"]').click();
-    await expect(release).toBeChecked();
-    await saveDraft(page, caseId);
+    // The case is signed out from the action bar, which asks first; the
+    // final report opens in a tab of its own.
+    await expect(page.locator("#release")).toHaveCount(0);
+    await expect(primaryAction(page)).toHaveText(
+      text("pathology.action.signOut"),
+    );
+    await primaryAction(page).click();
+    const reportTab = page.context().waitForEvent("page", {
+      timeout: UI_TIMEOUT,
+    });
+    await signOutConfirm(page)
+      .getByRole("button", {
+        name: text("pathology.action.confirmSignOut"),
+        exact: true,
+      })
+      .click();
+    await (await reportTab).close();
     await expectStage(page, STAGE_LABELS.COMPLETED);
 
     await openReviewAndFindings(page, seeded);
-    for (const control of [...WRITING_CONTROLS, "#release"]) {
+    for (const control of WRITING_CONTROLS) {
       await expect(
         page.locator(control),
         `${control} is read-only`,
       ).toBeDisabled();
     }
+    await expect(page.locator("#release")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Save draft" })).toHaveCount(
+      0,
+    );
     await expect(diagnosisChips(page)).toContainText(byCode.label);
     await expect(diagnosisChips(page).getByRole("button")).toHaveCount(0);
     await expect(techniqueChips(page).getByRole("button")).toHaveCount(0);
@@ -551,28 +568,41 @@ test.describe.serial("Pathology findings and conclusion", () => {
     expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
   });
 
-  test("release is disabled with its reason until the microscopic description is written", async ({
+  test("sign-out is disabled with its reason until the microscopic description is written", async ({
     page,
   }) => {
     await onApplication(page);
     await moveCaseToStage(page, shared, "UNDER_REVIEW");
+    const stored = await readCase(page, shared.pathologySampleId);
     expect(
-      (
-        (await readCase(page, shared.pathologySampleId)).microscopyExam ?? ""
-      ).trim(),
+      (stored.microscopyExam ?? "").trim(),
       "the shared case starts with no microscopic description",
     ).toBe("");
+    const concluded =
+      (stored.conclusions ?? []).length > 0 ||
+      (stored.conclusionText ?? "").trim() !== "";
     await openReviewAndFindings(page, shared);
 
+    // The action bar holds the sign-out with the first rule the form as it
+    // stands does not meet, and says which.
+    const signOut = primaryAction(page);
     const reason = page
-      .locator(`#${FINDINGS_SECTION}`)
+      .locator(".case-view__action-bar")
       .getByText(text("pathology.error.releaseWithoutDescriptions"));
-    await expect(page.locator("#release")).toBeDisabled();
+    await expect(signOut).toHaveText(text("pathology.action.signOut"));
+    await expect(signOut).toBeDisabled();
     await expect(reason).toBeVisible();
 
     await page.locator("#microscopyExam").fill(MICROSCOPY_WRITTEN);
     await expect(reason).toHaveCount(0);
-    await expect(page.locator("#release")).toBeEnabled();
+    if (concluded) {
+      await expect(signOut).toBeEnabled();
+    } else {
+      await expect(signOut).toHaveAttribute(
+        "title",
+        text("pathology.error.releaseWithoutConclusion"),
+      );
+    }
   });
 
   test("a referral with one marker shows as referred after the save, reaches Immunohistochemistry once, and a second save orders nothing more", async ({
@@ -692,12 +722,13 @@ test.describe.serial("Pathology findings and conclusion", () => {
       await moveCaseToStage(page, shared, "UNDER_REVIEW");
       await openReviewAndFindings(other.page, shared);
       await expectStage(other.page, STAGE_LABELS.UNDER_REVIEW);
-      for (const control of [...WRITING_CONTROLS, "#release"]) {
+      for (const control of WRITING_CONTROLS) {
         await expect(
           other.page.locator(control),
           `${control} is read-only`,
         ).toBeDisabled();
       }
+      await expect(other.page.locator("#release")).toHaveCount(0);
       // The control is not rendered at all for a picker that cannot be edited.
       await expect(addDiagnosisControl(other.page)).toHaveCount(0);
     } finally {

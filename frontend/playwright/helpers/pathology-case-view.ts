@@ -872,3 +872,42 @@ export async function pickDiagnosis(page: Page, query: string, label: string) {
   await expect(diagnosisBox(page)).toHaveValue("");
   await expect(diagnosisBox(page)).toBeFocused();
 }
+
+/** The sign-out confirmation the action bar asks before it signs a case out. */
+export function signOutConfirm(page: Page) {
+  return page.getByTestId("sign-out-confirm");
+}
+
+/** The stage event row that records a reopen. */
+export function reopenRow(page: Page) {
+  return page.getByTestId("reopen-row");
+}
+
+/** The Reports tab's table of report versions. */
+export function reportsTable(page: Page) {
+  return page.getByTestId("reports-table");
+}
+
+/** The row of one report version, by its number. */
+export function reportRow(page: Page, version: number) {
+  return page.getByTestId(`report-row-${version}`);
+}
+
+export function reportGenerateButton(page: Page) {
+  return page.getByTestId("report-generate");
+}
+
+/** The upload control of the Reports tab. */
+export function reportUpload(page: Page) {
+  return page.getByTestId("report-upload");
+}
+
+/** The Withdraw button of one external report version. */
+export function reportWithdrawButton(page: Page, version: number) {
+  return page.getByTestId(`report-withdraw-${version}`);
+}
+
+/** The warning that a case holds a critical result. */
+export function criticalResultBanner(page: Page) {
+  return page.getByTestId("critical-result-banner");
+}

@@ -72,8 +72,14 @@ export type PathologyStageId = (typeof PATHOLOGY_STAGE_ORDER)[number];
 /** The description moveCaseToStage writes when it has to finish grossing. */
 const SETUP_DESCRIPTION = "Seeded by E2E";
 
+/** The reason reopenCase gives when it is not told one. */
+const SETUP_REOPEN_REASON = "E2E setup";
+
 /** The microscopic description signOutCase writes when the case has none. */
 const SETUP_MICROSCOPY = "Seeded by E2E, microscopic";
+
+/** The narrative conclusion signOutCase writes when the case has none. */
+const SETUP_CONCLUSION = "Seeded by E2E, conclusion";
 
 /** The level moveCaseToStage gives the slide it cuts at Microtomy. */
 const SETUP_SLIDE_LEVEL = "1";
@@ -762,11 +768,29 @@ export interface StoredPathologyCase {
   coverslipRunReference?: string | null;
   /** Whether the batch can still be written: once, while the case is there. */
   coverslipRunReferenceEditable?: boolean;
-  reports?: unknown[];
+  /** The report versions that hold a file, newest first. */
+  reports?: CaseReport[];
+  /** Whether both descriptions and a conclusion are written. */
+  canGenerateReport?: boolean;
+  signedOut?: boolean;
+  criticalResultFlagged?: boolean;
+  /** The case's critical result as the read answers it. */
+  criticalResult?: unknown;
   techniques?: { id?: string }[];
   /** The bench requests, newest first. */
   requests?: CaseRequest[];
   conclusions?: { id?: string }[];
+}
+
+/** One stored report version as the case read and the report endpoints send it. */
+export interface CaseReport {
+  id: number;
+  version: number;
+  type: "DRAFT" | "FINAL" | "EXTERNAL";
+  state: "CURRENT" | "SUPERSEDED" | "VOIDED";
+  generatedAt?: string;
+  generatedBy?: string;
+  fileType?: string;
 }
 
 /** What a bench request asks for: another block, slide or stain. */
@@ -866,6 +890,8 @@ export interface CaseSaveChanges {
   microscopyExam?: string;
   conclusionText?: string;
   reviewNotes?: string;
+  /** Flag the case critical (true), clear the flag (false), or keep it (left out). */
+  criticalResultFlagged?: boolean;
   /** The pathologist the case is saved with, a user id. */
   assignedPathologistId?: string;
   /** Sign the case out with this save. */
@@ -921,13 +947,13 @@ export async function saveCaseThroughApi(
         changes.assignedPathologistId ?? stored.assignedPathologistId,
       blocks,
       slides,
-      reports: stored.reports ?? [],
       grossExam: changes.grossExam ?? stored.grossExam,
       decalcificationRequired: stored.decalcificationRequired ?? false,
       microscopyExam: changes.microscopyExam ?? stored.microscopyExam,
       conclusionText: changes.conclusionText ?? stored.conclusionText,
       reviewNotes: changes.reviewNotes ?? stored.reviewNotes,
       release: changes.release ?? false,
+      criticalResultFlagged: changes.criticalResultFlagged,
       referToImmunoHistoChemistry: false,
       techniques: (stored.techniques ?? []).map((entry) => entry.id),
       conclusions: (stored.conclusions ?? []).map((entry) => entry.id),
@@ -1462,6 +1488,8 @@ export interface SignOutOptions {
   pathologistId?: string;
   /** The microscopic description written when the case has none. */
   microscopyExam?: string;
+  /** The narrative conclusion written when the case has no conclusion. */
+  conclusionText?: string;
 }
 
 /**
@@ -1469,14 +1497,16 @@ export interface SignOutOptions {
  * findings are written at (the case's `readingStage`, Ready for Pathologist
  * when the server sends none), write the gross and microscopic descriptions
  * through a save when either is blank, then save with the release, which
- * lands the case at Completed. No move reaches Completed. A case already
- * signed out is left as it is. Throws with the server's body when a step is
+ * lands the case at Completed. No move reaches Completed. A case with no
+ * conclusion gets a narrative one with the descriptions. Open bench requests
+ * are not closed: a case that holds one is refused, and a spec that needs the
+ * sign-out cancels them first. A case already signed out is left as it is. Throws with the server's body when a step is
  * refused.
  */
 export async function signOutCase(
   page: Page,
   seeded: Pick<SeededPathologyCase, "pathologySampleId">,
-  { pathologistId, microscopyExam }: SignOutOptions = {},
+  { pathologistId, microscopyExam, conclusionText }: SignOutOptions = {},
 ): Promise<void> {
   const caseId = seeded.pathologySampleId;
   const first = await readCase(page, caseId);
@@ -1494,11 +1524,17 @@ export async function signOutCase(
   const reading = await readCase(page, caseId);
   const grossBlank = (reading.grossExam ?? "").trim() === "";
   const microscopyBlank = (reading.microscopyExam ?? "").trim() === "";
-  if (grossBlank || microscopyBlank) {
+  const conclusionBlank =
+    (reading.conclusions ?? []).length === 0 &&
+    (reading.conclusionText ?? "").trim() === "";
+  if (grossBlank || microscopyBlank || conclusionBlank) {
     await saveCaseThroughApi(page, caseId, reading, {
       grossExam: grossBlank ? SETUP_DESCRIPTION : undefined,
       microscopyExam: microscopyBlank
         ? (microscopyExam ?? SETUP_MICROSCOPY)
+        : undefined,
+      conclusionText: conclusionBlank
+        ? (conclusionText ?? SETUP_CONCLUSION)
         : undefined,
       assignedPathologistId: pathologistId,
     });
@@ -1508,4 +1544,79 @@ export async function signOutCase(
     assignedPathologistId: pathologistId,
     release: true,
   });
+}
+
+/** A stored file the upload helper sends: a 1x1 PNG unless told otherwise. */
+export interface ReportUploadFile {
+  /** The media type, one of application/pdf, image/png or image/jpeg. */
+  mimeType?: string;
+  /** The file's bytes, base64 encoded. */
+  base64?: string;
+}
+
+const SETUP_UPLOAD_PNG =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+
+/**
+ * Generate the next report version of a case through the endpoint the Reports
+ * tab posts to: a draft before the sign-out, a final after it. Throws with
+ * the server's body when it is refused. Returns the new version.
+ */
+export async function generateReport(
+  page: Page,
+  caseId: string,
+): Promise<CaseReport> {
+  const answer = await apiPost(
+    page,
+    `${casePath(caseId)}/reports/generate`,
+    undefined,
+    `Generating a report for case ${caseId}`,
+  );
+  return JSON.parse(answer) as CaseReport;
+}
+
+/**
+ * Upload a file as an external report version of a case, as the Reports tab
+ * posts one. Returns the new version.
+ */
+export async function uploadReport(
+  page: Page,
+  caseId: string,
+  { mimeType = "image/png", base64 = SETUP_UPLOAD_PNG }: ReportUploadFile = {},
+): Promise<CaseReport> {
+  const answer = await apiPost(
+    page,
+    `${casePath(caseId)}/reports`,
+    { base64Image: `data:${mimeType};base64,${base64}` },
+    `Uploading a report to case ${caseId}`,
+  );
+  return JSON.parse(answer) as CaseReport;
+}
+
+/**
+ * Reopen a signed-out case with a reason, naming the stage it is reopened
+ * from, through the endpoint the case view posts to. The final report in
+ * force is voided and the case goes back to the stage its findings are
+ * written at. Throws with the server's body when refused. Returns the stage
+ * the case now stands at.
+ */
+export async function reopenCase(
+  page: Page,
+  caseId: string,
+  from: PathologyStageId,
+  reason = SETUP_REOPEN_REASON,
+): Promise<PathologyStageId> {
+  const answer = await apiPost(
+    page,
+    `${casePath(caseId)}/reopen`,
+    { from, reason },
+    `Reopening case ${caseId} from ${from}`,
+  );
+  const status = (JSON.parse(answer) as { status?: PathologyStageId }).status;
+  if (!status) {
+    throw new Error(
+      `Reopening case ${caseId} from ${from} answered no stage: ${answer.substring(0, 400)}`,
+    );
+  }
+  return status;
 }
