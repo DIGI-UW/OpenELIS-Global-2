@@ -1,14 +1,17 @@
 package org.openelisglobal.sample.attachment.controller.rest;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.jayway.jsonpath.JsonPath;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.config.ControllerSetup;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -20,6 +23,7 @@ import org.springframework.security.core.context.SecurityContextImpl;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.test.context.ContextConfiguration;
 
 /**
  * OGC-811 — order attachments are the single attachments API for order entry
@@ -29,6 +33,7 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
  * returned by the API — component isolation is a backend fact, not a frontend
  * filter.
  */
+@ContextConfiguration(classes = ControllerSetup.class)
 public class OrderAttachmentRestControllerTest extends BaseWebContextSensitiveTest {
 
     @Autowired
@@ -118,6 +123,30 @@ public class OrderAttachmentRestControllerTest extends BaseWebContextSensitiveTe
     @Test
     public void upload_unknownAccession_is404() throws Exception {
         mockMvc.perform(multipart("/rest/order/NOPE/attachments").file(PDF).session(session))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void delete_unknownAttachment_is404() throws Exception {
+        mockMvc.perform(delete("/rest/order/attachments/999999").session(session)).andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void download_unknownAttachment_is404() throws Exception {
+        mockMvc.perform(get("/rest/order/attachments/999999/download").session(session))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void delete_uploadedAttachment_succeedsOnce() throws Exception {
+        String response = mockMvc.perform(multipart("/rest/order/12345/attachments").file(PDF).session(session))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1)).andReturn().getResponse()
+                .getContentAsString();
+        Integer attachmentId = JsonPath.read(response, "$[0].id");
+
+        mockMvc.perform(delete("/rest/order/attachments/{attachmentId}", attachmentId).session(session))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true));
+        mockMvc.perform(delete("/rest/order/attachments/{attachmentId}", attachmentId).session(session))
                 .andExpect(status().isNotFound());
     }
 

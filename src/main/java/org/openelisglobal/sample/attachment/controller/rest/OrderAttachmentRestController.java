@@ -97,7 +97,7 @@ public class OrderAttachmentRestController extends BaseRestController {
     }
 
     private ResponseEntity<Resource> serveAttachment(Integer attachmentId, String disposition) {
-        OrderAttachment attachment = orderAttachmentService.get(attachmentId);
+        OrderAttachment attachment = orderAttachmentService.getMatch("id", attachmentId).orElse(null);
         if (attachment == null || Boolean.TRUE.equals(attachment.getIsDeleted())) {
             return ResponseEntity.notFound().build();
         }
@@ -120,7 +120,7 @@ public class OrderAttachmentRestController extends BaseRestController {
 
     @DeleteMapping(value = "/attachments/{attachmentId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> deleteAttachment(@PathVariable Integer attachmentId, HttpServletRequest request) {
-        OrderAttachment attachment = orderAttachmentService.get(attachmentId);
+        OrderAttachment attachment = orderAttachmentService.getMatch("id", attachmentId).orElse(null);
         if (attachment == null || Boolean.TRUE.equals(attachment.getIsDeleted())) {
             return ResponseEntity.notFound().build();
         }
