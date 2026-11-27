@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    A second opinion is a request from the pathologist who owns a case to a
+    colleague, and the colleague's recorded outcome. It never holds the
+    sign-out: the case moves the same way whether or not a request is open.
+
+    A request is awaited (REQUESTED), answered with an outcome (ANSWERED) or
+    withdrawn before an answer came (WITHDRAWN). The reason comes from
+    a dictionary category the laboratory fills in, so it can be empty.
+
+    Cases on file get no row: no second opinion was recorded for them.
+    -->
+
+    <changeSet id="OGC-264-pathology-consultation-table" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="pathology_consultation"/>
+            </not>
+        </preConditions>
+        <comment>Record a second opinion asked of a colleague on a pathology case, and its outcome</comment>
+        <createSequence schemaName="clinlims" sequenceName="pathology_consultation_seq"
+            incrementBy="1" startValue="1"/>
+        <createTable schemaName="clinlims" tableName="pathology_consultation">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" primaryKeyName="pathology_consultation_pkey" nullable="false"/>
+            </column>
+            <column name="pathology_sample_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="requested_by" type="NUMERIC(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="consulted_user_id" type="NUMERIC(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reason_dictionary_id" type="NUMERIC(10)"/>
+            <column name="pre_treatment" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="outcome" type="VARCHAR(16)"/>
+            <column name="outcome_note" type="TEXT"/>
+            <column name="requested_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="answered_at" type="TIMESTAMP"/>
+            <!-- The row's optimistic-lock version; BaseObject maps it to last_updated. -->
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <!-- No cascade: a case with a second opinion on it cannot be deleted. -->
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims" baseTableName="pathology_consultation" baseColumnNames="pathology_sample_id"
+            referencedTableSchemaName="clinlims" referencedTableName="pathology_sample" referencedColumnNames="id"
+            constraintName="pathology_consultation_case_fk"/>
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims" baseTableName="pathology_consultation" baseColumnNames="requested_by"
+            referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"
+            constraintName="pathology_consultation_requested_by_fk"/>
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims" baseTableName="pathology_consultation" baseColumnNames="consulted_user_id"
+            referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"
+            constraintName="pathology_consultation_consulted_user_fk"/>
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims" baseTableName="pathology_consultation" baseColumnNames="reason_dictionary_id"
+            referencedTableSchemaName="clinlims" referencedTableName="dictionary" referencedColumnNames="id"
+            constraintName="pathology_consultation_reason_fk"/>
+        <!-- The open-source XML has no check-constraint change, so the rules on
+            status and outcome are written in SQL; dropping the table removes them. -->
+        <sql>
+            ALTER TABLE clinlims.pathology_consultation ADD CONSTRAINT pathology_consultation_status_ck
+            CHECK (status IN ('REQUESTED', 'ANSWERED', 'WITHDRAWN'));
+            ALTER TABLE clinlims.pathology_consultation ADD CONSTRAINT pathology_consultation_outcome_ck
+            CHECK (outcome IS NULL OR outcome IN ('AGREE', 'DISAGREE', 'MODIFIED'));
+            ALTER TABLE clinlims.pathology_consultation ADD CONSTRAINT pathology_consultation_outcome_answered_ck
+            CHECK ((outcome IS NOT NULL) = (status = 'ANSWERED'));
+        </sql>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="pathology_consultation"/>
+            <dropSequence schemaName="clinlims" sequenceName="pathology_consultation_seq"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-consultation-indexes" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists schemaName="clinlims" indexName="idx_pathology_consultation_case"/>
+            </not>
+        </preConditions>
+        <comment>Read a case's second opinions in the order they were asked, and keep one open request per colleague</comment>
+        <createIndex schemaName="clinlims" tableName="pathology_consultation" indexName="idx_pathology_consultation_case">
+            <column name="pathology_sample_id"/>
+            <column name="requested_at"/>
+        </createIndex>
+        <!-- Two requests to one colleague that cross each other store one row:
+            the second one meets this index instead of a case lock. -->
+        <sql>
+            CREATE UNIQUE INDEX pathology_consultation_awaited_uk
+            ON clinlims.pathology_consultation (pathology_sample_id, consulted_user_id)
+            WHERE status = 'REQUESTED';
+        </sql>
+        <rollback>
+            <sql>DROP INDEX IF EXISTS clinlims.pathology_consultation_awaited_uk;</sql>
+            <dropIndex schemaName="clinlims" tableName="pathology_consultation" indexName="idx_pathology_consultation_case"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-consultation-reference-table" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'PATHOLOGY_CONSULTATION'
+            </sqlCheck>
+        </preConditions>
+        <comment>Register pathology_consultation so a second opinion's changes are auditable like every other reference table</comment>
+        <insert tableName="reference_tables" schemaName="clinlims">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="PATHOLOGY_CONSULTATION"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+        <rollback>
+            <delete tableName="reference_tables" schemaName="clinlims">
+                <where>name = 'PATHOLOGY_CONSULTATION'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-consultation-reason-category" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="dictionary_category"/>
+                <sqlCheck expectedResult="0">
+                    select count(*) from clinlims.dictionary_category
+                    where name = 'pathology_consultation_reasons'
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <comment>Add the dictionary category a laboratory fills with the reasons for asking a second opinion</comment>
+        <insert schemaName="clinlims" tableName="dictionary_category">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value="Pathology - Second Opinion Reasons"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="PathConsRs"/>
+            <column name="name" value="pathology_consultation_reasons"/>
+        </insert>
+        <!-- Deleting the category fails on the foreign key once an
+             administrator has added an entry to it, which is the right
+             outcome: those entries are the laboratory's own data. -->
+        <rollback>
+            <delete schemaName="clinlims" tableName="dictionary_category">
+                <where>name = 'pathology_consultation_reasons'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

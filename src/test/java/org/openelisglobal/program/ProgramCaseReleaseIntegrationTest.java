@@ -85,6 +85,7 @@ public class ProgramCaseReleaseIntegrationTest extends BaseWebContextSensitiveTe
 
     @Test
     public void pathologyRelease_finalizesOnlyTheCasesAnalysis() {
+        storeBothDescriptions();
         PathologySampleForm form = new PathologySampleForm();
         form.setSystemUserId("1001");
         form.setStatus(PathologyStatus.COMPLETED);
@@ -123,6 +124,7 @@ public class ProgramCaseReleaseIntegrationTest extends BaseWebContextSensitiveTe
      */
     @Test
     public void pathologyRelease_leavesTheImmunohistochemistryReferralOpen() {
+        storeBothDescriptions();
         addReferralAnalysis();
         String referralStatusBefore = analysisService.get(REFERRAL_ANALYSIS_ID_STRING).getStatusId();
 
@@ -163,6 +165,7 @@ public class ProgramCaseReleaseIntegrationTest extends BaseWebContextSensitiveTe
     /** The order finishes with the second of the two releases. */
     @Test
     public void pathologyAndReferralReleases_finishTheOrderTogether() {
+        storeBothDescriptions();
         addReferralAnalysis();
 
         pathologySampleService.updateWithFormValues(PATHOLOGY_CASE_ID, pathologyReleaseForm());
@@ -181,8 +184,13 @@ public class ProgramCaseReleaseIntegrationTest extends BaseWebContextSensitiveTe
      */
     @Test
     public void referralMadeWithTheRelease_staysOpen() {
+        // A referral is made while the case is being read.
+        jdbcTemplate.update("UPDATE clinlims.pathology_sample SET status = 'UNDER_REVIEW' WHERE id = ?",
+                PATHOLOGY_CASE_ID);
         addImmunohistochemistrySection();
         PathologySampleForm form = pathologyReleaseForm();
+        form.setGrossExam("Macroscopic description");
+        form.setMicroscopyExam("Microscopic description");
         form.setReferToImmunoHistoChemistry(true);
         form.setImmunoHistoChemistryTestIds(List.of("2"));
 
@@ -226,6 +234,7 @@ public class ProgramCaseReleaseIntegrationTest extends BaseWebContextSensitiveTe
     @Test
     public void pathologyCaseLeftAtCompletedWithUnreleasedAnalyses_isReleasedOnce() {
         leavePathologyCaseAtCompleted();
+        storeBothDescriptions();
         assertTrue("a case never released reads as releasable", isPathologyCaseReleasable());
 
         pathologySampleService.updateWithFormValues(PATHOLOGY_CASE_ID, pathologyReleaseForm());
@@ -316,6 +325,15 @@ public class ProgramCaseReleaseIntegrationTest extends BaseWebContextSensitiveTe
                 "SELECT CAST(status_id AS varchar) FROM clinlims.sample WHERE id = ?", String.class,
                 Integer.parseInt(CASE_SAMPLE_ID));
         return statusService.matches(statusId, OrderStatus.Finished);
+    }
+
+    /**
+     * A case is signed out only with both descriptions written, and this fixture's
+     * case holds neither.
+     */
+    private void storeBothDescriptions() {
+        jdbcTemplate.update("UPDATE clinlims.pathology_sample SET gross_exam = 'Macroscopic description',"
+                + " microscopy_exam = 'Microscopic description' WHERE id = ?", PATHOLOGY_CASE_ID);
     }
 
     private void leavePathologyCaseAtCompleted() {

@@ -111,6 +111,60 @@ public class PathologyCaseHistoryTest extends PathologyCaseTestSupport {
         }
     }
 
+    /**
+     * A diagnosis stored before codes were checked may name no entry; saving
+     * another change over it still writes the history row, which prints that id as
+     * stored.
+     */
+    @Test
+    public void aChangeOverAStoredCodeThatNamesNoEntry_stillWritesTheHistoryRow() {
+        try (PathologyFindingsDictionary dictionary = PathologyFindingsDictionary.seed(jdbcTemplate)) {
+            jdbcTemplate.update("DELETE FROM clinlims.pathology_conclusion WHERE pathology_sample_id = ?", CASE_ID);
+            storeConclusion(9751, PathologyFindingsDictionary.ADENOCARCINOMA);
+            storeConclusion(9752, PathologyFindingsDictionary.NO_ENTRY);
+            String before = pathologySampleService.get(CASE_ID).getGrossExam();
+            PathologySampleForm form = caseViewForm();
+            form.setGrossExam("Changed over a stored code that names no entry");
+
+            save(form);
+
+            assertEquals("the save wrote its history row", 1, caseSaveDiffs().size());
+            assertEquals("which reads as the description changed",
+                    List.of(List.of(before, "Changed over a stored code that names no entry")),
+                    linesFor(auditTrail(), "grossExam"));
+            assertEquals("a history line is a record: the dead entry is printed as its stored id beside the live name",
+                    "Value: Adenocarcinoma; Value: " + PathologyFindingsDictionary.NO_ENTRY,
+                    new TransactionTemplate(transactionManager)
+                            .execute(status -> pathologySampleService.get(CASE_ID).getConclusions_Audit()));
+        } finally {
+            jdbcTemplate.update("DELETE FROM clinlims.pathology_conclusion WHERE id IN (9751, 9752)");
+        }
+    }
+
+    /** The microscopic description and the review notes read as their own lines. */
+    @Test
+    public void findingsAndReviewNotesReadOnTheCaseHistory() {
+        storeAt(PathologyStatus.UNDER_REVIEW);
+        String before = pathologySampleService.get(CASE_ID).getMicroscopyExam();
+        PathologySampleForm form = caseViewForm();
+        form.setMicroscopyExam("Cells in sheets");
+        form.setReviewNotes("Ask for levels");
+
+        save(form);
+
+        List<AuditTrailItem> items = auditTrail();
+        assertEquals("the microscopic description reads from the old text to the new",
+                List.of(List.of(StringUtils.defaultString(before), "Cells in sheets")),
+                linesFor(items, "microscopyExam"));
+        assertEquals("the review notes read from nothing to the notes", List.of(List.of("", "Ask for levels")),
+                linesFor(items, "reviewNotes"));
+    }
+
+    private void storeConclusion(int id, String code) {
+        jdbcTemplate.update("INSERT INTO clinlims.pathology_conclusion (id, pathology_sample_id, type, value,"
+                + " last_updated) VALUES (?, ?, 'DICTIONARY', ?, now())", id, CASE_ID, code);
+    }
+
     // helpers
 
     /** The order's audit trail for the case, read as the audit screen reads it. */

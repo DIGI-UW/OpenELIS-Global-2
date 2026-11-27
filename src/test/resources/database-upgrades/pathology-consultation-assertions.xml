@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet id="assert-pathology-consultation"
+        author="openelis">
+        <preConditions onFail="HALT" onError="HALT">
+            <sqlCheck expectedResult="12">
+                SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_schema = 'clinlims'
+                AND table_name = 'pathology_consultation'
+                AND column_name IN ('id', 'pathology_sample_id', 'requested_by',
+                'consulted_user_id', 'reason_dictionary_id', 'pre_treatment',
+                'status',
+                'outcome', 'outcome_note', 'requested_at', 'answered_at', 'last_updated')
+            </sqlCheck>
+            <sqlCheck expectedResult="12">
+                SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_schema = 'clinlims'
+                AND table_name = 'pathology_consultation'
+            </sqlCheck>
+            <sqlCheck expectedResult="8">
+                SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_schema = 'clinlims'
+                AND table_name = 'pathology_consultation'
+                AND is_nullable = 'NO'
+                AND column_name IN ('id', 'pathology_sample_id', 'requested_by',
+                'consulted_user_id', 'pre_treatment', 'status', 'requested_at',
+                'last_updated')
+            </sqlCheck>
+            <sqlCheck expectedResult="4">
+                SELECT COUNT(*) FROM information_schema.table_constraints
+                WHERE table_schema = 'clinlims'
+                AND table_name = 'pathology_consultation'
+                AND constraint_type = 'FOREIGN KEY'
+                AND constraint_name IN ('pathology_consultation_case_fk',
+                'pathology_consultation_requested_by_fk',
+                'pathology_consultation_consulted_user_fk',
+                'pathology_consultation_reason_fk')
+            </sqlCheck>
+            <sqlCheck expectedResult="3">
+                SELECT COUNT(*) FROM information_schema.table_constraints
+                WHERE table_schema = 'clinlims'
+                AND table_name = 'pathology_consultation'
+                AND constraint_type = 'CHECK'
+                AND constraint_name IN ('pathology_consultation_status_ck',
+                'pathology_consultation_outcome_ck',
+                'pathology_consultation_outcome_answered_ck')
+            </sqlCheck>
+            <sqlCheck expectedResult="2">
+                SELECT COUNT(*) FROM pg_indexes
+                WHERE schemaname = 'clinlims'
+                AND tablename = 'pathology_consultation'
+                AND indexname IN ('idx_pathology_consultation_case',
+                'pathology_consultation_awaited_uk')
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM pg_indexes
+                WHERE schemaname = 'clinlims'
+                AND indexname = 'pathology_consultation_awaited_uk'
+                AND indexdef LIKE 'CREATE UNIQUE INDEX%'
+                AND indexdef LIKE '%REQUESTED%'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM information_schema.sequences
+                WHERE sequence_schema = 'clinlims'
+                AND sequence_name = 'pathology_consultation_seq'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.pathology_consultation
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.reference_tables
+                WHERE name = 'PATHOLOGY_CONSULTATION' AND keep_history = 'Y'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.dictionary_category
+                WHERE name = 'pathology_consultation_reasons'
+                AND local_abbrev = 'PathConsRs'
+                AND description = 'Pathology - Second Opinion Reasons'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.pathology_sample
+                WHERE id = 990501 AND status = 'UNDER_REVIEW'
+            </sqlCheck>
+        </preConditions>
+        <comment>Every assertion lives in the preConditions above.</comment>
+        <sql>SELECT 1;</sql>
+    </changeSet>
+</databaseChangeLog>

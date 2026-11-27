@@ -4,6 +4,8 @@
  * and how its labels are fetched. No React, no I/O.
  */
 
+import { PATHOLOGY_STAGES } from "./pathologyStages";
+
 export function isDeactivatedRow(row) {
   return row?.active === false;
 }
@@ -161,6 +163,166 @@ export function nextUnverifiedSlide(blocks, slides, labelVerifications, slide) {
       (entry) => entry.slide,
     ),
     slide,
+  );
+}
+
+/**
+ * The row after the last of the given ones in a list of rows still to be
+ * worked, wrapping to the first and skipping the given ones, or undefined
+ * when none is left. One row worked is the single-row case of nextAfter; a
+ * batch moves on from the last row it covered.
+ */
+export function nextAfterAll(rows, workedRows) {
+  const worked = new Set((workedRows ?? []).map((row) => String(row.id)));
+  const last = [...rows].reverse().find((row) => worked.has(String(row.id)));
+  return nextAfter(
+    rows.filter((row) => !worked.has(String(row.id)) || row === last),
+    last,
+  );
+}
+
+/**
+ * Whether the slide reads Stained. The stain on a stained slide is the stain
+ * that was applied, so it can no longer be changed until the slide is marked
+ * unsatisfactory (FR-8.1, the stain frozen with the status).
+ */
+export function isStainedRow(slide) {
+  return slide?.stainStatus === "STAINED";
+}
+
+/**
+ * Whether the slide's coverslip passed its QC check (FR-8.4).
+ */
+export function isQcPassedRow(slide) {
+  return slide?.coverslipQc === "PASS";
+}
+
+/**
+ * Whether the bench still owes a slide its staining and coverslip QC: while
+ * the case stands at or before coverslipping, the last stage whose rule asks
+ * for them. From Ready for Pathologist on, a slide with nothing recorded was
+ * worked before statuses were kept, so it is not recorded rather than
+ * pending, and nothing holds the case for it. Every reading of a slide with
+ * nothing recorded (its tag, the counts, the banners, the rail) asks this
+ * one question.
+ */
+export function benchStillOwes(caseStatus) {
+  const at = PATHOLOGY_STAGES.indexOf(caseStatus);
+  return at >= 0 && at <= PATHOLOGY_STAGES.indexOf("COVERSLIPPING");
+}
+
+/**
+ * The slides in use that hold a stage for a restain or a recut, in list
+ * order: at staining those marked unsatisfactory (FR-8.3), at coverslipping
+ * those whose coverslip failed QC (FR-8.4).
+ */
+export function slideRowsToRedo(slides, stage) {
+  const broken =
+    stage === "COVERSLIPPING"
+      ? (slide) => slide.coverslipQc === "FAIL"
+      : (slide) => slide.stainStatus === "UNSATISFACTORY";
+  return countedRows(slides).filter(broken);
+}
+
+// The saved slides in use, each with the name it goes by under its block,
+// those of them a rule says are not done (and their names on their own, which
+// every notice, hint and rail step reads), and how many carry a value at all.
+function slideWorkSummary(blocks, slides, done, recorded) {
+  const inUse = countedRows(slides);
+  const outstanding = inUse
+    .filter((slide) => !done(slide))
+    .map((slide) => ({ slide, name: slideOnBlockName(slide, blocks) }));
+
+  return {
+    done: inUse.length - outstanding.length,
+    total: inUse.length,
+    recorded: inUse.filter(recorded).length,
+    complete: inUse.length > 0 && outstanding.length === 0,
+    outstanding,
+    names: outstanding.map((entry) => entry.name),
+  };
+}
+
+/**
+ * How far staining has got on a case: the saved slides in use, how many read
+ * Stained, the ones that do not, named block first in list order, how many
+ * carry a status at all, and whether every one is stained (FR-8.1). An
+ * unsatisfactory slide is outstanding like a pending one: either holds the
+ * case at staining, as the server holds it.
+ */
+export function stainingSummary(blocks, slides) {
+  return slideWorkSummary(blocks, slides, isStainedRow, (slide) =>
+    Boolean(slide.stainStatus),
+  );
+}
+
+/**
+ * How far coverslip QC has got on a case: a slide is done once its QC passed
+ * and, where the laboratory tracks staining, it reads Stained (FR-8.4), the
+ * rule the server sends the case to the pathologist by.
+ */
+export function coverslipSummary(blocks, slides, { stainingTracked } = {}) {
+  return slideWorkSummary(
+    blocks,
+    slides,
+    (slide) =>
+      isQcPassedRow(slide) && (!stainingTracked || isStainedRow(slide)),
+    (slide) => Boolean(slide.coverslipQc),
+  );
+}
+
+// A value nothing has recorded yet reads as pending while the bench still
+// owes it, and as not recorded once the case has left the bench.
+function unrecordedBadge(caseStatus, pendingKey) {
+  return benchStillOwes(caseStatus)
+    ? { kind: "pending", textKey: pendingKey }
+    : { kind: "none", textKey: "common.notRecorded" };
+}
+
+/**
+ * The badge a slide's stain status is shown with: Stained in the color of a
+ * finished step, Unsatisfactory in the color of a failure, and otherwise
+ * Pending or Not recorded by whether the bench still owes it. With no case
+ * status, as on another program's screen, a slide with nothing recorded has
+ * no badge.
+ */
+export function stainStatusBadge(slide, caseStatus) {
+  if (slide?.stainStatus === "STAINED") {
+    return { kind: "complete", textKey: "pathology.badge.stained" };
+  }
+  if (slide?.stainStatus === "UNSATISFACTORY") {
+    return { kind: "critical", textKey: "pathology.badge.unsatisfactory" };
+  }
+  if (!caseStatus) {
+    return null;
+  }
+  return unrecordedBadge(caseStatus, "common.pending");
+}
+
+/**
+ * The badge a slide's coverslip QC is shown with, under the same rules.
+ */
+export function coverslipQcBadge(slide, caseStatus) {
+  if (slide?.coverslipQc === "PASS") {
+    return { kind: "complete", textKey: "pathology.badge.qcPassed" };
+  }
+  if (slide?.coverslipQc === "FAIL") {
+    return { kind: "critical", textKey: "common.failed" };
+  }
+  if (!caseStatus) {
+    return null;
+  }
+  return unrecordedBadge(caseStatus, "pathology.badge.qcAwaiting");
+}
+
+/**
+ * The id a picker's choice stands for, as the row holds it: the served
+ * item's own id, which may be a number or a string, or null once cleared.
+ */
+export function optionId(items, chosenId) {
+  return (
+    (items ?? []).find((item) => String(item.id) === String(chosenId))?.id ??
+    null
   );
 }
 

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet id="assert-pathology-review-notes"
+        author="openelis">
+        <preConditions onFail="HALT" onError="HALT">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_schema = 'clinlims'
+                AND table_name = 'pathology_sample'
+                AND column_name = 'review_notes'
+                AND data_type = 'text'
+                AND is_nullable = 'YES'
+            </sqlCheck>
+            <!-- The case on file is kept as it was, with no review notes. -->
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.pathology_sample
+                WHERE id = 990801 AND sample_id = 990801
+                AND status = 'READY_PATHOLOGIST' AND review_notes IS NULL
+            </sqlCheck>
+        </preConditions>
+        <comment>Every assertion lives in the preConditions above.</comment>
+        <sql>SELECT 1;</sql>
+    </changeSet>
+</databaseChangeLog>

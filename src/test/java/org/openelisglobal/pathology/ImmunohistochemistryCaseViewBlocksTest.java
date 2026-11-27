@@ -5,7 +5,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -13,8 +15,10 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.program.service.ImmunohistochemistryDisplayService;
 import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistryCaseViewDisplayItem;
+import org.openelisglobal.program.valueholder.pathology.CoverslipQc;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
+import org.openelisglobal.program.valueholder.pathology.StainStatus;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +35,13 @@ public class ImmunohistochemistryCaseViewBlocksTest extends BaseWebContextSensit
     private static final int LEGACY_SLIDE_ID = 201;
     private static final int IHC_SAMPLE_ID = 9701;
 
+    /** The fixture's open text request on the pathology case. */
+    private static final int FIXTURE_REQUEST_ID = 301;
+
+    /** This class's own requests on the pathology case. */
+    private static final int COMPLETED_REQUEST = 9721;
+    private static final int CANCELLED_REQUEST = 9722;
+
     /**
      * This class's own stain category id and entry, which tests seed themselves.
      */
@@ -38,7 +49,10 @@ public class ImmunohistochemistryCaseViewBlocksTest extends BaseWebContextSensit
     private static final int STAIN = 9711;
     private static final String STAIN_NAME = "Masson trichrome";
 
-    private boolean insertedTheStainCategory;
+    /** This class's own conclusion and technique rows on the pathology case. */
+    private static final int[] FINDING_ROWS = { 9731, 9732, 9733, 9734, 9735 };
+
+    private DictionaryRows.StainEntries stains;
 
     @Autowired
     private ImmunohistochemistryDisplayService immunohistochemistryDisplayService;
@@ -75,13 +89,17 @@ public class ImmunohistochemistryCaseViewBlocksTest extends BaseWebContextSensit
     }
 
     private void clearOwnRows() {
+        for (int id : FINDING_ROWS) {
+            jdbcTemplate.update("DELETE FROM clinlims.pathology_conclusion WHERE id = ?", id);
+            jdbcTemplate.update("DELETE FROM clinlims.pathology_technique WHERE id = ?", id);
+        }
         jdbcTemplate.update("DELETE FROM clinlims.immunohistochemistry_sample WHERE id = ?", IHC_SAMPLE_ID);
+        jdbcTemplate.update("DELETE FROM clinlims.pathology_request WHERE id IN (?, ?)", COMPLETED_REQUEST,
+                CANCELLED_REQUEST);
         PathologyCaseRows.clearLabelStamp(jdbcTemplate, LEGACY_SLIDE_ID);
-        jdbcTemplate.update("UPDATE clinlims.pathology_slide SET stain_id = NULL WHERE stain_id = ?", STAIN);
-        DictionaryRows.removeEntries(jdbcTemplate, STAIN);
-        if (insertedTheStainCategory) {
-            DictionaryRows.removeCategory(jdbcTemplate, STAIN_CATEGORY_ID);
-            insertedTheStainCategory = false;
+        if (stains != null) {
+            stains.close();
+            stains = null;
         }
         jdbcTemplate.update("DELETE FROM clinlims.history WHERE reference_table = ?",
                 Integer.parseInt(referenceTablesService.getReferenceTableByName("PATHOLOGY_BLOCK").getId()));
@@ -120,10 +138,7 @@ public class ImmunohistochemistryCaseViewBlocksTest extends BaseWebContextSensit
      */
     @Test
     public void caseView_namesTheStainsOfTheReferredSlides() {
-        insertedTheStainCategory = DictionaryRows.insertCategory(jdbcTemplate, STAIN_CATEGORY_ID,
-                PathologySampleService.STAIN_CATEGORY, PathologySampleService.STAIN_CATEGORY, "PathStain");
-        int categoryId = DictionaryRows.idOfCategory(jdbcTemplate, PathologySampleService.STAIN_CATEGORY);
-        DictionaryRows.insertEntry(jdbcTemplate, STAIN, categoryId, STAIN_NAME, "PSMas", true);
+        stains = DictionaryRows.stainEntries(jdbcTemplate, STAIN_CATEGORY_ID).with(STAIN, STAIN_NAME, true);
         jdbcTemplate.update("UPDATE clinlims.pathology_slide SET stain_id = ? WHERE id = ?", STAIN, LEGACY_SLIDE_ID);
 
         ImmunohistochemistryCaseViewDisplayItem displayItem = immunohistochemistryDisplayService
@@ -149,5 +164,82 @@ public class ImmunohistochemistryCaseViewBlocksTest extends BaseWebContextSensit
 
         assertEquals("the verified slide is named by its verifier", systemUserService.get("1001").getDisplayName(),
                 verified.getLabelVerifications().get(LEGACY_SLIDE_ID).verifiedBy());
+    }
+
+    /**
+     * The referred view shows what staining and the coverslip check found on each
+     * slide, read from the slide rows themselves, which carry the values by name.
+     */
+    @Test
+    public void caseView_carriesTheReferredSlidesStainStatusAndCoverslipCheck() {
+        jdbcTemplate.update(
+                "UPDATE clinlims.pathology_slide SET stain_status = 'STAINED', coverslip_qc = 'PASS'" + " WHERE id = ?",
+                LEGACY_SLIDE_ID);
+
+        ImmunohistochemistryCaseViewDisplayItem displayItem = immunohistochemistryDisplayService
+                .convertToCaseDisplayItem(IHC_SAMPLE_ID);
+
+        PathologySlide slide = displayItem.getSlides().get(0);
+        assertEquals("the stain status rides along on the slide", StainStatus.STAINED, slide.getStainStatus());
+        assertEquals("and so does the coverslip check", CoverslipQc.PASS, slide.getCoverslipQc());
+    }
+
+    /**
+     * The referred view lists what the pathologist asked of the bench: every
+     * request that is not cancelled, text ones included, by its own id and
+     * instruction, newest first, so two requests saying the same thing are still
+     * two.
+     */
+    @Test
+    public void caseView_listsEveryRequestNotCancelled_byIdAndInstruction() {
+        jdbcTemplate.update("INSERT INTO clinlims.pathology_request (id, pathology_sample_id, last_updated, status,"
+                + " type, value, request_kind, priority) VALUES (?, ?, now(), 'COMPLETED', 'TEXT', 'Iron stain',"
+                + " 'BLOCK', 'NORMAL'), (?, ?, now(), 'CANCELLED', 'TEXT', 'Asked twice', 'BLOCK', 'NORMAL')",
+                COMPLETED_REQUEST, PATHOLOGY_CASE_ID, CANCELLED_REQUEST, PATHOLOGY_CASE_ID);
+
+        ImmunohistochemistryCaseViewDisplayItem displayItem = immunohistochemistryDisplayService
+                .convertToCaseDisplayItem(IHC_SAMPLE_ID);
+
+        assertEquals("the completed request, then the fixture's open one; the cancelled one is left out",
+                List.of(String.valueOf(COMPLETED_REQUEST) + "=Iron stain",
+                        String.valueOf(FIXTURE_REQUEST_ID) + "=Histology review"),
+                displayItem.getRequests().stream().map(request -> request.getId() + "=" + request.getValue()).toList());
+    }
+
+    /**
+     * A referred case shows the pathology findings read only; a conclusion or
+     * technique stored before codes were checked may name no entry, and the view is
+     * still read, without it.
+     */
+    @Test
+    public void aReferredCaseShowsThePathologyFindings_andSkipsAnEntryThatNoLongerExists() {
+        try (PathologyFindingsDictionary dictionary = PathologyFindingsDictionary.seed(jdbcTemplate)) {
+            jdbcTemplate.update("DELETE FROM clinlims.pathology_conclusion WHERE pathology_sample_id = ?",
+                    PATHOLOGY_CASE_ID);
+            insertFinding("pathology_conclusion", 9731, "DICTIONARY", PathologyFindingsDictionary.ADENOCARCINOMA);
+            insertFinding("pathology_conclusion", 9732, "DICTIONARY", PathologyFindingsDictionary.NO_ENTRY);
+            insertFinding("pathology_conclusion", 9733, "DICTIONARY", PathologyFindingsDictionary.CHRONIC_GASTRITIS);
+            insertFinding("pathology_conclusion", 9734, "TEXT", "Narrative");
+            insertFinding("pathology_technique", 9731, "DICTIONARY", PathologyFindingsDictionary.NO_ENTRY);
+            insertFinding("pathology_technique", 9732, "DICTIONARY", PathologyFindingsDictionary.FROZEN_SECTION);
+
+            ImmunohistochemistryCaseViewDisplayItem displayItem = immunohistochemistryDisplayService
+                    .convertToCaseDisplayItem(IHC_SAMPLE_ID);
+
+            assertEquals("the diagnoses that name an entry, in the stored order, with their names",
+                    List.of("9101=Adenocarcinoma", "9102=Chronic gastritis"), displayItem.getConclusions().stream()
+                            .map(pair -> pair.getId() + "=" + pair.getValue()).collect(Collectors.toList()));
+            assertEquals("the technique that names no entry is left out", List.of("9201=Frozen section"),
+                    displayItem.getTechniques().stream().map(pair -> pair.getId() + "=" + pair.getValue())
+                            .collect(Collectors.toList()));
+            assertEquals("the narrative is read as before", "Narrative", displayItem.getConclusionText());
+            assertNotNull("and the descriptions come from the pathology case", displayItem.getGrossExam());
+            assertNotNull(displayItem.getMicroscopyExam());
+        }
+    }
+
+    private void insertFinding(String table, int id, String type, String value) {
+        jdbcTemplate.update("INSERT INTO clinlims." + table + " (id, pathology_sample_id, type, value, last_updated)"
+                + " VALUES (?, ?, ?, ?, now())", id, PATHOLOGY_CASE_ID, type, value);
     }
 }

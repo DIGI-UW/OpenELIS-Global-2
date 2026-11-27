@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import jakarta.persistence.OptimisticLockException;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.common.action.IActionConstants;
@@ -52,7 +53,7 @@ public class PathologyStageRestControllerSecurityTest extends SecuritySliceMockM
     public void resetStubs() {
         service = webApplicationContext.getBean(PathologySampleService.class);
         reset(service, webApplicationContext.getBean(ProgramSampleLabUnitScope.class));
-        when(service.advance(any(), any(), any())).thenReturn(entryOnto(PathologyStatus.PROCESSING));
+        when(service.advance(any(), any(), any(), any())).thenReturn(entryOnto(PathologyStatus.PROCESSING));
         when(service.returnToPreviousStage(any(), any(), any(), any())).thenReturn(entryOnto(PathologyStatus.GROSSING));
     }
 
@@ -63,7 +64,7 @@ public class PathologyStageRestControllerSecurityTest extends SecuritySliceMockM
                 .content("{\"from\":\"GROSSING\"}")).andExpect(status().isUnauthorized());
 
         verify(service, never()).get(any());
-        verify(service, never()).advance(any(), any(), any());
+        verify(service, never()).advance(any(), any(), any(), any());
     }
 
     @Test
@@ -81,7 +82,33 @@ public class PathologyStageRestControllerSecurityTest extends SecuritySliceMockM
         mockMvc.perform(post(ADVANCE).with(user("tech")).sessionAttr(IActionConstants.USER_SESSION_DATA, sessionUser())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"from\":\"GROSSING\"}")).andExpect(status().isOk());
 
-        verify(service).advance(eq(7), eq(PathologyStatus.GROSSING), eq("1"));
+        verify(service).advance(eq(7), eq(PathologyStatus.GROSSING), eq("1"), eq(List.of()));
+    }
+
+    /**
+     * A send that names the open requests the page listed passes them on, so the
+     * service can tell whether every open request was shown (FR-10.11).
+     */
+    @Test
+    public void anAdvanceAcknowledgingRequests_passesTheirIdsOn() throws Exception {
+        mockMvc.perform(post(ADVANCE).with(user("tech")).sessionAttr(IActionConstants.USER_SESSION_DATA, sessionUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"from\":\"COVERSLIPPING\",\"acknowledgedRequestIds\":[31,32]}")).andExpect(status().isOk());
+
+        verify(service).advance(eq(7), eq(PathologyStatus.COVERSLIPPING), eq("1"), eq(List.of(31, 32)));
+    }
+
+    /**
+     * The stage alone, as every page and helper posted it before requests could be
+     * acknowledged, still parses, and acknowledges nothing.
+     */
+    @Test
+    public void anAdvanceNamingOnlyTheStage_stillParsesAndAcknowledgesNothing() throws Exception {
+        mockMvc.perform(post(ADVANCE).with(user("tech")).sessionAttr(IActionConstants.USER_SESSION_DATA, sessionUser())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"from\":\"COVERSLIPPING\"}"))
+                .andExpect(status().isOk());
+
+        verify(service).advance(eq(7), eq(PathologyStatus.COVERSLIPPING), eq("1"), eq(List.of()));
     }
 
     @Test
@@ -99,7 +126,7 @@ public class PathologyStageRestControllerSecurityTest extends SecuritySliceMockM
      */
     @Test
     public void anAdvanceThatLosesTheVersionCheck_answers409() throws Exception {
-        when(service.advance(any(), any(), any())).thenThrow(new OptimisticLockException());
+        when(service.advance(any(), any(), any(), any())).thenThrow(new OptimisticLockException());
 
         mockMvc.perform(post(ADVANCE).with(user("tech")).sessionAttr(IActionConstants.USER_SESSION_DATA, sessionUser())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"from\":\"GROSSING\"}"))

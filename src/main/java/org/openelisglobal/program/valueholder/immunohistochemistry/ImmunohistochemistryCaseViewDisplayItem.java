@@ -30,6 +30,10 @@ public class ImmunohistochemistryCaseViewDisplayItem extends Immunohistochemistr
     // who checked each referred slide's label and when, by slide id
     private Map<Integer, LabelVerificationView> labelVerifications;
     private List<IdValuePair> techniques;
+    /**
+     * The referred pathology case's bench requests that are not cancelled, newest
+     * first, each as its request id and instruction.
+     */
     private List<IdValuePair> requests;
     private List<IdValuePair> conclusions;
     private String conclusionText;

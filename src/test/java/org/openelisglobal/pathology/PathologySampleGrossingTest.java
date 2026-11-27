@@ -15,6 +15,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.audittrail.valueholder.History;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
 import org.openelisglobal.program.service.PathologyCaseRuleException;
 import org.openelisglobal.program.service.PathologyDisplayService;
@@ -172,8 +173,12 @@ public class PathologySampleGrossingTest extends PathologyCaseTestSupport {
     public void aRetiredTissueType_isRefused() {
         int blocksBefore = blocksOnCase().size();
 
-        PathologyCaseRuleException refused = assertThrows(PathologyCaseRuleException.class,
+        LocalizedValidationException refused = assertThrows(LocalizedValidationException.class,
                 () -> saveBlocks(postedBlock(null, "Bench A", String.valueOf(RETIRED_TISSUE))));
+        assertEquals("the screen translates the refusal from its message id", "pathology.error.tissueTypeNotInUse",
+                refused.getErrorCode());
+        assertEquals("and the refusal names the entry the bench picked", "Retired tissue",
+                refused.getParams().get("name"));
 
         assertTrue("an entry taken out of use cannot be recorded on a cassette: " + refused.getMessage(),
                 refused.getMessage().contains(String.valueOf(RETIRED_TISSUE)));

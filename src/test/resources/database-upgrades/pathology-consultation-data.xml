@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet id="fixture-pathology-consultation-data"
+        author="openelis">
+        <comment>A deployment that recorded a case before second opinions were
+            kept: one case under review. Nobody asked a colleague about it, so
+            no second opinion may be invented for it; 012 has no backfill, and
+            this case guards against one being added later.</comment>
+        <sql>
+            INSERT INTO clinlims.sample
+            (id, accession_number, entered_date, received_date, lastupdated)
+            VALUES
+            (990501, 'CON26000000001', now(), now(), now());
+        </sql>
+        <sql>
+            INSERT INTO clinlims.pathology_sample
+            (id, sample_id, status, last_updated)
+            VALUES
+            (990501, 990501, 'UNDER_REVIEW', now() - interval '30 days');
+        </sql>
+    </changeSet>
+</databaseChangeLog>

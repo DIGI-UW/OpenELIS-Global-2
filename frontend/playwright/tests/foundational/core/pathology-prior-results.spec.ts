@@ -9,6 +9,7 @@ import {
   moveCaseToStage,
   readCase,
   saveCaseThroughApi,
+  signOutCase,
   type PathologyOrderTarget,
 } from "../../../helpers/seed-pathology-data";
 import {
@@ -271,17 +272,16 @@ test.describe
       // Patient X: P1 signed out with a free-text conclusion, then C1, I1, P2.
       p1 = await pathologyCase(page, target);
       p1Conclusion = `Adenocarcinoma, moderately differentiated (${p1.labNo})`;
-      // The server offers no stage after Ready for Pathologist: the release
-      // on the save is the sign-out, as Ready For release is on the screen.
-      await moveCaseToStage(
-        page,
-        { pathologySampleId: p1.id },
-        "READY_PATHOLOGIST",
-      );
+      // The conclusion is written at the stage the case is read at, and the
+      // sign-out needs both descriptions: signOutCase writes them and saves
+      // with the release, which is the only way to Completed.
+      const readingStage =
+        (await readCase(page, p1.id)).readingStage ?? "READY_PATHOLOGIST";
+      await moveCaseToStage(page, { pathologySampleId: p1.id }, readingStage);
       await saveCaseThroughApi(page, p1.id, await readCase(page, p1.id), {
         conclusionText: p1Conclusion,
-        release: true,
       });
+      await signOutCase(page, { pathologySampleId: p1.id });
       expect((await readCase(page, p1.id)).status).toBe("COMPLETED");
 
       c1 = await benchCase(page, target, "cytology", p1.id);

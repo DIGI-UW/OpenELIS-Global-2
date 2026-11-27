@@ -6,13 +6,17 @@ import jakarta.transaction.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
@@ -55,10 +59,14 @@ import org.openelisglobal.program.dao.PathologySampleDAO;
 import org.openelisglobal.program.dao.PathologySlideDAO;
 import org.openelisglobal.program.dao.PathologyStageEventDAO;
 import org.openelisglobal.program.util.DesignationScheme;
+import org.openelisglobal.program.util.DictionaryEntryNames;
+import org.openelisglobal.program.util.EnumNames;
 import org.openelisglobal.program.util.PathologyDesignations;
+import org.openelisglobal.program.util.PathologyRowOrder;
 import org.openelisglobal.program.util.PathologyStages;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistrySample;
 import org.openelisglobal.program.valueholder.pathology.CassetteState;
+import org.openelisglobal.program.valueholder.pathology.CoverslipQc;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion.ConclusionType;
@@ -71,7 +79,10 @@ import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 import org.openelisglobal.program.valueholder.pathology.PathologyStageEvent;
 import org.openelisglobal.program.valueholder.pathology.PathologyTechnique;
 import org.openelisglobal.program.valueholder.pathology.PathologyTechnique.TechniqueType;
+import org.openelisglobal.program.valueholder.pathology.RequestKind;
+import org.openelisglobal.program.valueholder.pathology.RequestPriority;
 import org.openelisglobal.program.valueholder.pathology.StageDirection;
+import org.openelisglobal.program.valueholder.pathology.StainStatus;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.openelisglobal.result.action.util.ResultSet;
@@ -107,6 +118,12 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
      * point at.
      */
     private static final String CASE_REFERENCE_TABLE = "PATHOLOGY_SAMPLE";
+
+    /** The narrative conclusion's column holds this many characters. */
+    private static final int CONCLUSION_TEXT_MAX_LENGTH = 255;
+
+    /** reference_tables row a bench request's own audit entries point at. */
+    private static final String REQUEST_REFERENCE_TABLE = "PATHOLOGY_REQUEST";
 
     /** A slide cut in a save, named by its block and its designation under it. */
     private record SlideCut(Integer blockId, String designation) {
@@ -211,7 +228,8 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
     @Transactional
     @Override
     public List<PathologySlide> getSlides(Integer pathologySampleId) {
-        return baseObjectDAO.get(pathologySampleId).map(pathologySample -> new ArrayList<>(pathologySample.getSlides()))
+        return baseObjectDAO.get(pathologySampleId)
+                .map(pathologySample -> new ArrayList<>(PathologyRowOrder.slides(pathologySample.getSlides())))
                 .orElseGet(ArrayList::new);
     }
 
@@ -229,6 +247,7 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         pathologySample.setQuestionnaireResponseUuid(oldPathologySample.getQuestionnaireResponseUuid());
         pathologySample.setReports(new ArrayList<>(oldPathologySample.getReports()));
         pathologySample.setRequests(new ArrayList<>(oldPathologySample.getRequests()));
+        pathologySample.setReviewNotes(oldPathologySample.getReviewNotes());
         pathologySample.setSample(oldPathologySample.getSample());
         pathologySample.setSlides(new ArrayList<>(oldPathologySample.getSlides()));
         pathologySample.setStatus(oldPathologySample.getStatus());
@@ -249,7 +268,30 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
                 .collect(Collectors.toList()));
         storedState.setSlides(storedCase.getSlides().stream().map(PathologySampleServiceImpl::copyOfSlide)
                 .collect(Collectors.toList()));
+        storedState.setRequests(storedCase.getRequests().stream().map(PathologySampleServiceImpl::copyOfRequest)
+                .collect(Collectors.toList()));
         return storedState;
+    }
+
+    /** Every field the case's audit names a request by. */
+    private static PathologyRequest copyOfRequest(PathologyRequest stored) {
+        PathologyRequest request = new PathologyRequest();
+        request.setId(stored.getId());
+        request.setStatus(stored.getStatus());
+        request.setType(stored.getType());
+        request.setValue(stored.getValue());
+        request.setKind(stored.getKind());
+        request.setTargetBlockId(stored.getTargetBlockId());
+        request.setTargetSlideId(stored.getTargetSlideId());
+        request.setStainId(stored.getStainId());
+        request.setPriority(stored.getPriority());
+        request.setResultBlockId(stored.getResultBlockId());
+        request.setResultSlideId(stored.getResultSlideId());
+        request.setCancelReason(stored.getCancelReason());
+        request.setRaisedAt(stored.getRaisedAt());
+        request.setRaisedBy(stored.getRaisedBy());
+        request.setLastupdated(stored.getLastupdated());
+        return request;
     }
 
     private static PathologyBlock copyOfBlock(PathologyBlock stored) {
@@ -280,6 +322,11 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         slide.setLevel(stored.getLevel());
         slide.setStainId(stored.getStainId());
         slide.setStainStatus(stored.getStainStatus());
+        slide.setStainStatusAt(stored.getStainStatusAt());
+        slide.setStainStatusBy(stored.getStainStatusBy());
+        slide.setCoverslipQc(stored.getCoverslipQc());
+        slide.setCoverslipQcAt(stored.getCoverslipQcAt());
+        slide.setCoverslipQcBy(stored.getCoverslipQcBy());
         slide.setLabelVerifiedAt(stored.getLabelVerifiedAt());
         slide.setLabelVerifiedBy(stored.getLabelVerifiedBy());
         slide.setLastupdated(stored.getLastupdated());
@@ -309,11 +356,14 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         if (form.getRelease()) {
             refuseReleaseOutsideReview(storedCase);
         }
+        // Worked out against the stored case, before the copy.
+        ReviewChanges changes = reviewChangesOf(storedCase, form);
+        refuseReviewChanges(storedCase, changes, form);
         // Copy only after validating all new or changed attachments.
         PathologySample pathologySample = copyPathologySample(storedCase);
         PathologySample storedState = auditedStateOf(storedCase);
         pathologySample.setSysUserId(form.getSystemUserId());
-        if (!GenericValidator.isBlankOrNull(form.getAssignedPathologistId())) {
+        if (changes.pathologist()) {
             pathologySample.setPathologist(systemUserService.get(form.getAssignedPathologistId()));
         }
         if (!GenericValidator.isBlankOrNull(form.getAssignedTechnicianId())) {
@@ -324,7 +374,9 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
                 : pathologySample.getSample().getAccessionNumber();
         List<String> cassettesCut = reconcileBlocks(pathologySample, form.getBlocks(), scheme, accessionNumber);
         List<SlideCut> slidesCut = reconcileSlides(pathologySample, form.getSlides(), scheme, accessionNumber);
-        pathologySample.setGrossExam(form.getGrossExam());
+        if (changes.grossExam()) {
+            pathologySample.setGrossExam(form.getGrossExam());
+        }
         // The flag records what grossing found. Past the stage an untick would make a
         // decalcified specimen read as one that never needed it, so it is no longer
         // taken.
@@ -332,32 +384,47 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
             pathologySample.setDecalcificationRequired(form.getDecalcificationRequired());
         }
         if (form.getRunReference() != null) {
-            recordRunReference(storedCase, form.getRunReference(), pathologySample.getSysUserId());
+            recordRunReference(storedCase, PathologyStatus.PROCESSING, form.getRunReference(),
+                    pathologySample.getSysUserId());
         }
-        pathologySample.setMicroscopyExam(form.getMicroscopyExam());
-        pathologySample.getConclusions().removeAll(pathologySample.getConclusions());
-        pathologySample.getConclusions().add(createConclusion(form.getConclusionText(), ConclusionType.TEXT));
-        if (form.getConclusions() != null)
-            pathologySample.getConclusions().addAll(form.getConclusions().stream()
-                    .map(e -> createConclusion(e, ConclusionType.DICTIONARY)).collect(Collectors.toList()));
-        pathologySample.getRequests().removeAll(pathologySample.getRequests());
-        if (form.getRequests() != null) {
-            pathologySample.getRequests()
-                    .addAll(form.getRequests().stream()
-                            .map(e -> createRequest(e.getValue(), RequestType.DICTIONARY, e.getStatus()))
-                            .collect(Collectors.toList()));
+        if (form.getCoverslipRunReference() != null) {
+            recordRunReference(storedCase, PathologyStatus.COVERSLIPPING, form.getCoverslipRunReference(),
+                    pathologySample.getSysUserId());
         }
-        pathologySample.getTechniques().removeAll(pathologySample.getTechniques());
-        if (form.getTechniques() != null)
-            pathologySample.getTechniques().addAll(form.getTechniques().stream()
-                    .map(e -> createTechnique(e, TechniqueType.DICTIONARY)).collect(Collectors.toList()));
+        if (changes.microscopyExam()) {
+            pathologySample.setMicroscopyExam(form.getMicroscopyExam());
+        }
+        if (changes.reviewNotes()) {
+            pathologySample.setReviewNotes(form.getReviewNotes());
+        }
+        // Conclusions and techniques are rewritten only when they changed, so
+        // unchanged rows keep their ids.
+        List<String> codesBefore = conclusionCodes(storedCase.getConclusions());
+        List<String> codesAfter = changes.conclusions() == null ? codesBefore : changes.conclusions();
+        if (changes.narrative() || changes.conclusions() != null) {
+            String narrative = changes.narrative() ? form.getConclusionText() : storedNarrative(storedCase);
+            pathologySample.getConclusions().clear();
+            pathologySample.getConclusions()
+                    .add(createConclusion(StringUtils.defaultString(narrative), ConclusionType.TEXT));
+            codesAfter.forEach(
+                    code -> pathologySample.getConclusions().add(createConclusion(code, ConclusionType.DICTIONARY)));
+        }
+        // Requests are raised and change status through their own calls, so a save
+        // carries the case's requests as they stand and never writes them.
+        if (changes.techniques() != null) {
+            pathologySample.getTechniques().clear();
+            changes.techniques().forEach(
+                    code -> pathologySample.getTechniques().add(createTechnique(code, TechniqueType.DICTIONARY)));
+        }
         pathologySample.getReports().removeAll(pathologySample.getReports());
         if (form.getReports() != null)
             form.getReports().stream().forEach(e -> e.setId(null));
         pathologySample.getReports().addAll(form.getReports());
-        if (form.getReferToImmunoHistoChemistry()) {
-            referToImmunoHistoChemistry(pathologySample, form);
+        if (form.getRelease()) {
+            refuseReleaseWithoutDescriptions(pathologySample);
         }
+        Optional<Referral> referral = changes.referral() == null ? Optional.empty()
+                : referToImmunoHistoChemistry(pathologySample, changes.referral(), form.getSystemUserId());
         if (form.getRelease()) {
             if (storedCase.getStatus() == PathologyStatus.COMPLETED) {
                 // Already at Completed, so there is no stage to enter; the release is
@@ -375,6 +442,11 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
             PathologySample savedCase = updateAgainst(pathologySample, storedState);
             recordCassettesCut(savedCase, cassettesCut, pathologySample.getSysUserId());
             recordSlidesCut(savedCase, slidesCut, pathologySample.getSysUserId());
+            if (changes.narrative() || changes.conclusions() != null) {
+                recordConclusionSaved(savedCase, codesBefore, codesAfter, changes.narrative(),
+                        pathologySample.getSysUserId());
+            }
+            referral.ifPresent(made -> recordReferral(savedCase, made, pathologySample.getSysUserId()));
             persistPathologyBarcodeCountsIfSupplied(pathologySample, form);
             populatePathologyWorkflowPrintModels(pathologySample, form);
         } catch (RuntimeException e) {
@@ -471,8 +543,8 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         PathologyBlock parentBlock = pathologyBlockDAO.get(stored.getBlockId()).orElse(null);
         boolean blockMatches = parentBlock != null && (sameIdentifier(scannedBlock, parentBlock.getBarcode())
                 || (!scanRequired && sameIdentifier(scannedBlock, parentBlock.displayIdentifier())));
-        boolean slideMatches = sameIdentifier(scannedSlide, stored.getBarcode())
-                || (!scanRequired && sameIdentifier(scannedSlide, slideOnBlockName(stored, parentBlock, scheme)));
+        boolean slideMatches = sameIdentifier(scannedSlide, stored.getBarcode()) || (!scanRequired
+                && sameIdentifier(scannedSlide, PathologyDesignations.slideOnBlockName(parentBlock, stored, scheme)));
 
         if (!(blockMatches && slideMatches)) {
             Map<String, Object> payload = labelCheckPayload(PATHOLOGY_SLIDE_LABEL_MISMATCH, scannedBlock, scannedSlide);
@@ -520,10 +592,177 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
                 && StringUtils.equalsIgnoreCase(StringUtils.trim(given), StringUtils.trim(expected));
     }
 
-    /** A slide as its label names it, block first ("A1.1"). */
-    private static String slideOnBlockName(PathologySlide slide, PathologyBlock block, DesignationScheme scheme) {
-        return PathologyDesignations.slideOnBlockName(block == null ? null : block.displayIdentifier(),
-                slide.displayIdentifier(), scheme);
+    @Transactional
+    @Override
+    public List<PathologySlide> recordStainStatus(Integer pathologySampleId, List<Integer> slideIds, StainStatus status,
+            String sysUserId) {
+        refuseAnEmptyRequest(slideIds, status);
+        PathologySample storedCase = get(pathologySampleId);
+        List<PathologySlide> named = slidesToMark(storedCase, slideIds, PathologyStatus.STAINING,
+                "pathology.error.stainBeforeStage");
+        if (status == StainStatus.STAINED) {
+            refuseSlides(
+                    named.stream().filter(slide -> StringUtils.isBlank(slide.getStainId()))
+                            .collect(Collectors.toList()),
+                    storedCase, "pathology.error.stainMissing",
+                    "a slide is marked stained only once the stain on it is recorded");
+        }
+        return markSlides(storedCase, named, slide -> slide.getStainStatus() == status, (slide, now) -> {
+            slide.setStainStatus(status);
+            slide.setStainStatusAt(now);
+            slide.setStainStatusBy(sysUserId);
+            // A slide restained, or found unsatisfactory, is coverslipped and checked
+            // again, so an earlier check no longer speaks for it.
+            slide.setCoverslipQc(null);
+            slide.setCoverslipQcAt(null);
+            slide.setCoverslipQcBy(null);
+        }, slide -> {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("verb", PATHOLOGY_SLIDE_STAINED);
+            putIfPresent(payload, "stainId", slide.getStainId());
+            payload.put("status", status.name());
+            return payload;
+        }, sysUserId);
+    }
+
+    @Transactional
+    @Override
+    public List<PathologySlide> recordCoverslipQc(Integer pathologySampleId, List<Integer> slideIds, CoverslipQc result,
+            String sysUserId) {
+        refuseAnEmptyRequest(slideIds, result);
+        PathologySample storedCase = get(pathologySampleId);
+        List<PathologySlide> named = slidesToMark(storedCase, slideIds, PathologyStatus.COVERSLIPPING,
+                "pathology.error.qcBeforeStage");
+        if (deploymentEnabled().test(PathologyStatus.STAINING)) {
+            refuseSlides(named.stream().filter(slide -> !isStained(slide)).collect(Collectors.toList()), storedCase,
+                    "pathology.error.qcBeforeStain",
+                    "a slide's coverslip is checked only once the slide is marked stained");
+        }
+        return markSlides(storedCase, named, slide -> slide.getCoverslipQc() == result, (slide, now) -> {
+            slide.setCoverslipQc(result);
+            slide.setCoverslipQcAt(now);
+            slide.setCoverslipQcBy(sysUserId);
+        }, slide -> {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("verb", PATHOLOGY_SLIDE_QC_RECORDED);
+            payload.put("result", result.name());
+            return payload;
+        }, sysUserId);
+    }
+
+    /**
+     * A request that names no slide, or does not say what was found, is refused.
+     */
+    private static void refuseAnEmptyRequest(List<Integer> slideIds, Object value) {
+        if (value == null || slideIds == null || slideIds.isEmpty() || slideIds.stream().anyMatch(Objects::isNull)) {
+            throw new LocalizedValidationException("pathology.error.slideSelectionRequired",
+                    "name at least one slide and what was found for it");
+        }
+    }
+
+    /**
+     * Records a mark on each named slide whose stored value differs, with the
+     * server clock and the session user, and audits it.
+     *
+     * <p>
+     * The snapshot is taken before any write, so the case's own audit trail records
+     * the batch as one change carrying the values it replaced. A slide already
+     * holding the value is left alone.
+     *
+     * <p>
+     * A mark and a stage move write different rows, a slide and the case, so on
+     * their own both could commit: a slide found unsatisfactory as the case is sent
+     * on would reach the pathologist with nothing holding it. The case's version is
+     * therefore raised, and its row locked, before any slide is written, and of a
+     * mark and a move or a save landing together one loses its version check.
+     */
+    private List<PathologySlide> markSlides(PathologySample storedCase, List<PathologySlide> named,
+            Predicate<PathologySlide> alreadyHolds, BiConsumer<PathologySlide, Timestamp> mark,
+            Function<PathologySlide, Map<String, Object>> payloadOf, String sysUserId) {
+        if (named.stream().allMatch(alreadyHolds)) {
+            // Nothing to record, so nothing is locked or written.
+            return named;
+        }
+        // The case row is taken before any slide row, the order a save of the case
+        // takes them in, so a mark and a save wait for each other rather than
+        // deadlock; the version raised here makes whichever lands second lose.
+        baseObjectDAO.forceVersionIncrement(storedCase);
+        PathologySample storedState = auditedStateOf(storedCase);
+        Timestamp now = new Timestamp(System.currentTimeMillis());
+        List<PathologySlide> changed = new ArrayList<>();
+        for (PathologySlide slide : named) {
+            if (alreadyHolds.test(slide)) {
+                continue;
+            }
+            mark.accept(slide, now);
+            slide.setSysUserId(sysUserId);
+            pathologySlideDAO.update(slide);
+            changed.add(slide);
+        }
+        saveHistoryAgainst(storedCase, storedState, sysUserId);
+        for (PathologySlide slide : changed) {
+            recordRowEvent(SLIDE_REFERENCE_TABLE, slide.getStringId(), IActionConstants.AUDIT_TRAIL_UPDATE,
+                    payloadOf.apply(slide), sysUserId);
+        }
+        return named;
+    }
+
+    /**
+     * The slides a stain status or coverslip check is recorded on, after the
+     * refusals every slide shares, in this order: a signed-out case, a case not yet
+     * at the stage, a case already with the pathologist, a slide that is not on the
+     * case, a retired slide. Nothing is written before all of them pass, so a batch
+     * is recorded whole or not at all.
+     *
+     * <p>
+     * Marks are taken only while the case is on the bench, from the stage up to
+     * Coverslipping. With the pathologist, a slide found unreadable sends the case
+     * back to the bench with the return's reason; a mark there would change a slide
+     * under a case nothing holds any longer.
+     *
+     * @return the named slides in the order the case view lists them, each once
+     */
+    private List<PathologySlide> slidesToMark(PathologySample storedCase, List<Integer> slideIds,
+            PathologyStatus firstStage, String beforeStageMessageKey) {
+        refuseOutsideTheStage(storedCase, firstStage, beforeStageMessageKey);
+        PathologyStatus stage = storedCase.getStatus();
+        if (stage.ordinal() > PathologyStatus.COVERSLIPPING.ordinal()) {
+            throw new LocalizedValidationException("pathology.error.slideWorkAfterBench", "pathology case "
+                    + storedCase.getId() + " stands at " + stage + ", so it is returned to the bench to be changed");
+        }
+        List<PathologySlide> slidesOnCase = storedCase.getSlides() == null ? List.of() : storedCase.getSlides();
+        LinkedHashSet<Integer> wanted = new LinkedHashSet<>(slideIds);
+        for (Integer slideId : wanted) {
+            if (slidesOnCase.stream().noneMatch(slide -> slideId.equals(slide.getId()))) {
+                throw new LocalizedValidationException("pathology.error.slideNotOnCase",
+                        "slide " + slideId + " is not on pathology case " + storedCase.getId());
+            }
+        }
+        List<PathologySlide> named = PathologyRowOrder.slides(slidesOnCase).stream()
+                .filter(slide -> wanted.contains(slide.getId())).collect(Collectors.toList());
+        for (PathologySlide slide : named) {
+            if (!slide.isActive()) {
+                throw new LocalizedValidationException("pathology.error.slideRetired",
+                        "slide " + slide.getId() + " has been deactivated, so nothing more is recorded on it");
+            }
+        }
+        return named;
+    }
+
+    private static boolean isStained(PathologySlide slide) {
+        return slide.getStainStatus() == StainStatus.STAINED;
+    }
+
+    /** Refuses the whole request, naming every slide that stands in its way. */
+    private static void refuseSlides(List<PathologySlide> refused, PathologySample storedCase, String messageKey,
+            String rule) {
+        if (refused.isEmpty()) {
+            return;
+        }
+        String designations = slideNames(refused, storedCase, DesignationScheme.fromConfiguration());
+        throw new LocalizedValidationException(messageKey,
+                "pathology case " + storedCase.getId() + ": " + rule + ": " + designations,
+                Map.of("designations", designations));
     }
 
     @Transactional
@@ -541,6 +780,13 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
     @Transactional
     @Override
     public PathologyStageEvent advance(Integer pathologySampleId, PathologyStatus from, String sysUserId) {
+        return advance(pathologySampleId, from, sysUserId, List.of());
+    }
+
+    @Transactional
+    @Override
+    public PathologyStageEvent advance(Integer pathologySampleId, PathologyStatus from, String sysUserId,
+            List<Integer> acknowledgedRequestIds) {
         PathologySample storedCase = get(pathologySampleId);
         requireStoredStage(storedCase, from);
         refuseOnACompletedCase(storedCase);
@@ -548,7 +794,51 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
                 .orElseThrow(() -> new LocalizedValidationException("pathology.error.advanceBeyondBench",
                         "the pathologist signs the case out from " + storedCase.getStatus()));
         refuseAnUnfinishedStage(storedCase);
-        return move(storedCase, next, StageDirection.FORWARD, null, sysUserId);
+        if (next == PathologyStatus.READY_PATHOLOGIST) {
+            overrideOpenRequests(storedCase, acknowledgedRequestIds, sysUserId);
+        }
+        // Whoever begins the review is the one reading the case, unless it is
+        // already assigned (FR-12.1).
+        Consumer<PathologySample> takeTheCase = next == PathologyStatus.UNDER_REVIEW
+                && storedCase.getPathologist() == null
+                        ? movedCase -> movedCase.setPathologist(systemUserService.get(sysUserId))
+                        : movedCase -> {
+                        };
+        return move(storedCase, next, StageDirection.FORWARD, null, sysUserId, takeTheCase);
+    }
+
+    /**
+     * A case goes to the pathologist past open requests only once the sender has
+     * seen each of them, by id, so a request raised behind an open page is shown
+     * before it is passed over. An id that is not open is ignored. The requests
+     * passed over are recorded on the case, ahead of the move's own entry.
+     */
+    private void overrideOpenRequests(PathologySample storedCase, List<Integer> acknowledgedRequestIds,
+            String sysUserId) {
+        List<PathologyRequest> open = openRequests(storedCase);
+        if (open.isEmpty()) {
+            return;
+        }
+        List<Integer> acknowledged = acknowledgedRequestIds == null ? List.of() : acknowledgedRequestIds;
+        if (!open.stream().map(PathologyRequest::getId).allMatch(acknowledged::contains)) {
+            String instructions = open.stream().map(request -> request.instruction(dictionaryService))
+                    .collect(Collectors.joining(", "));
+            throw new LocalizedValidationException("pathology.error.openRequestsUnacknowledged",
+                    "pathology case " + storedCase.getId() + " has open requests: " + instructions,
+                    Map.of("instructions", instructions));
+        }
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("verb", PATHOLOGY_REQUEST_OVERRIDDEN);
+        payload.put("requestIds", open.stream().map(PathologyRequest::getId).collect(Collectors.toList()));
+        recordRowEvent(CASE_REFERENCE_TABLE, storedCase.getStringId(), IActionConstants.AUDIT_TRAIL_UPDATE, payload,
+                sysUserId);
+    }
+
+    /** The case's open requests, newest first. */
+    private static List<PathologyRequest> openRequests(PathologySample storedCase) {
+        return storedCase.getRequests() == null ? List.of()
+                : PathologyRowOrder.requests(storedCase.getRequests()).stream()
+                        .filter(request -> request.getStatus() == RequestStatus.OPENED).collect(Collectors.toList());
     }
 
     @Transactional
@@ -573,6 +863,253 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         return move(storedCase, previous, StageDirection.RETURN, trimmedReason, sysUserId);
     }
 
+    // ---- bench requests (FR-10) ----
+
+    /**
+     * The refusals a block or slide a request names answers with, by what it is
+     * named as: the target a request asks about, or the row that fulfilled it.
+     */
+    private record RowRefusals(String notOnCase, String retired) {
+    }
+
+    private static final RowRefusals TARGET_REFUSALS = new RowRefusals("pathology.error.requestTargetNotOnCase",
+            "pathology.error.requestTargetRetired");
+
+    private static final RowRefusals RESULT_REFUSALS = new RowRefusals("pathology.error.requestResultNotOnCase",
+            "pathology.error.requestResultRetired");
+
+    @Transactional
+    @Override
+    public PathologyRequest raiseRequest(Integer pathologySampleId, RequestDraft draft, String sysUserId) {
+        RequestKind kind = EnumNames.valueNamed(RequestKind.class, draft == null ? null : draft.kind());
+        if (kind == null) {
+            throw new LocalizedValidationException("pathology.error.requestKindRequired",
+                    "a request asks for an additional block, slide or stain");
+        }
+        String instruction = StringUtils.trimToNull(draft.instruction());
+        if (instruction == null) {
+            throw new LocalizedValidationException("pathology.error.requestInstructionRequired",
+                    "a request says what the bench is asked to do");
+        }
+        if (instruction.length() > PathologyRequest.INSTRUCTION_MAX_LENGTH) {
+            throw new LocalizedValidationException("pathology.error.requestInstructionTooLong",
+                    "the instruction can be at most " + PathologyRequest.INSTRUCTION_MAX_LENGTH + " characters");
+        }
+        RequestPriority priority = RequestPriority.NORMAL;
+        if (StringUtils.isNotBlank(draft.priority())) {
+            priority = EnumNames.valueNamed(RequestPriority.class, draft.priority());
+            if (priority == null) {
+                throw new LocalizedValidationException("pathology.error.requestPriorityUnknown",
+                        "the priority " + draft.priority() + " is not one a request takes");
+            }
+        }
+        PathologySample storedCase = get(pathologySampleId);
+        refuseOnACompletedCase(storedCase);
+
+        PathologyRequest request = new PathologyRequest();
+        request.setKind(kind);
+        request.setPriority(priority);
+        // A target or stain the kind does not take is not what was asked for, so it
+        // is dropped rather than stored beside the request.
+        if (kind == RequestKind.SLIDE) {
+            request.setTargetBlockId(blockOfCaseInUse(storedCase,
+                    targetRequired(draft.targetBlockId(), "a slide request names its block"), TARGET_REFUSALS).getId());
+        } else if (kind == RequestKind.STAIN) {
+            request.setTargetSlideId(slideOfCaseInUse(storedCase,
+                    targetRequired(draft.targetSlideId(), "a stain request names its slide"), TARGET_REFUSALS).getId());
+            request.setStainId(stainInUse(draft.stainId()));
+        }
+
+        // The case row is taken first, as every other writer of the case takes it, so
+        // a send or a save that read the case before this request existed loses its
+        // version check rather than passing the request over or taking it off the
+        // case.
+        baseObjectDAO.forceVersionIncrement(storedCase);
+        PathologySample storedState = auditedStateOf(storedCase);
+        request.setStatus(RequestStatus.OPENED);
+        request.setType(RequestType.TEXT);
+        request.setValue(instruction);
+        request.setRaisedAt(new Timestamp(System.currentTimeMillis()));
+        request.setRaisedBy(sysUserId);
+        request.setSysUserId(sysUserId);
+        Set<Integer> requestsBefore = storedCase.getRequests().stream().map(PathologyRequest::getId)
+                .collect(Collectors.toSet());
+        storedCase.getRequests().add(request);
+        storedCase.setSysUserId(sysUserId);
+        // Flushed here so the new row has its id before anything is audited; the
+        // merge may hold it as a copy of the instance added, so it is found by id.
+        PathologySample savedCase = baseObjectDAO.update(storedCase);
+        PathologyRequest raised = savedCase.getRequests().stream()
+                .filter(saved -> !requestsBefore.contains(saved.getId())).findFirst()
+                .orElseThrow(() -> new LIMSRuntimeException(
+                        "the request raised on pathology case " + pathologySampleId + " was not saved with it"));
+        saveHistoryAgainst(savedCase, storedState, sysUserId);
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("verb", PATHOLOGY_REQUEST_RAISED);
+        payload.put("kind", kind.name());
+        payload.put("priority", priority.name());
+        if (raised.getTargetBlockId() != null) {
+            payload.put("targetBlockId", raised.getTargetBlockId());
+            putIfPresent(payload, "target", savedCase.nameOfBlock(raised.getTargetBlockId()).orElse(null));
+        }
+        if (raised.getTargetSlideId() != null) {
+            payload.put("targetSlideId", raised.getTargetSlideId());
+            putIfPresent(payload, "target", savedCase.nameOfSlide(raised.getTargetSlideId()).orElse(null));
+        }
+        putIfPresent(payload, "stainId", raised.getStainId());
+        recordRowEvent(REQUEST_REFERENCE_TABLE, raised.getStringId(), IActionConstants.AUDIT_TRAIL_INSERT, payload,
+                sysUserId);
+        return raised;
+    }
+
+    @Transactional
+    @Override
+    public PathologyRequest changeRequestStatus(Integer pathologySampleId, Integer requestId,
+            RequestStatusChange change, String sysUserId) {
+        RequestStatus from = EnumNames.valueNamed(RequestStatus.class, change == null ? null : change.from());
+        RequestStatus to = EnumNames.valueNamed(RequestStatus.class, change == null ? null : change.status());
+        if (from == null || to == null) {
+            throw new LocalizedValidationException("pathology.error.requestStatusRequired",
+                    "a status change names the status the page showed and the one asked for");
+        }
+        String reason = null;
+        if (to == RequestStatus.CANCELLED) {
+            reason = StringUtils.trimToNull(change.cancelReason());
+            if (reason == null) {
+                throw new LocalizedValidationException("pathology.error.requestCancelReasonRequired",
+                        "a request is cancelled only with a reason");
+            }
+            if (reason.length() > PathologyRequest.CANCEL_REASON_MAX_LENGTH) {
+                throw new LocalizedValidationException("pathology.error.reasonTooLong",
+                        "the reason can be at most " + PathologyRequest.CANCEL_REASON_MAX_LENGTH + " characters");
+            }
+        }
+        PathologySample storedCase = get(pathologySampleId);
+        refuseOnACompletedCase(storedCase);
+        PathologyRequest request = requestId == null ? null
+                : storedCase.getRequests().stream().filter(stored -> requestId.equals(stored.getId())).findFirst()
+                        .orElse(null);
+        if (request == null) {
+            throw new LocalizedValidationException("pathology.error.requestNotOnCase",
+                    "request " + requestId + " is not on pathology case " + pathologySampleId);
+        }
+        RequestStatus stored = request.getStatus();
+        if (stored != from) {
+            throw new PathologyRequestConflictException(requestId, stored, from);
+        }
+        if (to == stored) {
+            // Nothing to record, so nothing is locked or written.
+            return request;
+        }
+        if (to != RequestStatus.OPENED && stored != RequestStatus.OPENED) {
+            throw new LocalizedValidationException("pathology.error.requestTransitionNotAllowed",
+                    "request " + requestId + " is " + stored + "; it is reopened before it can be " + to);
+        }
+        PathologyBlock resultBlock = null;
+        PathologySlide resultSlide = null;
+        // A request on file has no kind, so nothing can be said to have fulfilled it.
+        if (to == RequestStatus.COMPLETED && request.getKind() != null) {
+            boolean blockRequest = request.getKind() == RequestKind.BLOCK;
+            if ((blockRequest && change.resultSlideId() != null) || (!blockRequest && change.resultBlockId() != null)) {
+                throw new LocalizedValidationException("pathology.error.requestResultWrongKind",
+                        "a block request is fulfilled by a block, a slide or stain request by a slide");
+            }
+            if (blockRequest && change.resultBlockId() != null) {
+                resultBlock = blockOfCaseInUse(storedCase, change.resultBlockId(), RESULT_REFUSALS);
+            }
+            if (!blockRequest && change.resultSlideId() != null) {
+                resultSlide = slideOfCaseInUse(storedCase, change.resultSlideId(), RESULT_REFUSALS);
+            }
+        }
+
+        baseObjectDAO.forceVersionIncrement(storedCase);
+        PathologySample storedState = auditedStateOf(storedCase);
+        request.setStatus(to);
+        if (to == RequestStatus.OPENED) {
+            request.setCancelReason(null);
+            request.setResultBlockId(null);
+            request.setResultSlideId(null);
+        } else if (to == RequestStatus.CANCELLED) {
+            request.setCancelReason(reason);
+        } else {
+            request.setResultBlockId(resultBlock == null ? null : resultBlock.getId());
+            request.setResultSlideId(resultSlide == null ? null : resultSlide.getId());
+        }
+        request.setSysUserId(sysUserId);
+        storedCase.setSysUserId(sysUserId);
+        baseObjectDAO.update(storedCase);
+        saveHistoryAgainst(storedCase, storedState, sysUserId);
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("verb", PATHOLOGY_REQUEST_STATUS_CHANGED);
+        payload.put("statusFrom", stored.name());
+        payload.put("statusTo", to.name());
+        putIfPresent(payload, "reason", reason);
+        if (resultBlock != null) {
+            payload.put("resultBlockId", resultBlock.getId());
+            putIfPresent(payload, "result", storedCase.nameOfBlock(resultBlock.getId()).orElse(null));
+        }
+        if (resultSlide != null) {
+            payload.put("resultSlideId", resultSlide.getId());
+            putIfPresent(payload, "result", storedCase.nameOfSlide(resultSlide.getId()).orElse(null));
+        }
+        recordRowEvent(REQUEST_REFERENCE_TABLE, request.getStringId(), IActionConstants.AUDIT_TRAIL_UPDATE, payload,
+                sysUserId);
+        return request;
+    }
+
+    /**
+     * The block or slide a request is about; a slide or stain request names one.
+     */
+    private static Integer targetRequired(Integer rowId, String rule) {
+        if (rowId == null) {
+            throw new LocalizedValidationException("pathology.error.requestTargetRequired", rule);
+        }
+        return rowId;
+    }
+
+    /** A block of the case named by a request, refused when foreign or retired. */
+    private static PathologyBlock blockOfCaseInUse(PathologySample storedCase, Integer blockId, RowRefusals refusals) {
+        PathologyBlock block = storedCase.blockById(blockId)
+                .orElseThrow(() -> new LocalizedValidationException(refusals.notOnCase(),
+                        "block " + blockId + " is not on pathology case " + storedCase.getId()));
+        if (!block.isActive()) {
+            throw new LocalizedValidationException(refusals.retired(),
+                    "block " + blockId + " has been retired, so no request names it");
+        }
+        return block;
+    }
+
+    /** A slide of the case named by a request, refused when foreign or retired. */
+    private static PathologySlide slideOfCaseInUse(PathologySample storedCase, Integer slideId, RowRefusals refusals) {
+        PathologySlide slide = storedCase.slideById(slideId)
+                .orElseThrow(() -> new LocalizedValidationException(refusals.notOnCase(),
+                        "slide " + slideId + " is not on pathology case " + storedCase.getId()));
+        if (!slide.isActive()) {
+            throw new LocalizedValidationException(refusals.retired(),
+                    "slide " + slideId + " has been retired, so no request names it");
+        }
+        return slide;
+    }
+
+    /**
+     * The stain a stain request asks for: an entry of the stain list still in use.
+     * Unlike a slide's stain on a case save, an id off the list is answered with
+     * its own message, since the request has no reload to fall back on.
+     */
+    private String stainInUse(String postedStainId) {
+        String stainId = StringUtils.trimToNull(postedStainId);
+        if (stainId == null) {
+            throw new LocalizedValidationException("pathology.error.requestStainRequired",
+                    "a stain request names the stain");
+        }
+        refuseUnlessInUse(stainId, STAIN_CATEGORY,
+                rule -> new LocalizedValidationException("pathology.error.requestStainNotOnList", rule),
+                "pathology.error.requestStainRetired");
+        return stainId;
+    }
+
     @Override
     public Optional<PathologyStatus> nextStage(PathologySample pathologySample) {
         return PathologyStages.next(pathologySample.getStatus(), deploymentEnabled(),
@@ -587,8 +1124,8 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
 
     @Transactional
     @Override
-    public boolean isRunReferenceRecordable(PathologySample pathologySample) {
-        return recordableRunEntry(pathologySample).isPresent();
+    public boolean isRunReferenceRecordable(PathologySample pathologySample, PathologyStatus stage) {
+        return recordableRunEntry(pathologySample, stage).isPresent();
     }
 
     /**
@@ -598,7 +1135,19 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
      */
     private PathologyStageEvent move(PathologySample storedCase, PathologyStatus to, StageDirection direction,
             String reason, String sysUserId) {
+        return move(storedCase, to, direction, reason, sysUserId, movedCase -> {
+        });
+    }
+
+    /**
+     * As {@link #move}, with a change made to the moved copy alongside the stage,
+     * so the case's diff row records both. The stored case itself is never changed:
+     * a change made there would not reach that row.
+     */
+    private PathologyStageEvent move(PathologySample storedCase, PathologyStatus to, StageDirection direction,
+            String reason, String sysUserId, Consumer<PathologySample> alongside) {
         PathologySample movedCase = copyPathologySample(storedCase);
+        alongside.accept(movedCase);
         PathologyStageEvent entered = applyTransition(movedCase, storedCase, to, direction, reason, sysUserId);
         update(movedCase);
         return entered;
@@ -701,13 +1250,17 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
      * block may be held without slides, and once every slide in use that has a
      * block on record has had its label checked against it (FR-7.5), with or
      * without a scanner. A slide with no block on record has nothing to be checked
-     * against, so it does not hold the case back. No other stage has a condition
-     * yet.
+     * against, so it does not hold the case back. Staining is finished once every
+     * slide in use is marked stained (FR-8.1); coverslipping once every slide in
+     * use has passed its check (FR-8.4), and, where the laboratory tracks Staining,
+     * is marked stained. A slide with no block on record counts at both, since
+     * staining needs no parent; a retired slide counts at neither. None of the
+     * three slide stages is left with no slide in use.
      */
     private void refuseAnUnfinishedStage(PathologySample storedCase) {
         List<PathologyBlock> inUse = storedCase.getBlocks() == null ? List.of()
-                : storedCase.getBlocks().stream().filter(PathologyBlock::isActive)
-                        .sorted(Comparator.comparing(PathologyBlock::getId)).collect(Collectors.toList());
+                : PathologyRowOrder.blocks(storedCase.getBlocks()).stream().filter(PathologyBlock::isActive)
+                        .collect(Collectors.toList());
         if (storedCase.getStatus() == PathologyStatus.GROSSING
                 && (StringUtils.isBlank(storedCase.getGrossExam()) || inUse.isEmpty())) {
             throw new LocalizedValidationException("pathology.error.grossingIncomplete",
@@ -729,26 +1282,57 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
             }
         }
         if (storedCase.getStatus() == PathologyStatus.MICROTOMY) {
-            List<PathologySlide> slides = storedCase.getSlides() == null ? List.of() : storedCase.getSlides();
-            if (slides.stream().noneMatch(PathologySlide::isActive)) {
-                throw new LocalizedValidationException("pathology.error.microtomyIncomplete",
-                        "pathology case " + storedCase.getId() + " has no slide cut, so it cannot move on");
-            }
-            DesignationScheme scheme = DesignationScheme.fromConfiguration();
-            List<PathologyBlock> blocks = storedCase.getBlocks() == null ? List.of() : storedCase.getBlocks();
-            List<String> unverified = slides.stream().filter(
-                    slide -> slide.isActive() && slide.getBlockId() != null && slide.getLabelVerifiedAt() == null)
-                    .map(slide -> slideOnBlockName(slide, blocks.stream()
-                            .filter(block -> slide.getBlockId().equals(block.getId())).findFirst().orElse(null),
-                            scheme))
-                    .collect(Collectors.toList());
-            if (!unverified.isEmpty()) {
-                String designations = String.join(", ", unverified);
-                throw new LocalizedValidationException("pathology.error.slidesUnverified",
-                        "pathology case " + storedCase.getId() + " has slide labels still to verify: " + designations,
-                        Map.of("designations", designations));
-            }
+            refuseWithNoSlideInUse(storedCase);
+            refuseSlides(
+                    slidesInUse(storedCase).stream()
+                            .filter(slide -> slide.getBlockId() != null && slide.getLabelVerifiedAt() == null)
+                            .collect(Collectors.toList()),
+                    storedCase, "pathology.error.slidesUnverified", "slide labels still to verify");
         }
+        if (storedCase.getStatus() == PathologyStatus.STAINING) {
+            refuseWithNoSlideInUse(storedCase);
+            refuseSlides(
+                    slidesInUse(storedCase).stream().filter(slide -> !isStained(slide)).collect(Collectors.toList()),
+                    storedCase, "pathology.error.stainingIncomplete", "slides still to stain");
+        }
+        if (storedCase.getStatus() == PathologyStatus.COVERSLIPPING) {
+            refuseWithNoSlideInUse(storedCase);
+            boolean stainingTracked = deploymentEnabled().test(PathologyStatus.STAINING);
+            refuseSlides(
+                    slidesInUse(storedCase).stream()
+                            .filter(slide -> slide.getCoverslipQc() != CoverslipQc.PASS
+                                    || (stainingTracked && !isStained(slide)))
+                            .collect(Collectors.toList()),
+                    storedCase, "pathology.error.coverslipQcIncomplete", "slides still to pass their coverslip check");
+        }
+    }
+
+    /**
+     * Microtomy, Staining and Coverslipping each work on slides, so a case with no
+     * slide in use leaves none of them: retiring every slide must not open a gate.
+     */
+    private void refuseWithNoSlideInUse(PathologySample storedCase) {
+        if (slidesInUse(storedCase).isEmpty()) {
+            throw new LocalizedValidationException("pathology.error.microtomyIncomplete",
+                    "pathology case " + storedCase.getId() + " has no slide in use, so it cannot move on");
+        }
+    }
+
+    private static List<PathologySlide> slidesInUse(PathologySample pathologySample) {
+        return pathologySample.getSlides() == null ? List.of()
+                : pathologySample.getSlides().stream().filter(PathologySlide::isActive).collect(Collectors.toList());
+    }
+
+    /**
+     * The slides as the bench names them, block first ("A1.1"), joined in the order
+     * the case view lists them, for a sentence that names what holds the case.
+     */
+    private static String slideNames(List<PathologySlide> slides, PathologySample pathologySample,
+            DesignationScheme scheme) {
+        return PathologyRowOrder.slides(slides).stream()
+                .map(slide -> PathologyDesignations
+                        .slideOnBlockName(pathologySample.blockById(slide.getBlockId()).orElse(null), slide, scheme))
+                .collect(Collectors.joining(", "));
     }
 
     /**
@@ -790,10 +1374,34 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         case UNDER_REVIEW:
             return true;
         case COMPLETED:
-            return !hasBeenReleased(pathologySample);
+            return !isSignedOut(pathologySample);
         default:
             return false;
         }
+    }
+
+    @Transactional
+    @Override
+    public PathologyStatus readingStage() {
+        return PathologyStages.readingStage(deploymentEnabled());
+    }
+
+    @Transactional
+    @Override
+    public boolean findingsOpen(PathologySample pathologySample) {
+        PathologyStatus status = pathologySample.getStatus();
+        if (status == null) {
+            return false;
+        }
+        return status == PathologyStatus.UNDER_REVIEW || status == readingStage()
+                || (status == PathologyStatus.COMPLETED && !isSignedOut(pathologySample));
+    }
+
+    /** Signed out: on Completed and released, so nothing on the case changes. */
+    @Transactional
+    @Override
+    public boolean isSignedOut(PathologySample pathologySample) {
+        return pathologySample.getStatus() == PathologyStatus.COMPLETED && hasBeenReleased(pathologySample);
     }
 
     private boolean hasBeenReleased(PathologySample pathologySample) {
@@ -855,13 +1463,25 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
      * signed-out case are what its report described.
      */
     private void refuseEmbeddingOutsideTheStage(PathologySample owningCase) {
-        if (owningCase != null && owningCase.getStatus() != null
-                && owningCase.getStatus().ordinal() < PathologyStatus.EMBEDDING.ordinal()) {
-            throw new LocalizedValidationException("pathology.error.embedBeforeStage",
-                    "pathology case " + owningCase.getId() + " stands at " + owningCase.getStatus()
-                            + ", so its cassettes are not embedded yet");
+        refuseOutsideTheStage(owningCase, PathologyStatus.EMBEDDING, "pathology.error.embedBeforeStage");
+    }
+
+    /**
+     * Work on a case's blocks or slides is refused on a signed-out case first, then
+     * on a case that has not reached the stage the work belongs to. A case with no
+     * stage on record has reached none.
+     */
+    private void refuseOutsideTheStage(PathologySample owningCase, PathologyStatus firstStage,
+            String beforeStageMessageKey) {
+        if (owningCase == null) {
+            return;
         }
         refuseOnACompletedCase(owningCase);
+        PathologyStatus stage = owningCase.getStatus();
+        if (stage == null || stage.ordinal() < firstStage.ordinal()) {
+            throw new LocalizedValidationException(beforeStageMessageKey, "pathology case " + owningCase.getId()
+                    + " stands at " + stage + ", so it has not reached " + firstStage + " yet");
+        }
     }
 
     /** A signed-out case's blocks and slides change only after it is reopened. */
@@ -911,14 +1531,17 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
     }
 
     /**
-     * The processor run is free text on the case's Processing entry (FR-5.1),
-     * written once per entry and audited. A typo is put right by returning the case
-     * to Processing, which opens a new entry. Anything posted when no entry would
-     * take it is ignored, like the decalcification flag past its stage.
+     * A run reference is free text on the case's entry onto a stage: the processor
+     * run on Processing (FR-5.1), the coverslipping batch on Coverslipping
+     * (FR-8.4). It is written once per entry and audited. A typo is put right by
+     * returning the case to that stage, which opens a new entry. Anything posted
+     * when no entry would take it is ignored, like the decalcification flag past
+     * its stage.
      */
-    private void recordRunReference(PathologySample storedCase, String postedRunReference, String sysUserId) {
+    private void recordRunReference(PathologySample storedCase, PathologyStatus stage, String postedRunReference,
+            String sysUserId) {
         String runReference = StringUtils.trimToNull(postedRunReference);
-        Optional<PathologyStageEvent> entry = recordableRunEntry(storedCase);
+        Optional<PathologyStageEvent> entry = recordableRunEntry(storedCase, stage);
         if (runReference == null || entry.isEmpty()) {
             return;
         }
@@ -926,29 +1549,29 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
             throw new LocalizedValidationException("pathology.error.runReferenceTooLong",
                     "the processor run can be at most " + PathologyStageEvent.RUN_REFERENCE_MAX_LENGTH + " characters");
         }
-        PathologyStageEvent processing = entry.get();
-        processing.setRunReference(runReference);
-        processing.setSysUserId(sysUserId);
-        pathologyStageEventDAO.update(processing);
+        PathologyStageEvent stageEntry = entry.get();
+        stageEntry.setRunReference(runReference);
+        stageEntry.setSysUserId(sysUserId);
+        pathologyStageEventDAO.update(stageEntry);
 
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("verb", PATHOLOGY_RUN_REFERENCE_RECORDED);
-        payload.put("stage", PathologyStatus.PROCESSING.name());
+        payload.put("stage", stage.name());
         payload.put("runReference", runReference);
         recordRowEvent(CASE_REFERENCE_TABLE, storedCase.getStringId(), IActionConstants.AUDIT_TRAIL_UPDATE, payload,
                 sysUserId);
     }
 
     /**
-     * The entry a processor run may still be written on: the open Processing entry
-     * of a case standing there, while it holds none. A case that reached Processing
-     * before entries were recorded has no entry, and none is invented.
+     * The entry a run reference may still be written on: the open entry onto the
+     * stage of a case standing there, while it holds none. A case that reached the
+     * stage before entries were recorded has no entry, and none is invented.
      */
-    private Optional<PathologyStageEvent> recordableRunEntry(PathologySample storedCase) {
-        if (storedCase.getStatus() != PathologyStatus.PROCESSING) {
+    private Optional<PathologyStageEvent> recordableRunEntry(PathologySample storedCase, PathologyStatus stage) {
+        if (storedCase.getStatus() != stage) {
             return Optional.empty();
         }
-        return pathologyStageEventDAO.getOpenEvent(storedCase.getId(), PathologyStatus.PROCESSING)
+        return pathologyStageEventDAO.getOpenEvent(storedCase.getId(), stage)
                 .filter(entry -> entry.getRunReference() == null);
     }
 
@@ -1053,7 +1676,11 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
     }
 
     private String tissueTypeAfterSave(String stored, String posted) {
-        return dictionaryEntryAfterSave(stored, posted, TISSUE_TYPE_CATEGORY);
+        return dictionaryEntryAfterSave(stored, posted, TISSUE_TYPE_CATEGORY, "pathology.error.tissueTypeNotInUse");
+    }
+
+    private String stainAfterSave(String stored, String posted) {
+        return dictionaryEntryAfterSave(stored, posted, STAIN_CATEGORY, "pathology.error.stainNotInUse");
     }
 
     /**
@@ -1061,31 +1688,57 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
      * value must be an entry of the category that is still in use. An unchanged
      * value is never checked again, so an entry retired after a row recorded it
      * cannot block a save of the case.
+     *
+     * <p>
+     * An entry of the category taken out of use is refused by name, so the bench
+     * reads which choice went out of use. Anything else (another category's entry,
+     * a value that names no entry) cannot come from the picker, which lists only
+     * the category, so it is answered like the other refusals of a case save that
+     * mean the page is out of date, with the reload message.
      */
-    private String dictionaryEntryAfterSave(String stored, String posted, String categoryName) {
+    private String dictionaryEntryAfterSave(String stored, String posted, String categoryName,
+            String retiredMessageKey) {
         String requested = StringUtils.trimToNull(posted);
         if (requested == null || Objects.equals(requested, stored)) {
             return requested;
         }
-        if (!isActiveEntryOf(requested, categoryName)) {
-            throw new PathologyCaseRuleException(
-                    "dictionary entry " + requested + " is not an active entry of " + categoryName);
-        }
+        refuseUnlessInUse(requested, categoryName, PathologyCaseRuleException::new, retiredMessageKey);
         return requested;
     }
 
-    /** An entry of the named category that is still in use. */
-    private boolean isActiveEntryOf(String dictionaryId, String categoryName) {
+    /**
+     * Refuses an id that names no entry of the category with the caller's own
+     * refusal, and an entry taken out of use by its name, so the reader learns
+     * which choice went out of use.
+     */
+    private void refuseUnlessInUse(String dictionaryId, String categoryName,
+            Function<String, RuntimeException> notAnEntry, String retiredMessageKey) {
+        Dictionary entry = entryOf(dictionaryId, categoryName);
+        if (entry == null) {
+            throw notAnEntry.apply("dictionary entry " + dictionaryId + " is not an entry of " + categoryName);
+        }
+        if (!"Y".equals(entry.getIsActive())) {
+            throw new LocalizedValidationException(retiredMessageKey,
+                    "dictionary entry " + dictionaryId + " of " + categoryName + " is no longer in use",
+                    Map.of("name", DictionaryEntryNames.localizedNameOf(dictionaryService, dictionaryId)
+                            .orElse(dictionaryId)));
+        }
+    }
+
+    /**
+     * The entry of the named category the id names, in use or not; null if none.
+     */
+    private Dictionary entryOf(String dictionaryId, String categoryName) {
         try {
             Integer.parseInt(dictionaryId);
         } catch (NumberFormatException e) {
             // The dictionary key binds as an integer, so anything else names no entry
             // and is the client's mistake, not a failure of the lookup.
-            return false;
+            return null;
         }
         Dictionary entry = dictionaryService.getDataForId(dictionaryId);
-        return entry != null && "Y".equals(entry.getIsActive()) && entry.getDictionaryCategory() != null
-                && categoryName.equals(entry.getDictionaryCategory().getCategoryName());
+        return entry != null && entry.getDictionaryCategory() != null
+                && categoryName.equals(entry.getDictionaryCategory().getCategoryName()) ? entry : null;
     }
 
     /**
@@ -1102,14 +1755,17 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
      * slide is left as it is. An image is only replaced when one was posted: the
      * case view sends the slide rows back without their stored images, and treating
      * that as an erasure would lose the image on the next save of any other field.
-     * How far staining has got is not taken from the save.
+     * What staining and the coverslip check found is never taken from the save. A
+     * slide marked stained keeps the stain it was marked with, since that is the
+     * stain applied; marking it unsatisfactory lets the stain change again.
      */
     private void applyToSlide(PathologySlide slide, PathologySlide posted) {
         if (!slide.isActive()) {
             return;
         }
         String level = levelAfterSave(posted.getLevel());
-        String stainId = dictionaryEntryAfterSave(slide.getStainId(), posted.getStainId(), STAIN_CATEGORY);
+        String stainId = slide.getStainStatus() == StainStatus.STAINED ? slide.getStainId()
+                : stainAfterSave(slide.getStainId(), posted.getStainId());
         // The label check is stamped only by verifySlideLabel, so a posted stamp is
         // never copied.
         slide.setLocation(posted.getLocation());
@@ -1174,7 +1830,7 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         slide.setActive(true);
         slide.setLocation(posted.getLocation());
         slide.setLevel(levelAfterSave(posted.getLevel()));
-        slide.setStainId(dictionaryEntryAfterSave(null, posted.getStainId(), STAIN_CATEGORY));
+        slide.setStainId(stainAfterSave(null, posted.getStainId()));
         // A new slide's label has not been printed yet, so a posted stamp is never
         // copied.
         slide.setImage(posted.getImage());
@@ -1184,23 +1840,13 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
     }
 
     private PathologyBlock blockOnCase(PathologySample pathologySample, Integer blockId) {
-        for (PathologyBlock block : pathologySample.getBlocks()) {
-            if (blockId.equals(block.getId())) {
-                return block;
-            }
-        }
-        throw new PathologyCaseRuleException(
-                "block " + blockId + " is not on pathology case " + pathologySample.getId());
+        return pathologySample.blockById(blockId).orElseThrow(() -> new PathologyCaseRuleException(
+                "block " + blockId + " is not on pathology case " + pathologySample.getId()));
     }
 
     private PathologySlide slideOnCase(PathologySample pathologySample, Integer slideId) {
-        for (PathologySlide slide : pathologySample.getSlides()) {
-            if (slideId.equals(slide.getId())) {
-                return slide;
-            }
-        }
-        throw new PathologyCaseRuleException(
-                "slide " + slideId + " is not on pathology case " + pathologySample.getId());
+        return pathologySample.slideById(slideId).orElseThrow(() -> new PathologyCaseRuleException(
+                "slide " + slideId + " is not on pathology case " + pathologySample.getId()));
     }
 
     /**
@@ -1284,7 +1930,8 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
      * history.activity is a one-character code, so the verb travels in the changes
      * payload, which never carries anything about the patient.
      */
-    private void recordRowEvent(String referenceTableName, String referenceId, String activity,
+    @Override
+    public void recordRowEvent(String referenceTableName, String referenceId, String activity,
             Map<String, Object> payload, String sysUserId) {
         ReferenceTables referenceTable = referenceTablesService.getReferenceTableByName(referenceTableName);
         if (referenceTable == null) {
@@ -1467,41 +2114,42 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         }
     }
 
-    private void referToImmunoHistoChemistry(PathologySample pathologySample, PathologySampleForm form) {
-        List<Test> immunoHistologyTests = new ArrayList<>();
-        if (!form.getImmunoHistoChemistryTestIds().isEmpty()) {
-            form.getImmunoHistoChemistryTestIds().forEach(id -> {
-                Test t = testService.get(id);
-                if (t != null) {
-                    immunoHistologyTests.add(t);
-                }
+    /**
+     * Refers the case to immunohistochemistry, creating its case there when there
+     * is none, and orders the planned markers under the order's own analysis (the
+     * first that is not itself a referral, so a second referral never hangs off an
+     * earlier marker).
+     *
+     * @return what this save referred, when it created the case or ordered a marker
+     */
+    private Optional<Referral> referToImmunoHistoChemistry(PathologySample pathologySample, ReferralPlan plan,
+            String sysUserId) {
+        ImmunohistochemistrySample immunoHistoSample = plan.existing();
+        boolean created = immunoHistoSample == null;
+        if (created) {
+            immunoHistoSample = new ImmunohistochemistrySample();
+            immunoHistoSample.setProgram(pathologySample.getProgram());
+            immunoHistoSample.setQuestionnaireResponseUuid(pathologySample.getQuestionnaireResponseUuid());
+            immunoHistoSample.setSample(pathologySample.getSample());
+            immunoHistoSample.setPathologySample(pathologySample);
+            immunoHistoSample.setReffered(true);
+            immunoHistoSample = immunohistochemistrySampleService.save(immunoHistoSample);
+        }
+        List<Test> immunoHistologyTests = plan.testIds().stream().map(testService::get).filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        Optional<Analysis> parentAnalysis = plan.analyses().stream()
+                .filter(analysis -> !ProgramCaseAnalyses.isImmunohistochemistryReferral(analysis)).findFirst();
+        List<String> ordered = new ArrayList<>();
+        if (parentAnalysis.isPresent()) {
+            immunoHistologyTests.forEach(test -> {
+                CreateNewAnalysis(test, parentAnalysis.get(), pathologySample.getProgram().getProgramName(), sysUserId);
+                ordered.add(test.getId());
             });
         }
-
-        ImmunohistochemistrySample immunoHistoSample = immunohistochemistrySampleService
-                .getByPathologySampleId(pathologySample.getId());
-        if (immunoHistoSample == null) {
-            immunoHistoSample = new ImmunohistochemistrySample();
+        if (!created && ordered.isEmpty()) {
+            return Optional.empty();
         }
-        immunoHistoSample.setProgram(pathologySample.getProgram());
-        immunoHistoSample.setQuestionnaireResponseUuid(pathologySample.getQuestionnaireResponseUuid());
-        immunoHistoSample.setSample(pathologySample.getSample());
-        immunoHistoSample.setPathologySample(pathologySample);
-        immunoHistoSample.setReffered(true);
-        immunohistochemistrySampleService.save(immunoHistoSample);
-
-        if (immunoHistologyTests.isEmpty()) {
-            return;
-        }
-        List<Analysis> analyses = analysisService.getAnalysesBySampleId(pathologySample.getSample().getId());
-        if (analyses == null || analyses.isEmpty()) {
-            return;
-        }
-        Analysis currentAnalysis = analyses.get(0);
-        immunoHistologyTests.forEach(test -> {
-            CreateNewAnalysis(test, currentAnalysis, pathologySample.getProgram().getProgramName(),
-                    form.getSystemUserId());
-        });
+        return Optional.of(new Referral(immunoHistoSample.getId(), ordered, created));
     }
 
     private void CreateNewAnalysis(Test immunoHistologyTest, Analysis currentAnalysis, String programmeName,
@@ -1532,28 +2180,205 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         noteService.saveAll(notes);
     }
 
+    /**
+     * What a case save changes of the review and the findings, against the stored
+     * case (D5): a field not sent is no change, and a text posted as it is stored,
+     * null and empty being the same, is none either. A list is the posted codes
+     * with repeats dropped, or null when unchanged.
+     */
+    private record ReviewChanges(boolean grossExam, boolean microscopyExam, boolean reviewNotes, boolean narrative,
+            List<String> conclusions, List<String> techniques, boolean pathologist, ReferralPlan referral) {
+
+        boolean any() {
+            return grossExam || reviewNotes || pathologist || findings();
+        }
+
+        /** The fields written only while the case is being read (D3). */
+        boolean findings() {
+            return microscopyExam || narrative || conclusions != null || techniques != null || referral != null;
+        }
+    }
+
+    /**
+     * A referral a save makes: the case's immunohistochemistry case, null when it
+     * is to be created, the markers the order does not hold yet, and the order's
+     * analyses.
+     */
+    private record ReferralPlan(ImmunohistochemistrySample existing, List<String> testIds, List<Analysis> analyses) {
+    }
+
+    /** What a save referred, for its audit row. */
+    private record Referral(Integer ihcCaseId, List<String> testIds, boolean created) {
+    }
+
+    private ReviewChanges reviewChangesOf(PathologySample storedCase, PathologySampleForm form) {
+        return new ReviewChanges(textChanged(form.getGrossExam(), storedCase.getGrossExam()),
+                textChanged(form.getMicroscopyExam(), storedCase.getMicroscopyExam()),
+                textChanged(form.getReviewNotes(), storedCase.getReviewNotes()),
+                textChanged(form.getConclusionText(), storedNarrative(storedCase)),
+                changedCodes(form.getConclusions(), conclusionCodes(storedCase.getConclusions())),
+                changedCodes(form.getTechniques(), techniqueCodes(storedCase.getTechniques())),
+                !GenericValidator.isBlankOrNull(form.getAssignedPathologistId()) && (storedCase.getPathologist() == null
+                        || !form.getAssignedPathologistId().equals(storedCase.getPathologist().getId())),
+                Boolean.TRUE.equals(form.getReferToImmunoHistoChemistry()) ? referralPlanOf(storedCase, form) : null);
+    }
+
+    private static boolean textChanged(String posted, String stored) {
+        return posted != null && !posted.equals(StringUtils.defaultString(stored));
+    }
+
+    /**
+     * The posted codes without repeats, or null when they are the stored ones. A
+     * stored id that names no entry is not counted, so leaving it off is no change.
+     */
+    private List<String> changedCodes(List<String> posted, List<String> stored) {
+        if (posted == null) {
+            return null;
+        }
+        List<String> codes = new ArrayList<>(new LinkedHashSet<>(posted));
+        if (codes.equals(stored)) {
+            return null;
+        }
+        List<String> named = stored.stream()
+                .filter(code -> DictionaryEntryNames.localizedNameOf(dictionaryService, code).isPresent())
+                .collect(Collectors.toList());
+        return codes.equals(named) ? null : codes;
+    }
+
+    /**
+     * The referral a save asks for, or null when it asks for nothing new: the case
+     * is referred already and every posted marker is on the order as a referral.
+     */
+    private ReferralPlan referralPlanOf(PathologySample storedCase, PathologySampleForm form) {
+        ImmunohistochemistrySample existing = immunohistochemistrySampleService
+                .getByPathologySampleId(storedCase.getId());
+        List<Analysis> analyses = analysesOf(storedCase);
+        Set<String> held = referredTestIds(analyses);
+        List<String> posted = form.getImmunoHistoChemistryTestIds() == null ? List.of()
+                : form.getImmunoHistoChemistryTestIds();
+        List<String> toOrder = new LinkedHashSet<>(posted).stream().filter(testId -> !held.contains(testId))
+                .collect(Collectors.toList());
+        return existing != null && toOrder.isEmpty() ? null : new ReferralPlan(existing, toOrder, analyses);
+    }
+
+    @Transactional
+    @Override
+    public List<String> ihcReferredTestIds(PathologySample pathologySample) {
+        return new ArrayList<>(referredTestIds(analysesOf(pathologySample)));
+    }
+
+    private List<Analysis> analysesOf(PathologySample pathologySample) {
+        return pathologySample.getSample() == null ? List.of()
+                : Optional.ofNullable(analysisService.getAnalysesBySampleId(pathologySample.getSample().getId()))
+                        .orElse(List.of());
+    }
+
+    /** The tests of the analyses that are immunohistochemistry referrals. */
+    private static Set<String> referredTestIds(List<Analysis> analyses) {
+        return analyses.stream().filter(ProgramCaseAnalyses::isImmunohistochemistryReferral)
+                .filter(analysis -> analysis.getTest() != null).map(analysis -> analysis.getTest().getId())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    /**
+     * The review and findings rules of a case save, in the order the design lists
+     * them; each refuses the whole save before anything is written.
+     */
+    private void refuseReviewChanges(PathologySample storedCase, ReviewChanges changes, PathologySampleForm form) {
+        if (!changes.any()) {
+            return;
+        }
+        if (isSignedOut(storedCase)) {
+            throw caseCompleted();
+        }
+        if (changes.findings() && !findingsOpen(storedCase)) {
+            throw new LocalizedValidationException("pathology.error.findingsLocked",
+                    "pathology case " + storedCase.getId() + " stands at " + storedCase.getStatus()
+                            + ", where its findings are not written");
+        }
+        if (changes.narrative() && form.getConclusionText().length() > CONCLUSION_TEXT_MAX_LENGTH) {
+            throw new LocalizedValidationException("pathology.error.conclusionTooLong",
+                    "the narrative conclusion is longer than " + CONCLUSION_TEXT_MAX_LENGTH + " characters");
+        }
+        refuseNewCodesUnlessInUse(changes.conclusions(), conclusionCodes(storedCase.getConclusions()),
+                CONCLUSION_CATEGORY, "pathology.error.conclusionNotInUse");
+        refuseNewCodesUnlessInUse(changes.techniques(), techniqueCodes(storedCase.getTechniques()), TECHNIQUE_CATEGORY,
+                "pathology.error.techniqueNotInUse");
+    }
+
+    /**
+     * A posted code the case does not hold yet must be an entry in use in its
+     * category; a stored code stays even after its entry is retired. Null posted
+     * codes are no change.
+     */
+    private void refuseNewCodesUnlessInUse(List<String> posted, List<String> stored, String category,
+            String retiredKey) {
+        if (posted == null) {
+            return;
+        }
+        posted.stream().filter(code -> !stored.contains(code))
+                .forEach(code -> refuseUnlessInUse(code, category, PathologyCaseRuleException::new, retiredKey));
+    }
+
+    /** FR-12.5: a case is signed out only with both descriptions written. */
+    private static void refuseReleaseWithoutDescriptions(PathologySample caseToSave) {
+        if (StringUtils.isBlank(caseToSave.getGrossExam()) || StringUtils.isBlank(caseToSave.getMicroscopyExam())) {
+            throw new LocalizedValidationException("pathology.error.releaseWithoutDescriptions",
+                    "pathology case " + caseToSave.getId() + " lacks a macroscopic or microscopic description");
+        }
+    }
+
+    /** The narrative conclusion: the value of the case's first text row. */
+    private static String storedNarrative(PathologySample storedCase) {
+        return storedCase.getConclusions().stream().filter(row -> row.getType() == ConclusionType.TEXT).findFirst()
+                .map(PathologyConclusion::getValue).orElse(null);
+    }
+
+    /** The coded conclusions' dictionary ids, in row order. */
+    private static List<String> conclusionCodes(List<PathologyConclusion> conclusions) {
+        return conclusions.stream().filter(row -> row.getType() == ConclusionType.DICTIONARY)
+                .map(PathologyConclusion::getValue).collect(Collectors.toList());
+    }
+
+    private static List<String> techniqueCodes(List<PathologyTechnique> techniques) {
+        return techniques.stream().filter(row -> row.getType() == TechniqueType.DICTIONARY)
+                .map(PathologyTechnique::getValue).collect(Collectors.toList());
+    }
+
+    /**
+     * Records a change of the coded or narrative conclusion: the codes after the
+     * save, those added and removed, and whether the narrative changed, never its
+     * text.
+     */
+    private void recordConclusionSaved(PathologySample savedCase, List<String> codesBefore, List<String> codesAfter,
+            boolean narrativeChanged, String sysUserId) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("verb", PATHOLOGY_CONCLUSION_SAVED);
+        payload.put("coded", codesAfter);
+        payload.put("added",
+                codesAfter.stream().filter(code -> !codesBefore.contains(code)).collect(Collectors.toList()));
+        payload.put("removed",
+                codesBefore.stream().filter(code -> !codesAfter.contains(code)).collect(Collectors.toList()));
+        payload.put("narrativeChanged", narrativeChanged);
+        recordRowEvent(CASE_REFERENCE_TABLE, savedCase.getStringId(), IActionConstants.AUDIT_TRAIL_UPDATE, payload,
+                sysUserId);
+    }
+
+    private void recordReferral(PathologySample savedCase, Referral referral, String sysUserId) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("verb", PATHOLOGY_IHC_REFERRED);
+        payload.put("ihcCaseId", referral.ihcCaseId());
+        payload.put("testIds", referral.testIds());
+        payload.put("created", referral.created());
+        recordRowEvent(CASE_REFERENCE_TABLE, savedCase.getStringId(), IActionConstants.AUDIT_TRAIL_UPDATE, payload,
+                sysUserId);
+    }
+
     private PathologyConclusion createConclusion(String text, ConclusionType type) {
         PathologyConclusion conclusion = new PathologyConclusion();
         conclusion.setValue(text);
         conclusion.setType(type);
         return conclusion;
-    }
-
-    /**
-     * A request the case view raises carries no status of its own: the status is
-     * chosen later, when the request is answered or withdrawn.
-     * {@link PathologyRequest} declares {@link RequestStatus#OPENED} as its own
-     * default for exactly that reason, but passing the form's null through would
-     * overwrite it and leave a row that reads as neither open nor closed, which no
-     * query can see and no screen can act on. A request that has just been raised
-     * is open.
-     */
-    private PathologyRequest createRequest(String text, RequestType type, RequestStatus status) {
-        PathologyRequest request = new PathologyRequest();
-        request.setValue(text);
-        request.setType(type);
-        request.setStatus(status == null ? RequestStatus.OPENED : status);
-        return request;
     }
 
     private PathologyTechnique createTechnique(String text, TechniqueType type) {

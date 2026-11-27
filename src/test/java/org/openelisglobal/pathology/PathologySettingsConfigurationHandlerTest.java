@@ -1,8 +1,10 @@
 package org.openelisglobal.pathology;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.InputStream;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -20,6 +22,7 @@ public class PathologySettingsConfigurationHandlerTest extends BaseWebContextSen
 
     private static final String SETTING = "pathology.microtomy.scanVerificationRequired";
     private static final String ROWS = "pathology.caseView.priorResultsRows";
+    private static final String RULE = "pathology.secondOpinion.suggestForCodes";
 
     @Autowired
     private PathologySettingsConfigurationHandler handler;
@@ -74,6 +77,35 @@ public class PathologySettingsConfigurationHandlerTest extends BaseWebContextSen
 
         assertEquals("a later load never overwrites the administrator's choice", "false", storedValue());
         assertEquals("nor the row count an administrator set", "12", storedValue(ROWS));
+    }
+
+    @Test
+    public void load_createsTheSecondOpinionRuleEmpty_inResultConfiguration_andNeverOverwritesIt() throws Exception {
+        jdbcTemplate.update("DELETE FROM clinlims.site_information WHERE name = ?", RULE);
+        try {
+            load();
+
+            assertEquals("one row is created", 1,
+                    jdbcTemplate.queryForObject("SELECT count(*) FROM clinlims.site_information WHERE name = ?",
+                            Integer.class, RULE).intValue());
+            assertTrue("with no codes", StringUtils.isEmpty(storedValue(RULE)));
+            assertEquals("the rule is text", "text", jdbcTemplate.queryForObject(
+                    "SELECT value_type FROM clinlims.site_information WHERE name = ?", String.class, RULE));
+            assertEquals("the rule sits in Result Entry Configuration", "resultConfiguration",
+                    jdbcTemplate.queryForObject("SELECT d.name FROM clinlims.site_information s "
+                            + "JOIN clinlims.site_information_domain d ON d.id = s.domain_id" + " WHERE s.name = ?",
+                            String.class, RULE));
+
+            jdbcTemplate.update("UPDATE clinlims.site_information SET value = 'C,D0' WHERE name = ?", RULE);
+            load();
+
+            assertEquals("a later load never overwrites the administrator's codes", "C,D0", storedValue(RULE));
+            assertEquals("and adds no second row", 1,
+                    jdbcTemplate.queryForObject("SELECT count(*) FROM clinlims.site_information WHERE name = ?",
+                            Integer.class, RULE).intValue());
+        } finally {
+            jdbcTemplate.update("DELETE FROM clinlims.site_information WHERE name = ?", RULE);
+        }
     }
 
     private void load() throws Exception {

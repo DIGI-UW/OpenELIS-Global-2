@@ -3,7 +3,9 @@ package org.openelisglobal.reports.action.implementation;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.program.service.PathologyDisplayService;
+import org.openelisglobal.program.util.DictionaryEntryNames;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion.ConclusionType;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
@@ -29,9 +31,11 @@ public class PatientPathologyReport extends PatientProgramReport {
                 .filter(e -> e.getType() == ConclusionType.TEXT).findFirst();
         data.setTextConclusion(conclusion.isPresent() ? conclusion.get().getValue() : "");
 
-        List<String> codedConclusions = pathologySample.getConclusions().stream()
-                .filter(e -> e.getType() == ConclusionType.DICTIONARY)
-                .map(e -> dictionaryService.get(e.getValue()).getLocalizedName()).collect(Collectors.toList());
+        List<String> codedConclusions = DictionaryEntryNames
+                .namedPairs(dictionaryService,
+                        pathologySample.getConclusions().stream().filter(e -> e.getType() == ConclusionType.DICTIONARY)
+                                .map(PathologyConclusion::getValue))
+                .stream().map(IdValuePair::getValue).collect(Collectors.toList());
         data.setCodedConclusion(codedConclusions);
     }
 

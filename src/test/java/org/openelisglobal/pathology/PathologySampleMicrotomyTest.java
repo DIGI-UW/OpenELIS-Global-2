@@ -63,7 +63,7 @@ public class PathologySampleMicrotomyTest extends PathologyCaseTestSupport {
 
     private StageSwitches switches;
 
-    private boolean insertedTheCategory;
+    private DictionaryRows.StainEntries stains;
 
     /**
      * Slides are cut once the case stands at Microtomy, with every stage tracked;
@@ -72,20 +72,20 @@ public class PathologySampleMicrotomyTest extends PathologyCaseTestSupport {
     @Before
     public void init() {
         switches = StageSwitches.allOn();
-        removeStainEntries();
-        seedStainEntries();
+        stains = DictionaryRows.stainEntries(jdbcTemplate, OWN_CATEGORY).with(HE, "Haematoxylin and eosin", true)
+                .with(RETIRED_STAIN, "Retired stain", false);
+        removeFixative();
+        DictionaryRows.insertCategory(jdbcTemplate, OTHER_CATEGORY, "pathology_test_fixatives",
+                "Pathology test fixatives", "PathFix");
+        DictionaryRows.insertEntry(jdbcTemplate, FIXATIVE, OTHER_CATEGORY, "Formalin", "PS" + FIXATIVE, true);
         storeAt(PathologyStatus.MICROTOMY);
     }
 
     @After
     public void tearDown() {
         switches.close();
-        jdbcTemplate.update("UPDATE clinlims.pathology_slide SET stain_id = NULL WHERE stain_id IN (?, ?, ?)", HE,
-                RETIRED_STAIN, FIXATIVE);
-        removeStainEntries();
-        if (insertedTheCategory) {
-            DictionaryRows.removeCategory(jdbcTemplate, OWN_CATEGORY);
-        }
+        stains.close();
+        removeFixative();
     }
 
     // ---- level and stain (FR-7.2) ----
@@ -105,8 +105,12 @@ public class PathologySampleMicrotomyTest extends PathologyCaseTestSupport {
     public void aRetiredStain_isRefusedAndTheSlideIsNotCut() {
         int blockId = embeddedBlock();
 
-        PathologyCaseRuleException refused = assertThrows(PathologyCaseRuleException.class,
+        LocalizedValidationException refused = assertThrows(LocalizedValidationException.class,
                 () -> saveSlides(slide(null, blockId, "1", String.valueOf(RETIRED_STAIN))));
+        assertEquals("the screen translates the refusal from its message id", "pathology.error.stainNotInUse",
+                refused.getErrorCode());
+        assertEquals("and the refusal names the entry the bench picked", "Retired stain",
+                refused.getParams().get("name"));
 
         assertTrue(
                 "a stain taken out of use cannot be recorded, and the refusal names it and the category: "
@@ -431,25 +435,10 @@ public class PathologySampleMicrotomyTest extends PathologyCaseTestSupport {
                 Integer.class, Integer.parseInt(slideReferenceTableId));
     }
 
-    /**
-     * The configuration loader ships the category, and tests do not run the loader,
-     * so it is added only when absent and removed afterwards only if this class
-     * added it.
-     */
-    private void seedStainEntries() {
-        insertedTheCategory = DictionaryRows.insertCategory(jdbcTemplate, OWN_CATEGORY,
-                PathologySampleService.STAIN_CATEGORY, PathologySampleService.STAIN_CATEGORY, "PathStain");
-        int categoryId = DictionaryRows.idOfCategory(jdbcTemplate, PathologySampleService.STAIN_CATEGORY);
-        DictionaryRows.insertEntry(jdbcTemplate, HE, categoryId, "Haematoxylin and eosin", "PS" + HE, true);
-        DictionaryRows.insertEntry(jdbcTemplate, RETIRED_STAIN, categoryId, "Retired stain", "PS" + RETIRED_STAIN,
-                false);
-        DictionaryRows.insertCategory(jdbcTemplate, OTHER_CATEGORY, "pathology_test_fixatives",
-                "Pathology test fixatives", "PathFix");
-        DictionaryRows.insertEntry(jdbcTemplate, FIXATIVE, OTHER_CATEGORY, "Formalin", "PS" + FIXATIVE, true);
-    }
-
-    private void removeStainEntries() {
-        DictionaryRows.removeEntries(jdbcTemplate, HE, RETIRED_STAIN, FIXATIVE);
+    /** An entry of another category, which a slide's stain can never name. */
+    private void removeFixative() {
+        jdbcTemplate.update("UPDATE clinlims.pathology_slide SET stain_id = NULL WHERE stain_id = ?", FIXATIVE);
+        DictionaryRows.removeEntries(jdbcTemplate, FIXATIVE);
         DictionaryRows.removeCategory(jdbcTemplate, OTHER_CATEGORY);
     }
 }

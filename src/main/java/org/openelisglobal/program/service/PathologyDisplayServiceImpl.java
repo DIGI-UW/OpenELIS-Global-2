@@ -1,6 +1,7 @@
 package org.openelisglobal.program.service;
 
 import jakarta.transaction.Transactional;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -10,30 +11,36 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.program.util.DictionaryEntryNames;
+import org.openelisglobal.program.util.PathologyRowOrder;
+import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistrySample;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem;
+import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.ConsultationView;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.LabelVerificationView;
-import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.RequestDisplayBean;
+import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.RequestView;
+import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.SlideStampView;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.StageEventView;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion.ConclusionType;
+import org.openelisglobal.program.valueholder.pathology.PathologyConsultation;
 import org.openelisglobal.program.valueholder.pathology.PathologyDisplayItem;
-import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestType;
+import org.openelisglobal.program.valueholder.pathology.PathologyRequest;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 import org.openelisglobal.program.valueholder.pathology.PathologyStageEvent;
+import org.openelisglobal.program.valueholder.pathology.PathologyTechnique;
 import org.openelisglobal.program.valueholder.pathology.PathologyTechnique.TechniqueType;
 import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.openelisglobal.sample.bean.SampleOrderItem;
@@ -63,6 +70,10 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
     private SampleItemService sampleItemService;
     @Autowired
     private SystemUserService systemUserService;
+    @Autowired
+    private ImmunohistochemistrySampleService immunohistochemistrySampleService;
+    @Autowired
+    private PathologyConsultationService pathologyConsultationService;
 
     @Override
     @Transactional
@@ -106,8 +117,8 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
         }
         pathologySample.getBlocks().size();
         pathologySample.getSlides().size();
-        displayItem.setBlocks(pathologySample.getBlocks());
-        displayItem.setSlides(pathologySample.getSlides());
+        displayItem.setBlocks(PathologyRowOrder.blocks(pathologySample.getBlocks()));
+        displayItem.setSlides(PathologyRowOrder.slides(pathologySample.getSlides()));
         pathologySample.getReports().size();
         if (pathologySample.getReports() != null) {
             displayItem.setReports(pathologySample.getReports());
@@ -125,38 +136,56 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
 
         displayItem.setGrossExam(pathologySample.getGrossExam());
         displayItem.setMicroscopyExam(pathologySample.getMicroscopyExam());
+        displayItem.setReviewNotes(pathologySample.getReviewNotes());
         displayItem.setDecalcificationRequired(pathologySample.isDecalcificationRequired());
         displayItem.setTissueTypeNames(dictionaryNames(
                 pathologySample.getBlocks().stream().map(PathologyBlock::getTissueTypeId), dictionaryService));
         displayItem.setStainNames(dictionaryNames(pathologySample.getSlides().stream().map(PathologySlide::getStainId),
                 dictionaryService));
         displayItem.setLabelVerifications(labelVerifications(pathologySample.getSlides(), systemUserService));
+        Map<String, SystemUser> users = new HashMap<>();
+        displayItem.setStainStamps(slideStamps(pathologySample.getSlides(), PathologySlide::getStainStatusAt,
+                PathologySlide::getStainStatusBy, users));
+        displayItem.setCoverslipQcStamps(slideStamps(pathologySample.getSlides(), PathologySlide::getCoverslipQcAt,
+                PathologySlide::getCoverslipQcBy, users));
         List<PathologyStageEvent> stageEvents = pathologySampleService.getStageEvents(pathologySampleId);
         displayItem.setStageEvents(stageEvents.stream().map(StageEventView::of).collect(Collectors.toList()));
-        displayItem.setRunReference(runReference(stageEvents));
-        displayItem.setRunReferenceEditable(pathologySampleService.isRunReferenceRecordable(pathologySample));
+        displayItem.setRunReference(runReference(stageEvents, PathologyStatus.PROCESSING));
+        displayItem.setRunReferenceEditable(
+                pathologySampleService.isRunReferenceRecordable(pathologySample, PathologyStatus.PROCESSING));
+        displayItem.setCoverslipRunReference(runReference(stageEvents, PathologyStatus.COVERSLIPPING));
+        displayItem.setCoverslipRunReferenceEditable(
+                pathologySampleService.isRunReferenceRecordable(pathologySample, PathologyStatus.COVERSLIPPING));
         displayItem.setNextStage(pathologySampleService.nextStage(pathologySample).map(Enum::name).orElse(null));
         displayItem
                 .setPreviousStage(pathologySampleService.previousStage(pathologySample).map(Enum::name).orElse(null));
         displayItem.setReleasable(pathologySampleService.isReleasable(pathologySample));
+        displayItem.setReadingStage(pathologySampleService.readingStage().name());
+        displayItem.setFindingsOpen(pathologySampleService.findingsOpen(pathologySample));
+        ImmunohistochemistrySample referral = immunohistochemistrySampleService
+                .getByPathologySampleId(pathologySample.getId());
+        displayItem.setReferredToIhc(referral != null);
+        displayItem.setIhcCaseId(referral == null ? null : referral.getId());
+        displayItem.setIhcReferredTestIds(pathologySampleService.ihcReferredTestIds(pathologySample));
 
+        // An id that names no entry (written before codes were checked) is left out.
         displayItem.setConclusions(
                 pathologySample.getConclusions().stream().filter(e -> e.getType() == ConclusionType.DICTIONARY)
-                        .map(e -> new IdValuePair(e.getValue(), dictionaryService.get(e.getValue()).getLocalizedName()))
+                        .flatMap(e -> DictionaryEntryNames.conclusionEntryOf(dictionaryService, e.getValue()).stream())
                         .collect(Collectors.toList()));
         Optional<PathologyConclusion> conclusion = pathologySample.getConclusions().stream()
                 .filter(e -> e.getType() == ConclusionType.TEXT).findFirst();
         if (conclusion.isPresent())
             displayItem.setConclusionText(conclusion.get().getValue());
 
-        displayItem.setTechniques(
-                pathologySample.getTechniques().stream().filter(e -> e.getType() == TechniqueType.DICTIONARY)
-                        .map(e -> new IdValuePair(e.getValue(), dictionaryService.get(e.getValue()).getLocalizedName()))
-                        .collect(Collectors.toList()));
-        displayItem.setRequests(pathologySample.getRequests().stream()
-                .filter(e -> e.getType() == RequestType.DICTIONARY).map(e -> new RequestDisplayBean(e.getValue(),
-                        dictionaryService.get(e.getValue()).getLocalizedName(), e.getStatus()))
-                .collect(Collectors.toList()));
+        displayItem.setTechniques(DictionaryEntryNames.namedPairs(dictionaryService, pathologySample.getTechniques()
+                .stream().filter(e -> e.getType() == TechniqueType.DICTIONARY).map(PathologyTechnique::getValue)));
+        displayItem.setRequests(requestViews(pathologySample, users));
+        List<PathologyConsultation> consultations = pathologyConsultationService.getForCase(pathologySample.getId());
+        displayItem.setConsultations(consultationViews(consultations, users));
+        displayItem.setTakesConsultations(pathologyConsultationService.takesConsultations(pathologySample));
+        displayItem.setSecondOpinionSuggestedFor(
+                pathologyConsultationService.suggestedFor(pathologySample, consultations));
 
         SampleOrderService sampleOrderService = new SampleOrderService(pathologySample.getSample());
         SampleOrderItem sampleItem = sampleOrderService.getSampleOrderItem();
@@ -184,12 +213,88 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
     }
 
     /**
-     * The run written on the case's latest Processing entry; a case that never
-     * entered Processing with an entry recorded has none.
+     * The run reference written on the case's latest entry onto the stage; a case
+     * that never entered the stage with an entry recorded has none.
      */
-    private static String runReference(List<PathologyStageEvent> stageEvents) {
-        return stageEvents.stream().filter(event -> event.getStage() == PathologyStatus.PROCESSING)
-                .reduce((earlier, later) -> later).map(PathologyStageEvent::getRunReference).orElse(null);
+    private static String runReference(List<PathologyStageEvent> stageEvents, PathologyStatus stage) {
+        return stageEvents.stream().filter(event -> event.getStage() == stage).reduce((earlier, later) -> later)
+                .map(PathologyStageEvent::getRunReference).orElse(null);
+    }
+
+    /**
+     * Who recorded a slide's stain status, or its coverslip check, and when, by
+     * slide id, for the slides where it was recorded. Each user is looked up once
+     * across both maps.
+     */
+    private Map<Integer, SlideStampView> slideStamps(List<PathologySlide> slides,
+            Function<PathologySlide, Timestamp> at, Function<PathologySlide, String> by,
+            Map<String, SystemUser> users) {
+        Map<Integer, SlideStampView> stamps = new LinkedHashMap<>();
+        for (PathologySlide slide : slides) {
+            if (slide.getId() == null || at.apply(slide) == null) {
+                continue;
+            }
+            String userId = by.apply(slide);
+            SystemUser user = userId == null ? null : users.computeIfAbsent(userId, systemUserService::get);
+            stamps.put(slide.getId(), SlideStampView.of(at.apply(slide), user));
+        }
+        return stamps;
+    }
+
+    /**
+     * Every request on the case, newest first, as the requests table shows it,
+     * whatever its status or kind, a request on file included. Each user is looked
+     * up once, across these and the slide stamps.
+     */
+    private List<RequestView> requestViews(PathologySample pathologySample, Map<String, SystemUser> users) {
+        if (pathologySample.getRequests() == null) {
+            return List.of();
+        }
+        Map<String, String> stainNames = dictionaryNames(
+                pathologySample.getRequests().stream().map(PathologyRequest::getStainId), dictionaryService);
+        return PathologyRowOrder.requests(pathologySample.getRequests()).stream().map(request -> {
+            SystemUser raisedBy = request.getRaisedBy() == null ? null
+                    : users.computeIfAbsent(request.getRaisedBy(), systemUserService::get);
+            SlideStampView raised = SlideStampView.of(request.getRaisedAt(), raisedBy);
+            return new RequestView(request.getId(), nameOf(request.getKind()), request.getTargetBlockId(),
+                    request.getTargetSlideId(),
+                    pathologySample.nameOfBlock(request.getTargetBlockId())
+                            .or(() -> pathologySample.nameOfSlide(request.getTargetSlideId())).orElse(null),
+                    request.getStainId(), stainNames.get(request.getStainId()), nameOf(request.getPriority()),
+                    request.instruction(dictionaryService), nameOf(request.getStatus()), request.getCancelReason(),
+                    request.getResultBlockId(), request.getResultSlideId(),
+                    pathologySample.nameOfBlock(request.getResultBlockId())
+                            .or(() -> pathologySample.nameOfSlide(request.getResultSlideId())).orElse(null),
+                    raised == null ? null : raised.at(), raised == null ? null : raised.by());
+        }).collect(Collectors.toList());
+    }
+
+    /**
+     * Every second opinion on the case, newest first as stored, with each user
+     * looked up once across these, the requests and the slide stamps. A reason id
+     * that names no entry is left empty.
+     */
+    private List<ConsultationView> consultationViews(List<PathologyConsultation> consultations,
+            Map<String, SystemUser> users) {
+        Function<SystemUser, SystemUser> lookedUp = user -> user == null ? null
+                : users.computeIfAbsent(user.getId(), systemUserService::get);
+        return consultations.stream().map(consultation -> {
+            SystemUser requestedBy = lookedUp.apply(consultation.getRequestedBy());
+            SystemUser consultedUser = lookedUp.apply(consultation.getConsultedUser());
+            SlideStampView answered = SlideStampView.of(consultation.getAnsweredAt(), consultedUser);
+            return new ConsultationView(consultation.getId(), nameOf(consultation.getStatus()),
+                    consultedUser == null ? null : consultedUser.getId(),
+                    consultedUser == null ? null : consultedUser.getDisplayName(),
+                    DictionaryEntryNames.localizedNameOf(dictionaryService, consultation.getReasonDictionaryId())
+                            .orElse(null),
+                    consultation.isPreTreatment(), SlideStampView.of(consultation.getRequestedAt(), requestedBy),
+                    nameOf(consultation.getOutcome()), consultation.getOutcomeNote(), answered,
+                    consultation.getAnsweredAt() == null ? null : consultation.getAnsweredAt().getTime());
+        }).collect(Collectors.toList());
+    }
+
+    private static String nameOf(Enum<?> value) {
+        return value == null ? null : value.name();
     }
 
     /**
