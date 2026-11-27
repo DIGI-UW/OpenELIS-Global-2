@@ -90,4 +90,13 @@ public class PathologySampleDAOImpl extends BaseDAOImpl<PathologySample, Integer
         query.setParameter("id", slideId);
         return query.list().stream().findFirst().orElse(null);
     }
+
+    @Override
+    public List<PathologySample> searchWithStatusAndTerm(List<PathologyStatus> statuses, String term) {
+        String sql = "from PathologySample ps where ps.status in (:statuses) and " + CaseSearchTerms.clause("ps", term);
+        Query<PathologySample> query = entityManager.unwrap(Session.class).createQuery(sql, PathologySample.class);
+        query.setParameterList("statuses", statuses);
+        CaseSearchTerms.bind(query, term);
+        return query.list();
+    }
 }

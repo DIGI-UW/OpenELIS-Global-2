@@ -14,6 +14,13 @@ public interface PathologySampleDAO extends BaseDAO<PathologySample, Integer> {
 
     List<PathologySample> searchWithStatusAndAccesionNumber(List<PathologyStatus> statuses, String labNumber);
 
+    /**
+     * The cases in the statuses whose lab number starts with the term, or, for a
+     * term of at least {@link CaseSearchTerms#MIN_NAME_PART} characters, whose
+     * patient's first or last name holds it, in any letter case.
+     */
+    List<PathologySample> searchWithStatusAndTerm(List<PathologyStatus> statuses, String term);
+
     Long getCountWithStatus(List<PathologyStatus> statuses);
 
     /**
