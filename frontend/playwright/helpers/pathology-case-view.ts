@@ -872,3 +872,191 @@ export async function pickDiagnosis(page: Page, query: string, label: string) {
   await expect(diagnosisBox(page)).toHaveValue("");
   await expect(diagnosisBox(page)).toBeFocused();
 }
+
+/** The second opinion panel's ids are read inside the Review section. */
+function inReview(page: Page) {
+  return page.locator(`#${REVIEW_SECTION}`);
+}
+
+/** The panel's scrolling region, present while its table is. */
+export function consultationsRegion(page: Page) {
+  return page.locator("#consultationsRegion");
+}
+
+/** The sentence that says why the panel's controls are held, when they are. */
+export function consultationsHold(page: Page) {
+  return page.locator("#consultationsHold");
+}
+
+/** The toolbar's Request second opinion, offered to a pathologist only. */
+export function requestConsultationButton(page: Page) {
+  return page.locator("#requestConsultation");
+}
+
+/** The request's row, the first of the table while it is open. */
+export function newConsultationRow(page: Page) {
+  return page.getByTestId("newConsultationRow");
+}
+
+/** The suggestion that a second opinion is usual for the case's conclusion. */
+export function secondOpinionSuggestion(page: Page) {
+  return page.getByTestId("review-second-opinion-suggested");
+}
+
+/** The request's colleague picker, found by role and its whole name. */
+export function consultationColleagueBox(page: Page) {
+  return newConsultationRow(page).getByRole("combobox", {
+    name: "Consulting pathologist",
+    exact: true,
+  });
+}
+
+/**
+ * One colleague in the picker's open menu, by its whole name. Scoped to the
+ * request row: the page's other lists name the same users.
+ */
+export function consultationColleagueOption(page: Page, name: string) {
+  return newConsultationRow(page).getByRole("option", { name, exact: true });
+}
+
+/** The request's reason list, found by role and its whole name. */
+export function consultationReasonSelect(page: Page) {
+  return newConsultationRow(page).getByRole("combobox", {
+    name: "Reason",
+    exact: true,
+  });
+}
+
+/**
+ * The request's Yes or No for "Requested before treatment", by the label,
+ * since Carbon hides the radio input itself.
+ */
+export function consultationPreTreatmentLabel(page: Page, yes: boolean) {
+  return page.locator(
+    `label[for="consultationPreTreatment-${yes ? "yes" : "no"}"]`,
+  );
+}
+
+/** The request's Ask for the opinion, held until the rules are met. */
+export function askColleagueButton(page: Page) {
+  return page.locator("#askColleague");
+}
+
+/** The visible sentence that names the first rule still unmet. */
+export function askColleagueHint(page: Page) {
+  return page.locator("#askColleagueHint");
+}
+
+/** The request's Cancel. */
+export function askColleagueCancelButton(page: Page) {
+  return page.locator("#askColleagueCancel");
+}
+
+/** One second opinion's row in the panel's table, by the row's id. */
+export function consultationRow(page: Page, consultationId: number) {
+  return page.getByTestId(`consultationRow-${consultationId}`);
+}
+
+/** Every second opinion row of the table. */
+export function consultationRows(page: Page) {
+  return inReview(page).locator('[data-testid^="consultationRow-"]');
+}
+
+/** The row's Record the outcome, offered to the colleague consulted. */
+export function recordOutcomeButton(page: Page, consultationId: number) {
+  return page.locator(`#recordOutcome-${consultationId}`);
+}
+
+/** The inline row an outcome is recorded in. */
+export function consultationAnswerRow(page: Page, consultationId: number) {
+  return page.getByTestId(`consultationAnswer-${consultationId}`);
+}
+
+/**
+ * The outcome's choice, by the label of its radio, since Carbon hides the
+ * radio input itself.
+ */
+export function consultationOutcomeLabel(
+  page: Page,
+  consultationId: number,
+  outcome: "AGREE" | "DISAGREE" | "MODIFIED",
+) {
+  return page.locator(
+    `label[for="consultationOutcome-${consultationId}-${outcome}"]`,
+  );
+}
+
+/** The sentence that names why the outcome cannot be recorded yet. */
+export function consultationAnswerHint(page: Page, consultationId: number) {
+  return page.locator(`#consultationAnswerHint-${consultationId}`);
+}
+
+/** The outcome's note. */
+export function consultationNote(page: Page, consultationId: number) {
+  return page.locator(`#consultationNote-${consultationId}`);
+}
+
+/** The outcome's confirm button. */
+export function consultationAnswerConfirmButton(
+  page: Page,
+  consultationId: number,
+) {
+  return page.locator(`#consultationAnswerConfirm-${consultationId}`);
+}
+
+/** The outcome's cancel button. */
+export function consultationAnswerCancelButton(
+  page: Page,
+  consultationId: number,
+) {
+  return page.locator(`#consultationAnswerCancel-${consultationId}`);
+}
+
+/** The row's withdraw button, offered to a pathologist who is not consulted. */
+export function withdrawConsultationButton(page: Page, consultationId: number) {
+  return page.locator(`#withdrawConsultation-${consultationId}`);
+}
+
+/** The inline row a withdrawal is confirmed in. */
+export function consultationWithdrawRow(page: Page, consultationId: number) {
+  return page.getByTestId(`consultationWithdraw-${consultationId}`);
+}
+
+/** The withdrawal's danger button. */
+export function consultationWithdrawConfirmButton(
+  page: Page,
+  consultationId: number,
+) {
+  return page.locator(`#consultationWithdrawConfirm-${consultationId}`);
+}
+
+/** The withdrawal's keep button. */
+export function consultationWithdrawKeepButton(
+  page: Page,
+  consultationId: number,
+) {
+  return page.locator(`#consultationWithdrawKeep-${consultationId}`);
+}
+
+/**
+ * A wait for one second opinion change (a request, or an answer or a
+ * withdrawal of the row with this id), registered before the click that
+ * starts it.
+ */
+export function waitForConsultationChange(
+  page: Page,
+  caseId: string,
+  change: { consultationId?: number; action?: "answer" | "withdraw" } = {},
+) {
+  const base = `/rest/pathology/caseView/${caseId}/consultations`;
+  const path =
+    change.consultationId === undefined
+      ? base
+      : `${base}/${change.consultationId}/${change.action ?? "answer"}`;
+  return page.waitForResponse(
+    (r) =>
+      r.request().method() === "POST" &&
+      new URL(r.url()).pathname.endsWith(path),
+    { timeout: UI_TIMEOUT },
+  );
+}

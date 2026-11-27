@@ -1509,3 +1509,282 @@ export async function signOutCase(
     release: true,
   });
 }
+
+/** The dictionary category the second opinion's reason is chosen from. */
+export const CONSULTATION_REASON_CATEGORY = "pathology_consultation_reasons";
+
+/**
+ * A user made for a second opinion: the login, the system user id and the
+ * name the pathologist list shows ("last,first").
+ */
+export interface SecondPathologist {
+  username: string;
+  userId: string;
+  displayName: string;
+}
+
+interface UserFormRole {
+  roleId: string;
+  roleName: string;
+}
+
+interface UserFormAnswer {
+  expirationDate: string;
+  timeout: string;
+  globalRoles: UserFormRole[];
+  labUnitRoles: UserFormRole[];
+}
+
+/** Random uppercase letters, which the site's name validators accept. */
+function upperLetters(length: number): string {
+  return Array.from({ length }, () =>
+    String.fromCharCode(65 + Math.floor(Math.random() * 26)),
+  ).join("");
+}
+
+/**
+ * A second user who holds the Pathologist role and the Results lab unit, so
+ * the case view lists the user as a colleague and opens the case for them.
+ * Made through the endpoint the user admin screen posts to, which answers a
+ * redirect only, so the user id is then found in the list the case view reads
+ * its pathologists from, by the last name, which is the login. The password
+ * is TEST_PASS. The form's role names are padded with spaces (a fixed-width
+ * column), so they are compared trimmed. Throws when either role is missing
+ * or the user is not listed.
+ */
+export async function createPathologistUser(
+  page: Page,
+  { firstName = "Second" }: { firstName?: string } = {},
+): Promise<SecondPathologist> {
+  if (!page.url().startsWith("http")) {
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+  }
+  const password = process.env.TEST_PASS;
+  if (!password) {
+    throw new Error("TEST_PASS is required for the second pathologist");
+  }
+  const endpoint = `${API_PREFIX}/rest/UnifiedSystemUser`;
+  const form = await apiGet<UserFormAnswer>(page, endpoint);
+  const pathologistRole = form.globalRoles.find(
+    (role) => role.roleName.trim() === "Pathologist",
+  );
+  const resultsUnit = form.labUnitRoles.find(
+    (role) => role.roleName.trim() === "Results",
+  );
+  if (!pathologistRole || !resultsUnit) {
+    throw new Error(
+      `The user form offers no Pathologist role or no Results lab unit: ${JSON.stringify(
+        { global: form.globalRoles, units: form.labUnitRoles },
+      ).substring(0, 400)}`,
+    );
+  }
+
+  const username = `pwpath${upperLetters(8)}`;
+  const answer = await apiPost(
+    page,
+    endpoint,
+    {
+      userLoginName: username,
+      userPassword: password,
+      confirmPassword: password,
+      userFirstName: firstName,
+      userLastName: username,
+      expirationDate: form.expirationDate,
+      timeout: form.timeout,
+      accountActive: "Y",
+      accountDisabled: "N",
+      accountLocked: "N",
+      allowCopyUserRoles: "N",
+      selectedRoles: [pathologistRole.roleId],
+      selectedTestSectionLabUnits: { AllLabUnits: [resultsUnit.roleId] },
+    },
+    `Creating the second pathologist ${username}`,
+  );
+  expect(JSON.parse(answer)).toEqual({
+    forward: "redirect:/UnifiedSystemUser",
+  });
+
+  let userId = "";
+  let displayName = "";
+  await expect
+    .poll(
+      async () => {
+        const users = await apiGet<IdValuePair[]>(
+          page,
+          `${API_PREFIX}/rest/users/Pathologist`,
+        );
+        const found = users.find((user) => user.value.includes(username));
+        userId = found ? String(found.id) : "";
+        displayName = found ? found.value : "";
+        return userId;
+      },
+      {
+        message: `${username} was created but /rest/users/Pathologist does not list it`,
+        intervals: [READ_BACK_INTERVAL_MS],
+        timeout: READ_BACK_TIMEOUT_MS,
+      },
+    )
+    .not.toBe("");
+  return { username, userId, displayName };
+}
+
+/**
+ * Sign `username` in on a context of its own, the way a second user opens the
+ * case. The caller closes the context.
+ */
+export async function signInAsUser(
+  browser: import("@playwright/test").Browser,
+  baseURL: string,
+  username: string,
+) {
+  const context = await browser.newContext({
+    ignoreHTTPSErrors: true,
+    baseURL,
+    storageState: { cookies: [], origins: [] },
+  });
+  const page = await context.newPage();
+  await page.goto("/login");
+  await page.locator("#loginName").fill(username);
+  await page.locator("#password").fill(process.env.TEST_PASS!);
+  await page.locator('[data-cy="loginButton"]').click();
+  await expect(page).toHaveURL(/\/$/);
+  // The app stores the session's CSRF token a moment after the redirect; a
+  // post sent before it goes out with an empty token and meets the login page.
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("CSRF")))
+    .toBeTruthy();
+  return { context, page };
+}
+
+/**
+ * A new reason of this run's own in the consultation reasons list: the name
+ * given and an abbreviation no other run uses.
+ */
+export async function createConsultationReason(
+  page: Page,
+  name: string,
+): Promise<DictionaryEntry> {
+  const runTag = `${Date.now().toString(36)}${Math.floor(Math.random() * 36 * 36).toString(36)}`;
+  return createDictionaryEntry(
+    page,
+    CONSULTATION_REASON_CATEGORY,
+    name,
+    `R${runTag}`.slice(-LOCAL_ABBREVIATION_MAX_LENGTH).toUpperCase(),
+    "so the second opinion's changeset has not run here.",
+  );
+}
+
+/** What the second opinion's request carries. */
+export interface ConsultationDraft {
+  consultedUserId: string;
+  reasonId?: string | null;
+  preTreatment: boolean;
+}
+
+/** The outcomes a colleague answers with. */
+export type ConsultationOutcomeId = "AGREE" | "DISAGREE" | "MODIFIED";
+
+interface ConsultationAnswer {
+  id?: number;
+  status?: string;
+}
+
+function consultationPath(caseId: string) {
+  return `${casePath(caseId)}/consultations`;
+}
+
+/**
+ * The row's status from a change's answer. A fetch follows a redirect, so a
+ * session the server no longer knows answers the login page with a 200;
+ * reading the status is what says the change was made.
+ */
+function expectConsultationStatus(
+  answer: string,
+  status: string,
+  action: string,
+) {
+  let parsed: ConsultationAnswer | null = null;
+  try {
+    parsed = JSON.parse(answer) as ConsultationAnswer;
+  } catch {
+    // Not JSON (the login page): left null, and refused below.
+  }
+  if (parsed?.status !== status) {
+    throw new Error(
+      `${action} did not leave the row ${status}: ${answer.substring(0, 400)}`,
+    );
+  }
+}
+
+/**
+ * Ask a colleague for a second opinion through the endpoint the Review
+ * section's Ask for the opinion posts to, with the same body, as the
+ * signed-in user. Throws with the server's body when it is refused. Returns
+ * the new row's id.
+ */
+export async function requestConsultation(
+  page: Page,
+  seeded: Pick<SeededPathologyCase, "pathologySampleId">,
+  draft: ConsultationDraft,
+): Promise<number> {
+  const caseId = seeded.pathologySampleId;
+  const answer = await apiPost(
+    page,
+    consultationPath(caseId),
+    {
+      consultedUserId: draft.consultedUserId,
+      reasonId: draft.reasonId ?? null,
+      preTreatment: draft.preTreatment,
+    },
+    `Requesting a second opinion on case ${caseId}`,
+  );
+  const id = (JSON.parse(answer) as ConsultationAnswer).id;
+  if (id == null) {
+    throw new Error(
+      `Requesting a second opinion on case ${caseId} answered no id: ${answer.substring(0, 400)}`,
+    );
+  }
+  return id;
+}
+
+/**
+ * Record the outcome of a second opinion as the signed-in user, who must be
+ * the one consulted. Throws with the server's body when it is refused.
+ */
+export async function answerConsultation(
+  page: Page,
+  seeded: Pick<SeededPathologyCase, "pathologySampleId">,
+  consultationId: number,
+  outcome: ConsultationOutcomeId,
+  note?: string,
+): Promise<void> {
+  const caseId = seeded.pathologySampleId;
+  const action = `Answering second opinion ${consultationId} on case ${caseId}`;
+  const answer = await apiPost(
+    page,
+    `${consultationPath(caseId)}/${consultationId}/answer`,
+    { outcome, note: note ?? null },
+    action,
+  );
+  expectConsultationStatus(answer, "ANSWERED", action);
+}
+
+/**
+ * Withdraw an open second opinion as the signed-in user. Throws with the
+ * server's body when it is refused.
+ */
+export async function withdrawConsultation(
+  page: Page,
+  seeded: Pick<SeededPathologyCase, "pathologySampleId">,
+  consultationId: number,
+): Promise<void> {
+  const caseId = seeded.pathologySampleId;
+  const action = `Withdrawing second opinion ${consultationId} on case ${caseId}`;
+  const answer = await apiPost(
+    page,
+    `${consultationPath(caseId)}/${consultationId}/withdraw`,
+    {},
+    action,
+  );
+  expectConsultationStatus(answer, "WITHDRAWN", action);
+}
