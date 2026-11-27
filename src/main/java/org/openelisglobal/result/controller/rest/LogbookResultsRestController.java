@@ -418,10 +418,12 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
         for (TestResultItem resultItem : filteredTests) {
             AddPatientIdToResult(patient, resultItem);
-            if (patientName != "")
+            if (!GenericValidator.isBlankOrNull(patientName)) {
                 resultItem.setPatientName(patientName);
-            if (patientInfo != "")
+            }
+            if (!GenericValidator.isBlankOrNull(patientInfo)) {
                 resultItem.setPatientInfo(patientInfo);
+            }
         }
 
         return (form);
