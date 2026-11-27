@@ -70,6 +70,10 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
     private SystemUserService systemUserService;
     @Autowired
     private ImmunohistochemistrySampleService immunohistochemistrySampleService;
+    @Autowired
+    private PathologyReportService pathologyReportService;
+    @Autowired
+    private PathologyCriticalResultService pathologyCriticalResultService;
 
     @Override
     @Transactional
@@ -115,10 +119,11 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
         pathologySample.getSlides().size();
         displayItem.setBlocks(PathologyRowOrder.blocks(pathologySample.getBlocks()));
         displayItem.setSlides(PathologyRowOrder.slides(pathologySample.getSlides()));
-        pathologySample.getReports().size();
-        if (pathologySample.getReports() != null) {
-            displayItem.setReports(pathologySample.getReports());
-        }
+        displayItem.setReports(pathologyReportService.listFor(pathologySample.getId()));
+        displayItem.setCanGenerateReport(pathologyReportService.canGenerate(pathologySample));
+        displayItem.setSignedOut(pathologySampleService.isSignedOut(pathologySample));
+        displayItem.setCriticalResultFlagged(pathologySample.isCriticalResultFlagged());
+        displayItem.setCriticalResult(pathologyCriticalResultService.of(pathologySample).critical());
         Patient patient = sampleService.getPatient(pathologySample.getSample());
         displayItem.setFirstName(patient.getPerson().getFirstName());
         displayItem.setLastName(patient.getPerson().getLastName());

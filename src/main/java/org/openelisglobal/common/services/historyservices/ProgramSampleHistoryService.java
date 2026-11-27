@@ -40,6 +40,7 @@ public class ProgramSampleHistoryService extends AbstractHistoryService {
     private static String GROSS_EXAM_ATTRIBUTE = "grossExam";
     private static String MICROSCOPY_EXAM_ATTRIBUTE = "microscopyExam";
     private static String REVIEW_NOTES_ATTRIBUTE = "reviewNotes";
+    private static String CRITICAL_RESULT_FLAGGED_ATTRIBUTE = "criticalResultFlagged";
     private static String DECALCIFICATION_REQUIRED_ATTRIBUTE = "decalcificationRequired";
     private static String REFERRED_ATTRIBUTE = "reffered";
     private static String CYTO_PATHOLOGIST_ATTRIBUTE = "cytoPathologist";
@@ -92,6 +93,7 @@ public class ProgramSampleHistoryService extends AbstractHistoryService {
             attributeToIdentifierMap.put(GROSS_EXAM_ATTRIBUTE, GROSS_EXAM_ATTRIBUTE);
             attributeToIdentifierMap.put(MICROSCOPY_EXAM_ATTRIBUTE, MICROSCOPY_EXAM_ATTRIBUTE);
             attributeToIdentifierMap.put(REVIEW_NOTES_ATTRIBUTE, REVIEW_NOTES_ATTRIBUTE);
+            attributeToIdentifierMap.put(CRITICAL_RESULT_FLAGGED_ATTRIBUTE, CRITICAL_RESULT_FLAGGED_ATTRIBUTE);
             attributeToIdentifierMap.put(DECALCIFICATION_REQUIRED_ATTRIBUTE, DECALCIFICATION_REQUIRED_ATTRIBUTE);
             newValueMap.put(TECHNICIAN_ATTRIBUTE, pathology.getTechnician_Audit());
             newValueMap.put(PATHOLOGIST_ATTRIBUTE, pathology.getPathologist_Audit());
@@ -101,10 +103,12 @@ public class ProgramSampleHistoryService extends AbstractHistoryService {
             newValueMap.put(REQUESTS_ATTRIBUTE, pathology.getRequests_Audit());
             newValueMap.put(TECHNIQUES_ATTRIBUTE, pathology.getTechniques_Audit());
             newValueMap.put(CONCLUSIONS_ATTRIBUTE, pathology.getConclusions_Audit());
-            newValueMap.put(REPORTS_ATTRIBUTE, pathology.getReports_Audit());
+            // Reports are audited on their own rows; a reports line in an older case
+            // entry still reads from that entry, against no current value.
             newValueMap.put(GROSS_EXAM_ATTRIBUTE, pathology.getGrossExam());
             newValueMap.put(MICROSCOPY_EXAM_ATTRIBUTE, pathology.getMicroscopyExam());
             newValueMap.put(REVIEW_NOTES_ATTRIBUTE, pathology.getReviewNotes());
+            newValueMap.put(CRITICAL_RESULT_FLAGGED_ATTRIBUTE, pathology.getCriticalResultFlagged_Audit());
             newValueMap.put(DECALCIFICATION_REQUIRED_ATTRIBUTE, String.valueOf(pathology.isDecalcificationRequired()));
         } else if (programSample instanceof ImmunohistochemistrySample) {
             ImmunohistochemistrySample immunohistochemitry = (ImmunohistochemistrySample) programSample;
@@ -233,6 +237,7 @@ public class ProgramSampleHistoryService extends AbstractHistoryService {
         simpleChange(changeMap, changes, MICROSCOPY_EXAM_ATTRIBUTE);
         simpleChange(changeMap, changes, REVIEW_NOTES_ATTRIBUTE);
         simpleChange(changeMap, changes, DECALCIFICATION_REQUIRED_ATTRIBUTE);
+        simpleChange(changeMap, changes, CRITICAL_RESULT_FLAGGED_ATTRIBUTE);
     }
 
     @Override

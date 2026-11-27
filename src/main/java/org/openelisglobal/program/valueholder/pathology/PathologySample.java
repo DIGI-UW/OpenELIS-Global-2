@@ -104,10 +104,6 @@ public class PathologySample extends ProgramSample {
     @OrderBy("id")
     private List<PathologyConclusion> conclusions;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "pathology_sample_id")
-    private List<PathologyReport> reports;
-
     @Column(name = "gross_exam")
     private String grossExam;
 
@@ -117,6 +113,13 @@ public class PathologySample extends ProgramSample {
     /** The pathologist's own notes on the case, kept with it and not printed. */
     @Column(name = "review_notes")
     private String reviewNotes;
+
+    /**
+     * The pathologist's own mark that the narrative conclusion is a critical
+     * result, whatever the diagnosis codes say.
+     */
+    @Column(name = "critical_result_flagged", nullable = false)
+    private boolean criticalResultFlagged;
 
     /**
      * Whether the specimen needs decalcifying before processing, which is what
@@ -370,30 +373,23 @@ public class PathologySample extends ProgramSample {
         this.reviewNotes = reviewNotes;
     }
 
+    public boolean isCriticalResultFlagged() {
+        return criticalResultFlagged;
+    }
+
+    public void setCriticalResultFlagged(boolean criticalResultFlagged) {
+        this.criticalResultFlagged = criticalResultFlagged;
+    }
+
+    public String getCriticalResultFlagged_Audit() {
+        return String.valueOf(criticalResultFlagged);
+    }
+
     public boolean isDecalcificationRequired() {
         return decalcificationRequired;
     }
 
     public void setDecalcificationRequired(boolean decalcificationRequired) {
         this.decalcificationRequired = decalcificationRequired;
-    }
-
-    public List<PathologyReport> getReports() {
-        return reports;
-    }
-
-    public String getReports_Audit() {
-        if (reports == null) {
-            return null;
-        } else {
-            return StringUtils.join(reports.stream()
-                    .map(e -> "File Type : " + e.getFileType() + ", Report Type: "
-                            + (e.getReportType() == null ? "" : e.getReportType().getDisplay()))
-                    .collect(Collectors.toList()), "; ");
-        }
-    }
-
-    public void setReports(List<PathologyReport> reports) {
-        this.reports = reports;
     }
 }

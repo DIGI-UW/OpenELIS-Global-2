@@ -62,7 +62,8 @@ public final class DictionaryEntryNames {
      * The loaded entry as a conclusion entry; a missing name or code reads blank.
      */
     public static ConclusionEntry conclusionEntryOf(Dictionary entry) {
-        return new ConclusionEntry(entry.getId(), StringUtils.defaultString(entry.getLocalizedName()),
-                StringUtils.trimToEmpty(entry.getLocalAbbreviation()));
+        String code = StringUtils.trimToEmpty(entry.getLocalAbbreviation());
+        return new ConclusionEntry(entry.getId(), StringUtils.defaultString(entry.getLocalizedName()), code,
+                DiagnosisCodeStarts.isCritical(code));
     }
 }

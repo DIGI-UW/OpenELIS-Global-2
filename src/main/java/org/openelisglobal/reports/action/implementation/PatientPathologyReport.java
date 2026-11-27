@@ -17,6 +17,16 @@ public class PatientPathologyReport extends PatientProgramReport {
 
     private PathologySample pathologySample;
 
+    private boolean amended;
+
+    /**
+     * Prints the report's corrected-report line, for a final issued after the case
+     * was reopened. Set before the report is initialized, which fills the data.
+     */
+    public void setAmended(boolean amended) {
+        this.amended = amended;
+    }
+
     @Override
     protected String getReportName() {
         return "PatientPathologyReport";
@@ -26,6 +36,7 @@ public class PatientPathologyReport extends PatientProgramReport {
     protected void setAdditionalReportItems() {
         data.setGrossExam(pathologySample.getGrossExam());
         data.setMicroExam(pathologySample.getMicroscopyExam());
+        data.setCorrectedResult(amended);
         pathologySample.getConclusions().size();
         Optional<PathologyConclusion> conclusion = pathologySample.getConclusions().stream()
                 .filter(e -> e.getType() == ConclusionType.TEXT).findFirst();

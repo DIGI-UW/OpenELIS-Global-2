@@ -45,8 +45,8 @@ public class PathologyDictionaryRestControllerSecurityTest extends SecuritySlice
     public void resetStubs() {
         service = webApplicationContext.getBean(PathologyConclusionSearchService.class);
         reset(service);
-        when(service.search(any()))
-                .thenReturn(new ConclusionEntries(List.of(new ConclusionEntry("9101", "Adenocarcinoma", "C80.1")), 1));
+        when(service.search(any())).thenReturn(
+                new ConclusionEntries(List.of(new ConclusionEntry("9101", "Adenocarcinoma", "C80.1", false)), 1));
     }
 
     @Test

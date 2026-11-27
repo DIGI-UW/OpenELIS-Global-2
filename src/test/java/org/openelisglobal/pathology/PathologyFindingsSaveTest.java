@@ -567,6 +567,7 @@ public class PathologyFindingsSaveTest extends PathologyCaseTestSupport {
     @Test
     public void aReleaseWithoutBothDescriptions_isRefused() {
         storeAt(PathologyStatus.UNDER_REVIEW);
+        closeTheFixtureRequest();
         jdbcTemplate.update("UPDATE clinlims.pathology_sample SET gross_exam = NULL WHERE id = ?", CASE_ID);
         assertRefusedWith("pathology.error.releaseWithoutDescriptions", () -> save(releaseForm()));
 
@@ -687,6 +688,7 @@ public class PathologyFindingsSaveTest extends PathologyCaseTestSupport {
     }
 
     private void signOut() {
+        closeTheFixtureRequest();
         if (!"UNDER_REVIEW".equals(storedStage())) {
             storeAt(PathologyStatus.UNDER_REVIEW);
         }

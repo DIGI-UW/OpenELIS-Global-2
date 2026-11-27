@@ -77,7 +77,26 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
      */
     private Map<String, String> stainNames;
 
-    private List<PathologyReport> reports;
+    /** The stored report versions that hold a file, newest first, without bytes. */
+    private List<ReportView> reports;
+
+    /**
+     * Whether the stored case can have a report: both descriptions and a
+     * conclusion.
+     */
+    private boolean canGenerateReport;
+
+    /** Whether the stored case has been signed out and not reopened since. */
+    private boolean signedOut;
+
+    /** The pathologist's own critical mark, as stored. */
+    private boolean criticalResultFlagged;
+
+    /**
+     * Whether the case holds a critical result: a coded diagnosis the laboratory
+     * marked critical, or the pathologist's mark.
+     */
+    private boolean criticalResult;
 
     /**
      * Who checked each slide's label against its block, and when, by slide id; a
@@ -321,12 +340,44 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
         this.requester = requester;
     }
 
-    public List<PathologyReport> getReports() {
+    public List<ReportView> getReports() {
         return reports;
     }
 
-    public void setReports(List<PathologyReport> reports) {
+    public void setReports(List<ReportView> reports) {
         this.reports = reports;
+    }
+
+    public boolean isCanGenerateReport() {
+        return canGenerateReport;
+    }
+
+    public void setCanGenerateReport(boolean canGenerateReport) {
+        this.canGenerateReport = canGenerateReport;
+    }
+
+    public boolean isSignedOut() {
+        return signedOut;
+    }
+
+    public void setSignedOut(boolean signedOut) {
+        this.signedOut = signedOut;
+    }
+
+    public boolean isCriticalResultFlagged() {
+        return criticalResultFlagged;
+    }
+
+    public void setCriticalResultFlagged(boolean criticalResultFlagged) {
+        this.criticalResultFlagged = criticalResultFlagged;
+    }
+
+    public boolean isCriticalResult() {
+        return criticalResult;
+    }
+
+    public void setCriticalResult(boolean criticalResult) {
+        this.criticalResult = criticalResult;
     }
 
     public Map<Integer, LabelVerificationView> getLabelVerifications() {

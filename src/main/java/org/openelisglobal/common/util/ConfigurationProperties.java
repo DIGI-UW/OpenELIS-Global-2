@@ -357,6 +357,7 @@ public abstract class ConfigurationProperties {
         // How many earlier anatomic-pathology cases the case view lists before Show
         // all.
         PATHOLOGY_PRIOR_RESULTS_ROWS("pathology.caseView.priorResultsRows", "text"),
+        PATHOLOGY_CRITICAL_RESULT_CODES("pathology.criticalResult.codes", "text"),
 
         // FR-9.3: how a deployment names and barcodes the cassettes, blocks and
         // slides cut from a case. A missing row means the scheme below.

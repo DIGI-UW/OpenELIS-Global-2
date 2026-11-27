@@ -6,12 +6,15 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.stream.Collectors;
 import org.junit.After;
@@ -25,6 +28,7 @@ import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
 import org.openelisglobal.program.service.PathologyDisplayService;
+import org.openelisglobal.program.service.PathologyReportService;
 import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.program.valueholder.pathology.ConclusionEntry;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
@@ -52,6 +56,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
 
     private static final int CASE_WITH_TWO_SPECIMEN_ITEMS = 1;
+
+    /** pathologist1, who reopens. */
+    private static final String PATHOLOGIST_ID = "1002";
+
+    private static final String REASON = "Amended diagnosis after review";
     private static final int CASE_WITHOUT_SPECIMEN_ITEMS = 2;
 
     /** Ids of this class's own rows, outside the ranges the fixture uses. */
@@ -104,6 +113,9 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private PathologySampleService pathologySampleService;
+
+    @Autowired
+    private PathologyReportService pathologyReportService;
 
     @Autowired
     private IStatusService statusService;
@@ -464,6 +476,8 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
             assertTrue("so is a case set to Completed without a release",
                     pathologyDisplayService.convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS).isReleasable());
 
+            // An open bench request holds a sign-out.
+            jdbcTemplate.update("UPDATE clinlims.pathology_request SET status = 'COMPLETED' WHERE id = 301");
             PathologySampleForm release = formWithRunReference(null);
             release.setRelease(true);
             pathologySampleService.updateWithFormValues(CASE_WITH_TWO_SPECIMEN_ITEMS, release);
@@ -505,6 +519,8 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
             assertReadingWindow("W6", PathologyStatus.COMPLETED, "UNDER_REVIEW", true);
 
             PathologyCaseRows.storeAt(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS, PathologyStatus.UNDER_REVIEW);
+            // An open bench request holds a sign-out.
+            jdbcTemplate.update("UPDATE clinlims.pathology_request SET status = 'COMPLETED' WHERE id = 301");
             PathologySampleForm release = formWithRunReference(null);
             release.setRelease(true);
             pathologySampleService.updateWithFormValues(CASE_WITH_TWO_SPECIMEN_ITEMS, release);
@@ -530,10 +546,53 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
             insertCaseRow("pathology_conclusion", 9423, PathologyFindingsDictionary.OLD_TERM);
 
             assertEquals("id, name and code, in the stored order; no abbreviation is an empty code",
-                    List.of(new ConclusionEntry("9102", "Chronic gastritis", "K29.5"),
-                            new ConclusionEntry("9101", "Adenocarcinoma", "C80.1"),
-                            new ConclusionEntry("9103", "Old term", "")),
+                    List.of(new ConclusionEntry("9102", "Chronic gastritis", "K29.5", false),
+                            new ConclusionEntry("9101", "Adenocarcinoma", "C80.1", false),
+                            new ConclusionEntry("9103", "Old term", "", false)),
                     pathologyDisplayService.convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS).getConclusions());
+        }
+    }
+
+    /**
+     * The read says whether the case is critical, by a coded diagnosis the setting
+     * marks or by the pathologist's flag, and which entries are.
+     */
+    @Test
+    public void theRead_saysWhetherTheCaseIsCritical_andWhichEntriesAre() {
+        String before = ConfigurationProperties.getInstance()
+                .getPropertyValue(Property.PATHOLOGY_CRITICAL_RESULT_CODES);
+        try (PathologyFindingsDictionary dictionary = PathologyFindingsDictionary.seed(jdbcTemplate)) {
+            insertCaseRow("pathology_conclusion", 9431, PathologyFindingsDictionary.ADENOCARCINOMA);
+            insertCaseRow("pathology_conclusion", 9432, PathologyFindingsDictionary.CHRONIC_GASTRITIS);
+
+            ConfigurationProperties.getInstance().setPropertyValue(Property.PATHOLOGY_CRITICAL_RESULT_CODES, "C");
+            PathologyCaseViewDisplayItem byCode = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+            assertTrue("a coded diagnosis the setting marks makes the case critical", byCode.isCriticalResult());
+            assertFalse("the pathologist did not flag it", byCode.isCriticalResultFlagged());
+            assertEquals("each entry says whether it is the critical one",
+                    List.of(new ConclusionEntry("9101", "Adenocarcinoma", "C80.1", true),
+                            new ConclusionEntry("9102", "Chronic gastritis", "K29.5", false)),
+                    byCode.getConclusions());
+
+            ConfigurationProperties.getInstance().setPropertyValue(Property.PATHOLOGY_CRITICAL_RESULT_CODES, "");
+            PathologyCaseViewDisplayItem unmarked = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+            assertFalse("an empty setting marks nothing", unmarked.isCriticalResult());
+            assertTrue(unmarked.getConclusions().stream().noneMatch(ConclusionEntry::critical));
+
+            jdbcTemplate.update("UPDATE clinlims.pathology_sample SET critical_result_flagged = true WHERE id = ?",
+                    CASE_WITH_TWO_SPECIMEN_ITEMS);
+            PathologyCaseViewDisplayItem flagged = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+            assertTrue("the flag alone makes the case critical", flagged.isCriticalResult());
+            assertTrue("and the read sends the flag as stored", flagged.isCriticalResultFlagged());
+        } finally {
+            ConfigurationProperties.getInstance().setPropertyValue(Property.PATHOLOGY_CRITICAL_RESULT_CODES,
+                    before == null ? "" : before);
+            jdbcTemplate.update("UPDATE clinlims.pathology_sample SET critical_result_flagged = false WHERE id = ?",
+                    CASE_WITH_TWO_SPECIMEN_ITEMS);
+            jdbcTemplate.update("DELETE FROM clinlims.pathology_conclusion WHERE id IN (9431, 9432)");
         }
     }
 
@@ -602,6 +661,123 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
             assertEquals("and so is the technique", List.of("9201"),
                     read.getTechniques().stream().map(IdValuePair::getId).collect(Collectors.toList()));
         }
+    }
+
+    /**
+     * The read says whether the case is signed out: not under review, not at
+     * Completed without a release, yes after a release, not after a reopen.
+     */
+    @Test
+    public void theRead_saysWhetherTheCaseIsSignedOut() throws Exception {
+        StubReportRenderer renderer = StubReportRenderer.installIn(pathologyReportService);
+        try (StageSwitches switches = StageSwitches.allOn();
+                PathologyFindingsDictionary dictionary = PathologyFindingsDictionary.seed(jdbcTemplate)) {
+            PathologyCaseRows.storeAt(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS, PathologyStatus.UNDER_REVIEW);
+            assertFalse("under review", signedOutRead());
+
+            PathologyCaseRows.storeAt(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS, PathologyStatus.COMPLETED);
+            assertFalse("at Completed without a release", signedOutRead());
+
+            PathologyCaseRows.storeAt(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS, PathologyStatus.UNDER_REVIEW);
+            jdbcTemplate.update("UPDATE clinlims.pathology_request SET status = 'COMPLETED' WHERE id = 301");
+            PathologySampleForm release = formWithRunReference(null);
+            release.setRelease(true);
+            release.setConclusions(List.of(PathologyFindingsDictionary.CHRONIC_GASTRITIS));
+            pathologySampleService.updateWithFormValues(CASE_WITH_TWO_SPECIMEN_ITEMS, release);
+            assertTrue("signed out by a release", signedOutRead());
+            assertTrue("and sent under the name the screen reads",
+                    new ObjectMapper().registerModule(new JavaTimeModule())
+                            .convertValue(
+                                    pathologyDisplayService.convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS),
+                                    new TypeReference<Map<String, Object>>() {
+                                    })
+                            .get("signedOut").equals(Boolean.TRUE));
+
+            pathologySampleService.reopen(CASE_WITH_TWO_SPECIMEN_ITEMS, PathologyStatus.COMPLETED, REASON,
+                    PATHOLOGIST_ID);
+            assertFalse("reopened", signedOutRead());
+        } finally {
+            renderer.restore();
+            removeReportRows();
+            PathologyCaseRows.clearStageHistory(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS);
+        }
+    }
+
+    private boolean signedOutRead() {
+        return pathologyDisplayService.convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS).isSignedOut();
+    }
+
+    @Test
+    public void reports_areViews_newestFirst_withoutBytes() throws Exception {
+        StubReportRenderer renderer = StubReportRenderer.installIn(pathologyReportService);
+        try {
+            pathologyReportService.generate(CASE_WITH_TWO_SPECIMEN_ITEMS, "1001", StubReportRenderer.PATHS);
+            pathologyReportService.upload(CASE_WITH_TWO_SPECIMEN_ITEMS,
+                    PathologyReportServiceTest.encoded("data:image/png", PathologyReportServiceTest.png()), "1001");
+
+            PathologyCaseViewDisplayItem read = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+
+            assertEquals("the read lists the stored versions as views, newest first",
+                    List.of("2 EXTERNAL CURRENT", "1 DRAFT CURRENT"),
+                    read.getReports().stream().map(view -> view.version() + " " + view.type() + " " + view.state())
+                            .collect(Collectors.toList()));
+            assertEquals("as the report service lists them",
+                    pathologyReportService.listFor(CASE_WITH_TWO_SPECIMEN_ITEMS), read.getReports());
+            String json = new ObjectMapper().writeValueAsString(read.getReports());
+            List<Map<String, Object>> sent = new ObjectMapper().readValue(json,
+                    new TypeReference<List<Map<String, Object>>>() {
+                    });
+            assertTrue("and never carries a file: " + json, sent.stream().allMatch(view -> view.keySet()
+                    .equals(Set.of("id", "version", "type", "state", "generatedAt", "generatedBy", "fileType"))));
+        } finally {
+            renderer.restore();
+            removeReportRows();
+        }
+    }
+
+    @Test
+    public void canGenerateReport_followsTheStoredFindings() {
+        assertTrue("both descriptions and a narrative conclusion",
+                pathologyDisplayService.convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS).isCanGenerateReport());
+
+        jdbcTemplate.update("UPDATE clinlims.pathology_sample SET microscopy_exam = ' ' WHERE id = ?",
+                CASE_WITH_TWO_SPECIMEN_ITEMS);
+
+        assertFalse("a blank microscopic description",
+                pathologyDisplayService.convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS).isCanGenerateReport());
+    }
+
+    // R20
+    @Test
+    public void aLegacyRowWithoutAFile_isNotListed() {
+        assertEquals("the fixture's row from before versions holds no file, and is not listed", List.of(),
+                pathologyDisplayService.convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS).getReports());
+        try {
+            jdbcTemplate.update(
+                    "INSERT INTO clinlims.pathology_report (id, pathology_sample_id, image, file_type,"
+                            + " report_type, version_number, voided, last_updated) VALUES (9431, ?, ?,"
+                            + " 'data:application/pdf', 'EXTERNAL', 1, false, now())",
+                    CASE_WITH_TWO_SPECIMEN_ITEMS, PathologyReportServiceTest.pdf());
+
+            assertEquals("a legacy row that holds a file is listed, as an upload", List.of("1 EXTERNAL CURRENT"),
+                    pathologyDisplayService.convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS).getReports().stream()
+                            .map(view -> view.version() + " " + view.type() + " " + view.state())
+                            .collect(Collectors.toList()));
+        } finally {
+            removeReportRows();
+        }
+    }
+
+    /**
+     * The report rows a test wrote and their audit entries; the fixture's row
+     * stays.
+     */
+    private void removeReportRows() {
+        jdbcTemplate.update("DELETE FROM clinlims.history WHERE reference_table ="
+                + " (SELECT id FROM clinlims.reference_tables WHERE name = 'PATHOLOGY_REPORT')");
+        jdbcTemplate.update("DELETE FROM clinlims.pathology_report WHERE pathology_sample_id = ? AND id <> 601",
+                CASE_WITH_TWO_SPECIMEN_ITEMS);
     }
 
     private void assertReadingWindow(String row, PathologyStatus stage, String readingStage, boolean open) {

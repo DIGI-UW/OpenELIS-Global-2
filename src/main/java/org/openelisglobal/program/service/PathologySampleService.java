@@ -2,6 +2,7 @@ package org.openelisglobal.program.service;
 
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
@@ -58,6 +59,18 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
 
     /** Audit verb recorded when the pathologist releases the case. */
     String PATHOLOGY_CASE_SIGNED_OUT = "PATHOLOGY_CASE_SIGNED_OUT";
+
+    /**
+     * Audit verb recorded when a signed-out case is reopened; the payload names the
+     * stage it went to, the reason and the final report it voided, if any.
+     */
+    String PATHOLOGY_CASE_REOPENED = "PATHOLOGY_CASE_REOPENED";
+
+    /**
+     * Audit verb recorded when a sign-out raises a critical result; the payload
+     * names the matching diagnoses and whether the pathologist flagged the case.
+     */
+    String PATHOLOGY_CRITICAL_RESULT_EMITTED = "PATHOLOGY_CRITICAL_RESULT_EMITTED";
 
     /**
      * Audit verb recorded when the processor run is written at Processing, or the
@@ -274,6 +287,17 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
     PathologyStageEvent returnToPreviousStage(Integer pathologySampleId, PathologyStatus from, String reason,
             String sysUserId);
 
+    /**
+     * Reopens a signed-out case at the reading stage (S-8.3), voiding the final
+     * report in force and recording the reason.
+     *
+     * @param from the stage the caller saw the case at
+     * @return the event recording the case's entry onto the reading stage
+     * @throws PathologyStageConflictException when the case no longer stands at
+     *                                         {@code from}
+     */
+    PathologyStageEvent reopen(Integer pathologySampleId, PathologyStatus from, String reason, String sysUserId);
+
     /** Every stage the case entered, oldest first. */
     List<PathologyStageEvent> getStageEvents(Integer pathologySampleId);
 
@@ -338,6 +362,9 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
      */
     boolean isReleasable(PathologySample pathologySample);
 
+    /** Signed out: on Completed and released, so nothing on the case changes. */
+    boolean isSignedOut(PathologySample pathologySample);
+
     /**
      * The stage at which the findings are written on this deployment: Under
      * Pathologist Review where it uses that stage, else Ready for Pathologist.
@@ -350,6 +377,14 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
      * Completed and never released.
      */
     boolean findingsOpen(PathologySample pathologySample);
+
+    /**
+     * Writes the audit entry an event on a row beside the case leaves behind: the
+     * verb and its facts travel as a JSON payload against the row's reference
+     * table, and never carry anything about the patient.
+     */
+    void recordRowEvent(String referenceTableName, String referenceId, String activity, Map<String, Object> payload,
+            String sysUserId);
 
     /**
      * The tests the case's order already holds as immunohistochemistry referral

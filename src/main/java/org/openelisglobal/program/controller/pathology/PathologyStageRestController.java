@@ -67,6 +67,21 @@ public class PathologyStageRestController extends PathologyRestController {
         return ResponseEntity.ok(Map.of("status", entered.getStage().name()));
     }
 
+    /**
+     * Reopens a signed-out case, with the stage the page showed and the reason, in
+     * the shapes a return answers with.
+     */
+    @PostMapping("/reopen")
+    public ResponseEntity<Map<String, Object>> reopen(@PathVariable("pathologySampleId") Integer pathologySampleId,
+            @RequestBody(required = false) ReturnRequest body, HttpServletRequest request) {
+        String sysUserId = getSysUserId(request);
+        programSampleLabUnitScope.requireVisible(sysUserId, pathologySampleService.get(pathologySampleId));
+        PathologyStageEvent entered = pathologySampleService.reopen(pathologySampleId,
+                EnumNames.valueNamed(PathologyStatus.class, body == null ? null : body.from),
+                body == null ? null : body.reason, sysUserId);
+        return ResponseEntity.ok(Map.of("status", entered.getStage().name()));
+    }
+
     /** The page showed a stage the case has already left. */
     @ExceptionHandler(PathologyStageConflictException.class)
     public ResponseEntity<Map<String, Object>> stageConflict(PathologyStageConflictException e) {
@@ -98,7 +113,9 @@ public class PathologyStageRestController extends PathologyRestController {
         public List<Integer> acknowledgedRequestIds;
     }
 
-    /** The stage the page showed the case at, and why it is sent back. */
+    /**
+     * The stage the page showed the case at, and why it is sent back or reopened.
+     */
     public static class ReturnRequest {
         public String from;
         public String reason;

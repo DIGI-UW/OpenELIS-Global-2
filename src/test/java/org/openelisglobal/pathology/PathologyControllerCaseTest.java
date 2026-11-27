@@ -157,6 +157,8 @@ public class PathologyControllerCaseTest extends PathologyControllerTestSupport 
                     saveBody(",\"microscopyExam\":\" \",\"release\":true"),
                     "pathology.error.releaseWithoutDescriptions");
 
+            jdbcTemplate.update("UPDATE clinlims.pathology_request SET status = 'COMPLETED' WHERE id = ?",
+                    FIXTURE_REQUEST_ID);
             assertEquals("setup: the case is signed out", HttpStatus.OK.value(),
                     postAsTechnician(CASE_VIEW, saveBody(",\"release\":true")).getStatus());
             assertRefused("an edit after the sign-out", saveBody(",\"microscopyExam\":\"Changed\""),
@@ -180,6 +182,34 @@ public class PathologyControllerCaseTest extends PathologyControllerTestSupport 
                 number(underReview, "awaitingReview"));
         assertEquals("and joins work in progress", number(inTheQueue, "inProgress") + 1,
                 number(underReview, "inProgress"));
+    }
+
+    /**
+     * The tiles follow the case's status: signed out it counts as complete, and
+     * reopened it is work in progress again.
+     */
+    @Test
+    public void theCounts_followTheCase_throughSignOutAndReopen() throws Exception {
+        jdbcTemplate.update("UPDATE clinlims.pathology_request SET status = 'COMPLETED' WHERE id = ?",
+                FIXTURE_REQUEST_ID);
+        storeAt(PathologyStatus.UNDER_REVIEW);
+        Map<String, Object> underReview = counts();
+
+        assertEquals("setup: the case is signed out", HttpStatus.OK.value(),
+                postAsTechnician(CASE_VIEW, saveBody(",\"release\":true")).getStatus());
+        Map<String, Object> signedOut = counts();
+        assertEquals("the case leaves work in progress", number(underReview, "inProgress") - 1,
+                number(signedOut, "inProgress"));
+        assertEquals("and counts as complete", number(underReview, "complete") + 1, number(signedOut, "complete"));
+
+        assertEquals("setup: the case is reopened", HttpStatus.OK.value(),
+                postAsTechnician(CASE_VIEW + "/reopen", "{\"from\":\"COMPLETED\",\"reason\":\"Amended diagnosis\"}")
+                        .getStatus());
+        Map<String, Object> reopened = counts();
+        assertEquals("reopened, it is work in progress again", number(underReview, "inProgress"),
+                number(reopened, "inProgress"));
+        assertEquals("and no longer complete", number(underReview, "complete"), number(reopened, "complete"));
+        assertEquals("nor awaiting review", number(underReview, "awaitingReview"), number(reopened, "awaitingReview"));
     }
 
     private Map<String, Object> counts() throws Exception {

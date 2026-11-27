@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    A case's report becomes a list of numbered versions: each row says which
+    version it is, whether it was withdrawn, when it was made and by whom.
+    A report type was always the constant PATHOLOGY; a stored row is a file a
+    person uploaded, so it becomes EXTERNAL. Rows that hold no file are the
+    placeholders the old screen added: they are kept and given no number.
+
+    The case also gains a flag a pathologist can raise by hand for a critical
+    result, and the stage event's direction takes REOPEN.
+    -->
+
+    <changeSet id="OGC-264-pathology-report-versions-1" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="pathology_report"/>
+                <not>
+                    <columnExists schemaName="clinlims" tableName="pathology_report" columnName="version_number"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>Record the version, withdrawal, time and author of a stored report</comment>
+        <addColumn schemaName="clinlims" tableName="pathology_report">
+            <column name="version_number" type="INTEGER"/>
+            <column name="voided" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="generated_at" type="TIMESTAMP"/>
+            <column name="generated_by" type="NUMERIC(10)"/>
+        </addColumn>
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims" baseTableName="pathology_report" baseColumnNames="generated_by"
+            referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"
+            constraintName="pathology_report_generated_by_fk"/>
+        <rollback>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="pathology_report"
+                constraintName="pathology_report_generated_by_fk"/>
+            <dropColumn schemaName="clinlims" tableName="pathology_report">
+                <column name="version_number"/>
+                <column name="voided"/>
+                <column name="generated_at"/>
+                <column name="generated_by"/>
+            </dropColumn>
+        </rollback>
+    </changeSet>
+
+    <!--
+    Nobody recorded who stored an old report, so generated_by stays empty. The
+    versions count the rows that hold a file, in id order within the case.
+    -->
+    <changeSet id="OGC-264-pathology-report-versions-2" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="pathology_report"/>
+        </preConditions>
+        <comment>Turn every stored report into an uploaded one and number the ones that hold a file</comment>
+        <sql>
+            UPDATE clinlims.pathology_report SET report_type = 'EXTERNAL';
+        </sql>
+        <sql>
+            UPDATE clinlims.pathology_report AS r
+            SET version_number = numbered.version_number, generated_at = r.last_updated
+            FROM (
+                SELECT id, row_number() OVER (PARTITION BY pathology_sample_id ORDER BY id) AS version_number
+                FROM clinlims.pathology_report
+                WHERE image IS NOT NULL
+            ) AS numbered
+            WHERE r.id = numbered.id;
+        </sql>
+        <rollback>
+            <sql>
+                UPDATE clinlims.pathology_report SET report_type = 'PATHOLOGY';
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-report-versions-3" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM pg_constraint WHERE conname = 'pathology_report_type_ck'
+            </sqlCheck>
+        </preConditions>
+        <comment>Limit a report to a draft, a final or an uploaded one, and one number to one version of a case</comment>
+        <!-- The open-source XML has no check-constraint change, so the rule is written in SQL. -->
+        <sql>
+            ALTER TABLE clinlims.pathology_report ADD CONSTRAINT pathology_report_type_ck
+            CHECK (report_type IN ('DRAFT', 'FINAL', 'EXTERNAL'));
+        </sql>
+        <createIndex schemaName="clinlims" tableName="pathology_report" indexName="pathology_report_version_uk"
+            unique="true">
+            <column name="pathology_sample_id"/>
+            <column name="version_number"/>
+        </createIndex>
+        <rollback>
+            <dropIndex schemaName="clinlims" tableName="pathology_report" indexName="pathology_report_version_uk"/>
+            <sql>
+                ALTER TABLE clinlims.pathology_report DROP CONSTRAINT pathology_report_type_ck;
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+    Rolling this back fails while a REOPEN event exists. That is intended: the
+    old rule cannot hold such a row, and it must not be dropped silently.
+    -->
+    <changeSet id="OGC-264-pathology-report-versions-4" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM pg_constraint
+                WHERE conname = 'pathology_stage_event_direction_ck'
+                AND pg_get_constraintdef(oid) LIKE '%REOPEN%'
+            </sqlCheck>
+        </preConditions>
+        <comment>Let a stage event record a reopen, and require its reason</comment>
+        <sql>
+            ALTER TABLE clinlims.pathology_stage_event DROP CONSTRAINT pathology_stage_event_direction_ck;
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.pathology_stage_event DROP CONSTRAINT pathology_stage_event_return_reason_ck;
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.pathology_stage_event ADD CONSTRAINT pathology_stage_event_direction_ck
+            CHECK (direction IN ('FORWARD', 'RETURN', 'REOPEN'));
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.pathology_stage_event ADD CONSTRAINT pathology_stage_event_return_reason_ck
+            CHECK (direction = 'FORWARD' OR reason IS NOT NULL);
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.pathology_stage_event DROP CONSTRAINT pathology_stage_event_return_reason_ck;
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.pathology_stage_event DROP CONSTRAINT pathology_stage_event_direction_ck;
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.pathology_stage_event ADD CONSTRAINT pathology_stage_event_direction_ck
+                CHECK (direction IN ('FORWARD', 'RETURN'));
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.pathology_stage_event ADD CONSTRAINT pathology_stage_event_return_reason_ck
+                CHECK (direction != 'RETURN' OR reason IS NOT NULL);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-report-versions-5" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="pathology_sample"/>
+                <not>
+                    <columnExists schemaName="clinlims" tableName="pathology_sample" columnName="critical_result_flagged"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>Record that a pathologist flagged a case as holding a critical result</comment>
+        <addColumn schemaName="clinlims" tableName="pathology_sample">
+            <column name="critical_result_flagged" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="pathology_sample" columnName="critical_result_flagged"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-report-reference-table" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'PATHOLOGY_REPORT'
+            </sqlCheck>
+        </preConditions>
+        <comment>Register pathology_report so a report's changes are auditable like every other reference table</comment>
+        <insert tableName="reference_tables" schemaName="clinlims">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="PATHOLOGY_REPORT"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+        <rollback>
+            <delete tableName="reference_tables" schemaName="clinlims">
+                <where>name = 'PATHOLOGY_REPORT'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

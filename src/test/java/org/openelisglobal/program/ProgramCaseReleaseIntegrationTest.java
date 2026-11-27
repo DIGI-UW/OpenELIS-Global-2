@@ -53,6 +53,7 @@ public class ProgramCaseReleaseIntegrationTest extends BaseWebContextSensitiveTe
     private static final int REFERRAL_SECTION_ID = 9501;
     private static final int REFERRAL_ANALYSIS_ID = 9501;
     private static final String REFERRAL_ANALYSIS_ID_STRING = String.valueOf(REFERRAL_ANALYSIS_ID);
+    private static final int CONCLUSION_ID = 9561;
 
     @Autowired
     private PathologySampleService pathologySampleService;
@@ -86,6 +87,7 @@ public class ProgramCaseReleaseIntegrationTest extends BaseWebContextSensitiveTe
     @Test
     public void pathologyRelease_finalizesOnlyTheCasesAnalysis() {
         storeBothDescriptions();
+        storeAConclusion();
         PathologySampleForm form = new PathologySampleForm();
         form.setSystemUserId("1001");
         form.setStatus(PathologyStatus.COMPLETED);
@@ -125,6 +127,7 @@ public class ProgramCaseReleaseIntegrationTest extends BaseWebContextSensitiveTe
     @Test
     public void pathologyRelease_leavesTheImmunohistochemistryReferralOpen() {
         storeBothDescriptions();
+        storeAConclusion();
         addReferralAnalysis();
         String referralStatusBefore = analysisService.get(REFERRAL_ANALYSIS_ID_STRING).getStatusId();
 
@@ -166,6 +169,7 @@ public class ProgramCaseReleaseIntegrationTest extends BaseWebContextSensitiveTe
     @Test
     public void pathologyAndReferralReleases_finishTheOrderTogether() {
         storeBothDescriptions();
+        storeAConclusion();
         addReferralAnalysis();
 
         pathologySampleService.updateWithFormValues(PATHOLOGY_CASE_ID, pathologyReleaseForm());
@@ -188,6 +192,7 @@ public class ProgramCaseReleaseIntegrationTest extends BaseWebContextSensitiveTe
         jdbcTemplate.update("UPDATE clinlims.pathology_sample SET status = 'UNDER_REVIEW' WHERE id = ?",
                 PATHOLOGY_CASE_ID);
         addImmunohistochemistrySection();
+        storeAConclusion();
         PathologySampleForm form = pathologyReleaseForm();
         form.setGrossExam("Macroscopic description");
         form.setMicroscopyExam("Microscopic description");
@@ -235,6 +240,7 @@ public class ProgramCaseReleaseIntegrationTest extends BaseWebContextSensitiveTe
     public void pathologyCaseLeftAtCompletedWithUnreleasedAnalyses_isReleasedOnce() {
         leavePathologyCaseAtCompleted();
         storeBothDescriptions();
+        storeAConclusion();
         assertTrue("a case never released reads as releasable", isPathologyCaseReleasable());
 
         pathologySampleService.updateWithFormValues(PATHOLOGY_CASE_ID, pathologyReleaseForm());
@@ -273,6 +279,131 @@ public class ProgramCaseReleaseIntegrationTest extends BaseWebContextSensitiveTe
         jdbcTemplate.update("UPDATE clinlims.analysis SET released_date = now() WHERE id = ?", REFERRAL_ANALYSIS_ID);
 
         assertTrue("the case was never released, so it still reads as releasable", isPathologyCaseReleasable());
+    }
+
+    /**
+     * A reopen amends the report, not the order: the case's analysis, its result
+     * and released date, and the order's status stay as the sign-out left them.
+     */
+    @Test
+    public void reopening_leavesTheOrderAsReported() {
+        storeBothDescriptions();
+        storeAConclusion();
+        pathologySampleService.updateWithFormValues(PATHOLOGY_CASE_ID, pathologyReleaseForm());
+        Map<String, Object> reported = caseAnalysisAsReported();
+
+        pathologySampleService.reopen(PATHOLOGY_CASE_ID, PathologyStatus.COMPLETED, "Amended diagnosis", "1001");
+
+        assertFalse("the case is reopened", PathologyStatus.COMPLETED == pathologySampleService.get(1).getStatus());
+        assertEquals("its analysis, result and released date are as reported", reported, caseAnalysisAsReported());
+        assertTrue("and the order stays finished", isOrderFinished());
+    }
+
+    /**
+     * A second sign-out after a reopen does not report the case's analysis again:
+     * no new revision, no new released date, no second result.
+     */
+    @Test
+    public void aSecondSignOut_doesNotReportAFinalizedAnalysisAgain() {
+        storeBothDescriptions();
+        storeAConclusion();
+        pathologySampleService.updateWithFormValues(PATHOLOGY_CASE_ID, pathologyReleaseForm());
+        Map<String, Object> reported = caseAnalysisAsReported();
+        pathologySampleService.reopen(PATHOLOGY_CASE_ID, PathologyStatus.COMPLETED, "Amended diagnosis", "1001");
+
+        pathologySampleService.updateWithFormValues(PATHOLOGY_CASE_ID, pathologyReleaseForm());
+
+        assertEquals(PathologyStatus.COMPLETED, pathologySampleService.get(1).getStatus());
+        assertEquals("the analysis keeps its revision, released date and one result", reported,
+                caseAnalysisAsReported());
+        assertTrue("the order's status is unchanged", isOrderFinished());
+    }
+
+    /**
+     * Markers referred while the case is reopened are new tests on a reported
+     * order: the order goes back to Started, and the second sign-out leaves the
+     * markers and the order open.
+     */
+    @Test
+    public void aReferralMadeAfterAReopen_reopensTheOrder_andStaysOpen() {
+        storeBothDescriptions();
+        storeAConclusion();
+        addImmunohistochemistrySection();
+        pathologySampleService.updateWithFormValues(PATHOLOGY_CASE_ID, pathologyReleaseForm());
+        assertTrue("setup: the sign-out finished the order", isOrderFinished());
+        Map<String, Object> reported = caseAnalysisAsReported();
+        pathologySampleService.reopen(PATHOLOGY_CASE_ID, PathologyStatus.COMPLETED, "Add markers", "1001");
+
+        PathologySampleForm referral = pathologyReleaseForm();
+        referral.setRelease(false);
+        referral.setReferToImmunoHistoChemistry(true);
+        referral.setImmunoHistoChemistryTestIds(List.of("1", "2"));
+        pathologySampleService.updateWithFormValues(PATHOLOGY_CASE_ID, referral);
+
+        assertTrue("the referral sets the order back to Started", isOrderStarted());
+        pathologySampleService.updateWithFormValues(PATHOLOGY_CASE_ID, pathologyReleaseForm());
+
+        List<Map<String, Object>> markers = jdbcTemplate.queryForList(
+                "SELECT released_date FROM clinlims.analysis WHERE parent_analysis_id = 2 AND test_sect_id = ?",
+                REFERRAL_SECTION_ID);
+        assertEquals("two markers are ordered", 2, markers.size());
+        assertTrue("which the second sign-out leaves open",
+                markers.stream().allMatch(marker -> marker.get("released_date") == null));
+        assertTrue("the order stays Started, not Finished", isOrderStarted());
+        assertEquals("the case's own analysis is untouched", reported, caseAnalysisAsReported());
+        assertEquals("and the referral is audited", Integer.valueOf(1),
+                jdbcTemplate.queryForObject(
+                        "SELECT count(*) FROM clinlims.history WHERE reference_id = ?"
+                                + " AND reference_table = (SELECT id FROM clinlims.reference_tables"
+                                + " WHERE name = 'PATHOLOGY_SAMPLE') AND convert_from(changes, 'UTF8') LIKE ?",
+                        Integer.class, PATHOLOGY_CASE_ID, "%" + PathologySampleService.PATHOLOGY_IHC_REFERRED + "%"));
+    }
+
+    /**
+     * The order going back to Started after a reopen is in the order's audit trail:
+     * one history row holds the Finished status it left.
+     */
+    @Test
+    public void aReferralMadeAfterAReopen_auditsTheOrderLeavingFinished() {
+        storeBothDescriptions();
+        storeAConclusion();
+        addImmunohistochemistrySection();
+        pathologySampleService.updateWithFormValues(PATHOLOGY_CASE_ID, pathologyReleaseForm());
+        pathologySampleService.reopen(PATHOLOGY_CASE_ID, PathologyStatus.COMPLETED, "Add markers", "1001");
+        int before = orderHistoryRowsHoldingFinished();
+
+        PathologySampleForm referral = pathologyReleaseForm();
+        referral.setRelease(false);
+        referral.setReferToImmunoHistoChemistry(true);
+        referral.setImmunoHistoChemistryTestIds(List.of("1", "2"));
+        pathologySampleService.updateWithFormValues(PATHOLOGY_CASE_ID, referral);
+
+        assertTrue("setup: the referral sets the order back to Started", isOrderStarted());
+        assertEquals("one order history row holds the Finished status it left", before + 1,
+                orderHistoryRowsHoldingFinished());
+    }
+
+    private int orderHistoryRowsHoldingFinished() {
+        return jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM clinlims.history WHERE reference_id = ?"
+                        + " AND reference_table = (SELECT id FROM clinlims.reference_tables WHERE name = 'SAMPLE')"
+                        + " AND convert_from(changes, 'UTF8') LIKE ?",
+                Integer.class, Integer.parseInt(CASE_SAMPLE_ID),
+                "%<statusId>" + statusService.getStatusID(OrderStatus.Finished) + "</statusId>%");
+    }
+
+    /** What the sign-out reported on the case's analysis. */
+    private Map<String, Object> caseAnalysisAsReported() {
+        return jdbcTemplate.queryForMap("SELECT a.revision, a.released_date, CAST(a.status_id AS varchar) AS status,"
+                + " (SELECT count(*) FROM clinlims.result r WHERE r.analysis_id = a.id) AS results"
+                + " FROM clinlims.analysis a WHERE a.id = ?", Integer.parseInt(CASE_ANALYSIS_ID));
+    }
+
+    private boolean isOrderStarted() {
+        String statusId = jdbcTemplate.queryForObject(
+                "SELECT CAST(status_id AS varchar) FROM clinlims.sample WHERE id = ?", String.class,
+                Integer.parseInt(CASE_SAMPLE_ID));
+        return statusService.matches(statusId, OrderStatus.Started);
     }
 
     private void addImmunohistochemistrySection() {
@@ -336,6 +467,14 @@ public class ProgramCaseReleaseIntegrationTest extends BaseWebContextSensitiveTe
                 + " microscopy_exam = 'Microscopic description' WHERE id = ?", PATHOLOGY_CASE_ID);
     }
 
+    /** The final report needs a conclusion, and this fixture's case holds none. */
+    private void storeAConclusion() {
+        jdbcTemplate.update(
+                "INSERT INTO clinlims.pathology_conclusion (id, pathology_sample_id, type, value,"
+                        + " last_updated) VALUES (?, ?, 'TEXT', 'Narrative conclusion', now())",
+                CONCLUSION_ID, PATHOLOGY_CASE_ID);
+    }
+
     private void leavePathologyCaseAtCompleted() {
         jdbcTemplate.update("UPDATE clinlims.pathology_sample SET status = 'COMPLETED' WHERE id = ?",
                 PATHOLOGY_CASE_ID);
@@ -373,6 +512,8 @@ public class ProgramCaseReleaseIntegrationTest extends BaseWebContextSensitiveTe
                 + referralAnalyses + ")");
         jdbcTemplate.update("DELETE FROM clinlims.analysis WHERE test_sect_id = ?", REFERRAL_SECTION_ID);
         jdbcTemplate.update("DELETE FROM clinlims.test_section WHERE id = ?", REFERRAL_SECTION_ID);
+        jdbcTemplate.update("DELETE FROM clinlims.pathology_conclusion WHERE pathology_sample_id = ?",
+                PATHOLOGY_CASE_ID);
         jdbcTemplate.update("DELETE FROM clinlims.pathology_stage_event WHERE pathology_sample_id = ?",
                 PATHOLOGY_CASE_ID);
         jdbcTemplate.update(

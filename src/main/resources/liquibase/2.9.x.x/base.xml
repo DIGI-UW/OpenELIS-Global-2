@@ -15,5 +15,6 @@
   <include relativeToChangelogFile="true" file="009-pathology-slide-staining-qc.xml"/>
   <include relativeToChangelogFile="true" file="010-pathology-request-bench-work.xml"/>
   <include relativeToChangelogFile="true" file="011-pathology-review-notes.xml"/>
+  <include relativeToChangelogFile="true" file="013-pathology-report-versions.xml"/>
 
 </databaseChangeLog>

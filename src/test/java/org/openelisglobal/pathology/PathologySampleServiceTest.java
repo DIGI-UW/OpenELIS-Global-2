@@ -121,7 +121,8 @@ public class PathologySampleServiceTest extends BaseWebContextSensitiveTest {
         // A slide has to name the block it was cut from, and case 2 holds no blocks
         // yet, so this form adds cassettes only.
         pathologySampleForm.setSlides(Collections.emptyList());
-        pathologySampleForm.setReports(Collections.singletonList(new PathologySampleForm.PathologyReportForm()));
+        Integer reportRowsBefore = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.pathology_report WHERE pathology_sample_id = 2", Integer.class);
         pathologySampleService.updateWithFormValues(2, pathologySampleForm);
 
         PathologySample saved = pathologySampleService.get(2);
@@ -135,8 +136,9 @@ public class PathologySampleServiceTest extends BaseWebContextSensitiveTest {
                         + " PathologySampleSaveIdentityTest",
                 Integer.valueOf(0), jdbcTemplate.queryForObject(
                         "SELECT COUNT(*) FROM clinlims.pathology_slide WHERE pathology_sample_id = 2", Integer.class));
-        Assert.assertEquals(Integer.valueOf(1), jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM clinlims.pathology_report WHERE pathology_sample_id = 2", Integer.class));
+        Assert.assertEquals("reports are written through their own calls, never by the case save", reportRowsBefore,
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM clinlims.pathology_report WHERE pathology_sample_id = 2", Integer.class));
     }
 
 }

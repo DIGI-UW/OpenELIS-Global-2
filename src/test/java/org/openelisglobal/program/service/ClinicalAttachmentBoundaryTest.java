@@ -8,7 +8,9 @@ import org.junit.Test;
 import org.openelisglobal.program.controller.cytology.CytologySampleForm;
 import org.openelisglobal.program.controller.immunohistochemistry.ImmunohistochemistrySampleForm;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
+import org.openelisglobal.program.dao.PathologyReportDAO;
 import org.openelisglobal.program.service.cytology.CytologySampleServiceImpl;
+import org.springframework.test.util.ReflectionTestUtils;
 
 public class ClinicalAttachmentBoundaryTest {
     @Test
@@ -18,12 +20,15 @@ public class ClinicalAttachmentBoundaryTest {
         report.setBase64Image("data:text/html;base64,PHNjcmlwdD4=");
         form.setReports(List.of(report));
         PathologySampleServiceImpl service = spy(new PathologySampleServiceImpl());
+        PathologyReportDAO reports = mock(PathologyReportDAO.class);
+        when(reports.getForCase(1)).thenReturn(List.of());
+        ReflectionTestUtils.setField(service, "pathologyReportDAO", reports);
         var stored = mock(org.openelisglobal.program.valueholder.pathology.PathologySample.class);
-        when(stored.getReports()).thenReturn(List.of());
         doReturn(stored).when(service).get(1);
-        assertThrows(InvalidClinicalAttachmentException.class, () -> service.updateWithFormValues(1, form));
-        verify(stored).getReports();
-        verifyNoMoreInteractions(stored);
+        // Reports are uploaded through their own call; a new one in the save is the
+        // reload refusal, before the loaded case is touched.
+        assertThrows(PathologyCaseRuleException.class, () -> service.updateWithFormValues(1, form));
+        verifyZeroInteractions(stored);
     }
 
     @Test

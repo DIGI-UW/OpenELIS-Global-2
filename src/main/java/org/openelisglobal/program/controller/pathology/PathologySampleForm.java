@@ -1,5 +1,6 @@
 package org.openelisglobal.program.controller.pathology;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Min;
 import java.util.ArrayList;
 import java.util.List;
@@ -11,6 +12,7 @@ import org.openelisglobal.program.valueholder.pathology.PathologyReport;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestStatus;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
+import org.openelisglobal.program.valueholder.pathology.ReportView;
 
 public class PathologySampleForm {
 
@@ -52,6 +54,21 @@ public class PathologySampleForm {
 
     /** Null when the client did not post it, so the stored flag stands. */
     private Boolean decalcificationRequired;
+
+    /** Null when the client did not post it, so the stored flag stands. */
+    private Boolean criticalResultFlagged;
+
+    /**
+     * The answer's final report, issued after a sign-out; never read when posted.
+     */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private ReportView finalReport;
+
+    /**
+     * The answer says the sign-out's report step failed; never read when posted.
+     */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private boolean finalReportFailed;
 
     /**
      * The processor run, written once on the case's Processing entry. Null when the
@@ -169,6 +186,30 @@ public class PathologySampleForm {
 
     public void setMicroscopyExam(String microscopyExam) {
         this.microscopyExam = microscopyExam;
+    }
+
+    public Boolean getCriticalResultFlagged() {
+        return criticalResultFlagged;
+    }
+
+    public void setCriticalResultFlagged(Boolean criticalResultFlagged) {
+        this.criticalResultFlagged = criticalResultFlagged;
+    }
+
+    public ReportView getFinalReport() {
+        return finalReport;
+    }
+
+    public void setFinalReport(ReportView finalReport) {
+        this.finalReport = finalReport;
+    }
+
+    public boolean isFinalReportFailed() {
+        return finalReportFailed;
+    }
+
+    public void setFinalReportFailed(boolean finalReportFailed) {
+        this.finalReportFailed = finalReportFailed;
     }
 
     public String getReviewNotes() {

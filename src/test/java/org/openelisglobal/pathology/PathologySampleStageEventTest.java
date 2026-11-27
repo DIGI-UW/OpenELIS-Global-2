@@ -213,7 +213,8 @@ public class PathologySampleStageEventTest extends PathologyCaseTestSupport {
         assertEquals("sent forward", "FORWARD", events.get(0).get("direction"));
         assertEquals("by the user who released it", TECHNICIAN_ID, operatorOf(events.get(0), "entered_by"));
         assertEquals("audited as the sign-out, from the pathologist's queue",
-                Map.of("verb", PathologySampleService.PATHOLOGY_CASE_SIGNED_OUT, "stageFrom", "READY_PATHOLOGIST"),
+                Map.of("verb", PathologySampleService.PATHOLOGY_CASE_SIGNED_OUT, "stageFrom", "READY_PATHOLOGIST",
+                        "criticalResultEmitted", false),
                 payloadOf(onlyStageAudit()));
     }
 
@@ -264,7 +265,8 @@ public class PathologySampleStageEventTest extends PathologyCaseTestSupport {
         assertEquals("the case stays completed", "COMPLETED", storedStage());
         assertEquals("with no second entry onto the stage it already stands at", 0, stageEvents().size());
         assertEquals("the release is audited as the sign-out, from Completed",
-                Map.of("verb", PathologySampleService.PATHOLOGY_CASE_SIGNED_OUT, "stageFrom", "COMPLETED"),
+                Map.of("verb", PathologySampleService.PATHOLOGY_CASE_SIGNED_OUT, "stageFrom", "COMPLETED",
+                        "criticalResultEmitted", false),
                 payloadOf(onlyStageAudit()));
 
         PathologySampleForm again = caseViewForm();

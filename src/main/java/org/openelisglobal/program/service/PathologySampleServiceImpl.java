@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -53,14 +54,19 @@ import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
+import org.openelisglobal.program.controller.pathology.PathologySampleForm.PathologyReportForm;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm.PathologySlideForm;
 import org.openelisglobal.program.dao.PathologyBlockDAO;
+import org.openelisglobal.program.dao.PathologyReportDAO;
 import org.openelisglobal.program.dao.PathologySampleDAO;
 import org.openelisglobal.program.dao.PathologySlideDAO;
 import org.openelisglobal.program.dao.PathologyStageEventDAO;
+import org.openelisglobal.program.event.CriticalResultEvent;
+import org.openelisglobal.program.service.PathologyCriticalResultService.CriticalResult;
 import org.openelisglobal.program.util.DesignationScheme;
 import org.openelisglobal.program.util.DictionaryEntryNames;
 import org.openelisglobal.program.util.EnumNames;
+import org.openelisglobal.program.util.PathologyCaseRules;
 import org.openelisglobal.program.util.PathologyDesignations;
 import org.openelisglobal.program.util.PathologyRowOrder;
 import org.openelisglobal.program.util.PathologyStages;
@@ -70,6 +76,7 @@ import org.openelisglobal.program.valueholder.pathology.CoverslipQc;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion.ConclusionType;
+import org.openelisglobal.program.valueholder.pathology.PathologyReport;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestStatus;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestType;
@@ -102,6 +109,7 @@ import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl.ResultType;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -144,6 +152,9 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
     private PathologyStageEventDAO pathologyStageEventDAO;
 
     @Autowired
+    private PathologyReportDAO pathologyReportDAO;
+
+    @Autowired
     private HistoryService historyService;
 
     @Autowired
@@ -181,6 +192,17 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
 
     @Autowired
     private BarcodeWorkflowPrintService barcodeWorkflowPrintService;
+
+    // The report service reads cases through this one, so the two are wired by
+    // field.
+    @Autowired
+    private PathologyReportService pathologyReportService;
+
+    @Autowired
+    private PathologyCriticalResultService pathologyCriticalResultService;
+
+    @Autowired
+    private ApplicationEventPublisher applicationEventPublisher;
 
     PathologySampleServiceImpl() {
         super(PathologySample.class);
@@ -237,6 +259,7 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         PathologySample pathologySample = new PathologySample();
         pathologySample.setBlocks(new ArrayList<>(oldPathologySample.getBlocks()));
         pathologySample.setConclusions(new ArrayList<>(oldPathologySample.getConclusions()));
+        pathologySample.setCriticalResultFlagged(oldPathologySample.isCriticalResultFlagged());
         pathologySample.setDecalcificationRequired(oldPathologySample.isDecalcificationRequired());
         pathologySample.setGrossExam(oldPathologySample.getGrossExam());
         pathologySample.setId(oldPathologySample.getId());
@@ -245,7 +268,6 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         pathologySample.setPathologist(oldPathologySample.getPathologist());
         pathologySample.setProgram(oldPathologySample.getProgram());
         pathologySample.setQuestionnaireResponseUuid(oldPathologySample.getQuestionnaireResponseUuid());
-        pathologySample.setReports(new ArrayList<>(oldPathologySample.getReports()));
         pathologySample.setRequests(new ArrayList<>(oldPathologySample.getRequests()));
         pathologySample.setReviewNotes(oldPathologySample.getReviewNotes());
         pathologySample.setSample(oldPathologySample.getSample());
@@ -333,6 +355,26 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         return slide;
     }
 
+    /**
+     * Reports are written through their own calls, so a save carries them only as a
+     * page read them: a row posted as stored is ignored, and a new or changed file
+     * is refused rather than dropped behind a success.
+     */
+    private void refuseChangedReports(Integer pathologySampleId, PathologySampleForm form) {
+        if (form.getReports() == null || form.getReports().isEmpty()) {
+            return;
+        }
+        List<PathologyReport> stored = pathologyReportDAO.getForCase(pathologySampleId);
+        for (PathologyReportForm posted : form.getReports()) {
+            if (stored.stream().noneMatch(row -> ClinicalAttachmentService.isUnchanged(posted, row.getId(),
+                    row.getImage(), row.getFileType()))) {
+                throw new PathologyCaseRuleException("pathology case " + pathologySampleId
+                        + " was saved with a new or changed report; a save never carries new or changed report"
+                        + " files, reload the case and try again");
+            }
+        }
+    }
+
     @Transactional
     @Override
     public void updateWithFormValues(Integer pathologySampleId, PathologySampleForm form) {
@@ -345,17 +387,12 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
                 }
             });
         }
-        if (form.getReports() != null) {
-            form.getReports().forEach(upload -> {
-                if (!storedCase.getReports().stream().anyMatch(stored -> ClinicalAttachmentService.isUnchanged(upload,
-                        stored.getId(), stored.getImage(), stored.getFileType()))) {
-                    ClinicalAttachmentService.validate(upload);
-                }
-            });
-        }
+        refuseChangedReports(pathologySampleId, form);
         if (form.getRelease()) {
             refuseReleaseOutsideReview(storedCase);
         }
+        // Read before the transition, which records a release of its own.
+        boolean releasedBefore = form.getRelease() && hasBeenReleased(storedCase);
         // Worked out against the stored case, before the copy.
         ReviewChanges changes = reviewChangesOf(storedCase, form);
         refuseReviewChanges(storedCase, changes, form);
@@ -397,6 +434,9 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         if (changes.reviewNotes()) {
             pathologySample.setReviewNotes(form.getReviewNotes());
         }
+        if (changes.criticalResultFlagged()) {
+            pathologySample.setCriticalResultFlagged(form.getCriticalResultFlagged());
+        }
         // Conclusions and techniques are rewritten only when they changed, so
         // unchanged rows keep their ids.
         List<String> codesBefore = conclusionCodes(storedCase.getConclusions());
@@ -416,26 +456,30 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
             changes.techniques().forEach(
                     code -> pathologySample.getTechniques().add(createTechnique(code, TechniqueType.DICTIONARY)));
         }
-        pathologySample.getReports().removeAll(pathologySample.getReports());
-        if (form.getReports() != null)
-            form.getReports().stream().forEach(e -> e.setId(null));
-        pathologySample.getReports().addAll(form.getReports());
         if (form.getRelease()) {
             refuseReleaseWithoutDescriptions(pathologySample);
+            refuseReleaseWithoutConclusion(pathologySample);
+            // A case left at Completed has no bench to close its requests on.
+            if (storedCase.getStatus() != PathologyStatus.COMPLETED) {
+                refuseReleaseWithOpenRequests(storedCase);
+            }
         }
         Optional<Referral> referral = changes.referral() == null ? Optional.empty()
                 : referToImmunoHistoChemistry(pathologySample, changes.referral(), form.getSystemUserId());
+        // Worked out on what the save stores, in its transaction.
+        CriticalResult criticalResult = form.getRelease() ? pathologyCriticalResultService.of(pathologySample) : null;
+        boolean criticalResultEmitted = criticalResult != null && criticalResult.critical();
         if (form.getRelease()) {
             if (storedCase.getStatus() == PathologyStatus.COMPLETED) {
                 // Already at Completed, so there is no stage to enter; the release is
                 // still the sign-out.
                 recordMove(storedCase, PathologyStatus.COMPLETED, StageDirection.FORWARD, null,
-                        pathologySample.getSysUserId());
+                        pathologySample.getSysUserId(), criticalResultEmitted);
             } else {
                 applyTransition(pathologySample, storedCase, PathologyStatus.COMPLETED, StageDirection.FORWARD, null,
-                        pathologySample.getSysUserId());
+                        pathologySample.getSysUserId(), criticalResultEmitted);
             }
-            validatePathologySample(pathologySample, form);
+            validatePathologySample(pathologySample, form, releasedBefore);
         }
         try {
             baseObjectDAO.evict(storedCase);
@@ -447,6 +491,9 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
                         pathologySample.getSysUserId());
             }
             referral.ifPresent(made -> recordReferral(savedCase, made, pathologySample.getSysUserId()));
+            if (criticalResultEmitted) {
+                emitCriticalResult(savedCase, criticalResult, accessionNumber, pathologySample.getSysUserId());
+            }
             persistPathologyBarcodeCountsIfSupplied(pathologySample, form);
             populatePathologyWorkflowPrintModels(pathologySample, form);
         } catch (RuntimeException e) {
@@ -863,6 +910,47 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         return move(storedCase, previous, StageDirection.RETURN, trimmedReason, sysUserId);
     }
 
+    /**
+     * Reopens a signed-out case at the reading stage (S-8.3), in the order a return
+     * checks its request. The case's row is locked first, as every report write
+     * locks it, so a report still being generated is stored before its final is
+     * voided. The order and its analyses stay as reported.
+     */
+    @Transactional
+    @Override
+    public PathologyStageEvent reopen(Integer pathologySampleId, PathologyStatus from, String reason,
+            String sysUserId) {
+        pathologyReportService.lockCase(pathologySampleId);
+        PathologySample storedCase = get(pathologySampleId);
+        requireStoredStage(storedCase, from);
+        String trimmedReason = StringUtils.trimToNull(reason);
+        if (trimmedReason == null) {
+            throw new LocalizedValidationException("pathology.error.reopenReasonRequired",
+                    "a case is reopened only with a reason");
+        }
+        if (trimmedReason.length() > PathologyStageEvent.REASON_MAX_LENGTH) {
+            throw new LocalizedValidationException("pathology.error.reasonTooLong",
+                    "the reason can be at most " + PathologyStageEvent.REASON_MAX_LENGTH + " characters");
+        }
+        if (!isSignedOut(storedCase)) {
+            throw new LocalizedValidationException("pathology.error.reopenNotSignedOut",
+                    "pathology case " + pathologySampleId + " has not been signed out, so it cannot be reopened");
+        }
+        PathologyStatus stageFrom = storedCase.getStatus();
+        Optional<Integer> voidedReportId = pathologyReportService.voidFinalInForce(pathologySampleId, sysUserId);
+        PathologyStatus readingStage = readingStage();
+        PathologyStageEvent entered = move(storedCase, readingStage, StageDirection.REOPEN, trimmedReason, sysUserId);
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("verb", PATHOLOGY_CASE_REOPENED);
+        payload.put("stageFrom", stageFrom.name());
+        payload.put("stageTo", readingStage.name());
+        payload.put("reason", trimmedReason);
+        voidedReportId.ifPresent(id -> payload.put("voidedReportId", id));
+        recordRowEvent(CASE_REFERENCE_TABLE, String.valueOf(pathologySampleId), IActionConstants.AUDIT_TRAIL_UPDATE,
+                payload, sysUserId);
+        return entered;
+    }
+
     // ---- bench requests (FR-10) ----
 
     /**
@@ -1148,7 +1236,7 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
             String reason, String sysUserId, Consumer<PathologySample> alongside) {
         PathologySample movedCase = copyPathologySample(storedCase);
         alongside.accept(movedCase);
-        PathologyStageEvent entered = applyTransition(movedCase, storedCase, to, direction, reason, sysUserId);
+        PathologyStageEvent entered = applyTransition(movedCase, storedCase, to, direction, reason, sysUserId, false);
         update(movedCase);
         return entered;
     }
@@ -1170,7 +1258,8 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
      * @return the event recording the entry onto {@code to}
      */
     private PathologyStageEvent applyTransition(PathologySample movedCase, PathologySample storedCase,
-            PathologyStatus to, StageDirection direction, String reason, String sysUserId) {
+            PathologyStatus to, StageDirection direction, String reason, String sysUserId,
+            boolean criticalResultEmitted) {
         PathologyStatus stageFrom = storedCase.getStatus();
         Timestamp now = new Timestamp(System.currentTimeMillis());
         SystemUser operator = systemUserService.get(sysUserId);
@@ -1201,21 +1290,26 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         movedCase.setStatus(to);
         movedCase.setSysUserId(sysUserId);
 
-        recordMove(storedCase, to, direction, reason, sysUserId);
+        recordMove(storedCase, to, direction, reason, sysUserId, criticalResultEmitted);
         return entered;
     }
 
     /**
      * Audits a move on the case, a move onto Completed as the sign-out (FR-17),
-     * naming the stage the case stood at.
+     * naming the stage the case stood at and whether it raised a critical result. A
+     * reopen writes its own entry, which names the report it voided.
      */
     private void recordMove(PathologySample storedCase, PathologyStatus to, StageDirection direction, String reason,
-            String sysUserId) {
+            String sysUserId, boolean criticalResultEmitted) {
+        if (direction == StageDirection.REOPEN) {
+            return;
+        }
         PathologyStatus stageFrom = storedCase.getStatus();
         Map<String, Object> payload = new LinkedHashMap<>();
         if (to == PathologyStatus.COMPLETED) {
             payload.put("verb", PATHOLOGY_CASE_SIGNED_OUT);
             payload.put("stageFrom", stageFrom.name());
+            payload.put("criticalResultEmitted", criticalResultEmitted);
         } else {
             payload.put("verb",
                     direction == StageDirection.FORWARD ? PATHOLOGY_STAGE_ADVANCED : PATHOLOGY_STAGE_RETURNED);
@@ -1398,7 +1492,9 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
     }
 
     /** Signed out: on Completed and released, so nothing on the case changes. */
-    private boolean isSignedOut(PathologySample pathologySample) {
+    @Transactional
+    @Override
+    public boolean isSignedOut(PathologySample pathologySample) {
         return pathologySample.getStatus() == PathologyStatus.COMPLETED && hasBeenReleased(pathologySample);
     }
 
@@ -1928,7 +2024,8 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
      * history.activity is a one-character code, so the verb travels in the changes
      * payload, which never carries anything about the patient.
      */
-    private void recordRowEvent(String referenceTableName, String referenceId, String activity,
+    @Override
+    public void recordRowEvent(String referenceTableName, String referenceId, String activity,
             Map<String, Object> payload, String sysUserId) {
         ReferenceTables referenceTable = referenceTablesService.getReferenceTableByName(referenceTableName);
         if (referenceTable == null) {
@@ -2028,7 +2125,8 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
      * referral added to the order wait for the referral's release, and the order is
      * finished only once every test on it is reported.
      */
-    private void validatePathologySample(PathologySample pathologySample, PathologySampleForm form) {
+    private void validatePathologySample(PathologySample pathologySample, PathologySampleForm form,
+            boolean releasedBefore) {
         Sample sample = pathologySample.getSample();
         Patient patient = sampleService.getPatient(sample);
         ResultsUpdateDataSet actionDataSet = new ResultsUpdateDataSet(form.getSystemUserId());
@@ -2040,6 +2138,12 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
             if (!testResultItem.getIsGroupSeparator()) {
                 Analysis analysis = analysisService.get(testResultItem.getAnalysisId());
                 if (referred && ProgramCaseAnalyses.isImmunohistochemistryReferral(analysis)) {
+                    continue;
+                }
+                // A case signed out again after a reopen leaves what the first sign-out
+                // reported as it was: its result, revision and released date.
+                if (releasedBefore && SpringContext.getBean(IStatusService.class).matches(analysis.getStatusId(),
+                        AnalysisStatus.Finalized)) {
                     continue;
                 }
                 if (ResultType.isTextOnlyVariant(testResultItem.getResultType())) {
@@ -2143,10 +2247,32 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
                 ordered.add(test.getId());
             });
         }
+        if (!ordered.isEmpty()) {
+            reopenAFinishedOrder(pathologySample.getSample(), sysUserId);
+        }
         if (!created && ordered.isEmpty()) {
             return Optional.empty();
         }
         return Optional.of(new Referral(immunoHistoSample.getId(), ordered, created));
+    }
+
+    /**
+     * A test added to an order already reported opens it again, as the sign-out
+     * finishes it, so a referral made after a reopen keeps the order open. The
+     * session already holds the order, so its audit row is written against a copy
+     * taken before the status changes.
+     */
+    private void reopenAFinishedOrder(Sample sample, String sysUserId) {
+        IStatusService statusService = SpringContext.getBean(IStatusService.class);
+        Sample storedOrder = sampleService.get(sample.getId());
+        if (statusService.matches(storedOrder.getStatusId(), OrderStatus.Finished)) {
+            Sample storedState = new Sample();
+            storedState.setId(storedOrder.getId());
+            sampleService.getData(storedState);
+            storedOrder.setStatusId(statusService.getStatusID(OrderStatus.Started));
+            storedOrder.setSysUserId(sysUserId);
+            sampleService.updateAgainst(storedOrder, storedState);
+        }
     }
 
     private void CreateNewAnalysis(Test immunoHistologyTest, Analysis currentAnalysis, String programmeName,
@@ -2184,7 +2310,8 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
      * with repeats dropped, or null when unchanged.
      */
     private record ReviewChanges(boolean grossExam, boolean microscopyExam, boolean reviewNotes, boolean narrative,
-            List<String> conclusions, List<String> techniques, boolean pathologist, ReferralPlan referral) {
+            List<String> conclusions, List<String> techniques, boolean pathologist, ReferralPlan referral,
+            boolean criticalResultFlagged) {
 
         boolean any() {
             return grossExam || reviewNotes || pathologist || findings();
@@ -2192,7 +2319,8 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
 
         /** The fields written only while the case is being read (D3). */
         boolean findings() {
-            return microscopyExam || narrative || conclusions != null || techniques != null || referral != null;
+            return microscopyExam || narrative || conclusions != null || techniques != null || referral != null
+                    || criticalResultFlagged;
         }
     }
 
@@ -2217,7 +2345,9 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
                 changedCodes(form.getTechniques(), techniqueCodes(storedCase.getTechniques())),
                 !GenericValidator.isBlankOrNull(form.getAssignedPathologistId()) && (storedCase.getPathologist() == null
                         || !form.getAssignedPathologistId().equals(storedCase.getPathologist().getId())),
-                Boolean.TRUE.equals(form.getReferToImmunoHistoChemistry()) ? referralPlanOf(storedCase, form) : null);
+                Boolean.TRUE.equals(form.getReferToImmunoHistoChemistry()) ? referralPlanOf(storedCase, form) : null,
+                form.getCriticalResultFlagged() != null
+                        && form.getCriticalResultFlagged() != storedCase.isCriticalResultFlagged());
     }
 
     private static boolean textChanged(String posted, String stored) {
@@ -2319,10 +2449,50 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
 
     /** FR-12.5: a case is signed out only with both descriptions written. */
     private static void refuseReleaseWithoutDescriptions(PathologySample caseToSave) {
-        if (StringUtils.isBlank(caseToSave.getGrossExam()) || StringUtils.isBlank(caseToSave.getMicroscopyExam())) {
+        if (!PathologyCaseRules.hasDescriptions(caseToSave)) {
             throw new LocalizedValidationException("pathology.error.releaseWithoutDescriptions",
                     "pathology case " + caseToSave.getId() + " lacks a macroscopic or microscopic description");
         }
+    }
+
+    /**
+     * The final report is issued at sign-out and needs a conclusion: a coded
+     * diagnosis or a narrative that is not blank, on what the save will store.
+     */
+    private static void refuseReleaseWithoutConclusion(PathologySample caseToSave) {
+        if (!PathologyCaseRules.hasConclusion(caseToSave)) {
+            throw new LocalizedValidationException("pathology.error.releaseWithoutConclusion",
+                    "pathology case " + caseToSave.getId() + " has no diagnosis and no narrative conclusion");
+        }
+    }
+
+    /**
+     * A bench request can no longer be completed or cancelled once the case is
+     * signed out, so an open one holds the sign-out.
+     */
+    private static void refuseReleaseWithOpenRequests(PathologySample storedCase) {
+        int open = openRequests(storedCase).size();
+        if (open > 0) {
+            throw new LocalizedValidationException("pathology.error.releaseWithOpenRequests",
+                    "pathology case " + storedCase.getId() + " has " + open + " open bench requests",
+                    Map.of("count", String.valueOf(open)));
+        }
+    }
+
+    /**
+     * Records the critical result a sign-out raised and publishes it; the alert is
+     * posted after the commit, and its failure never reaches the sign-out.
+     */
+    private void emitCriticalResult(PathologySample savedCase, CriticalResult criticalResult, String accessionNumber,
+            String sysUserId) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("verb", PATHOLOGY_CRITICAL_RESULT_EMITTED);
+        payload.put("conclusionDictionaryIds", criticalResult.conclusionDictionaryIds());
+        payload.put("flaggedByPathologist", criticalResult.flagged());
+        recordRowEvent(CASE_REFERENCE_TABLE, savedCase.getStringId(), IActionConstants.AUDIT_TRAIL_UPDATE, payload,
+                sysUserId);
+        applicationEventPublisher.publishEvent(new CriticalResultEvent(this, "PATHOLOGY", savedCase.getId(),
+                accessionNumber, sysUserId, OffsetDateTime.now()));
     }
 
     /** The narrative conclusion: the value of the case's first text row. */

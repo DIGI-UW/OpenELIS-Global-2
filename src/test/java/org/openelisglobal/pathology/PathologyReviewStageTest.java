@@ -158,6 +158,7 @@ public class PathologyReviewStageTest extends PathologyCaseTestSupport {
     @Test
     public void aRelease_fromReviewOrFromTheQueue_completesTheCase() {
         storeAt(PathologyStatus.READY_PATHOLOGIST);
+        closeTheFixtureRequest();
         pathologySampleService.advance(CASE_ID, PathologyStatus.READY_PATHOLOGIST, PATHOLOGIST_ID);
 
         save(releaseForm());
