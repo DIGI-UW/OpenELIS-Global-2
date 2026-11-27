@@ -6,6 +6,7 @@ import java.util.List;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
+import org.openelisglobal.program.dao.CaseSearchTerms;
 import org.openelisglobal.program.valueholder.cytology.CytologySample;
 import org.openelisglobal.program.valueholder.cytology.CytologySample.CytologyStatus;
 import org.springframework.stereotype.Component;
@@ -59,5 +60,14 @@ public class CytologySampleDAOImpl extends BaseDAOImpl<CytologySample, Integer> 
         query.setParameter("dateto", to);
         Long count = query.uniqueResult();
         return count;
+    }
+
+    @Override
+    public List<CytologySample> searchWithStatusAndTerm(List<CytologyStatus> statuses, String term) {
+        String sql = "from CytologySample cs where cs.status in (:statuses) and " + CaseSearchTerms.clause("cs", term);
+        Query<CytologySample> query = entityManager.unwrap(Session.class).createQuery(sql, CytologySample.class);
+        query.setParameterList("statuses", statuses);
+        CaseSearchTerms.bind(query, term);
+        return query.list();
     }
 }

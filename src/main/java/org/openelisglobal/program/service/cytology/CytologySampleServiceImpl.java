@@ -88,25 +88,17 @@ public class CytologySampleServiceImpl extends AuditableBaseObjectServiceImpl<Cy
     @Transactional
     @Override
     public List<CytologySample> searchWithStatusAndTerm(List<CytologyStatus> statuses, String searchTerm) {
-        List<CytologySample> cytologySamples = baseObjectDAO.getWithStatus(statuses);
-        if (StringUtils.isNotBlank(searchTerm)) {
-            Sample sample = sampleService.getSampleByAccessionNumber(searchTerm);
+        String term = StringUtils.trim(searchTerm);
+        if (StringUtils.isNotBlank(term)) {
+            // The search is by the order's own lab number, not the term: a dotted
+            // label carries more than the lab number.
+            Sample sample = sampleService.getSampleByAccessionNumber(term);
             if (sample != null) {
-                cytologySamples = baseObjectDAO.searchWithStatusAndAccesionNumber(statuses, searchTerm);
-            } else {
-                List<CytologySample> filteredCytologySamples = new ArrayList<>();
-                cytologySamples.forEach(cytologySample -> {
-                    Patient patient = sampleService.getPatient(cytologySample.getSample());
-                    if (patient.getPerson().getFirstName().equals(searchTerm)
-                            || patient.getPerson().getLastName().equals(searchTerm)) {
-                        filteredCytologySamples.add(cytologySample);
-                    }
-                });
-                cytologySamples = filteredCytologySamples;
+                return baseObjectDAO.searchWithStatusAndAccesionNumber(statuses, sample.getAccessionNumber());
             }
+            return baseObjectDAO.searchWithStatusAndTerm(statuses, term);
         }
-
-        return cytologySamples;
+        return baseObjectDAO.getWithStatus(statuses);
     }
 
     @Transactional

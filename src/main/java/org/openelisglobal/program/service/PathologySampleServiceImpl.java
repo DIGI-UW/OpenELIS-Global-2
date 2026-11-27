@@ -1565,31 +1565,20 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
 
     @Override
     public List<PathologySample> searchWithStatusAndTerm(List<PathologyStatus> statuses, String searchTerm) {
-        List<PathologySample> pathologySamples = baseObjectDAO.getWithStatus(statuses);
-        if (StringUtils.isNotBlank(searchTerm)) {
+        String term = StringUtils.trim(searchTerm);
+        if (StringUtils.isNotBlank(term)) {
             // The search is by the order's own lab number, not the term: a scanned
             // label carries more than the lab number.
-            Sample sample = sampleService.getSampleByAccessionNumber(searchTerm);
+            Sample sample = sampleService.getSampleByAccessionNumber(term);
             if (sample == null) {
-                sample = sampleOfScannedLabel(searchTerm);
+                sample = sampleOfScannedLabel(term);
             }
             if (sample != null) {
-                pathologySamples = baseObjectDAO.searchWithStatusAndAccesionNumber(statuses,
-                        sample.getAccessionNumber());
-            } else {
-                List<PathologySample> filteredpathologySamples = new ArrayList<>();
-                pathologySamples.forEach(pathologySample -> {
-                    Patient patient = sampleService.getPatient(pathologySample.getSample());
-                    if (patient.getPerson().getFirstName().equals(searchTerm)
-                            || patient.getPerson().getLastName().equals(searchTerm)) {
-                        filteredpathologySamples.add(pathologySample);
-                    }
-                });
-                pathologySamples = filteredpathologySamples;
+                return baseObjectDAO.searchWithStatusAndAccesionNumber(statuses, sample.getAccessionNumber());
             }
+            return baseObjectDAO.searchWithStatusAndTerm(statuses, term);
         }
-
-        return pathologySamples;
+        return baseObjectDAO.getWithStatus(statuses);
     }
 
     /**

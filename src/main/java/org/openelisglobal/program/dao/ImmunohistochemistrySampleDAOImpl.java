@@ -76,4 +76,16 @@ public class ImmunohistochemistrySampleDAOImpl extends BaseDAOImpl<Immunohistoch
         ImmunohistochemistrySample sample = query.uniqueResult();
         return sample;
     }
+
+    @Override
+    public List<ImmunohistochemistrySample> searchWithStatusAndTerm(List<ImmunohistochemistryStatus> statuses,
+            String term) {
+        String sql = "from ImmunohistochemistrySample ihs where ihs.status in (:statuses) and "
+                + CaseSearchTerms.clause("ihs", term);
+        Query<ImmunohistochemistrySample> query = entityManager.unwrap(Session.class).createQuery(sql,
+                ImmunohistochemistrySample.class);
+        query.setParameterList("statuses", statuses);
+        CaseSearchTerms.bind(query, term);
+        return query.list();
+    }
 }

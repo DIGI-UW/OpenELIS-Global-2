@@ -211,25 +211,17 @@ public class ImmunohistochemistrySampleServiceImpl
     @Override
     public List<ImmunohistochemistrySample> searchWithStatusAndTerm(List<ImmunohistochemistryStatus> statuses,
             String searchTerm) {
-        List<ImmunohistochemistrySample> immunohistochemistrySamples = baseObjectDAO.getWithStatus(statuses);
-        if (StringUtils.isNotBlank(searchTerm)) {
-            Sample sample = sampleService.getSampleByAccessionNumber(searchTerm);
+        String term = StringUtils.trim(searchTerm);
+        if (StringUtils.isNotBlank(term)) {
+            // The search is by the order's own lab number, not the term: a dotted
+            // label carries more than the lab number.
+            Sample sample = sampleService.getSampleByAccessionNumber(term);
             if (sample != null) {
-                immunohistochemistrySamples = baseObjectDAO.searchWithStatusAndAccesionNumber(statuses, searchTerm);
-            } else {
-                List<ImmunohistochemistrySample> filteredImmunohistochemistrySamples = new ArrayList<>();
-                immunohistochemistrySamples.forEach(pathologySample -> {
-                    Patient patient = sampleService.getPatient(pathologySample.getSample());
-                    if (patient.getPerson().getFirstName().equals(searchTerm)
-                            || patient.getPerson().getLastName().equals(searchTerm)) {
-                        filteredImmunohistochemistrySamples.add(pathologySample);
-                    }
-                });
-                immunohistochemistrySamples = filteredImmunohistochemistrySamples;
+                return baseObjectDAO.searchWithStatusAndAccesionNumber(statuses, sample.getAccessionNumber());
             }
+            return baseObjectDAO.searchWithStatusAndTerm(statuses, term);
         }
-
-        return immunohistochemistrySamples;
+        return baseObjectDAO.getWithStatus(statuses);
     }
 
     @Override
