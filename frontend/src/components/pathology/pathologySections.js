@@ -384,6 +384,117 @@ export function returnBlockedReason({
 }
 
 /**
+ * What the action bar's primary does for this case and this person:
+ * `"reopen"` for a pathologist on a signed-out case, `"signOut"` for a
+ * pathologist on a case the server calls releasable once no stage is left
+ * to send it on to, `"advance"` where a next stage has a label (Begin review
+ * only for a pathologist), else null.
+ */
+export function primaryAction({ caseInfo, isPathologist, nextStage } = {}) {
+  if (caseInfo?.signedOut) {
+    return isPathologist ? "reopen" : null;
+  }
+  if (caseInfo?.releasable && isPathologist && !nextStage) {
+    return "signOut";
+  }
+  if (nextStage === "UNDER_REVIEW" && !isPathologist) {
+    return null;
+  }
+  return advanceLabelKey(nextStage) ? "advance" : null;
+}
+
+/**
+ * Why the case cannot be signed out yet, on the form as it stands, as the
+ * hint the disabled primary carries, or null when it can. The server's own
+ * refusals come first and in its order (both descriptions, a conclusion, no
+ * open bench request), then the two people the case must name. A case at
+ * Completed that was never released is not held by its requests, since
+ * nothing can close them there.
+ */
+// i18n-keys: pathology.error.release*, pathology.locked.release*
+export function signOutBlockedReason({ caseInfo, openRequestCount = 0 } = {}) {
+  if (blank(caseInfo?.grossExam) || blank(caseInfo?.microscopyExam)) {
+    return { key: "pathology.error.releaseWithoutDescriptions" };
+  }
+  if (
+    (caseInfo?.conclusions ?? []).length === 0 &&
+    blank(caseInfo?.conclusionText)
+  ) {
+    return { key: "pathology.error.releaseWithoutConclusion" };
+  }
+  if (caseInfo?.status !== "COMPLETED" && openRequestCount > 0) {
+    return {
+      key: "pathology.error.releaseWithOpenRequests",
+      values: { count: openRequestCount },
+    };
+  }
+  if (!caseInfo?.assignedPathologistId) {
+    return { key: "pathology.locked.releaseNoPathologist" };
+  }
+  if (!caseInfo?.assignedTechnicianId) {
+    return { key: "pathology.locked.releaseNoTechnician" };
+  }
+  return null;
+}
+
+/**
+ * Whether the case reads as critical on the form as it stands: the
+ * pathologist's own flag, or a picked diagnosis the server marks critical.
+ */
+export function formIsCritical(caseInfo) {
+  return Boolean(
+    caseInfo?.criticalResultFlagged ||
+    (caseInfo?.conclusions ?? []).some((entry) => entry?.critical),
+  );
+}
+
+const GENERATED_REPORT_TYPES = Object.freeze(["DRAFT", "FINAL"]);
+
+/** A report's type in words. A draft reads the shared word. */
+// i18n-keys: common.draft, pathology.report.type.*
+export const REPORT_TYPE_KEYS = Object.freeze({
+  DRAFT: "common.draft",
+  FINAL: "pathology.report.type.FINAL",
+  EXTERNAL: "pathology.report.type.EXTERNAL",
+});
+
+const newestCurrentFirst = (reports) =>
+  (reports ?? [])
+    .filter((row) => row?.state === "CURRENT")
+    .sort((a, b) => (b.version ?? 0) - (a.version ?? 0));
+
+/**
+ * The newest current generated version, or null. It is the version a new
+ * generate supersedes; superseded and voided rows never are.
+ */
+export function currentGeneratedReport(reports) {
+  return (
+    newestCurrentFirst(reports).find((row) =>
+      GENERATED_REPORT_TYPES.includes(row.type),
+    ) ?? null
+  );
+}
+
+/**
+ * The report in force: the newest current generated version, else the
+ * newest current upload, else null. Superseded and voided rows never are.
+ */
+export function currentReport(reports) {
+  return (
+    currentGeneratedReport(reports) ?? newestCurrentFirst(reports)[0] ?? null
+  );
+}
+
+/**
+ * The version and type of the report in force, for the case summary, or
+ * null when there is none.
+ */
+export function reportSummary(reports) {
+  const report = currentReport(reports);
+  return report ? { version: report.version, type: report.type } : null;
+}
+
+/**
  * Whether a row action (Embed, Deactivate) can be pressed, and if not, the
  * hint that says why. A signed-out case holds it until it is reopened;
  * a save, a move or an embed still unanswered holds it until the answer is
@@ -1506,7 +1617,7 @@ export function deriveRailItems(
   {
     intl,
     status,
-    reportCount,
+    hasCurrentReport,
     openRequestNames: names,
     caseInfo,
     configurationProperties,
@@ -1525,7 +1636,7 @@ export function deriveRailItems(
 
     let complete = passed;
     if (isReportsSection) {
-      complete = reportCount > 0;
+      complete = Boolean(hasCurrentReport);
     } else if (section.id === "pathology-section-grossing") {
       complete = passed && grossingComplete(caseInfo);
     } else if (section.id === EMBEDDING_SECTION_ID) {

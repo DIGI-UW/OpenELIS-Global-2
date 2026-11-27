@@ -563,3 +563,76 @@ $stain-picker-min-size: 9.5rem;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
+
+// The report versions under Reports, one table row per version.
+//
+// The table fits the center column at every width the screen is used at, so
+// it never scrolls sideways. Version and the time keep to one line, the type
+// tags wrap under each other, and By, the one column whose length is a
+// person's name, takes the room that is left and wraps anywhere: a long name
+// makes its row taller, never the table wider.
+.pathology-case-view__reports,
+.pathology-case-view__report-container {
+  min-inline-size: 0;
+}
+
+.cds--accordion__content:has(.pathology-case-view__reports) {
+  padding-inline-end: spacing.$spacing-03;
+}
+
+.pathology-case-view__report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: spacing.$spacing-05;
+}
+
+.pathology-case-view__report-generate,
+.pathology-case-view__report-upload {
+  display: flex;
+  flex-direction: column;
+  gap: spacing.$spacing-03;
+  min-inline-size: 0;
+}
+
+.pathology-case-view__report-upload-error {
+  @include type.type-style("helper-text-01");
+
+  color: var(--cds-text-error);
+}
+
+.pathology-case-view__report-table {
+  inline-size: 100%;
+}
+
+.pathology-case-view__report-table th,
+.pathology-case-view__report-table td {
+  padding-inline: spacing.$spacing-03;
+}
+
+.pathology-case-view__report-col--version,
+.pathology-case-view__report-col--generatedAt {
+  white-space: nowrap;
+}
+
+.pathology-case-view__report-table
+  .pathology-case-view__report-col--generatedBy {
+  inline-size: 100%;
+  overflow-wrap: anywhere;
+}
+
+.pathology-case-view__report-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-02;
+}
+
+// Carbon's tags keep a margin of their own; the gap above spaces them.
+.pathology-case-view__report-tags .cds--tag {
+  margin: 0;
+}
+
+// A row opens its file wherever it is pressed.
+.pathology-case-view__report-row {
+  cursor: pointer;
+}

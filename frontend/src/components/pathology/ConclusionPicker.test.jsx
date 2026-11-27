@@ -32,6 +32,12 @@ const squamous = {
   code: "C44.9",
 };
 const benign = { id: "9103", value: "Benign", code: null };
+const malignant = {
+  id: "9104",
+  value: "Malignant neoplasm",
+  code: "C80.9",
+  critical: true,
+};
 
 const answer = (items) => Promise.resolve({ items, total: items.length });
 
@@ -282,6 +288,30 @@ describe("ConclusionPicker", () => {
     );
     expect(onChangeSpy).toHaveBeenLastCalledWith([]);
     await waitFor(() => expect(box()).toHaveFocus());
+  });
+
+  it("aCriticalEntry_saysSoInWords_asAChipAndInTheList", async () => {
+    fetchFromOpenElisServer.mockImplementation(() =>
+      answer([malignant, adeno]),
+    );
+    renderPicker({ initial: [{ ...malignant, id: "9105" }, benign] });
+
+    // The chip carries the word after the name; a plain entry does not.
+    expect(chipTexts()).toEqual([
+      "C80.9 Malignant neoplasm (Critical)",
+      "Benign",
+    ]);
+
+    // So does the entry in the open list.
+    await userEvent.click(box());
+    expect(
+      await screen.findByRole("option", {
+        name: "C80.9 Malignant neoplasm (Critical)",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "C80.1 Adenocarcinoma" }),
+    ).toBeInTheDocument();
   });
 
   it("read-only shows plain tags and asks nothing (P9)", async () => {

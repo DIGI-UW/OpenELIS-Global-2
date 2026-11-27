@@ -10,6 +10,7 @@ import {
   Loading,
   Section,
   Stack,
+  TextArea,
   TextInput,
   UnorderedList,
 } from "@carbon/react";
@@ -17,7 +18,6 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
   postToOpenElisServerJsonResponse,
-  postToOpenElisServerForPDF,
   hasRole,
   Roles,
 } from "../utils/Utils";
@@ -49,6 +49,12 @@ import {
   advanceBlockedReason,
   advanceLabelKey,
   COVERSLIPPING_SECTION_ID,
+  currentReport,
+  formIsCritical,
+  primaryAction,
+  REPORT_TYPE_KEYS,
+  reportSummary,
+  signOutBlockedReason,
   decalcificationFlagFrozen,
   FINDINGS_SECTION_ID,
   grossExamPlace,
@@ -97,6 +103,7 @@ import MicrotomySection from "./sections/MicrotomySection";
 import ReviewSection from "./sections/ReviewSection";
 import FindingsSection from "./sections/FindingsSection";
 import ReportsSection from "./sections/ReportsSection";
+import { openPendingTab, reportFileUrl } from "./reportTab";
 
 // The switch that shows a list's deactivated rows, where focus lands once
 // the row it was on has left the list.
@@ -136,6 +143,23 @@ const SEND_ANYWAY_HINT_ID = "sendAnywayHint";
 // The refusal of a move onto the pathologist that names an open request the
 // move did not, such as one raised after the page was read.
 const OPEN_REQUESTS_REFUSAL = "pathology.error.openRequestsUnacknowledged";
+
+// The sign-out confirmation in the status slot: itself, its sentence and its
+// two buttons.
+const SIGN_OUT_CONFIRM_ID = "signOutConfirm";
+const SIGN_OUT_CONFIRM_TEXT_ID = "signOutConfirmText";
+const SIGN_OUT_CONFIRM_BUTTON_ID = "signOutConfirmButton";
+const SIGN_OUT_CANCEL_ID = "signOutCancel";
+const SIGN_OUT_HINT_ID = "signOutConfirmReason";
+
+// The inline reopen row: its reason field, its two buttons and the sentence
+// that says why Reopen cannot be pressed yet.
+const REOPEN_REASON_ID = "reopenReason";
+const REOPEN_CONFIRM_ID = "reopenConfirm";
+const REOPEN_CANCEL_ID = "reopenCancel";
+const REOPEN_HINT_ID = "reopenConfirmReason";
+
+const REPORTS_SECTION_ID = "pathology-section-reports";
 
 const TISSUE_TYPES_URL = "/rest/dictionary/category/pathology_tissue_types";
 
@@ -239,7 +263,6 @@ function PathologyCaseView() {
   // laboratory has configured none.
   const [tissueTypes, setTissueTypes] = useState(null);
   const [stains, setStains] = useState(null);
-  const [loadingReport, setLoadingReport] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [postSavePrintModel, setPostSavePrintModel] = useState(null);
   const [pendingDeactivation, setPendingDeactivation] = useState(null);
@@ -260,6 +283,13 @@ function PathologyCaseView() {
   // requests, which shares the status slot with the return row, one at a
   // time, and the primary that opened it, where Cancel puts focus back.
   const [sendConfirmOpen, setSendConfirmOpen] = useState(false);
+  // The sign-out confirmation and the reopen row, which share the status
+  // slot with the return row and the send confirmation, one at a time.
+  const [signOutOpen, setSignOutOpen] = useState(false);
+  const [reopenOpen, setReopenOpen] = useState(false);
+  const [reopenReason, setReopenReason] = useState("");
+  // What the server said about the last refused upload, beside the uploader.
+  const [uploadError, setUploadError] = useState(null);
   const primaryButton = useRef(null);
   // A request started from a Microtomy row: its kind and target, and a nonce
   // so each press opens the new request again (see RequestsTable).
@@ -276,12 +306,9 @@ function PathologyCaseView() {
   // Mirrors `dirty` for a server answer that arrives after the render that
   // sent the request, so it can tell whether there is unsaved work to keep.
   const dirtyRef = useRef(false);
-  const [reportParams, setReportParams] = useState({
-    0: {
-      submited: false,
-      reportLink: "",
-    },
-  });
+  // The case as last read, for a change that reports what the read back
+  // shows once it lands.
+  const lastLoadedRef = useRef(null);
 
   const isPathologist = hasRole(userSessionDetails, "Pathologist");
   // The stage the case is stored at. Nothing on this screen edits it: it
@@ -324,7 +351,7 @@ function PathologyCaseView() {
     const release = releaseAfterLoad.current;
     releaseAfterLoad.current = null;
     if (!loaded) {
-      release?.();
+      release?.(false);
       return;
     }
     // The case arrives unassigned when nobody has picked it up yet: the person
@@ -345,8 +372,9 @@ function PathologyCaseView() {
       loaded.assignedTechnician =
         userSessionDetails.lastName + "," + userSessionDetails.firstName;
     }
+    lastLoadedRef.current = loaded;
     setCaseInfo(loaded);
-    release?.();
+    release?.(true);
     dirtyRef.current = false;
     setDirty(false);
     const focusTargets = focusAfterLoad.current;
@@ -607,6 +635,21 @@ function PathologyCaseView() {
       );
     });
 
+  // Holds the bar from a press until its answer has been read back, and
+  // returns `release(read)`, which lets go of it and then hands `onRelease`
+  // whether the read back landed (`read` is false when it failed). Each
+  // sender checks the hold itself first, since a second press is refused
+  // in its own way.
+  const holdBar = (onRelease) => {
+    heldRef.current = true;
+    setHeld(true);
+    return (read = true) => {
+      heldRef.current = false;
+      setHeld(false);
+      onRelease?.(read);
+    };
+  };
+
   // Posts a change to the stored case that the page has to read back: a move
   // to another stage or a slide mark. It is held from the press until the
   // case has been read again, and the form is read-only meanwhile, so a
@@ -627,8 +670,8 @@ function PathologyCaseView() {
         resolve({ ok: false });
         return;
       }
-      heldRef.current = true;
-      setHeld(true);
+      let ok = false;
+      const release = holdBar((read) => resolve({ ok, read }));
       postToOpenElisServerJsonResponse(
         caseUrl + path,
         JSON.stringify(body),
@@ -636,12 +679,7 @@ function PathologyCaseView() {
           if (!componentMounted.current) {
             return;
           }
-          const ok = !requestFailed(response);
-          const release = () => {
-            heldRef.current = false;
-            setHeld(false);
-            resolve({ ok });
-          };
+          ok = !requestFailed(response);
           setNotificationVisible(true);
           const targets = onAnswer(response, ok);
           const refused = response?.status === 400 || response?.status === 409;
@@ -928,75 +966,177 @@ function PathologyCaseView() {
     focusFirstOf(RETURN_STAGE_BUTTON);
   };
 
-  const reportStatus = async (pdfGenerated, blob, index) => {
-    setNotificationVisible(true);
-    setLoadingReport(false);
-    if (pdfGenerated) {
-      addNotification({
-        kind: NotificationKinds.success,
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "success.report.status" }),
-      });
-      const params = { ...reportParams };
-      if (!params[index]) {
-        params[index] = {};
+  const toast = (kind, id, values) =>
+    addNotification({
+      kind,
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: intl.formatMessage({ id }, values),
+    });
+
+  // Reads the case again for its report rows alone and puts them in place
+  // whether or not the form holds unsaved work, so a row uploaded while the
+  // findings are being typed shows at once and the typing stays. When the
+  // read shows the case moved or signed out or reopened by someone else and
+  // nothing is typed, the page takes the whole read instead, as a conflict
+  // does, and says so. `release` is called once the read lands or fails.
+  const refreshReports = (release) => {
+    getFromOpenElisServer(caseUrl, (loaded) => {
+      if (!componentMounted.current) {
+        return;
       }
-      params[index].submited = true;
-      params[index].reportLink = window.URL.createObjectURL(blob, {
-        type: "application/pdf",
-      });
-      setReportParams(params);
+      if (loaded && typeof loaded === "object") {
+        const held = lastLoadedRef.current;
+        const changedElsewhere =
+          held &&
+          (loaded.status !== held.status ||
+            Boolean(loaded.signedOut) !== Boolean(held.signedOut));
+        if (changedElsewhere && !dirtyRef.current) {
+          toast(NotificationKinds.warning, "pathology.toast.reportConflict");
+          releaseAfterLoad.current = release;
+          loadCase(loaded);
+          return;
+        }
+        setCaseInfo((prev) => ({
+          ...prev,
+          reports: loaded.reports,
+          canGenerateReport: loaded.canGenerateReport,
+        }));
+      }
+      release();
+    });
+  };
 
-      const encodedFile = await toBase64(blob);
-      updateCase((prev) => ({
-        reports: (prev.reports ?? []).map((report, position) =>
-          position === index ? { ...report, base64Image: encodedFile } : report,
-        ),
-      }));
-    } else {
-      addNotification({
-        kind: NotificationKinds.error,
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "error.report.status" }),
-      });
+  // A report change (generate, upload, withdraw) is its own request, held as
+  // a move is held: from the press until the rows are read back, and let go
+  // when that read fails. A conflict means someone else changed the reports,
+  // so a clean form reads the whole case again. `onAnswer(response, ok)`
+  // tells the person what happened. Returns false for a second press, which
+  // sends nothing.
+  const sendReportChange = ({ path, body, onAnswer }) => {
+    if (heldRef.current) {
+      return false;
     }
-  };
-
-  const generateReport = (index) => {
-    setLoadingReport(true);
-    postToOpenElisServerForPDF(
-      "/rest/ReportPrint",
-      JSON.stringify({
-        report: "PatientPathologyReport",
-        programSampleId: pathologySampleId,
-      }),
-      (generated, blob) => reportStatus(generated, blob, index),
+    const release = holdBar();
+    postToOpenElisServerJsonResponse(
+      caseUrl + "/reports" + path,
+      JSON.stringify(body ?? {}),
+      (response) => {
+        if (!componentMounted.current) {
+          return;
+        }
+        const ok = !requestFailed(response);
+        setNotificationVisible(true);
+        onAnswer(response, ok);
+        if (response?.status === 409 && !dirtyRef.current) {
+          releaseAfterLoad.current = release;
+          reloadCase();
+        } else {
+          refreshReports(release);
+        }
+      },
     );
+    return true;
   };
 
-  const save = () => {
-    if (isSubmitting) {
+  const reportRefusal = (response, fallbackKey) =>
+    translatedRefusal(response) ??
+    intl.formatMessage({
+      id:
+        response?.status === 409
+          ? "pathology.toast.reportConflict"
+          : fallbackKey,
+    });
+
+  // The tab is opened inside the press, after the hold is checked so a
+  // second press opens none, and before anything is awaited, since a
+  // browser lets a page open one only there; it is pointed at the stored
+  // version once it exists and closed on a refusal. A blocked popup is not
+  // an error: the version is still made and is in the list.
+  const generateReport = () => {
+    if (heldRef.current) {
       return;
     }
-    setIsSubmitting(true);
-    setPostSavePrintModel(null);
-    // The ids lists are sent even when empty, so clearing the last
-    // technique or diagnosis is saved as cleared. A case already referred
-    // stays referred: the box is shown ticked and cannot be unticked.
+    const tab = openPendingTab(
+      intl.formatMessage({ id: "pathology.tab.preparingReport" }),
+    );
+    sendReportChange({
+      path: "/generate",
+      onAnswer: (response, ok) => {
+        if (ok) {
+          tab.show(reportFileUrl(pathologySampleId, response.id));
+          toast(
+            NotificationKinds.success,
+            tab.blocked
+              ? "pathology.toast.reportInList"
+              : "pathology.toast.reportGenerated",
+            { version: response.version },
+          );
+          return;
+        }
+        tab.close();
+        addNotification({
+          kind: NotificationKinds.error,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: reportRefusal(response, "pathology.toast.reportFailed"),
+        });
+      },
+    });
+  };
+
+  const uploadReport = (upload) => {
+    setUploadError(null);
+    sendReportChange({
+      path: "",
+      body: upload,
+      onAnswer: (response, ok) => {
+        if (ok) {
+          toast(NotificationKinds.success, "pathology.toast.reportUploaded", {
+            version: response.version,
+          });
+          return;
+        }
+        setUploadError(reportRefusal(response, "error.save.msg"));
+      },
+    });
+  };
+
+  const withdrawReport = (reportId) =>
+    sendReportChange({
+      path: "/" + reportId + "/withdraw",
+      onAnswer: (response, ok) => {
+        if (ok) {
+          toast(NotificationKinds.success, "pathology.toast.reportWithdrawn", {
+            version: response.version,
+          });
+          return;
+        }
+        addNotification({
+          kind: NotificationKinds.error,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: reportRefusal(response, "error.save.msg"),
+        });
+      },
+    });
+
+  // What a save posts, shared by Save draft and the sign-out. The ids lists
+  // are sent even when empty, so clearing the last technique or diagnosis is
+  // saved as cleared. A case already referred stays referred: the box is
+  // shown ticked and cannot be unticked. Reports are not part of the case:
+  // each has its own request. A release is the sign-out's alone.
+  const casePayload = () => {
     let submitValues = {
       assignedTechnicianId: caseInfo.assignedTechnicianId,
       assignedPathologistId: caseInfo.assignedPathologistId,
       blocks: stripClientKeys(caseInfo.blocks),
       slides: stripClientKeys(caseInfo.slides),
-      reports: caseInfo.reports,
       grossExam: caseInfo.grossExam,
       decalcificationRequired,
       microscopyExam: caseInfo.microscopyExam,
       conclusionText: caseInfo.conclusionText,
+      criticalResultFlagged: caseInfo.criticalResultFlagged ?? null,
       reviewNotes: caseInfo.reviewNotes ?? null,
       techniques: (caseInfo.techniques ?? []).map((e) => e.id),
       conclusions: (caseInfo.conclusions ?? []).map((e) => e.id),
-      release: caseInfo.release != undefined ? caseInfo.release : false,
       referToImmunoHistoChemistry: Boolean(
         caseInfo.referredToIhc || caseInfo.referToImmunoHistoChemistry,
       ),
@@ -1020,12 +1160,193 @@ function PathologyCaseView() {
         ),
       };
     }
+    return submitValues;
+  };
 
+  const save = () => {
+    if (isSubmitting || heldRef.current) {
+      return;
+    }
+    setIsSubmitting(true);
+    setPostSavePrintModel(null);
     postToOpenElisServerFullResponse(
       caseUrl,
-      JSON.stringify(submitValues),
+      JSON.stringify(casePayload()),
       displayStatus,
     );
+  };
+
+  // The sign-out is the case save with a release, sent on its own rather
+  // than through save(), which lets go of the bar on the answer: this one is
+  // held from the press until the case is read back, and let go when that
+  // read fails, so a second press in between sends nothing and opens no tab.
+  // The report tab is opened inside the press, after the hold is checked,
+  // then pointed at the final version the answer names, or closed. A
+  // refusal keeps the form as typed.
+  const signOut = () => {
+    if (heldRef.current || isSubmitting) {
+      return;
+    }
+    const tab = openPendingTab(
+      intl.formatMessage({ id: "pathology.tab.preparingReport" }),
+    );
+    const release = holdBar((read) => {
+      if (!read) {
+        toast(NotificationKinds.error, "pathology.error.reloadCase");
+      }
+    });
+    setPostSavePrintModel(null);
+    postToOpenElisServerFullResponse(
+      caseUrl,
+      JSON.stringify({ ...casePayload(), release: true }),
+      async (response) => {
+        let body = null;
+        let saved = false;
+        if (response) {
+          try {
+            body = await response.json();
+            saved = response.status === 200;
+          } catch {
+            saved = false;
+          }
+        }
+        if (!componentMounted.current) {
+          return;
+        }
+        setNotificationVisible(true);
+        setSignOutOpen(false);
+        if (!saved) {
+          tab.close();
+          addNotification({
+            kind: NotificationKinds.error,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: refusalMessage(
+              body,
+              response?.status === 400
+                ? "pathology.error.reloadCase"
+                : "error.save.msg",
+            ),
+          });
+          release();
+          return;
+        }
+        if (body?.finalReport) {
+          tab.show(reportFileUrl(pathologySampleId, body.finalReport.id));
+          // A blocked tab is not an error: the version is in the list.
+          toast(
+            NotificationKinds.success,
+            tab.blocked
+              ? "pathology.toast.signedOutReportInList"
+              : "pathology.toast.signedOut",
+            { version: body.finalReport.version },
+          );
+        } else {
+          tab.close();
+          toast(
+            NotificationKinds.warning,
+            "pathology.toast.signedOutReportFailed",
+          );
+        }
+        // The form was just stored, so the whole case is read back.
+        focusAfterLoad.current = sectionHeader(REPORTS_SECTION_ID);
+        releaseAfterLoad.current = release;
+        reloadCase();
+      },
+    );
+  };
+
+  const openSignOut = (event) => {
+    primaryButton.current = event?.currentTarget ?? null;
+    setReturnOpen(false);
+    setReturnReason("");
+    setSendConfirmOpen(false);
+    setSignOutOpen(true);
+    focusFirstOf("#" + SIGN_OUT_CONFIRM_BUTTON_ID);
+  };
+
+  const backToPrimary = () => {
+    const primary = primaryButton.current;
+    setTimeout(() => primary?.isConnected && primary.focus());
+  };
+
+  const cancelSignOut = () => {
+    setSignOutOpen(false);
+    backToPrimary();
+  };
+
+  const openReopen = (event) => {
+    primaryButton.current = event?.currentTarget ?? null;
+    setReturnOpen(false);
+    setReturnReason("");
+    setReopenOpen(true);
+    focusFirstOf("#" + REOPEN_REASON_ID);
+  };
+
+  const cancelReopen = () => {
+    setReopenOpen(false);
+    setReopenReason("");
+    backToPrimary();
+  };
+
+  // A reopen is sent as a return is, naming the stage the page shows, so a
+  // page someone else has overtaken is refused and read back. Once the case
+  // is read back the toast names the final version it shows newly voided.
+  const reopenCase = (event) => {
+    const before = currentReport(caseInfo.reports);
+    sendHeld({
+      path: "/reopen",
+      body: { from: stage, reason: reopenReason.trim() },
+      startedBy: event?.currentTarget,
+      onAnswer: (response, ok) => {
+        if (ok) {
+          setReopenOpen(false);
+          setReopenReason("");
+          setFindingsOpenRequest((count) => count + 1);
+          return [sectionHeader(FINDINGS_SECTION_ID)];
+        }
+        const conflict =
+          response?.conflict === "stage" || response?.conflict === "version";
+        addNotification({
+          kind: NotificationKinds.error,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message:
+            translatedRefusal(response) ??
+            intl.formatMessage({
+              id: conflict ? "pathology.error.stageConflict" : "error.save.msg",
+            }),
+        });
+        if (conflict) {
+          setReopenOpen(false);
+          setReopenReason("");
+        }
+        return null;
+      },
+    }).then(({ ok, read }) => {
+      if (!ok) {
+        return;
+      }
+      if (read === false) {
+        toast(NotificationKinds.error, "pathology.error.reloadCase");
+        return;
+      }
+      const voided = before
+        ? (lastLoadedRef.current?.reports ?? []).find(
+            (row) =>
+              String(row.id) === String(before.id) && row.state === "VOIDED",
+          )
+        : null;
+      if (voided) {
+        toast(
+          NotificationKinds.success,
+          "pathology.toast.reopenedReportVoided",
+          {
+            version: voided.version,
+          },
+        );
+      } else {
+        toast(NotificationKinds.success, "pathology.toast.reopened");
+      }
+    });
   };
 
   useEffect(() => {
@@ -1209,13 +1530,15 @@ function PathologyCaseView() {
       case "pathology-section-reports":
         return (
           <ReportsSection
-            caseInfo={caseInfo}
-            updateCase={updateCase}
-            readOnly={readOnly}
-            reportParams={reportParams}
-            loadingReport={loadingReport}
-            onReportFile={(index, file) => attachFile("reports", index, file)}
-            onGenerateReport={generateReport}
+            reports={caseInfo.reports ?? []}
+            canGenerate={Boolean(caseInfo.canGenerateReport)}
+            dirty={dirty}
+            busy={held || isSubmitting}
+            onGenerate={generateReport}
+            onUpload={uploadReport}
+            onWithdraw={withdrawReport}
+            fileUrl={(reportId) => reportFileUrl(pathologySampleId, reportId)}
+            uploadError={uploadError}
           />
         );
       default:
@@ -1262,18 +1585,43 @@ function PathologyCaseView() {
   // the laboratory tracks Under Pathologist Review (D1); from there on the
   // pathologist's own actions move the case. A next stage this build has no
   // label for gets no primary either, rather than a button with no words.
-  const advanceKey =
-    nextStage === "UNDER_REVIEW" && !isPathologist
-      ? null
-      : advanceLabelKey(nextStage);
-  const primary = advanceKey
-    ? {
-        labelKey: advanceKey,
-        disabledReasonKey: advanceBlocked?.key,
-        disabledReasonValues: advanceBlocked?.values,
-        onClick: advanceCase,
-      }
-    : undefined;
+  //
+  // Once no stage is left to send the case on to, the pathologist's primary
+  // signs it out, held by the first rule the form as it stands does not
+  // meet; a signed-out case offers only its reopen.
+  const action = primaryAction({ caseInfo, isPathologist, nextStage });
+  const inFlight =
+    held || isSubmitting ? { key: "pathology.locked.requestInFlight" } : null;
+  const signOutBlocked =
+    inFlight ??
+    signOutBlockedReason({
+      caseInfo,
+      openRequestCount: openRequestRows.length,
+    });
+  const primary = {
+    advance: {
+      labelKey: advanceLabelKey(nextStage),
+      disabledReasonKey: advanceBlocked?.key,
+      disabledReasonValues: advanceBlocked?.values,
+      onClick: advanceCase,
+    },
+    signOut: {
+      labelKey: "pathology.action.signOut",
+      disabledReasonKey: signOutBlocked?.key,
+      disabledReasonValues: signOutBlocked?.values,
+      onClick: openSignOut,
+    },
+    reopen: {
+      labelKey: "pathology.action.reopen",
+      disabledReasonKey: inFlight?.key,
+      onClick: openReopen,
+    },
+  }[action];
+  const reopenConfirmBlocked =
+    inFlight ??
+    (reopenReason.trim() === ""
+      ? { key: "pathology.error.reopenReasonRequired" }
+      : null);
 
   // FR-10.11: the case goes to the pathologist with requests open only once
   // the person has seen each one. Inline in the status slot, not a modal, as
@@ -1343,6 +1691,118 @@ function PathologyCaseView() {
     </div>
   );
 
+  // D12: the sign-out asks once, inline in the status slot as the send
+  // confirmation does, naming the case and what follows; a critical form
+  // adds that a critical result will be raised.
+  const signOutShown = signOutOpen && action === "signOut";
+  const signOutConfirmation = (
+    <div
+      id={SIGN_OUT_CONFIRM_ID}
+      data-testid="sign-out-confirm"
+      role="group"
+      aria-labelledby={SIGN_OUT_CONFIRM_TEXT_ID}
+    >
+      <Stack gap={3}>
+        <p id={SIGN_OUT_CONFIRM_TEXT_ID}>
+          <FormattedMessage
+            id="pathology.confirm.signOut"
+            values={{ labNumber: caseInfo.labNumber }}
+          />
+          {formIsCritical(caseInfo) && (
+            <>
+              {" "}
+              <FormattedMessage id="pathology.confirm.signOutCritical" />
+            </>
+          )}
+        </p>
+        <div className="pathology-case-view__stage-control">
+          <Button
+            kind="secondary"
+            size="sm"
+            id={SIGN_OUT_CONFIRM_BUTTON_ID}
+            disabled={Boolean(signOutBlocked)}
+            title={blockedText(signOutBlocked) ?? undefined}
+            aria-describedby={signOutBlocked ? SIGN_OUT_HINT_ID : undefined}
+            onClick={signOut}
+          >
+            <FormattedMessage id="pathology.action.confirmSignOut" />
+          </Button>
+          <Button
+            kind="ghost"
+            size="sm"
+            id={SIGN_OUT_CANCEL_ID}
+            disabled={held}
+            onClick={cancelSignOut}
+          >
+            <FormattedMessage id="common.cancel" />
+          </Button>
+          {signOutBlocked && (
+            <span id={SIGN_OUT_HINT_ID} className="case-view__locked-hint">
+              {blockedText(signOutBlocked)}
+            </span>
+          )}
+        </div>
+      </Stack>
+    </div>
+  );
+
+  // S-8.3: the reason a signed-out case is reopened, asked inline as the
+  // return's is, since nothing is destroyed: a final report in force is kept
+  // and marked voided.
+  const reopenShown = reopenOpen && action === "reopen";
+  const reopenRow = (
+    <div className="pathology-case-view__return-row" data-testid="reopen-row">
+      <TextArea
+        id={REOPEN_REASON_ID}
+        rows={2}
+        labelText={
+          <>
+            {intl.formatMessage({ id: "pathology.label.reopenReason" })}
+            <RequiredMarker />
+          </>
+        }
+        {...requiredProps()}
+        helperText={intl.formatMessage(
+          { id: "pathology.helper.reopen" },
+          {
+            stage: caseInfo.readingStage
+              ? stageLabel(intl, caseInfo.readingStage)
+              : "",
+          },
+        )}
+        enableCounter
+        maxCount={RETURN_REASON_MAX_LENGTH}
+        value={reopenReason}
+        onChange={(e) => setReopenReason(e.target.value)}
+      />
+      <Button
+        kind="secondary"
+        size="sm"
+        id={REOPEN_CONFIRM_ID}
+        disabled={Boolean(reopenConfirmBlocked)}
+        title={blockedText(reopenConfirmBlocked) ?? undefined}
+        aria-describedby={reopenConfirmBlocked ? REOPEN_HINT_ID : undefined}
+        onClick={reopenCase}
+      >
+        <FormattedMessage id="pathology.action.confirmReopen" />
+      </Button>
+      <Button
+        kind="ghost"
+        size="sm"
+        id={REOPEN_CANCEL_ID}
+        disabled={held}
+        onClick={cancelReopen}
+      >
+        <FormattedMessage id="common.cancel" />
+      </Button>
+      {reopenConfirmBlocked && (
+        <span id={REOPEN_HINT_ID} className="case-view__locked-hint">
+          {blockedText(reopenConfirmBlocked)}
+        </span>
+      )}
+    </div>
+  );
+
   // The stage as text, and the return beside it. A return is not
   // destructive, so its reason is asked for inline rather than in a modal,
   // and it stays out of the action group, which holds three buttons at most.
@@ -1359,7 +1819,9 @@ function PathologyCaseView() {
         )}
       </span>
       {sendConfirmShown && sendConfirmation}
-      {!sendConfirmShown && !returnOpen && (
+      {signOutShown && signOutConfirmation}
+      {reopenShown && reopenRow}
+      {!sendConfirmShown && !signOutShown && !reopenShown && !returnOpen && (
         <>
           <Button
             kind="ghost"
@@ -1461,6 +1923,7 @@ function PathologyCaseView() {
     configurationProperties,
   });
 
+  const summarisedReport = reportSummary(caseInfo.reports);
   const summaryRows = [
     {
       id: "stage",
@@ -1525,12 +1988,30 @@ function PathologyCaseView() {
         caseInfo.conclusionText ||
         null,
     },
+    // Rendered only when the stored case holds a critical result (FR-14).
+    ...(caseInfo.criticalResult
+      ? [
+          {
+            id: "criticalResult",
+            labelKey: "pathology.label.criticalResult",
+            value: true,
+          },
+        ]
+      : []),
     {
       id: "report",
       labelKey: "pathology.label.report",
-      value:
-        (caseInfo.reports ?? []).length ||
-        intl.formatMessage({ id: "common.none" }),
+      value: summarisedReport
+        ? intl.formatMessage(
+            { id: "pathology.report.summary" },
+            {
+              version: summarisedReport.version,
+              type: intl.formatMessage({
+                id: REPORT_TYPE_KEYS[summarisedReport.type] ?? "common.none",
+              }),
+            },
+          )
+        : intl.formatMessage({ id: "common.none" }),
     },
   ];
 
@@ -1611,7 +2092,9 @@ function PathologyCaseView() {
                     items={deriveRailItems(sections, {
                       intl,
                       status: stage,
-                      reportCount: (caseInfo.reports ?? []).length,
+                      hasCurrentReport: Boolean(
+                        currentReport(caseInfo.reports),
+                      ),
                       openRequestNames: openNames,
                       caseInfo,
                       configurationProperties,
@@ -1632,6 +2115,7 @@ function PathologyCaseView() {
                     saving={isSubmitting || held}
                     onDiscard={reloadCase}
                     onSaveDraft={save}
+                    canSaveDraft={!caseInfo.signedOut}
                     primary={primary}
                   />
                 }

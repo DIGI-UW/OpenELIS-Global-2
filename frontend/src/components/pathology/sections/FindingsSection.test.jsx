@@ -30,10 +30,15 @@ const pas = { id: "42", value: "PAS" };
 const ki67 = { id: "77", value: "Ki-67" };
 const cd20 = { id: "78", value: "CD20" };
 const adeno = { id: "9101", value: "Adenocarcinoma", code: "C80.1" };
+const malignant = {
+  id: "9102",
+  value: "Malignant neoplasm",
+  code: "C80.9",
+  critical: true,
+};
 
 const baseCase = {
   status: "UNDER_REVIEW",
-  releasable: true,
   assignedPathologistId: "5",
   assignedTechnicianId: "6",
   grossExam: "Tan nodule, 2 cm.",
@@ -43,7 +48,6 @@ const baseCase = {
   conclusionText: "",
   referToImmunoHistoChemistry: false,
   referredToIhc: false,
-  release: false,
 };
 
 let latestCase;
@@ -82,11 +86,11 @@ const renderSection = ({ caseInfo = {}, ...props } = {}) =>
 const techniquesBox = () =>
   screen.getByRole("combobox", { name: /Techniques Used/ });
 
-const releaseBox = () =>
-  screen.getByLabelText(messages["pathology.label.release"]);
+// The narrative's counter is an alert too, so the banner is found by its id.
+const warning = () => screen.queryByTestId("critical-result-banner");
 
-const releaseReason =
-  "A case is signed out only once both the macroscopic and the microscopic description are written.";
+const flagBox = () =>
+  screen.getByLabelText(messages["pathology.label.flagCritical"]);
 
 beforeEach(() => {
   fetchFromOpenElisServer.mockReset();
@@ -219,34 +223,100 @@ describe("FindingsSection", () => {
     expect(latestCase.referToImmunoHistoChemistry).toBe(true);
   });
 
-  it("the release box says why while either description is blank, and is offered once both are written", async () => {
-    const { unmount } = renderSection({
-      caseInfo: { releasable: false, grossExam: "" },
-    });
-    // A case the server will not release says so first.
+  it("noWarning_withoutACriticalChipOrTheFlag", () => {
+    renderSection({ caseInfo: { conclusions: [adeno] } });
+
+    expect(warning()).not.toBeInTheDocument();
     expect(
-      screen.getByText(messages["pathology.error.releaseBeforeReview"]),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(releaseReason)).not.toBeInTheDocument();
-    unmount();
+      screen.queryByTestId("critical-result-banner"),
+    ).not.toBeInTheDocument();
+    expect(flagBox()).not.toBeChecked();
+  });
 
-    renderSection({ caseInfo: { grossExam: "   ", microscopyExam: "" } });
-    expect(releaseBox()).toBeDisabled();
-    expect(screen.getByText(releaseReason)).toBeInTheDocument();
+  it("aCriticalChip_showsTheWarningFirst_asAnAlert", () => {
+    const { container } = renderSection({
+      caseInfo: { conclusions: [malignant] },
+    });
 
-    await userEvent.type(
-      screen.getByLabelText("Macroscopic description"),
-      "Tan nodule",
+    const alert = warning();
+    expect(alert).toBeInTheDocument();
+    expect(alert).toHaveTextContent(
+      messages["pathology.banner.criticalResult"],
     );
-    expect(releaseBox()).toBeDisabled();
-    expect(screen.getByText(releaseReason)).toBeInTheDocument();
+    expect(alert).toHaveAttribute("role", "alert");
+    expect(
+      within(alert).queryByRole("button", { name: /close/i }),
+    ).not.toBeInTheDocument();
+    // First in the section, ahead of the macroscopic description.
+    expect(
+      alert.compareDocumentPosition(document.getElementById("grossExam")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(container.contains(alert)).toBe(true);
+  });
 
-    await userEvent.type(
-      screen.getByLabelText("Microscopic description"),
-      "Benign glands",
+  it("theFlag_showsTheWarning_andClearingBothRemovesIt", async () => {
+    renderSection({ caseInfo: { conclusions: [malignant] } });
+    expect(warning()).toBeInTheDocument();
+
+    // Removing the last critical chip, with the flag not ticked, clears it.
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: /Remove C80\.9 Malignant neoplasm/,
+      }),
     );
-    expect(releaseBox()).toBeEnabled();
-    expect(screen.queryByText(releaseReason)).not.toBeInTheDocument();
+    expect(latestCase.conclusions).toEqual([]);
+    expect(warning()).not.toBeInTheDocument();
+
+    // Ticking the flag raises it, written into the case like the other fields.
+    await userEvent.click(
+      screen.getByText(messages["pathology.label.flagCritical"]),
+    );
+    expect(flagBox()).toBeChecked();
+    expect(latestCase.criticalResultFlagged).toBe(true);
+    expect(warning()).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByText(messages["pathology.label.flagCritical"]),
+    );
+    expect(latestCase.criticalResultFlagged).toBe(false);
+    expect(warning()).not.toBeInTheDocument();
+  });
+
+  it("aReadOnlyReading_stillShowsTheWarning_andTheFlagDisabled", () => {
+    renderSection({
+      readOnly: true,
+      caseInfo: { criticalResultFlagged: true },
+    });
+
+    expect(warning()).toHaveTextContent(
+      messages["pathology.banner.criticalResult"],
+    );
+    expect(flagBox()).toBeDisabled();
+    expect(flagBox()).toBeChecked();
+  });
+
+  it("aSignedOutCase_showsTheSignedOutSentence", () => {
+    renderSection({
+      readOnly: true,
+      caseInfo: { signedOut: true, conclusions: [malignant] },
+    });
+
+    expect(warning()).toHaveTextContent(
+      messages["pathology.banner.criticalResultSignedOut"],
+    );
+    expect(
+      screen.queryByText(messages["pathology.banner.criticalResult"]),
+    ).not.toBeInTheDocument();
+  });
+
+  it("thereIsNoReleaseBox", () => {
+    renderSection({ caseInfo: { conclusions: [malignant] } });
+
+    expect(document.getElementById("release")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText(messages["pathology.label.release"]),
+    ).not.toBeInTheDocument();
   });
 
   it("read-only: every control disabled and no chip has a remove button", async () => {

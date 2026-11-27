@@ -51,6 +51,12 @@ import {
   grossExamPlace,
   slidesReceived,
   neverCheckedSlides,
+  primaryAction,
+  signOutBlockedReason,
+  currentReport,
+  currentGeneratedReport,
+  reportSummary,
+  formIsCritical,
 } from "./pathologySections";
 
 const intl = createIntl({ locale: "en", messages });
@@ -464,7 +470,7 @@ describe("a stage a laboratory has switched off", () => {
     const railItems = deriveRailItems(sections, {
       intl,
       status: "STAINING",
-      reportCount: 0,
+      hasCurrentReport: false,
       openRequestNames: [],
     });
     const coverslippingItem = railItems.find(
@@ -496,7 +502,7 @@ describe("a stage a laboratory has switched off", () => {
     const railItems = deriveRailItems(sections, {
       intl,
       status: "COVERSLIPPING",
-      reportCount: 0,
+      hasCurrentReport: false,
       openRequestNames: [],
     });
     const coverslippingItem = railItems.find(
@@ -529,7 +535,7 @@ describe("deriveRailItems", () => {
     const items = deriveRailItems(sections, {
       intl,
       status: "MICROTOMY",
-      reportCount: 0,
+      hasCurrentReport: false,
       openRequestNames: [],
       caseInfo: grossed,
     });
@@ -540,7 +546,7 @@ describe("deriveRailItems", () => {
     const itemsWithAReport = deriveRailItems(sections, {
       intl,
       status: "MICROTOMY",
-      reportCount: 2,
+      hasCurrentReport: true,
       openRequestNames: [],
     });
     const reportsItem = itemsWithAReport.find(
@@ -564,7 +570,7 @@ describe("deriveRailItems", () => {
       deriveRailItems(sections, {
         intl,
         status: "MICROTOMY",
-        reportCount: 0,
+        hasCurrentReport: false,
         openRequestNames: [],
         caseInfo,
       }).find((item) => item.id === "pathology-section-grossing");
@@ -592,7 +598,7 @@ describe("deriveRailItems", () => {
       deriveRailItems(sections, {
         intl,
         status: "READY_PATHOLOGIST",
-        reportCount: 0,
+        hasCurrentReport: false,
         openRequestNames: [],
         caseInfo,
       }).find((item) => item.id === "pathology-section-microtomy");
@@ -611,7 +617,7 @@ describe("deriveRailItems", () => {
     const withRequests = deriveRailItems(sections, {
       intl,
       status: "READY_PATHOLOGIST",
-      reportCount: 0,
+      hasCurrentReport: false,
       openRequestNames: ["Recut", "Extra levels"],
     });
     const reviewItem = withRequests.find(
@@ -627,7 +633,7 @@ describe("deriveRailItems", () => {
     const withoutRequests = deriveRailItems(sections, {
       intl,
       status: "READY_PATHOLOGIST",
-      reportCount: 0,
+      hasCurrentReport: false,
       openRequestNames: [],
     });
     const reviewItemWithNoPending = withoutRequests.find(
@@ -651,7 +657,7 @@ describe("deriveRailItems", () => {
       deriveRailItems(sections, {
         intl,
         status: "READY_PATHOLOGIST",
-        reportCount: 0,
+        hasCurrentReport: false,
         openRequestNames: names,
       }).find((item) => item.id === "pathology-section-review");
 
@@ -1041,7 +1047,7 @@ describe("a status this build does not recognize", () => {
     const items = deriveRailItems(sections, {
       intl,
       status,
-      reportCount: 0,
+      hasCurrentReport: false,
       openRequestNames: [],
     });
     expect(items.some((item) => item.complete)).toBe(false);
@@ -1109,7 +1115,7 @@ describe("counting badges over rows in use", () => {
       deriveRailItems(sections, {
         intl,
         status: "READY_PATHOLOGIST",
-        reportCount: 0,
+        hasCurrentReport: false,
         openRequestNames: [],
         caseInfo: { slides },
       }).find((item) => item.id === "pathology-section-microtomy");
@@ -1136,7 +1142,7 @@ describe("decalcification and the grossing flag", () => {
     deriveRailItems(sections, {
       intl,
       status,
-      reportCount: 0,
+      hasCurrentReport: false,
       openRequestNames: [],
     }).find((item) => item.id === DECALCIFICATION);
 
@@ -1300,7 +1306,7 @@ describe("embedding, read from the cassettes", () => {
       {
         intl,
         status,
-        reportCount: 0,
+        hasCurrentReport: false,
         openRequestNames: [],
         caseInfo: { blocks },
       },
@@ -2009,7 +2015,7 @@ describe("a stage the laboratory stopped tracking, with rows on record", () => {
     const railItem = deriveRailItems(sections, {
       intl,
       status: "STAINING",
-      reportCount: 0,
+      hasCurrentReport: false,
       openRequestNames: [],
       caseInfo: { slides: [{ id: "1" }] },
     }).find((item) => item.id === MICROTOMY);
@@ -2411,7 +2417,7 @@ describe("the staining and coverslipping badges, rail steps and summary lines", 
     deriveRailItems(sectionsAt(status), {
       intl,
       status,
-      reportCount: 0,
+      hasCurrentReport: false,
       openRequestNames: [],
       caseInfo: caseAt(status, rows),
     });
@@ -2978,5 +2984,243 @@ describe("requestStatusBody, what a status change posts", () => {
     expect(
       requestStatusBody(request(), "COMPLETED", { cancelReason: "x" }),
     ).toMatchObject({ cancelReason: null });
+  });
+});
+
+describe("sign-out, reopen and the report in force", () => {
+  const ready = {
+    status: "UNDER_REVIEW",
+    releasable: true,
+    grossExam: "Grey-white tissue",
+    microscopyExam: "Benign glands",
+    conclusions: [{ id: 7, value: "Adenoma" }],
+    conclusionText: "",
+    assignedPathologistId: "11",
+    assignedTechnicianId: "12",
+  };
+
+  it("primaryAction_followsTheCaseAndTheRole", () => {
+    // B1: on the bench the next stage drives the primary for anyone.
+    expect(
+      primaryAction({
+        caseInfo: { status: "GROSSING" },
+        isPathologist: false,
+        nextStage: "PROCESSING",
+      }),
+    ).toBe("advance");
+    // B2: from the queue Begin review is the pathologist's alone, even when
+    // the server would already take a release.
+    expect(
+      primaryAction({
+        caseInfo: { status: "READY_PATHOLOGIST", releasable: true },
+        isPathologist: true,
+        nextStage: "UNDER_REVIEW",
+      }),
+    ).toBe("advance");
+    expect(
+      primaryAction({
+        caseInfo: { status: "READY_PATHOLOGIST" },
+        isPathologist: false,
+        nextStage: "UNDER_REVIEW",
+      }),
+    ).toBeNull();
+    // B3, B4: the reading stage signs out for a pathologist only.
+    expect(
+      primaryAction({ caseInfo: ready, isPathologist: true, nextStage: null }),
+    ).toBe("signOut");
+    expect(
+      primaryAction({ caseInfo: ready, isPathologist: false, nextStage: null }),
+    ).toBeNull();
+    // Not releasable: no sign-out.
+    expect(
+      primaryAction({
+        caseInfo: { ...ready, releasable: false },
+        isPathologist: true,
+        nextStage: null,
+      }),
+    ).toBeNull();
+    // B9, B10: a signed-out case reopens, for a pathologist only.
+    const signedOut = { ...ready, status: "COMPLETED", signedOut: true };
+    expect(primaryAction({ caseInfo: signedOut, isPathologist: true })).toBe(
+      "reopen",
+    );
+    expect(
+      primaryAction({ caseInfo: signedOut, isPathologist: false }),
+    ).toBeNull();
+    // B14: Completed but never released signs out by B3's rules.
+    expect(
+      primaryAction({
+        caseInfo: { ...ready, status: "COMPLETED", signedOut: false },
+        isPathologist: true,
+        nextStage: null,
+      }),
+    ).toBe("signOut");
+  });
+
+  it("signOutBlockedReason_walksItsOrder_onTheFormAsItStands", () => {
+    const reason = (patch, openRequestCount = 0) =>
+      signOutBlockedReason({
+        caseInfo: { ...ready, ...patch },
+        openRequestCount,
+      });
+    // Every rule unmet: the descriptions are named first.
+    const nothing = {
+      grossExam: " ",
+      conclusions: [],
+      conclusionText: "",
+      assignedPathologistId: null,
+      assignedTechnicianId: null,
+    };
+    expect(reason(nothing, 2)?.key).toBe(
+      "pathology.error.releaseWithoutDescriptions",
+    );
+    expect(
+      reason({ ...nothing, grossExam: "x", microscopyExam: "" }, 2)?.key,
+    ).toBe("pathology.error.releaseWithoutDescriptions");
+    expect(reason({ ...nothing, grossExam: "x" }, 2)?.key).toBe(
+      "pathology.error.releaseWithoutConclusion",
+    );
+    // A narrative alone is a conclusion; blank after trim is not.
+    expect(reason({ conclusions: [], conclusionText: "  " })?.key).toBe(
+      "pathology.error.releaseWithoutConclusion",
+    );
+    expect(reason({ conclusions: [], conclusionText: "Benign" })).toBeNull();
+    const withRequests = reason(
+      { assignedPathologistId: null, assignedTechnicianId: null },
+      2,
+    );
+    expect(withRequests).toEqual({
+      key: "pathology.error.releaseWithOpenRequests",
+      values: { count: 2 },
+    });
+    expect(
+      intl.formatMessage({ id: withRequests.key }, withRequests.values),
+    ).toContain("2 bench requests are still open");
+    expect(
+      reason({ assignedPathologistId: null, assignedTechnicianId: null })?.key,
+    ).toBe("pathology.locked.releaseNoPathologist");
+    expect(reason({ assignedTechnicianId: null })?.key).toBe(
+      "pathology.locked.releaseNoTechnician",
+    );
+    // What the form holds now is what counts, not what was stored.
+    expect(reason({})).toBeNull();
+  });
+
+  it("signOutBlockedReason_doesNotCountRequestsOnACompletedCase", () => {
+    expect(
+      signOutBlockedReason({
+        caseInfo: { ...ready, status: "COMPLETED" },
+        openRequestCount: 3,
+      }),
+    ).toBeNull();
+    expect(
+      signOutBlockedReason({
+        caseInfo: { ...ready, status: "UNDER_REVIEW" },
+        openRequestCount: 1,
+      })?.key,
+    ).toBe("pathology.error.releaseWithOpenRequests");
+  });
+
+  it("currentGeneratedReport_isTheNewestCurrentDraftOrFinal_neverAnUploadOrAVoidedOrSupersededRow", () => {
+    const row = (version, type, state) => ({ version, type, state });
+    expect(currentGeneratedReport(undefined)).toBeNull();
+    // Newest first, whatever order the rows come in; an upload never is.
+    expect(
+      currentGeneratedReport([
+        row(1, "DRAFT", "SUPERSEDED"),
+        row(4, "EXTERNAL", "CURRENT"),
+        row(2, "DRAFT", "CURRENT"),
+        row(3, "FINAL", "CURRENT"),
+      ])?.version,
+    ).toBe(3);
+    // After a reopen: a voided final over a superseded draft, nothing current.
+    expect(
+      currentGeneratedReport([
+        row(2, "FINAL", "VOIDED"),
+        row(1, "DRAFT", "SUPERSEDED"),
+        row(3, "EXTERNAL", "CURRENT"),
+      ]),
+    ).toBeNull();
+  });
+
+  it("currentReport_prefersAGeneratedRow_andSkipsVoidedAndSuperseded", () => {
+    const row = (version, type, state) => ({
+      id: version * 10,
+      version,
+      type,
+      state,
+    });
+    // U1: none.
+    expect(currentReport([])).toBeNull();
+    expect(currentReport(undefined)).toBeNull();
+    expect(reportSummary([])).toBeNull();
+    // U2: a current draft v2 over a superseded v1, a newer upload beside it.
+    const drafts = [
+      row(3, "EXTERNAL", "CURRENT"),
+      row(2, "DRAFT", "CURRENT"),
+      row(1, "DRAFT", "SUPERSEDED"),
+    ];
+    expect(currentReport(drafts)?.version).toBe(2);
+    expect(reportSummary(drafts)).toEqual({ version: 2, type: "DRAFT" });
+    // U3: a final v3 in force.
+    expect(
+      reportSummary([
+        row(3, "FINAL", "CURRENT"),
+        row(2, "DRAFT", "SUPERSEDED"),
+      ]),
+    ).toEqual({ version: 3, type: "FINAL" });
+    // U4, U7: only voided or superseded rows, as after a reopen.
+    expect(
+      currentReport([row(2, "FINAL", "VOIDED"), row(1, "DRAFT", "SUPERSEDED")]),
+    ).toBeNull();
+    // An upload alone is the report in force.
+    expect(
+      reportSummary([row(4, "EXTERNAL", "CURRENT"), row(2, "FINAL", "VOIDED")]),
+    ).toEqual({ version: 4, type: "EXTERNAL" });
+  });
+
+  it("theRail_completesReports_onlyWithACurrentRow", () => {
+    const sections = deriveCaseSections({
+      intl,
+      status: "COMPLETED",
+      isPathologist: true,
+    });
+    const reportsStep = (reports) =>
+      deriveRailItems(sections, {
+        intl,
+        status: "COMPLETED",
+        hasCurrentReport: Boolean(currentReport(reports)),
+        openRequestNames: [],
+      }).find((item) => item.id === "pathology-section-reports");
+    expect(reportsStep([]).complete).toBe(false);
+    expect(
+      reportsStep([{ id: 1, version: 1, type: "FINAL", state: "VOIDED" }])
+        .complete,
+    ).toBe(false);
+    expect(
+      reportsStep([{ id: 1, version: 3, type: "FINAL", state: "CURRENT" }])
+        .complete,
+    ).toBe(true);
+  });
+
+  it("formIsCritical_isTheFlagOrACriticalChip", () => {
+    // F1
+    expect(formIsCritical({})).toBe(false);
+    expect(formIsCritical(undefined)).toBe(false);
+    expect(formIsCritical({ conclusions: [{ id: 1, critical: false }] })).toBe(
+      false,
+    );
+    // F2
+    expect(
+      formIsCritical({
+        conclusions: [{ id: 1 }, { id: 2, critical: true }],
+      }),
+    ).toBe(true);
+    // F3
+    expect(formIsCritical({ criticalResultFlagged: true })).toBe(true);
+    // F4: the last critical chip removed and the flag cleared.
+    expect(
+      formIsCritical({ criticalResultFlagged: false, conclusions: [] }),
+    ).toBe(false);
   });
 });

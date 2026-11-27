@@ -55,6 +55,9 @@ let nextReasonId = 0;
  * Save draft is disabled while a save is in flight, because a save that has
  * been sent and not yet answered must not be sent a second time.
  *
+ * canSaveDraft false leaves Save draft out: a case that can no longer be
+ * edited has nothing a draft could store.
+ *
  * primary shape: { labelKey, disabledReasonKey, disabledReasonValues,
  * onClick }. It is always rendered as the Carbon primary button kind, so the
  * bar's one-primary hierarchy cannot be undermined by a caller choosing a
@@ -66,6 +69,7 @@ const CaseActionBar = ({
   saving = false,
   onDiscard,
   onSaveDraft,
+  canSaveDraft = true,
   primary,
 }) => {
   const intl = useIntl();
@@ -113,9 +117,11 @@ const CaseActionBar = ({
         <Button kind="ghost" disabled={!dirty} onClick={onDiscard}>
           <FormattedMessage id="caseView.action.discard" />
         </Button>
-        <Button kind="secondary" disabled={saving} onClick={onSaveDraft}>
-          <FormattedMessage id="caseView.action.saveDraft" />
-        </Button>
+        {canSaveDraft && (
+          <Button kind="secondary" disabled={saving} onClick={onSaveDraft}>
+            <FormattedMessage id="caseView.action.saveDraft" />
+          </Button>
+        )}
         {primary && (
           <Button
             kind="primary"

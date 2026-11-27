@@ -596,13 +596,38 @@ describe("PathologyCaseView sections", () => {
     );
   });
 
-  it("counts the reports a case does carry", async () => {
-    servedCase = caseAtStage("COMPLETED", { reports: [{ id: "1" }] });
-    renderCaseView();
-
+  it("theSummary_showsTheVersionInForce_andACriticalRowOnlyWhenCritical", async () => {
+    const reportLabel = messages["pathology.label.report"];
+    const criticalLabel = messages["pathology.label.criticalResult"];
+    // U3, U5: a final v3 in force over a superseded draft; a critical case.
+    servedCase = caseAtStage("COMPLETED", {
+      signedOut: true,
+      criticalResult: true,
+      reports: [
+        { id: "13", version: 3, type: "FINAL", state: "CURRENT" },
+        { id: "12", version: 2, type: "DRAFT", state: "SUPERSEDED" },
+      ],
+    });
+    const { unmount } = renderCaseView();
     await waitFor(() => expect(stageReadout()).not.toBeNull());
 
-    expect(summaryValue(messages["pathology.label.report"])).toBe("1");
+    expect(summaryValue(reportLabel)).toBe("v3 Final");
+    expect(summaryRow(criticalLabel)).toBeDefined();
+    unmount();
+
+    // U2, and no critical row when the case holds none.
+    servedCase = caseAtStage("UNDER_REVIEW", {
+      criticalResult: false,
+      reports: [
+        { id: "12", version: 2, type: "DRAFT", state: "CURRENT" },
+        { id: "11", version: 1, type: "DRAFT", state: "SUPERSEDED" },
+      ],
+    });
+    renderCaseView();
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
+
+    expect(summaryValue(reportLabel)).toBe("v2 Draft");
+    expect(summaryRow(criticalLabel)).toBeUndefined();
   });
 
   it("says a case information field was not recorded instead of printing an empty or null value", async () => {
@@ -774,13 +799,15 @@ describe("PathologyCaseView sections", () => {
     ).toHaveValue("");
   });
 
-  it("the save sends exactly the keys of section 8.2", async () => {
-    // The three conditional keys absent, and the two id lists not on the
-    // case read: they are still sent, as empty lists.
+  it("aSaveDraft_neverSendsARelease", async () => {
+    // A pathologist on a case that could be signed out: Save draft still
+    // only stores the form, and the release is the sign-out's alone.
+    hasRole.mockReturnValue(true);
     servedCase = caseAtStage("UNDER_REVIEW", {
-      immunoHistoChemistryTestIds: undefined,
-      techniques: undefined,
-      conclusions: undefined,
+      grossExam: "Skin ellipse, 2 cm",
+      microscopyExam: "Benign naevus",
+      conclusionText: "Benign naevus, completely excised",
+      release: true,
     });
     renderCaseView();
 
@@ -800,25 +827,8 @@ describe("PathologyCaseView sections", () => {
       postToOpenElisServerFullResponse.mock.calls.at(-1);
     expect(url).toBe(CASE_URL);
     const posted = JSON.parse(body);
-    expect(Object.keys(posted).sort()).toEqual([
-      "assignedPathologistId",
-      "assignedTechnicianId",
-      "blocks",
-      "conclusionText",
-      "conclusions",
-      "decalcificationRequired",
-      "grossExam",
-      "microscopyExam",
-      "referToImmunoHistoChemistry",
-      "release",
-      "reports",
-      "reviewNotes",
-      "slides",
-      "techniques",
-    ]);
-    expect(posted.techniques).toEqual([]);
-    expect(posted.conclusions).toEqual([]);
-    expect(posted.referToImmunoHistoChemistry).toBe(false);
+    expect(posted).not.toHaveProperty("release");
+    expect(posted).not.toHaveProperty("reports");
 
     await act(async () => {
       await callback({ status: 200, json: async () => ({}) });
@@ -1643,18 +1653,23 @@ describe("PathologyCaseView sections", () => {
     );
   });
 
-  // Both descriptions written, so FR-12.5's reason on the release box, said
-  // before the assignments, is not the reason these tests are about.
+  // Both descriptions and a conclusion written, so the sign-out's earlier
+  // reasons are not the reason these tests are about.
   const BOTH_DESCRIPTIONS = Object.freeze({
     grossExam: "Skin ellipse, 2 cm",
     microscopyExam: "Benign naevus",
+    conclusionText: "Benign naevus, completely excised",
   });
 
+  const barPrimary = (text) =>
+    within(
+      document.querySelector(".case-view__action-bar-actions"),
+    ).queryByText(text, { selector: "button" });
+
   // S-7.4: a control the case is not ready for is the pathologist's answer to
-  // "why can I not release this", so it is shown and disabled rather than
-  // removed. The flat form rendered it only once both assignments existed,
-  // which left the screen saying nothing at all.
-  it("shows the release a case is not ready for, disabled and saying why", async () => {
+  // "why can I not sign this out", so it is shown and disabled rather than
+  // removed, and names the one condition that is missing.
+  it("shows the sign-out a case is not ready for, disabled and saying why", async () => {
     hasRole.mockReturnValue(true);
     servedCase = caseAtStage("UNDER_REVIEW", {
       assignedPathologistId: "",
@@ -1664,7 +1679,7 @@ describe("PathologyCaseView sections", () => {
 
     await waitFor(() => expect(stageReadout()).not.toBeNull());
 
-    expect(document.getElementById("release")).toBeDisabled();
+    expect(barPrimary(messages["pathology.action.signOut"])).toBeDisabled();
     // The pathologist is the half that is missing, and saying so is the whole
     // point: the technician on this case is already assigned, so a hint
     // naming both would send its reader to a field that is already filled.
@@ -1676,49 +1691,45 @@ describe("PathologyCaseView sections", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("lets the pathologist release a case that carries both assignments", async () => {
+  it("lets the pathologist sign out a case that carries both assignments", async () => {
     hasRole.mockReturnValue(true);
     servedCase = caseAtStage("UNDER_REVIEW", BOTH_DESCRIPTIONS);
     renderCaseView();
 
     await waitFor(() => expect(stageReadout()).not.toBeNull());
 
-    expect(document.getElementById("release")).toBeEnabled();
+    expect(barPrimary(messages["pathology.action.signOut"])).toBeEnabled();
     expect(
       screen.queryByText(messages["pathology.locked.releaseNoPathologist"]),
     ).not.toBeInTheDocument();
   });
 
-  // A released case is not released again, and the server refuses a second
-  // release, so the box says so rather than offering a tick that fails.
-  it("holds the release back on a released case and says why", async () => {
+  // A signed-out case is not signed out again, and the server refuses a
+  // second release, so the bar offers its reopen instead and Findings holds
+  // no release box.
+  it("holds the sign-out back on a signed-out case", async () => {
     hasRole.mockReturnValue(true);
-    servedCase = caseAtStage("COMPLETED", BOTH_DESCRIPTIONS);
+    servedCase = caseAtStage("COMPLETED", {
+      signedOut: true,
+      ...BOTH_DESCRIPTIONS,
+    });
     renderCaseView();
 
     await waitFor(() => expect(stageReadout()).not.toBeNull());
 
-    const release = document.getElementById("release");
-    expect(release).toBeDisabled();
-    // Carbon puts a checkbox's title on its label, the part a pointer rests on.
-    expect(document.querySelector('label[for="release"]')).toHaveAttribute(
-      "title",
-      messages["pathology.locked.caseCompleted"],
-    );
-    expect(
-      within(section("pathology-section-findings")).getByText(
-        messages["pathology.locked.caseCompleted"],
-      ),
-    ).toBeInTheDocument();
+    expect(barPrimary(messages["pathology.action.signOut"])).toBeNull();
+    expect(barPrimary(messages["pathology.action.reopen"])).toBeEnabled();
+    expect(document.getElementById("release")).toBeNull();
   });
 
   // The stage control once set Completed without releasing the case. The
-  // server still takes one release of such a case, and says so, so the box is
-  // offered rather than held back as if the case were already released.
-  it("offers the release on a case left at Completed without one", async () => {
+  // server still takes one release of such a case, and says so, so the
+  // sign-out is offered rather than held back as if it were signed out.
+  it("offers the sign-out on a case left at Completed without one", async () => {
     hasRole.mockReturnValue(true);
     servedCase = caseAtStage("COMPLETED", {
       releasable: true,
+      signedOut: false,
       findingsOpen: true,
       ...BOTH_DESCRIPTIONS,
     });
@@ -1726,25 +1737,44 @@ describe("PathologyCaseView sections", () => {
 
     await waitFor(() => expect(stageReadout()).not.toBeNull());
 
-    expect(document.getElementById("release")).toBeEnabled();
-    expect(
-      within(section("pathology-section-findings")).queryByText(
-        messages["pathology.locked.caseCompleted"],
-      ),
-    ).not.toBeInTheDocument();
+    expect(barPrimary(messages["pathology.action.signOut"])).toBeEnabled();
+    expect(barPrimary(messages["pathology.action.reopen"])).toBeNull();
   });
 
-  it("says the case carries no report rather than showing an empty list", async () => {
-    servedCase = caseAtStage("COMPLETED");
+  it("thePayload_carriesTheFlag_andNoReports", async () => {
+    // The pinned key set. The three conditional keys absent, and the two id
+    // lists not on the case read: they are still sent, as empty lists.
+    servedCase = caseAtStage("UNDER_REVIEW", {
+      immunoHistoChemistryTestIds: undefined,
+      techniques: undefined,
+      conclusions: undefined,
+      criticalResultFlagged: true,
+      reports: [{ id: "13", version: 1, type: "DRAFT", state: "CURRENT" }],
+    });
     renderCaseView();
 
     await waitFor(() => expect(stageReadout()).not.toBeNull());
+    const posted = await postedCase();
 
-    expect(
-      within(section("pathology-section-reports")).getByText(
-        messages["pathology.empty.noReports"],
-      ),
-    ).toBeInTheDocument();
+    expect(Object.keys(posted).sort()).toEqual([
+      "assignedPathologistId",
+      "assignedTechnicianId",
+      "blocks",
+      "conclusionText",
+      "conclusions",
+      "criticalResultFlagged",
+      "decalcificationRequired",
+      "grossExam",
+      "microscopyExam",
+      "referToImmunoHistoChemistry",
+      "reviewNotes",
+      "slides",
+      "techniques",
+    ]);
+    expect(posted.criticalResultFlagged).toBe(true);
+    expect(posted.techniques).toEqual([]);
+    expect(posted.conclusions).toEqual([]);
+    expect(posted.referToImmunoHistoChemistry).toBe(false);
   });
 
   // FR-10.10: the summary shows the count, and resting on the row is what
@@ -1793,7 +1823,7 @@ describe("PathologyCaseView sections", () => {
     ).toBeInTheDocument();
   });
 
-  it("puts the release reason in the control's own helper slot", async () => {
+  it("puts the sign-out reason beside the primary, where assistive technology reaches it", async () => {
     hasRole.mockReturnValue(true);
     servedCase = caseAtStage("UNDER_REVIEW", {
       assignedPathologistId: "",
@@ -1806,7 +1836,11 @@ describe("PathologyCaseView sections", () => {
     const hint = screen.getByText(
       messages["pathology.locked.releaseNoPathologist"],
     );
-    expect(hint.closest(".cds--checkbox-wrapper")).not.toBeNull();
+    expect(hint.closest(".case-view__action-bar-actions")).not.toBeNull();
+    expect(barPrimary(messages["pathology.action.signOut"])).toHaveAttribute(
+      "aria-describedby",
+      hint.id,
+    );
   });
 
   describe("grossing records whether the specimen needs decalcifying", () => {
@@ -5339,5 +5373,859 @@ describe("the reading: Review, Findings and the save", () => {
     expect(summaryValue(messages["pathology.label.conclusion"])).toBe(
       "Adenocarcinoma",
     );
+  });
+});
+
+// Sign-out and reopen from the action bar, and the report senders (D7, D11
+// to D15, D20; tables B and P). The new tab is a stand-in for the browser's,
+// opened by the real reportTab helper.
+describe("sign-out, reopen and the reports from the case view", () => {
+  const SIGNED_OUT_FINAL = Object.freeze({
+    id: "41",
+    version: 3,
+    type: "FINAL",
+    state: "CURRENT",
+    generatedAt: "26/11/2026 10:00",
+    generatedBy: "Paula Path",
+    fileType: "data:application/pdf",
+  });
+
+  const readyToSignOut = (overrides = {}) =>
+    caseAtStage("UNDER_REVIEW", {
+      readingStage: "UNDER_REVIEW",
+      grossExam: "Skin ellipse, 2 cm",
+      microscopyExam: "Benign naevus",
+      conclusionText: "Benign naevus, completely excised",
+      canGenerateReport: true,
+      ...overrides,
+    });
+
+  const signedOutCase = (overrides = {}) =>
+    caseAtStage("COMPLETED", {
+      readingStage: "UNDER_REVIEW",
+      signedOut: true,
+      releasable: false,
+      findingsOpen: false,
+      grossExam: "Skin ellipse, 2 cm",
+      microscopyExam: "Benign naevus",
+      conclusionText: "Benign naevus, completely excised",
+      canGenerateReport: true,
+      reports: [SIGNED_OUT_FINAL],
+      ...overrides,
+    });
+
+  let tab;
+  let openSpy;
+
+  beforeEach(() => {
+    tab = {
+      opener: {},
+      document: {
+        title: "",
+        body: { appendChild: vi.fn() },
+        createTextNode: vi.fn((text) => text),
+      },
+      location: { replace: vi.fn() },
+      close: vi.fn(),
+    };
+    openSpy = vi.spyOn(window, "open").mockImplementation(() => tab);
+  });
+
+  afterEach(() => {
+    openSpy.mockRestore();
+  });
+
+  const actionGroup = () =>
+    document.querySelector(".case-view__action-bar-actions");
+  const barButton = (key) =>
+    within(actionGroup()).queryByText(messages[key], { selector: "button" });
+  const accordionHeader = (sectionId) =>
+    document.querySelector("#" + sectionId + " button.cds--accordion__heading");
+  const confirmGroup = () => screen.queryByTestId("sign-out-confirm");
+  const reopenRow = () => screen.queryByTestId("reopen-row");
+  const jsonPostsTo = (path) =>
+    postToOpenElisServerJsonResponse.mock.calls.filter(
+      ([url]) => url === CASE_URL + path,
+    );
+  const toastWith = (message) =>
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ message }),
+    );
+
+  // Holds every read of the case after the first, so a test can act in the
+  // window between an answer and the read that follows it, and land or fail
+  // the read when it chooses.
+  const holdCaseReads = () => {
+    const pending = [];
+    const serve = getFromOpenElisServer.getMockImplementation();
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === CASE_URL) {
+        pending.push(callback);
+        return undefined;
+      }
+      return serve(url, callback);
+    });
+    return {
+      count: () => pending.length,
+      land: async () => {
+        const callback = pending.shift();
+        await act(async () => callback({ ...servedCase }));
+      },
+      fail: async () => {
+        const callback = pending.shift();
+        await act(async () => callback(undefined));
+      },
+    };
+  };
+
+  const openSignOut = async () => {
+    fireEvent.click(barButton("pathology.action.signOut"));
+    await waitFor(() => expect(confirmGroup()).not.toBeNull());
+  };
+
+  const confirmSignOut = () =>
+    fireEvent.click(
+      within(confirmGroup()).getByText(
+        messages["pathology.action.confirmSignOut"],
+        { selector: "button" },
+      ),
+    );
+
+  const answerSave = async (status, body) => {
+    const callback = postToOpenElisServerFullResponse.mock.calls.at(-1)[2];
+    await act(async () => {
+      await callback({ status, json: async () => body });
+    });
+  };
+
+  const answerJson = async (path, response) => {
+    const callback = jsonPostsTo(path).at(-1)[2];
+    await act(async () => {
+      callback(response);
+    });
+  };
+
+  const loadedAsPathologist = async (served) => {
+    hasRole.mockReturnValue(true);
+    servedCase = served;
+    const rendered = renderCaseView();
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
+    return rendered;
+  };
+
+  it("signOut_asksFirst_andNamesTheLabNumber", async () => {
+    await loadedAsPathologist(readyToSignOut());
+
+    await openSignOut();
+
+    expect(postToOpenElisServerFullResponse).not.toHaveBeenCalled();
+    expect(openSpy).not.toHaveBeenCalled();
+    const group = screen.getByRole("group", {
+      name: intl.formatMessage(
+        { id: "pathology.confirm.signOut" },
+        { labNumber: "ACC9" },
+      ),
+    });
+    expect(group).toBe(confirmGroup());
+    expect(
+      within(group).queryByText(messages["pathology.confirm.signOutCritical"], {
+        exact: false,
+      }),
+    ).toBeNull();
+    await waitFor(() =>
+      expect(
+        within(group).getByText(messages["pathology.action.confirmSignOut"], {
+          selector: "button",
+        }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it("signOut_saysACriticalResultWillBeRaised_whenTheFormIsCritical", async () => {
+    const { unmount } = await loadedAsPathologist(
+      readyToSignOut({
+        conclusions: [{ id: "3", value: "Adenocarcinoma", critical: true }],
+      }),
+    );
+    await openSignOut();
+    expect(confirmGroup()).toHaveTextContent(
+      messages["pathology.confirm.signOutCritical"],
+    );
+    unmount();
+
+    // The flag alone, with no critical diagnosis, says it too.
+    await loadedAsPathologist(readyToSignOut({ criticalResultFlagged: true }));
+    await openSignOut();
+    expect(confirmGroup()).toHaveTextContent(
+      messages["pathology.confirm.signOutCritical"],
+    );
+  });
+
+  it("confirmed_itOpensTheTabFirst_savesWithRelease_andShowsTheFinal", async () => {
+    await loadedAsPathologist(readyToSignOut());
+    await openSignOut();
+
+    confirmSignOut();
+
+    // Inside the press, before anything is awaited.
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(openSpy).toHaveBeenCalledWith("", "_blank");
+    await waitFor(() =>
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalledTimes(1),
+    );
+    expect(openSpy.mock.invocationCallOrder[0]).toBeLessThan(
+      postToOpenElisServerFullResponse.mock.invocationCallOrder[0],
+    );
+    const [url, body] = postToOpenElisServerFullResponse.mock.calls[0];
+    expect(url).toBe(CASE_URL);
+    const posted = JSON.parse(body);
+    expect(posted.release).toBe(true);
+    expect(posted).not.toHaveProperty("reports");
+    expect(posted.microscopyExam).toBe("Benign naevus");
+
+    const fetchesBefore = caseFetchCount();
+    servedCase = signedOutCase();
+    await answerSave(200, { finalReport: SIGNED_OUT_FINAL });
+
+    expect(tab.location.replace).toHaveBeenCalledWith(
+      expect.stringContaining(CASE_URL + "/reports/41/file"),
+    );
+    expect(tab.close).not.toHaveBeenCalled();
+    toastWith(
+      intl.formatMessage({ id: "pathology.toast.signedOut" }, { version: 3 }),
+    );
+    expect(caseFetchCount()).toBe(fetchesBefore + 1);
+    expect(screen.getByTestId("report-row-3")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(accordionHeader("pathology-section-reports")).toHaveFocus(),
+    );
+    expect(barButton("pathology.action.reopen")).toBeEnabled();
+    expect(barButton("pathology.action.signOut")).toBeNull();
+  });
+
+  it("refused_theTabCloses_andWhatWasTypedStays", async () => {
+    await loadedAsPathologist(readyToSignOut());
+    fireEvent.change(document.getElementById("microscopyExam"), {
+      target: { value: "Benign naevus, margins clear" },
+    });
+    await openSignOut();
+    confirmSignOut();
+    await waitFor(() =>
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+    const fetchesBefore = caseFetchCount();
+
+    await answerSave(400, {
+      error: "no conclusion",
+      messageKey: "pathology.error.releaseWithoutConclusion",
+    });
+
+    expect(tab.close).toHaveBeenCalled();
+    expect(tab.location.replace).not.toHaveBeenCalled();
+    toastWith(messages["pathology.error.releaseWithoutConclusion"]);
+    expect(caseFetchCount()).toBe(fetchesBefore);
+    expect(document.getElementById("microscopyExam")).toHaveValue(
+      "Benign naevus, margins clear",
+    );
+    expect(
+      screen.getByText(messages["caseView.label.unsavedChanges"]),
+    ).toBeInTheDocument();
+    expect(confirmGroup()).toBeNull();
+    expect(barButton("pathology.action.signOut")).toBeEnabled();
+  });
+
+  it("signedOutButTheReportFailed_saysSo", async () => {
+    await loadedAsPathologist(readyToSignOut());
+    await openSignOut();
+    confirmSignOut();
+    await waitFor(() =>
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+    const fetchesBefore = caseFetchCount();
+    servedCase = signedOutCase({ reports: [] });
+
+    await answerSave(200, { finalReportFailed: true });
+
+    expect(tab.close).toHaveBeenCalled();
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "warning",
+        message: messages["pathology.toast.signedOutReportFailed"],
+      }),
+    );
+    expect(caseFetchCount()).toBe(fetchesBefore + 1);
+    expect(barButton("pathology.action.reopen")).toBeEnabled();
+  });
+
+  it("aSignedOutCase_offersReopen_andNoSaveDraft", async () => {
+    // B9: the pathologist.
+    const { unmount } = (() => {
+      hasRole.mockReturnValue(true);
+      servedCase = signedOutCase();
+      return renderCaseView();
+    })();
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
+    expect(barButton("pathology.action.reopen")).toBeEnabled();
+    expect(barButton("caseView.action.saveDraft")).toBeNull();
+    expect(barButton("caseView.action.discard")).not.toBeNull();
+    expect(within(actionGroup()).getAllByRole("button")).toHaveLength(2);
+    unmount();
+
+    // B10: anyone else sees no primary and no Save draft.
+    hasRole.mockReturnValue(false);
+    renderCaseView();
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
+    expect(barButton("pathology.action.reopen")).toBeNull();
+    expect(barButton("caseView.action.saveDraft")).toBeNull();
+    expect(within(actionGroup()).getAllByRole("button")).toHaveLength(1);
+  });
+
+  const openReopenRow = async () => {
+    fireEvent.click(barButton("pathology.action.reopen"));
+    await waitFor(() => expect(reopenRow()).not.toBeNull());
+  };
+  const reopenConfirm = () =>
+    within(reopenRow()).getByText(messages["pathology.action.confirmReopen"], {
+      selector: "button",
+    });
+
+  it("reopen_asksForAReason_andIsHeldWithoutOne", async () => {
+    await loadedAsPathologist(signedOutCase());
+
+    await openReopenRow();
+
+    const reason = document.getElementById("reopenReason");
+    await waitFor(() => expect(reason).toHaveFocus());
+    expect(reason).toBeRequired();
+    expect(reason).toHaveAttribute("maxlength", "255");
+    expect(reopenRow()).toHaveTextContent(
+      intl.formatMessage(
+        { id: "pathology.helper.reopen" },
+        { stage: messages["pathology.stage.underReview"] },
+      ),
+    );
+    expect(reopenConfirm()).toBeDisabled();
+    expect(reopenRow()).toHaveTextContent(
+      messages["pathology.error.reopenReasonRequired"],
+    );
+
+    fireEvent.change(reason, { target: { value: "   " } });
+    expect(reopenConfirm()).toBeDisabled();
+    fireEvent.change(reason, { target: { value: "Margin misreported" } });
+    expect(reopenConfirm()).toBeEnabled();
+    expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+  });
+
+  it("reopened_theCaseIsReadBack_andFindingsCanBeEdited", async () => {
+    await loadedAsPathologist(signedOutCase());
+    await openReopenRow();
+    fireEvent.change(document.getElementById("reopenReason"), {
+      target: { value: " Margin misreported " },
+    });
+
+    fireEvent.click(reopenConfirm());
+
+    const [url, body] = postToOpenElisServerJsonResponse.mock.calls.at(-1);
+    expect(url).toBe(CASE_URL + "/reopen");
+    expect(JSON.parse(body)).toEqual({
+      from: "COMPLETED",
+      reason: "Margin misreported",
+    });
+    const fetchesBefore = caseFetchCount();
+    servedCase = readyToSignOut({
+      reports: [{ ...SIGNED_OUT_FINAL, state: "VOIDED" }],
+      stageEvents: [],
+    });
+    await answerJson("/reopen", { status: "UNDER_REVIEW" });
+
+    expect(caseFetchCount()).toBe(fetchesBefore + 1);
+    await waitFor(() =>
+      toastWith(
+        intl.formatMessage(
+          { id: "pathology.toast.reopenedReportVoided" },
+          { version: 3 },
+        ),
+      ),
+    );
+    await waitFor(() =>
+      expect(accordionHeader("pathology-section-findings")).toHaveFocus(),
+    );
+    expect(document.getElementById("microscopyExam")).toBeEnabled();
+    expect(reopenRow()).toBeNull();
+    expect(barButton("pathology.action.signOut")).not.toBeNull();
+    expect(barButton("caseView.action.saveDraft")).not.toBeNull();
+    expect(
+      within(screen.getByTestId("report-row-3")).getByText(
+        messages["pathology.report.state.VOIDED"],
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("aReopenConflict_reloads", async () => {
+    await loadedAsPathologist(signedOutCase());
+    await openReopenRow();
+    fireEvent.change(document.getElementById("reopenReason"), {
+      target: { value: "Margin misreported" },
+    });
+    fireEvent.click(reopenConfirm());
+    const fetchesBefore = caseFetchCount();
+
+    await answerJson("/reopen", {
+      status: 409,
+      conflict: "stage",
+      error: "the case is no longer at COMPLETED",
+    });
+
+    toastWith(messages["pathology.error.stageConflict"]);
+    expect(caseFetchCount()).toBe(fetchesBefore + 1);
+    expect(reopenRow()).toBeNull();
+  });
+
+  it("theReadBackFailing_releasesTheBar", async () => {
+    const serveAll = getFromOpenElisServer.getMockImplementation();
+    // After a sign-out.
+    const { unmount } = await loadedAsPathologist(readyToSignOut());
+    await openSignOut();
+    confirmSignOut();
+    await waitFor(() =>
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+    const reads = holdCaseReads();
+    await answerSave(200, { finalReport: SIGNED_OUT_FINAL });
+    expect(reads.count()).toBe(1);
+    expect(barButton("pathology.action.signOut")).toBeDisabled();
+
+    addNotification.mockClear();
+    await reads.fail();
+
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        message: messages["pathology.error.reloadCase"],
+      }),
+    );
+    expect(barButton("pathology.action.signOut")).toBeEnabled();
+    unmount();
+
+    // After a reopen.
+    getFromOpenElisServer.mockImplementation(serveAll);
+    addNotification.mockClear();
+    await loadedAsPathologist(signedOutCase());
+    await openReopenRow();
+    fireEvent.change(document.getElementById("reopenReason"), {
+      target: { value: "Margin misreported" },
+    });
+    fireEvent.click(reopenConfirm());
+    const reopenReads = holdCaseReads();
+    await answerJson("/reopen", { status: "UNDER_REVIEW" });
+    expect(barButton("pathology.action.reopen")).toBeDisabled();
+
+    await reopenReads.fail();
+
+    await waitFor(() =>
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: messages["pathology.error.reloadCase"],
+        }),
+      ),
+    );
+    expect(barButton("pathology.action.reopen")).toBeEnabled();
+  });
+
+  it("aSecondPress_whileTheCaseIsReadBack_isNotSent", async () => {
+    // On the sign-out path: answered, the read held, pressed again.
+    await loadedAsPathologist(readyToSignOut());
+    await openSignOut();
+    confirmSignOut();
+    await waitFor(() =>
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalledTimes(1),
+    );
+    const reads = holdCaseReads();
+    await answerSave(200, { finalReport: SIGNED_OUT_FINAL });
+
+    fireEvent.click(barButton("pathology.action.signOut"));
+    expect(confirmGroup()).toBeNull();
+    fireEvent.click(barButton("caseView.action.saveDraft"));
+    expect(postToOpenElisServerFullResponse).toHaveBeenCalledTimes(1);
+    await reads.fail();
+
+    // On a report send: answered, the rows' read held, pressed again.
+    const generate = screen.getByTestId("report-generate");
+    fireEvent.click(generate);
+    expect(jsonPostsTo("/reports/generate")).toHaveLength(1);
+    await answerJson("/reports/generate", {
+      id: "51",
+      version: 1,
+      type: "DRAFT",
+      state: "CURRENT",
+    });
+    expect(reads.count()).toBe(1);
+    expect(generate).toBeDisabled();
+    fireEvent.click(generate);
+    expect(jsonPostsTo("/reports/generate")).toHaveLength(1);
+
+    await reads.fail();
+    expect(generate).toBeEnabled();
+  });
+
+  it("aSecondSignOutPress_beforeTheBarIsHeldOnScreen_opensNoTab", async () => {
+    // Both clicks land in one batch, before the re-render disables the
+    // button, as a fast double click does: the second meets the hold.
+    await loadedAsPathologist(readyToSignOut());
+    await openSignOut();
+    const confirm = within(confirmGroup()).getByText(
+      messages["pathology.action.confirmSignOut"],
+      { selector: "button" },
+    );
+
+    act(() => {
+      confirm.click();
+      confirm.click();
+    });
+
+    expect(postToOpenElisServerFullResponse).toHaveBeenCalledTimes(1);
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(tab.close).not.toHaveBeenCalled();
+  });
+
+  it("aSecondGeneratePress_beforeTheBarIsHeldOnScreen_opensNoTab", async () => {
+    // Both clicks land in one batch, before the re-render disables the
+    // button, as a fast double click does: the second meets the hold.
+    await loadedAsPathologist(readyToSignOut());
+    const generate = screen.getByTestId("report-generate");
+
+    act(() => {
+      generate.click();
+      generate.click();
+    });
+
+    expect(jsonPostsTo("/reports/generate")).toHaveLength(1);
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(tab.close).not.toHaveBeenCalled();
+  });
+
+  it("cancel_closesEitherRow_andSendsNothing", async () => {
+    const { unmount } = await loadedAsPathologist(readyToSignOut());
+    await openSignOut();
+    const signOutPrimary = barButton("pathology.action.signOut");
+    fireEvent.click(
+      within(confirmGroup()).getByText(messages["common.cancel"], {
+        selector: "button",
+      }),
+    );
+    expect(confirmGroup()).toBeNull();
+    await waitFor(() => expect(signOutPrimary).toHaveFocus());
+    expect(postToOpenElisServerFullResponse).not.toHaveBeenCalled();
+    expect(openSpy).not.toHaveBeenCalled();
+    unmount();
+
+    // The reopen row.
+    await loadedAsPathologist(signedOutCase());
+    await openReopenRow();
+    fireEvent.change(document.getElementById("reopenReason"), {
+      target: { value: "Margin misreported" },
+    });
+    const reopenPrimary = barButton("pathology.action.reopen");
+    fireEvent.click(
+      within(reopenRow()).getByText(messages["common.cancel"], {
+        selector: "button",
+      }),
+    );
+    expect(reopenRow()).toBeNull();
+    await waitFor(() => expect(reopenPrimary).toHaveFocus());
+    expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+
+    // Opened again, the reason typed before is gone.
+    await openReopenRow();
+    expect(document.getElementById("reopenReason")).toHaveValue("");
+  });
+
+  it("generate_opensTheTabBeforeTheRequest_andShowsTheVersion", async () => {
+    await loadedAsPathologist(readyToSignOut());
+    const fetchesBefore = caseFetchCount();
+
+    fireEvent.click(screen.getByTestId("report-generate"));
+
+    // Inside the press, before anything is awaited.
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(jsonPostsTo("/reports/generate")).toHaveLength(1);
+    expect(openSpy.mock.invocationCallOrder[0]).toBeLessThan(
+      postToOpenElisServerJsonResponse.mock.invocationCallOrder[0],
+    );
+    const generated = {
+      id: "51",
+      version: 1,
+      type: "DRAFT",
+      state: "CURRENT",
+      generatedAt: "26/11/2026 10:00",
+      generatedBy: "Paula Path",
+    };
+    servedCase = readyToSignOut({ reports: [generated] });
+    await answerJson("/reports/generate", generated);
+
+    expect(tab.location.replace).toHaveBeenCalledWith(
+      expect.stringContaining(CASE_URL + "/reports/51/file"),
+    );
+    toastWith(
+      intl.formatMessage(
+        { id: "pathology.toast.reportGenerated" },
+        { version: 1 },
+      ),
+    );
+    expect(caseFetchCount()).toBe(fetchesBefore + 1);
+    expect(screen.getByTestId("report-row-1")).toBeInTheDocument();
+  });
+
+  it("aGenerateConflict_closesTheTab_andReloads", async () => {
+    await loadedAsPathologist(readyToSignOut());
+    fireEvent.click(screen.getByTestId("report-generate"));
+    const fetchesBefore = caseFetchCount();
+
+    await answerJson("/reports/generate", {
+      status: 409,
+      conflict: "report",
+      error: "taken",
+    });
+
+    expect(tab.close).toHaveBeenCalled();
+    expect(tab.location.replace).not.toHaveBeenCalled();
+    toastWith(messages["pathology.toast.reportConflict"]);
+    expect(caseFetchCount()).toBe(fetchesBefore + 1);
+  });
+
+  it("aBlockedPopup_stillGenerates_andSaysWhereTheVersionIs", async () => {
+    openSpy.mockImplementation(() => null);
+    await loadedAsPathologist(readyToSignOut());
+
+    fireEvent.click(screen.getByTestId("report-generate"));
+
+    expect(jsonPostsTo("/reports/generate")).toHaveLength(1);
+    await answerJson("/reports/generate", {
+      id: "51",
+      version: 2,
+      type: "DRAFT",
+      state: "CURRENT",
+    });
+    toastWith(
+      intl.formatMessage(
+        { id: "pathology.toast.reportInList" },
+        { version: 2 },
+      ),
+    );
+  });
+
+  const chooseFile = async () => {
+    const input = screen
+      .getByTestId("report-upload")
+      .querySelector('input[type="file"]');
+    const file = new File(["%PDF-1.4"], "outside.pdf", {
+      type: "application/pdf",
+    });
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [file] } });
+    });
+    await waitFor(() => expect(jsonPostsTo("/reports")).toHaveLength(1));
+  };
+
+  it("uploadAndWithdraw_goThroughTheHeldPath_andReadTheCaseBack", async () => {
+    const upload = {
+      id: "61",
+      version: 4,
+      type: "EXTERNAL",
+      state: "CURRENT",
+      generatedAt: "26/11/2026 11:00",
+      generatedBy: "",
+    };
+    await loadedAsPathologist(readyToSignOut());
+
+    await chooseFile();
+    const posted = JSON.parse(jsonPostsTo("/reports")[0][1]);
+    expect(posted.base64Image).toMatch(/^data:application\/pdf;base64,/);
+    const reads = holdCaseReads();
+    servedCase = readyToSignOut({ reports: [upload] });
+    await answerJson("/reports", upload);
+    toastWith(
+      intl.formatMessage(
+        { id: "pathology.toast.reportUploaded" },
+        { version: 4 },
+      ),
+    );
+    // Held until the rows are read back.
+    expect(screen.getByTestId("report-generate")).toBeDisabled();
+    await reads.land();
+    expect(screen.getByTestId("report-generate")).toBeEnabled();
+    expect(screen.getByTestId("report-row-4")).toBeInTheDocument();
+
+    // Withdraw asks in the row, then sends on the held path.
+    fireEvent.click(screen.getByTestId("report-withdraw-4"));
+    fireEvent.click(
+      await screen.findByText(messages["pathology.action.withdrawReport"], {
+        selector: "button[id]:not([data-testid])",
+      }),
+    );
+    expect(jsonPostsTo("/reports/61/withdraw")).toHaveLength(1);
+    servedCase = readyToSignOut({ reports: [{ ...upload, state: "VOIDED" }] });
+    await answerJson("/reports/61/withdraw", { ...upload, state: "VOIDED" });
+    toastWith(
+      intl.formatMessage(
+        { id: "pathology.toast.reportWithdrawn" },
+        { version: 4 },
+      ),
+    );
+    expect(screen.getByTestId("report-generate")).toBeDisabled();
+    await reads.land();
+    expect(
+      within(screen.getByTestId("report-row-4")).getByText(
+        messages["pathology.report.state.VOIDED"],
+      ),
+    ).toBeInTheDocument();
+
+    // A refused upload says why beside the uploader; the list is unchanged.
+    await act(async () => {
+      postToOpenElisServerJsonResponse.mockClear();
+    });
+    await chooseFile();
+    await answerJson("/reports", {
+      status: 400,
+      messageKey: "clinicalAttachment.uploadHint",
+      error: "bad file",
+    });
+    expect(
+      within(screen.getByTestId("report-upload").parentElement).getAllByText(
+        messages["clinicalAttachment.uploadHint"],
+      ).length,
+    ).toBeGreaterThan(1);
+    await reads.land();
+    expect(screen.getAllByTestId(/^report-row-/)).toHaveLength(1);
+  });
+
+  it("anUploadWithUnsavedFindings_showsTheRow_andKeepsWhatWasTyped", async () => {
+    await loadedAsPathologist(readyToSignOut());
+    fireEvent.change(document.getElementById("microscopyExam"), {
+      target: { value: "Benign naevus, margins clear" },
+    });
+    const fetchesBefore = caseFetchCount();
+
+    await chooseFile();
+    const upload = {
+      id: "61",
+      version: 1,
+      type: "EXTERNAL",
+      state: "CURRENT",
+    };
+    servedCase = readyToSignOut({ reports: [upload] });
+    await answerJson("/reports", upload);
+
+    // The list is read again on its own.
+    expect(caseFetchCount()).toBe(fetchesBefore + 1);
+    expect(screen.getByTestId("report-row-1")).toBeInTheDocument();
+    expect(document.getElementById("microscopyExam")).toHaveValue(
+      "Benign naevus, margins clear",
+    );
+    expect(
+      screen.getByText(messages["caseView.label.unsavedChanges"]),
+    ).toBeInTheDocument();
+  });
+
+  it("aReportChange_onACaseReopenedElsewhere_takesTheWholeRead_andSaysSo", async () => {
+    // The page still shows the case signed out; a colleague has reopened it.
+    await loadedAsPathologist(signedOutCase());
+    expect(barButton("pathology.action.reopen")).toBeEnabled();
+    const fetchesBefore = caseFetchCount();
+
+    await chooseFile();
+    const upload = { id: "61", version: 4, type: "EXTERNAL", state: "CURRENT" };
+    servedCase = readyToSignOut({ reports: [SIGNED_OUT_FINAL, upload] });
+    await answerJson("/reports", upload);
+
+    toastWith(messages["pathology.toast.reportConflict"]);
+    expect(caseFetchCount()).toBe(fetchesBefore + 1);
+    await waitFor(() =>
+      expect(barButton("pathology.action.signOut")).not.toBeNull(),
+    );
+    expect(barButton("pathology.action.reopen")).toBeNull();
+    expect(stageReadout()).toHaveTextContent(
+      messages["pathology.stage.underReview"],
+    );
+    expect(screen.getByTestId("report-row-4")).toBeInTheDocument();
+  });
+
+  it("aReportChange_onACaseChangedElsewhere_withUnsavedWork_refreshesOnlyTheList", async () => {
+    await loadedAsPathologist(readyToSignOut());
+    fireEvent.change(document.getElementById("microscopyExam"), {
+      target: { value: "Benign naevus, margins clear" },
+    });
+
+    await chooseFile();
+    const upload = { id: "61", version: 1, type: "EXTERNAL", state: "CURRENT" };
+    servedCase = signedOutCase({ reports: [upload] });
+    await answerJson("/reports", upload);
+
+    expect(screen.getByTestId("report-row-1")).toBeInTheDocument();
+    expect(document.getElementById("microscopyExam")).toHaveValue(
+      "Benign naevus, margins clear",
+    );
+    expect(
+      screen.getByText(messages["caseView.label.unsavedChanges"]),
+    ).toBeInTheDocument();
+    expect(barButton("pathology.action.reopen")).toBeNull();
+    expect(addNotification).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: messages["pathology.toast.reportConflict"],
+      }),
+    );
+  });
+
+  it("aBlockedPopup_atSignOut_saysTheFinalIsInTheList", async () => {
+    openSpy.mockImplementation(() => null);
+    await loadedAsPathologist(readyToSignOut());
+    await openSignOut();
+
+    confirmSignOut();
+    await waitFor(() =>
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalledTimes(1),
+    );
+    servedCase = signedOutCase();
+    await answerSave(200, { finalReport: SIGNED_OUT_FINAL });
+
+    toastWith(
+      intl.formatMessage(
+        { id: "pathology.toast.signedOutReportInList" },
+        { version: 3 },
+      ),
+    );
+    expect(addNotification).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: intl.formatMessage(
+          { id: "pathology.toast.signedOut" },
+          { version: 3 },
+        ),
+      }),
+    );
+  });
+
+  it("thePathologyScreen_neverCallsReportPrint", async () => {
+    const { postToOpenElisServerForPDF } = await import("../utils/Utils");
+    await loadedAsPathologist(readyToSignOut());
+
+    fireEvent.click(screen.getByTestId("report-generate"));
+    await answerJson("/reports/generate", {
+      id: "51",
+      version: 1,
+      type: "DRAFT",
+      state: "CURRENT",
+    });
+    await openSignOut();
+    confirmSignOut();
+    await answerSave(200, { finalReport: SIGNED_OUT_FINAL });
+
+    expect(postToOpenElisServerForPDF).not.toHaveBeenCalled();
+    const urls = [
+      ...postToOpenElisServerJsonResponse.mock.calls,
+      ...postToOpenElisServerFullResponse.mock.calls,
+      ...getFromOpenElisServer.mock.calls,
+    ].map(([url]) => url);
+    expect(urls.some((url) => /ReportPrint/.test(url))).toBe(false);
   });
 });

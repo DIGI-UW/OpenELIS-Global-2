@@ -11,9 +11,16 @@ const SEARCH_PAUSE_MS = 250;
 const INPUT_ID = "conclusion";
 const ADD_REASON_ID = "conclusion-add-diagnosis-reason";
 
-/** A diagnosis as the pathologist reads it: its code first, when it has one. */
-export const conclusionLabel = (item) =>
-  item ? (item.code ? `${item.code} ${item.value}` : item.value) : "";
+/**
+ * A diagnosis as the pathologist reads it: its code first, when it has one,
+ * and the word for a critical entry after the name (given by the caller, who
+ * holds the translation), so the mark never depends on a colour.
+ */
+export const conclusionLabel = (item, criticalWord) => {
+  if (!item) return "";
+  const name = item.code ? `${item.code} ${item.value}` : item.value;
+  return item.critical && criticalWord ? `${name} (${criticalWord})` : name;
+};
 
 /**
  * FR-13.2: the coded conclusion, searched over the whole diagnosis dictionary
@@ -32,6 +39,8 @@ const ConclusionPicker = ({
   canAddDiagnosis,
 }) => {
   const intl = useIntl();
+  const criticalWord = intl.formatMessage({ id: "common.critical" });
+  const labelOf = (item) => conclusionLabel(item, criticalWord);
   const actions = useRef(null);
   const request = useRef(null);
   const timer = useRef(null);
@@ -136,7 +145,7 @@ const ConclusionPicker = ({
           })}
           disabled={readOnly || dictionaryEmpty}
           items={readOnly ? [] : offered}
-          itemToString={conclusionLabel}
+          itemToString={labelOf}
           selectedItem={null}
           downshiftActions={actions}
           shouldFilterItem={() => true}
@@ -159,7 +168,7 @@ const ConclusionPicker = ({
       </div>
       <SelectionChips
         items={value}
-        label={conclusionLabel}
+        label={labelOf}
         onRemove={(_, position) =>
           onChange(value.filter((__, index) => index !== position))
         }

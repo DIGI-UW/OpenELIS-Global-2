@@ -2,18 +2,18 @@ import React from "react";
 import {
   Checkbox,
   FilterableMultiSelect,
+  InlineNotification,
   Stack,
   TextArea,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import MacroTextArea from "../../common/textMacro/MacroTextArea";
 import ConclusionPicker from "../ConclusionPicker";
+import { formIsCritical } from "../pathologySections";
 import SelectionChips from "../SelectionChips";
 import "../pathologyCaseView.scss";
 
 const NARRATIVE_MAX = 255;
-
-const isBlank = (text) => !text || !String(text).trim();
 
 const itemName = (item) => (item ? item.value : "");
 
@@ -33,8 +33,8 @@ const selectedFrom = (items, stored) =>
 /**
  * FR-12 to FR-13: what the pathologist read under the microscope, the
  * techniques that produced it, the coded and narrative conclusions, and the
- * two decisions that close the reading: refer for immunohistochemistry, and
- * release.
+ * decisions that close the reading: refer for immunohistochemistry, and flag
+ * the case as a critical result. Signing out is done from the action bar.
  *
  * From Ready for Pathologist on, the macroscopic description is completed
  * here and not under Grossing, so the case holds one such field at a time.
@@ -91,31 +91,24 @@ const FindingsSection = ({
     (item) => !referredIds.has(String(item.id)),
   );
 
-  // i18n-keys: pathology.locked.release*
-  //
-  // Which condition is missing, not merely that one is: a hint that names a
-  // condition the case already satisfies sends the pathologist to check a
-  // field that is already filled in (S-7.4).
-  //
-  // Whether a release would be taken is the server's answer, by the rule it
-  // refuses one on, so that reason comes first: nothing on this form changes
-  // it. A case set to Completed without a release may still be released once.
-  // The server refuses a release without both descriptions, so the box says
-  // so before the save is tried.
-  const releaseBlockedKey = !caseInfo.releasable
-    ? caseInfo.status === "COMPLETED"
-      ? "pathology.locked.caseCompleted"
-      : "pathology.error.releaseBeforeReview"
-    : isBlank(caseInfo.grossExam) || isBlank(caseInfo.microscopyExam)
-      ? "pathology.error.releaseWithoutDescriptions"
-      : !caseInfo.assignedPathologistId
-        ? "pathology.locked.releaseNoPathologist"
-        : !caseInfo.assignedTechnicianId
-          ? "pathology.locked.releaseNoTechnician"
-          : null;
+  const critical = formIsCritical(caseInfo);
 
   return (
     <Stack gap={6}>
+      {critical && (
+        <InlineNotification
+          kind="warning"
+          lowContrast
+          hideCloseButton
+          role="alert"
+          data-testid="critical-result-banner"
+          subtitle={intl.formatMessage({
+            id: caseInfo.signedOut
+              ? "pathology.banner.criticalResultSignedOut"
+              : "pathology.banner.criticalResult",
+          })}
+        />
+      )}
       <MacroTextArea
         id="grossExam"
         context="PATHOLOGY_GROSS_DESCRIPTION"
@@ -176,6 +169,15 @@ const FindingsSection = ({
         maxCount={NARRATIVE_MAX}
         value={caseInfo.conclusionText ?? ""}
         onChange={(e) => updateCase({ conclusionText: e.target.value })}
+      />
+      <Checkbox
+        id="criticalResultFlagged"
+        labelText={intl.formatMessage({ id: "pathology.label.flagCritical" })}
+        disabled={readOnly}
+        checked={Boolean(caseInfo.criticalResultFlagged)}
+        onChange={() =>
+          updateCase({ criticalResultFlagged: !caseInfo.criticalResultFlagged })
+        }
       />
       {/*
         A referral once saved is not withdrawn from this side, so the box
@@ -251,29 +253,6 @@ const FindingsSection = ({
           )}
         </div>
       )}
-      {/*
-        Rendered whether or not it can be used, and disabled with the reason
-        it cannot: a release the case is not yet ready for is a fact the
-        pathologist needs, and a control that is simply absent explains
-        nothing (S-7.4).
-      */}
-      <Checkbox
-        labelText={intl.formatMessage({ id: "pathology.label.release" })}
-        id="release"
-        disabled={readOnly || Boolean(releaseBlockedKey)}
-        title={
-          releaseBlockedKey
-            ? intl.formatMessage({ id: releaseBlockedKey })
-            : undefined
-        }
-        helperText={
-          releaseBlockedKey
-            ? intl.formatMessage({ id: releaseBlockedKey })
-            : undefined
-        }
-        checked={Boolean(caseInfo.release)}
-        onChange={() => updateCase({ release: !caseInfo.release })}
-      />
     </Stack>
   );
 };

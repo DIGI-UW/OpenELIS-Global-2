@@ -10,11 +10,19 @@ import { FormattedMessage, useIntl } from "react-intl";
 import StatusBadge from "../../caseView/StatusBadge";
 import { stageLabel } from "../pathologyStages";
 
+// The tag a move against the stage order carries, in words.
+// i18n-keys: pathology.badge.returned, pathology.badge.reopened
+const DIRECTION_BADGE_KEYS = Object.freeze({
+  RETURN: "pathology.badge.returned",
+  REOPEN: "pathology.badge.reopened",
+});
+
 /**
  * The record of who moved the case and when, read-only: the operator and the
  * time come from the session and the server clock when the case is moved,
  * so nothing here is ever an input (S-8.2). A return is marked as one in
- * words, with the reason the bench gave beside it.
+ * words, with the reason the bench gave beside it, and a reopen of a
+ * signed-out case the same way, with the pathologist's reason.
  *
  * A list of one stage's entries leaves the stage column out, since every row
  * would repeat it, and the Returned tag then sits with the entry time, the
@@ -47,11 +55,14 @@ const StageEventList = ({
   const intl = useIntl();
 
   const returned = (event) =>
-    event.direction === "RETURN" && (
-      <StatusBadge kind="partial" textKey="pathology.badge.returned" />
+    DIRECTION_BADGE_KEYS[event.direction] && (
+      <StatusBadge
+        kind="partial"
+        textKey={DIRECTION_BADGE_KEYS[event.direction]}
+      />
     );
 
-  // With the stage column left out, the reason sits with the Returned tag.
+  // With the stage column left out, the reason sits with the tag.
   const showReasonColumn = showStage;
   const label = intl.formatMessage({ id: ariaLabelKey });
 

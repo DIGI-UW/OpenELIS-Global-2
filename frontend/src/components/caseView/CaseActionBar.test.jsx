@@ -325,4 +325,39 @@ describe("CaseActionBar", () => {
     expect(getUserConfirmation).not.toHaveBeenCalled();
     expect(screen.getByTestId("pathname")).toHaveTextContent(ELSEWHERE_PATH);
   });
+
+  it("withoutCanSaveDraft_theBarShowsNoSaveDraft_andKeepsDiscard", () => {
+    const onDiscard = vi.fn();
+    renderBar({
+      dirty: true,
+      canSaveDraft: false,
+      onDiscard,
+      status: <span>Completed</span>,
+      primary: { labelKey: "pathology.action.reopen", onClick: () => {} },
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Save draft" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button")).toHaveLength(2);
+    expect(screen.getByText("Completed")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reopen case" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Discard changes" }));
+    expect(onDiscard).toHaveBeenCalledTimes(1);
+  });
+
+  it("byDefault_theBarIsAsBefore", () => {
+    renderBar({
+      primary: { labelKey: "pathology.action.signOut", onClick: () => {} },
+    });
+
+    expect(screen.getAllByRole("button")).toHaveLength(3);
+    expect(screen.getByRole("button", { name: "Save draft" })).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "Discard changes" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Sign out & finalize" }),
+    ).toBeEnabled();
+  });
 });
