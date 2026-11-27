@@ -3,6 +3,10 @@
     <system_role id="10" name="Results"
         description="enter and review results." is_grouping_role="false"
         display_key="role.results" active="1" editable="false" />
+    <system_role id="12" name="Results modifier"
+        description="Has permission to modify already entered results"
+        is_grouping_role="false" display_key="role.result.modifier" active="1"
+        editable="false" />
     <system_role id="11" name="Reception" description="intake"
         is_grouping_role="false" display_key="role.intake" active="1"
         editable="false" />
@@ -27,6 +31,6 @@
         account_disabled="N" is_admin="N" user_time_out="220"
         last_updated="2025-04-09 16:26:58" />
 
-    <system_user_role system_user_id="101" role_id="10" />
-    <system_user_role system_user_id="102" role_id="11" />
+    <system_user_role system_user_id="101" role_id="12" />
+    <system_user_role system_user_id="102" role_id="10" />
 </dataset>

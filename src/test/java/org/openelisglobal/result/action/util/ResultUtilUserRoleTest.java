@@ -35,14 +35,14 @@ public class ResultUtilUserRoleTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void userNotInRole_returnsFalseWhenUserHasResultsRole() {
+    public void userNotInRole_returnsFalseWhenUserHasResultsModifierRole() {
         MockHttpServletRequest request = requestForSystemUser(101);
         authenticateNonAdmin(request, "resultsuser");
         assertFalse(ResultUtil.userNotInRole(request));
     }
 
     @Test
-    public void userNotInRole_returnsTrueWhenUserLacksResultsRole() {
+    public void userNotInRole_returnsTrueWhenUserLacksResultsModifierRole() {
         MockHttpServletRequest request = requestForSystemUser(102);
         authenticateNonAdmin(request, "noresultsuser");
         assertTrue(ResultUtil.userNotInRole(request));
