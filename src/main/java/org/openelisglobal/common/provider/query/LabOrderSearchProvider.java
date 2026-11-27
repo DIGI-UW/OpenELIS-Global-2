@@ -535,12 +535,15 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
                     "panel matching loinc is: " + panel.getDescription());
 
             if (typeOfSample == null) {
-                typeOfSample = typeOfSampleService.getTypeOfSampleForPanelId(panel.getId()).get(0);
-                LogEvent.logDebug(this.getClass().getSimpleName(), "addToTestOrPanel",
-                        "typeOfSample matching for panel is: " + typeOfSample.getDescription());
-
+                List<TypeOfSample> panelTypes = typeOfSampleService.getTypeOfSampleForPanelId(panel.getId());
+                if (panelTypes != null && !panelTypes.isEmpty()) {
+                    typeOfSample = panelTypes.get(0);
+                    LogEvent.logDebug(this.getClass().getSimpleName(), "addToTestOrPanel",
+                            "typeOfSample matching for panel is: " + typeOfSample.getDescription());
+                }
             }
-            panels.add(new Request(panel.getPanelName(), loinc, typeOfSample.getLocalizedName()));
+            panels.add(new Request(panel.getPanelName(), loinc,
+                    typeOfSample == null ? "" : typeOfSample.getLocalizedName()));
         }
 
     }
@@ -625,6 +628,9 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
 
             if (panel != null) {
                 List<TypeOfSample> typeOfSamples = typeOfSampleService.getTypeOfSampleForPanelId(panel.getId());
+                if (typeOfSamples == null || typeOfSamples.isEmpty()) {
+                    continue;
+                }
                 boolean hasSingleSampleType = typeOfSamples.size() == 1;
                 TypeOfSample singleTypeOfSample = typeOfSamples.get(0);
 
