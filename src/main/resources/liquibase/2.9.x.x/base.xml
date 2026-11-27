@@ -12,5 +12,9 @@
   <include relativeToChangelogFile="true" file="006-pathology-grossing.xml"/>
   <include relativeToChangelogFile="true" file="007-pathology-stage-event.xml"/>
   <include relativeToChangelogFile="true" file="008-pathology-slide-label-verification.xml"/>
+  <include relativeToChangelogFile="true" file="009-pathology-slide-staining-qc.xml"/>
+  <include relativeToChangelogFile="true" file="010-pathology-request-bench-work.xml"/>
+  <include relativeToChangelogFile="true" file="011-pathology-review-notes.xml"/>
+  <include relativeToChangelogFile="true" file="013-pathology-report-versions.xml"/>
 
 </databaseChangeLog>

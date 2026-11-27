@@ -1,8 +1,12 @@
 import { createIntl } from "react-intl";
 import messages from "../../languages/en.json";
-import { PATHOLOGY_STAGES } from "./pathologyStages";
+import { PATHOLOGY_STAGES, stageDisplayKey } from "./pathologyStages";
 import { SECTION_STATE } from "../caseView/sectionState";
-import { embeddingSummary } from "./pathologyRows";
+import {
+  coverslipSummary,
+  embeddingSummary,
+  stainingSummary,
+} from "./pathologyRows";
 import {
   PATHOLOGY_SECTIONS,
   grossingComplete,
@@ -11,6 +15,14 @@ import {
   stageBadgeKind,
   sectionBadge,
   openRequestNames,
+  openRequests,
+  openRequestsLabel,
+  requestActionLock,
+  requestDraftBlockedReason,
+  requestDraftBody,
+  requestStatusBody,
+  REVIEW_SECTION_ID,
+  reviewTakesRequests,
   deriveCaseSections,
   railCurrentIndex,
   deriveRailItems,
@@ -27,6 +39,24 @@ import {
   switchedOn,
   verifyLabelLock,
   sectionIdOfStage,
+  sectionHoldsRecords,
+  batchHold,
+  redoNotice,
+  slideWorkLock,
+  slideWorkReading,
+  slideWorkStatement,
+  slideWorkSummaries,
+  COVERSLIPPING_SECTION_ID,
+  STAINING_SECTION_ID,
+  grossExamPlace,
+  slidesReceived,
+  neverCheckedSlides,
+  primaryAction,
+  signOutBlockedReason,
+  currentReport,
+  currentGeneratedReport,
+  reportSummary,
+  formIsCritical,
 } from "./pathologySections";
 
 const intl = createIntl({ locale: "en", messages });
@@ -198,19 +228,88 @@ describe("deriveCaseSections at GROSSING for a technician", () => {
 });
 
 describe("deriveCaseSections and pathologist-only sections", () => {
-  it("opens review and findings for a pathologist once the case reaches ready for pathologist", () => {
+  const REVIEW = "pathology-section-review";
+  const FINDINGS = "pathology-section-findings";
+  const stateOf = (status, isPathologist, caseFields = {}) => {
     const sections = deriveCaseSections({
       intl,
-      status: "READY_PATHOLOGIST",
+      status,
+      isPathologist,
+      ...caseFields,
+    });
+    return {
+      review: byId(sections, REVIEW),
+      findings: byId(sections, FINDINGS),
+    };
+  };
+  const awaiting = (stageId) =>
+    intl.formatMessage({ id: stageDisplayKey(stageId) });
+
+  it("the rail stays on Under Pathologist Review while the case is read", () => {
+    const sections = deriveCaseSections({
+      intl,
+      status: "UNDER_REVIEW",
       isPathologist: true,
+      readingStage: "UNDER_REVIEW",
+      findingsOpen: true,
     });
 
-    expect(byId(sections, "pathology-section-review").state).toBe(
-      SECTION_STATE.OPEN,
+    expect(sections[railCurrentIndex(sections, "UNDER_REVIEW")].id).toBe(
+      REVIEW,
     );
-    expect(byId(sections, "pathology-section-findings").state).toBe(
-      SECTION_STATE.OPEN,
+    expect(sectionIdOfStage("UNDER_REVIEW")).toBe(REVIEW);
+  });
+
+  it("a case on the bench names the stage that opens Findings: the reading stage the case sends (S1, S2)", () => {
+    // S1: Under Pathologist Review on.
+    const on = stateOf("STAINING", true, { readingStage: "UNDER_REVIEW" });
+    expect(on.findings.state).toBe(SECTION_STATE.DISABLED);
+    expect(on.findings.lockedHintKey).toBe("caseView.locked.awaitingStage");
+    expect(on.findings.lockedHintValues.stage).toBe(awaiting("UNDER_REVIEW"));
+    // The review keeps its own gate.
+    expect(on.review.lockedHintValues.stage).toBe(
+      awaiting("READY_PATHOLOGIST"),
     );
+
+    // S2: switched off, and a case that sends no reading stage at all.
+    [{ readingStage: "READY_PATHOLOGIST" }, {}].forEach((caseFields) => {
+      const off = stateOf("STAINING", true, caseFields);
+      expect(off.findings.state).toBe(SECTION_STATE.DISABLED);
+      expect(off.findings.lockedHintValues.stage).toBe(
+        awaiting("READY_PATHOLOGIST"),
+      );
+    });
+  });
+
+  it('in the queue Findings stays locked: a pathologist reads "Press Begin review to write the findings.", anyone else the stage hint; Review is open for a pathologist and read-only for anyone else (S3, S4)', () => {
+    const queue = { readingStage: "UNDER_REVIEW", findingsOpen: false };
+
+    const pathologist = stateOf("READY_PATHOLOGIST", true, queue);
+    expect(pathologist.findings.state).toBe(SECTION_STATE.DISABLED);
+    expect(pathologist.findings.lockedHintKey).toBe(
+      "pathology.locked.beginReviewFirst",
+    );
+    expect(pathologist.review.state).toBe(SECTION_STATE.OPEN);
+
+    const technician = stateOf("READY_PATHOLOGIST", false, queue);
+    expect(technician.findings.state).toBe(SECTION_STATE.DISABLED);
+    expect(technician.findings.lockedHintKey).toBe(
+      "caseView.locked.awaitingStage",
+    );
+    expect(technician.findings.lockedHintValues.stage).toBe(
+      awaiting("UNDER_REVIEW"),
+    );
+    expect(technician.review.state).toBe(SECTION_STATE.READ_ONLY);
+  });
+
+  it("where review is switched off, Findings opens in the queue (S5)", () => {
+    const { review, findings } = stateOf("READY_PATHOLOGIST", true, {
+      readingStage: "READY_PATHOLOGIST",
+      findingsOpen: true,
+    });
+
+    expect(review.state).toBe(SECTION_STATE.OPEN);
+    expect(findings.state).toBe(SECTION_STATE.OPEN);
   });
 
   it("leaves the same two sections read-only, not disabled, for anyone who is not the pathologist", () => {
@@ -218,65 +317,136 @@ describe("deriveCaseSections and pathologist-only sections", () => {
       intl,
       status: "READY_PATHOLOGIST",
       isPathologist: false,
+      readingStage: "READY_PATHOLOGIST",
+      findingsOpen: true,
     });
 
-    expect(byId(sections, "pathology-section-review").state).toBe(
-      SECTION_STATE.READ_ONLY,
-    );
-    expect(byId(sections, "pathology-section-findings").state).toBe(
-      SECTION_STATE.READ_ONLY,
-    );
+    expect(byId(sections, REVIEW).state).toBe(SECTION_STATE.READ_ONLY);
+    expect(byId(sections, FINDINGS).state).toBe(SECTION_STATE.READ_ONLY);
   });
 
-  it("keeps review and findings open, not complete, while a case past ready for pathologist is still under review", () => {
-    const sections = deriveCaseSections({
-      intl,
-      status: "UNDER_REVIEW",
-      isPathologist: true,
-    });
+  it("under review both are open for a pathologist and read-only for anyone else (S6, S7)", () => {
+    ["UNDER_REVIEW", "READY_PATHOLOGIST"].forEach((readingStage) => {
+      const reading = { readingStage, findingsOpen: true };
+      const pathologist = stateOf("UNDER_REVIEW", true, reading);
+      expect(pathologist.review.state).toBe(SECTION_STATE.OPEN);
+      expect(pathologist.findings.state).toBe(SECTION_STATE.OPEN);
 
-    expect(byId(sections, "pathology-section-review").state).toBe(
-      SECTION_STATE.OPEN,
-    );
-    expect(byId(sections, "pathology-section-findings").state).toBe(
-      SECTION_STATE.OPEN,
-    );
-    expect(byId(sections, "pathology-section-grossing").state).toBe(
-      SECTION_STATE.COMPLETE,
-    );
+      const technician = stateOf("UNDER_REVIEW", false, reading);
+      expect(technician.review.state).toBe(SECTION_STATE.READ_ONLY);
+      expect(technician.findings.state).toBe(SECTION_STATE.READ_ONLY);
+    });
+    expect(
+      byId(
+        deriveCaseSections({
+          intl,
+          status: "UNDER_REVIEW",
+          isPathologist: true,
+          readingStage: "UNDER_REVIEW",
+          findingsOpen: true,
+        }),
+        "pathology-section-grossing",
+      ).state,
+    ).toBe(SECTION_STATE.COMPLETE);
   });
 
-  it("marks review, findings and grossing complete for a pathologist once the case is complete", () => {
-    const sections = deriveCaseSections({
-      intl,
-      status: "COMPLETED",
-      isPathologist: true,
+  it("once signed out both are read-only for everyone (S8)", () => {
+    [true, false].forEach((isPathologist) => {
+      const { review, findings } = stateOf("COMPLETED", isPathologist, {
+        readingStage: "UNDER_REVIEW",
+        findingsOpen: false,
+      });
+      expect(review.state).toBe(SECTION_STATE.READ_ONLY);
+      expect(findings.state).toBe(SECTION_STATE.READ_ONLY);
     });
-
-    expect(byId(sections, "pathology-section-review").state).toBe(
-      SECTION_STATE.COMPLETE,
-    );
-    expect(byId(sections, "pathology-section-findings").state).toBe(
-      SECTION_STATE.COMPLETE,
-    );
-    expect(byId(sections, "pathology-section-grossing").state).toBe(
-      SECTION_STATE.COMPLETE,
-    );
   });
 
-  it("leaves review and findings read-only, not complete, for a technician once the case is complete", () => {
-    const sections = deriveCaseSections({
-      intl,
-      status: "COMPLETED",
-      isPathologist: false,
-    });
+  it("a completed case that was never released keeps both editable for a pathologist (S9)", () => {
+    const legacy = { readingStage: "UNDER_REVIEW", findingsOpen: true };
 
-    expect(byId(sections, "pathology-section-review").state).toBe(
-      SECTION_STATE.READ_ONLY,
+    const pathologist = stateOf("COMPLETED", true, legacy);
+    expect(pathologist.review.state).toBe(SECTION_STATE.COMPLETE);
+    expect(pathologist.findings.state).toBe(SECTION_STATE.COMPLETE);
+
+    const technician = stateOf("COMPLETED", false, legacy);
+    expect(technician.review.state).toBe(SECTION_STATE.READ_ONLY);
+    expect(technician.findings.state).toBe(SECTION_STATE.READ_ONLY);
+  });
+});
+
+describe("Begin review and the reading's helpers", () => {
+  it("the move to Under Pathologist Review is labelled Begin review; `grossExamPlace`, `slidesReceived` and `neverCheckedSlides` answer by the rows", () => {
+    expect(advanceLabelKey("UNDER_REVIEW")).toBe(
+      "pathology.action.beginReview",
     );
-    expect(byId(sections, "pathology-section-findings").state).toBe(
-      SECTION_STATE.READ_ONLY,
+
+    ["ACCESSIONED", "GROSSING", "COVERSLIPPING"].forEach((status) =>
+      expect(grossExamPlace(status)).toBe("grossing"),
     );
+    ["READY_PATHOLOGIST", "UNDER_REVIEW", "COMPLETED"].forEach((status) =>
+      expect(grossExamPlace(status)).toBe("findings"),
+    );
+
+    const caseInfo = {
+      blocks: [
+        { id: 1, designation: "A1", active: true },
+        { id: 2, designation: "A2", active: true },
+      ],
+      slides: [
+        {
+          id: 5,
+          designation: "1",
+          blockId: 1,
+          active: true,
+          stainId: "31",
+          stainStatus: "STAINED",
+          coverslipQc: "PASS",
+        },
+        // Retired: left out.
+        { id: 6, designation: "2", blockId: 1, active: false, stainId: "31" },
+        // In use, never checked, nothing recorded.
+        { id: 7, designation: "1", blockId: 2, active: true, stainId: "32" },
+        // Cut before slides named their block: no label to check.
+        { id: 8, designation: "9", blockId: null, active: true },
+      ],
+      stainNames: { 31: "H&E", 32: "PAS" },
+      labelVerifications: { 5: { verifiedAt: "x", verifiedBy: "y" } },
+    };
+
+    expect(slidesReceived(caseInfo, intl)).toEqual([
+      {
+        id: 5,
+        name: "A1.1",
+        stain: "H&E",
+        blockId: 1,
+        stained: true,
+        coverslipQc: "PASS",
+      },
+      {
+        id: 7,
+        name: "A2.1",
+        stain: "PAS",
+        blockId: 2,
+        stained: false,
+        coverslipQc: null,
+      },
+      {
+        id: 8,
+        name: "9",
+        stain: messages["common.notRecorded"],
+        blockId: null,
+        stained: false,
+        coverslipQc: null,
+      },
+    ]);
+    expect(neverCheckedSlides(caseInfo)).toEqual(["A2.1"]);
+    expect(
+      neverCheckedSlides({
+        ...caseInfo,
+        labelVerifications: { 5: {}, 7: {} },
+      }),
+    ).toEqual([]);
+    expect(slidesReceived({}, intl)).toEqual([]);
   });
 });
 
@@ -300,7 +470,7 @@ describe("a stage a laboratory has switched off", () => {
     const railItems = deriveRailItems(sections, {
       intl,
       status: "STAINING",
-      reportCount: 0,
+      hasCurrentReport: false,
       openRequestNames: [],
     });
     const coverslippingItem = railItems.find(
@@ -332,7 +502,7 @@ describe("a stage a laboratory has switched off", () => {
     const railItems = deriveRailItems(sections, {
       intl,
       status: "COVERSLIPPING",
-      reportCount: 0,
+      hasCurrentReport: false,
       openRequestNames: [],
     });
     const coverslippingItem = railItems.find(
@@ -365,7 +535,7 @@ describe("deriveRailItems", () => {
     const items = deriveRailItems(sections, {
       intl,
       status: "MICROTOMY",
-      reportCount: 0,
+      hasCurrentReport: false,
       openRequestNames: [],
       caseInfo: grossed,
     });
@@ -376,7 +546,7 @@ describe("deriveRailItems", () => {
     const itemsWithAReport = deriveRailItems(sections, {
       intl,
       status: "MICROTOMY",
-      reportCount: 2,
+      hasCurrentReport: true,
       openRequestNames: [],
     });
     const reportsItem = itemsWithAReport.find(
@@ -400,7 +570,7 @@ describe("deriveRailItems", () => {
       deriveRailItems(sections, {
         intl,
         status: "MICROTOMY",
-        reportCount: 0,
+        hasCurrentReport: false,
         openRequestNames: [],
         caseInfo,
       }).find((item) => item.id === "pathology-section-grossing");
@@ -428,7 +598,7 @@ describe("deriveRailItems", () => {
       deriveRailItems(sections, {
         intl,
         status: "READY_PATHOLOGIST",
-        reportCount: 0,
+        hasCurrentReport: false,
         openRequestNames: [],
         caseInfo,
       }).find((item) => item.id === "pathology-section-microtomy");
@@ -447,7 +617,7 @@ describe("deriveRailItems", () => {
     const withRequests = deriveRailItems(sections, {
       intl,
       status: "READY_PATHOLOGIST",
-      reportCount: 0,
+      hasCurrentReport: false,
       openRequestNames: ["Recut", "Extra levels"],
     });
     const reviewItem = withRequests.find(
@@ -463,7 +633,7 @@ describe("deriveRailItems", () => {
     const withoutRequests = deriveRailItems(sections, {
       intl,
       status: "READY_PATHOLOGIST",
-      reportCount: 0,
+      hasCurrentReport: false,
       openRequestNames: [],
     });
     const reviewItemWithNoPending = withoutRequests.find(
@@ -487,7 +657,7 @@ describe("deriveRailItems", () => {
       deriveRailItems(sections, {
         intl,
         status: "READY_PATHOLOGIST",
-        reportCount: 0,
+        hasCurrentReport: false,
         openRequestNames: names,
       }).find((item) => item.id === "pathology-section-review");
 
@@ -523,13 +693,24 @@ describe("deriveRailItems", () => {
 describe("openRequestNames", () => {
   it("keeps the open requests in their original order and drops the closed ones", () => {
     const requests = [
-      { id: 1, value: "Recut", status: "OPENED" },
-      { id: 2, value: "Extra levels", status: "OPENED" },
-      { id: 3, value: "Special stain", status: "COMPLETED" },
-      { id: 4, value: "Deeper section", status: "CANCELLED" },
+      { id: 1, instruction: "Recut", status: "OPENED" },
+      { id: 2, instruction: "Extra levels", status: "OPENED" },
+      { id: 3, instruction: "Special stain", status: "COMPLETED" },
+      { id: 4, instruction: "Deeper section", status: "CANCELLED" },
     ];
 
     expect(openRequestNames(requests)).toEqual(["Recut", "Extra levels"]);
+    expect(openRequests(requests).map((request) => request.id)).toEqual([1, 2]);
+  });
+
+  // The case read names a request by its instruction; the old dictionary
+  // row's `value` is no longer served, so reading it would name nothing.
+  it("names a request by its instruction, not by the old dictionary value", () => {
+    expect(
+      openRequestNames([
+        { id: 1, value: "Old", instruction: "Recut", status: "OPENED" },
+      ]),
+    ).toEqual(["Recut"]);
   });
 
   // The server counts a request as open only when it says OPENED, and the
@@ -538,15 +719,51 @@ describe("openRequestNames", () => {
   it("counts a request with no status at all as closed, not as open", () => {
     expect(
       openRequestNames([
-        { id: 1, value: "Unstamped", status: null },
-        { id: 2, value: "Also unstamped" },
-        { id: 3, value: "Recut", status: "OPENED" },
+        { id: 1, instruction: "Unstamped", status: null },
+        { id: 2, instruction: "Also unstamped" },
+        { id: 3, instruction: "Recut", status: "OPENED" },
       ]),
     ).toEqual(["Recut"]);
   });
 
   it("returns nothing for a case with no requests array at all", () => {
     expect(openRequestNames(undefined)).toEqual([]);
+    expect(openRequests(undefined)).toEqual([]);
+  });
+});
+
+describe("openRequestsLabel, for instructions written as sentences", () => {
+  const long =
+    "Cut three deeper levels through block A2 and stain each with H&E";
+
+  // An instruction is free text up to 255 characters, and the rail step has
+  // two lines; the step names it short and the title names it whole.
+  it("cuts a long instruction to forty characters and an ellipsis in the visible label, and keeps it whole in the title", () => {
+    const label = openRequestsLabel(intl, [long, "Recut"]);
+
+    expect(label.visible).toBe(
+      intl.formatMessage(
+        { id: "pathology.badge.openRequests" },
+        { names: long.slice(0, 40) + "…, Recut" },
+      ),
+    );
+    expect(label.full).toBe(
+      intl.formatMessage(
+        { id: "pathology.badge.openRequests" },
+        { names: long + ", Recut" },
+      ),
+    );
+  });
+
+  it("leaves an instruction of forty characters or fewer as it is", () => {
+    const forty = "x".repeat(40);
+
+    expect(openRequestsLabel(intl, [forty]).visible).toBe(
+      intl.formatMessage(
+        { id: "pathology.badge.openRequests" },
+        { names: forty },
+      ),
+    );
   });
 });
 
@@ -657,24 +874,69 @@ describe("sectionBadge", () => {
 
   // A signed-out case with a recut still outstanding is not finished, so the
   // header has to say the outstanding thing rather than the reassuring one.
-  it("says a completed review is still outstanding when a request is open on it", () => {
-    const review = byId(sectionsAt("COMPLETED"), "pathology-section-review");
+  // The case was never released, the one signed-out case whose review the
+  // pathologist still holds (S9).
+  it("says a signed-out review is still outstanding when a request is open on it", () => {
+    const review = byId(
+      deriveCaseSections({
+        intl,
+        status: "COMPLETED",
+        isPathologist: true,
+        requestCount: 1,
+        findingsOpen: true,
+      }),
+      "pathology-section-review",
+    );
 
     expect(review.state).toBe(SECTION_STATE.COMPLETE);
     expect(sectionBadge(review, { openRequestCount: 1 }).kind).toBe("pending");
   });
 
-  // The header has one badge slot, and for someone who cannot act on the
-  // case, being unable to act on it is the more useful of the two facts. The
-  // requests are still named on the rail and counted in the summary.
-  it("leaves the read-only marker in place on a section the viewer cannot edit, however many requests are open", () => {
+  // The bench works the requests from a read-only review, so the count has to
+  // be on the header it looks at; before, the read-only return came first and
+  // the header said only Read only.
+  it.each([
+    ["at a bench stage", "MICROTOMY", true],
+    ["for someone other than the pathologist", "READY_PATHOLOGIST", false],
+  ])(
+    "counts the open requests on a review in bench mode %s",
+    (_label, status, isPathologist) => {
+      const review = byId(
+        deriveCaseSections({ intl, status, isPathologist, requestCount: 2 }),
+        "pathology-section-review",
+      );
+
+      expect(review.benchRequests).toBe(true);
+      expect(sectionBadge(review, { openRequestCount: 2 })).toEqual({
+        kind: "pending",
+        textKey: "pathology.badge.openRequestCount",
+        values: { count: 2 },
+      });
+    },
+  );
+
+  // With nothing open, a read-only review leaves the slot to the shell's own
+  // Read only marker.
+  it("leaves the read-only marker in place on a review with no open request", () => {
     const review = byId(
       sectionsAt("READY_PATHOLOGIST", false),
       "pathology-section-review",
     );
 
     expect(review.state).toBe(SECTION_STATE.READ_ONLY);
-    expect(sectionBadge(review, { openRequestCount: 2 })).toBeNull();
+    expect(sectionBadge(review, { openRequestCount: 0 })).toBeNull();
+  });
+
+  // The rule moved ahead of the read-only return for the review only: any
+  // other read-only section still leaves the slot to the shell.
+  it("leaves the read-only marker on a read-only findings section however many requests are open", () => {
+    const findings = byId(
+      sectionsAt("READY_PATHOLOGIST", false),
+      "pathology-section-findings",
+    );
+
+    expect(findings.state).toBe(SECTION_STATE.READ_ONLY);
+    expect(sectionBadge(findings, { openRequestCount: 2 })).toBeNull();
   });
 
   it("badges a section that is neither complete nor waiting on a request with nothing", () => {
@@ -785,7 +1047,7 @@ describe("a status this build does not recognize", () => {
     const items = deriveRailItems(sections, {
       intl,
       status,
-      reportCount: 0,
+      hasCurrentReport: false,
       openRequestNames: [],
     });
     expect(items.some((item) => item.complete)).toBe(false);
@@ -853,7 +1115,7 @@ describe("counting badges over rows in use", () => {
       deriveRailItems(sections, {
         intl,
         status: "READY_PATHOLOGIST",
-        reportCount: 0,
+        hasCurrentReport: false,
         openRequestNames: [],
         caseInfo: { slides },
       }).find((item) => item.id === "pathology-section-microtomy");
@@ -880,7 +1142,7 @@ describe("decalcification and the grossing flag", () => {
     deriveRailItems(sections, {
       intl,
       status,
-      reportCount: 0,
+      hasCurrentReport: false,
       openRequestNames: [],
     }).find((item) => item.id === DECALCIFICATION);
 
@@ -1044,7 +1306,7 @@ describe("embedding, read from the cassettes", () => {
       {
         intl,
         status,
-        reportCount: 0,
+        hasCurrentReport: false,
         openRequestNames: [],
         caseInfo: { blocks },
       },
@@ -1242,8 +1504,8 @@ describe("advanceLabelKey", () => {
   });
 
   it("labels nothing an advance never reaches", () => {
-    ["ACCESSIONED", "UNDER_REVIEW", "COMPLETED", "SOMETHING_NEW"].forEach(
-      (stageId) => expect(advanceLabelKey(stageId)).toBeNull(),
+    ["ACCESSIONED", "COMPLETED", "SOMETHING_NEW"].forEach((stageId) =>
+      expect(advanceLabelKey(stageId)).toBeNull(),
     );
   });
 });
@@ -1510,10 +1772,15 @@ describe("advanceBlockedReason", () => {
     });
 
     it("holds no other stage for an unchecked label", () => {
+      // Stained, so staining's own rule has nothing to say about them.
+      const stained = slides.map((slide) => ({
+        ...slide,
+        stainStatus: "STAINED",
+      }));
       expect(
         advanceBlockedReason(
           intl,
-          { blocks, slides },
+          { blocks, slides: stained },
           { storedStatus: "STAINING" },
         ),
       ).toBe(null);
@@ -1532,7 +1799,7 @@ describe("advanceBlockedReason", () => {
       advanceBlockedReason(
         intl,
         { grossExam: "", slides: [] },
-        { storedStatus: "STAINING" },
+        { storedStatus: "PROCESSING" },
       ),
     ).toBe(null);
   });
@@ -1748,7 +2015,7 @@ describe("a stage the laboratory stopped tracking, with rows on record", () => {
     const railItem = deriveRailItems(sections, {
       intl,
       status: "STAINING",
-      reportCount: 0,
+      hasCurrentReport: false,
       openRequestNames: [],
       caseInfo: { slides: [{ id: "1" }] },
     }).find((item) => item.id === MICROTOMY);
@@ -1801,5 +2068,1159 @@ describe("sectionIdOfStage", () => {
     expect(sectionIdOfStage("UNDER_REVIEW")).toBe("pathology-section-review");
     expect(sectionIdOfStage("COMPLETED")).toBe("pathology-section-reports");
     expect(sectionIdOfStage("SOMETHING_NEW")).toBeNull();
+  });
+});
+
+// FR-8: staining and coverslipping, read from the slides. Three slides on
+// two blocks, so every rule below names them block first ("A1.1").
+const slideWorkBlocks = [
+  { id: 1, designation: "A1", cassetteState: "BLOCK", active: true },
+  { id: 2, designation: "A2", cassetteState: "BLOCK", active: true },
+];
+const workSlide = (id, designation, blockId, overrides = {}) => ({
+  id,
+  designation,
+  blockId,
+  stainId: "31",
+  active: true,
+  ...overrides,
+});
+
+describe("advanceBlockedReason at staining and coverslipping (FR-8)", () => {
+  const atStaining = (slides, options = {}) =>
+    advanceBlockedReason(
+      intl,
+      { blocks: slideWorkBlocks, slides },
+      { storedStatus: "STAINING", ...options },
+    );
+  const atCoverslipping = (slides, options = {}) =>
+    advanceBlockedReason(
+      intl,
+      { blocks: slideWorkBlocks, slides },
+      { storedStatus: "COVERSLIPPING", ...options },
+    );
+
+  it("holds staining back until every slide in use is stained, naming the ones that are not", () => {
+    const blocked = atStaining([
+      workSlide(5, "1", 1, { stainStatus: "STAINED" }),
+      workSlide(6, "2", 1),
+      workSlide(7, "1", 2, { stainStatus: "UNSATISFACTORY" }),
+    ]);
+
+    expect(blocked.key).toBe("pathology.locked.stainingIncomplete");
+    expect(intl.formatMessage({ id: blocked.key }, blocked.values)).toContain(
+      "A1.2, A2.1",
+    );
+  });
+
+  it("names the slides that hold the primary in the order the case lists them", () => {
+    const blocked = atCoverslipping([
+      workSlide(7, "1", 2, { stainStatus: "STAINED" }),
+      workSlide(5, "1", 1, { stainStatus: "STAINED" }),
+    ]);
+
+    expect(intl.formatMessage({ id: blocked.key }, blocked.values)).toContain(
+      "A2.1, A1.1",
+    );
+  });
+
+  it("lets a case with every slide in use stained leave staining", () => {
+    expect(
+      atStaining([
+        workSlide(5, "1", 1, { stainStatus: "STAINED" }),
+        workSlide(6, "2", 1, { active: false }),
+      ]),
+    ).toBe(null);
+  });
+
+  it("holds either stage with no slide in use as microtomy holds it, so retiring every slide does not open the gate", () => {
+    const retired = [workSlide(5, "1", 1, { active: false })];
+
+    expect(atStaining(retired)).toEqual({
+      key: "pathology.locked.microtomyIncomplete",
+    });
+    expect(atCoverslipping([])).toEqual({
+      key: "pathology.locked.microtomyIncomplete",
+    });
+  });
+
+  it("holds coverslipping back until every slide passed QC, naming a failed and an unchecked one", () => {
+    const blocked = atCoverslipping([
+      workSlide(5, "1", 1, { stainStatus: "STAINED", coverslipQc: "PASS" }),
+      workSlide(6, "2", 1, { stainStatus: "STAINED", coverslipQc: "FAIL" }),
+      workSlide(7, "1", 2, { stainStatus: "STAINED" }),
+    ]);
+
+    expect(blocked.key).toBe("pathology.locked.coverslipQcIncomplete");
+    expect(intl.formatMessage({ id: blocked.key }, blocked.values)).toContain(
+      "A1.2, A2.1",
+    );
+  });
+
+  it("asks a passed slide to read Stained too, unless the laboratory does not track staining", () => {
+    const passedUnstained = [workSlide(5, "1", 1, { coverslipQc: "PASS" })];
+
+    expect(atCoverslipping(passedUnstained)?.key).toBe(
+      "pathology.locked.coverslipQcIncomplete",
+    );
+    expect(
+      atCoverslipping(passedUnstained, {
+        configurationProperties: {
+          PATHOLOGY_STAGE_STAINING_ENABLED: "false",
+        },
+      }),
+    ).toBe(null);
+  });
+
+  it("says a request in flight and then unsaved work before the slides", () => {
+    const pending = [workSlide(5, "1", 1)];
+
+    expect(atStaining(pending, { moving: true }).key).toBe(
+      "pathology.locked.requestInFlight",
+    );
+    expect(atStaining(pending, { dirty: true }).key).toBe(
+      "pathology.locked.saveBeforeTransition",
+    );
+  });
+
+  it("holds no other stage for an unstained or unchecked slide", () => {
+    expect(
+      advanceBlockedReason(
+        intl,
+        { blocks: slideWorkBlocks, slides: [workSlide(5, "1", 1)] },
+        { storedStatus: "PROCESSING" },
+      ),
+    ).toBe(null);
+  });
+});
+
+describe("slideWorkLock", () => {
+  const stained = workSlide(5, "1", 1, { stainStatus: "STAINED" });
+  const pending = workSlide(6, "2", 1);
+  const unstainedNoStain = workSlide(7, "3", 1, { stainId: null });
+
+  it.each([
+    [{ status: "COMPLETED" }, "pathology.locked.caseCompleted"],
+    [{ status: "READY_PATHOLOGIST" }, "pathology.locked.slideWorkAfterBench"],
+    [{ status: "UNDER_REVIEW" }, "pathology.locked.slideWorkAfterBench"],
+    [{ status: "STAINING", saving: true }, "pathology.locked.requestInFlight"],
+    [{ status: "STAINING", moving: true }, "pathology.locked.requestInFlight"],
+    [{ status: "STAINING", dirty: true }, "pathology.locked.saveBeforeMarking"],
+  ])("holds the whole section with %o and says why", (state, reasonKey) => {
+    const lock = { disabled: true, reasonKey, own: false };
+    expect(
+      slideWorkLock({ ...state, action: "stained", slide: pending }),
+    ).toEqual(lock);
+    expect(slideWorkLock(state)).toEqual(lock);
+  });
+
+  it("takes marks at staining and coverslipping, the stages the bench still owes them", () => {
+    ["STAINING", "COVERSLIPPING"].forEach((status) => {
+      expect(
+        slideWorkLock({ status, action: "unsatisfactory", slide: pending }),
+      ).toEqual({ disabled: false, reasonKey: null, own: false });
+    });
+  });
+
+  it("says past the bench before unsaved work, since saving does not change it", () => {
+    expect(
+      slideWorkLock({ status: "READY_PATHOLOGIST", dirty: true }).reasonKey,
+    ).toBe("pathology.locked.slideWorkAfterBench");
+  });
+
+  it("holds Mark stained on a slide with no stain saved as the row's own reason, and nothing else on it", () => {
+    expect(
+      slideWorkLock({
+        status: "STAINING",
+        action: "stained",
+        slide: unstainedNoStain,
+      }),
+    ).toEqual({
+      disabled: true,
+      reasonKey: "pathology.locked.stainMissing",
+      own: true,
+    });
+    expect(
+      slideWorkLock({
+        status: "STAINING",
+        action: "unsatisfactory",
+        slide: unstainedNoStain,
+      }).disabled,
+    ).toBe(false);
+  });
+
+  it("holds Pass and Fail on an unstained slide where staining is tracked, and not where it is not", () => {
+    ["pass", "fail"].forEach((action) => {
+      expect(
+        slideWorkLock({ status: "COVERSLIPPING", action, slide: pending }),
+      ).toEqual({
+        disabled: true,
+        reasonKey: "pathology.locked.qcBeforeStain",
+        own: true,
+      });
+      expect(
+        slideWorkLock({
+          status: "COVERSLIPPING",
+          action,
+          slide: pending,
+          stainingTracked: false,
+        }).disabled,
+      ).toBe(false);
+      expect(
+        slideWorkLock({ status: "COVERSLIPPING", action, slide: stained })
+          .disabled,
+      ).toBe(false);
+    });
+  });
+
+  it("says the section's reason before the slide's own", () => {
+    expect(
+      slideWorkLock({
+        status: "STAINING",
+        dirty: true,
+        action: "stained",
+        slide: unstainedNoStain,
+      }).reasonKey,
+    ).toBe("pathology.locked.saveBeforeMarking");
+  });
+});
+
+describe("batchHold", () => {
+  const stained = workSlide(5, "1", 1, { stainStatus: "STAINED" });
+  const pending = workSlide(6, "2", 1);
+  const unstainedNoStain = workSlide(7, "1", 2, { stainId: null });
+
+  it("names the selected slides a batch cannot be applied to, by the row's own rule", () => {
+    expect(
+      batchHold(
+        slideWorkBlocks,
+        [stained, pending, unstainedNoStain],
+        "stained",
+      ),
+    ).toEqual({
+      key: "pathology.locked.stainMissingFor",
+      values: { designations: "A2.1" },
+    });
+    expect(batchHold(slideWorkBlocks, [stained, pending], "pass")).toEqual({
+      key: "pathology.locked.qcBeforeStainFor",
+      values: { designations: "A1.2" },
+    });
+  });
+
+  it("holds nothing when every selected slide can take the batch", () => {
+    expect(batchHold(slideWorkBlocks, [stained, pending], "stained")).toBe(
+      null,
+    );
+    expect(batchHold(slideWorkBlocks, [stained, pending], "pass", false)).toBe(
+      null,
+    );
+  });
+});
+
+describe("redoNotice", () => {
+  const slides = [
+    workSlide(5, "1", 1, { stainStatus: "UNSATISFACTORY" }),
+    workSlide(6, "2", 1, { stainStatus: "STAINED", coverslipQc: "FAIL" }),
+    workSlide(7, "1", 2, { stainStatus: "UNSATISFACTORY", active: false }),
+  ];
+
+  it("names the slides its own stage's rule finds broken, and says they hold the case where the gate of the case's stage waits for them", () => {
+    expect(redoNotice("STAINING", slideWorkBlocks, slides, "STAINING")).toEqual(
+      {
+        titleKey: "pathology.banner.unsatisfactorySlidesHere",
+        values: { designations: "A1.1" },
+        recipeKey: "pathology.banner.restainOrRecut",
+      },
+    );
+    expect(
+      redoNotice("COVERSLIPPING", slideWorkBlocks, slides, "COVERSLIPPING"),
+    ).toEqual({
+      titleKey: "pathology.banner.failedQcSlidesHere",
+      values: { designations: "A1.2" },
+      recipeKey: "pathology.banner.recoverslipOrRecut",
+    });
+  });
+
+  it("says an unsatisfactory slide holds a case at coverslipping too, where the coverslip gate asks for a stained slide", () => {
+    expect(
+      redoNotice("STAINING", slideWorkBlocks, slides, "COVERSLIPPING").titleKey,
+    ).toBe("pathology.banner.unsatisfactorySlidesHere");
+    // With staining untracked the coverslip gate asks only for a pass, so a
+    // passed slide holds nothing there, whatever its stain status.
+    const passed = [
+      workSlide(5, "1", 1, {
+        stainStatus: "UNSATISFACTORY",
+        coverslipQc: "PASS",
+      }),
+    ];
+    expect(
+      redoNotice("STAINING", slideWorkBlocks, passed, "COVERSLIPPING", false)
+        .titleKey,
+    ).toBe("pathology.banner.unsatisfactorySlides");
+    expect(
+      redoNotice("STAINING", slideWorkBlocks, passed, "COVERSLIPPING").titleKey,
+    ).toBe("pathology.banner.unsatisfactorySlidesHere");
+  });
+
+  it("does not say a failed coverslip holds a case returned to staining, whose gate asks only for a stain", () => {
+    expect(
+      redoNotice("COVERSLIPPING", slideWorkBlocks, slides, "STAINING").titleKey,
+    ).toBe("pathology.banner.failedQcSlides");
+  });
+
+  it("names the broken slides in the order the case lists them", () => {
+    const listed = [
+      workSlide(7, "1", 2, { stainStatus: "UNSATISFACTORY" }),
+      workSlide(5, "1", 1, { stainStatus: "UNSATISFACTORY" }),
+    ];
+    expect(
+      redoNotice("STAINING", slideWorkBlocks, listed, "STAINING").values,
+    ).toEqual({ designations: "A2.1, A1.1" });
+  });
+
+  it("gives no way back once the case has left the bench, and no notice with nothing broken", () => {
+    expect(
+      redoNotice("STAINING", slideWorkBlocks, slides, "READY_PATHOLOGIST"),
+    ).toEqual({
+      titleKey: "pathology.banner.unsatisfactorySlides",
+      values: { designations: "A1.1" },
+      recipeKey: null,
+    });
+    expect(
+      redoNotice("COVERSLIPPING", slideWorkBlocks, [slides[0]], "STAINING"),
+    ).toBe(null);
+  });
+});
+
+describe("the staining and coverslipping badges, rail steps and summary lines", () => {
+  const slides = [
+    workSlide(5, "1", 1, { stainStatus: "STAINED", coverslipQc: "PASS" }),
+    workSlide(6, "2", 1, { stainStatus: "STAINED" }),
+    workSlide(7, "1", 2),
+  ];
+  const caseAt = (status, rows = slides) => ({
+    status,
+    grossExam: "Described",
+    blocks: slideWorkBlocks,
+    slides: rows,
+  });
+  const nothingRecorded = [workSlide(5, "1", 1), workSlide(6, "2", 1)];
+  const sectionsAt = (status, configurationProperties) =>
+    deriveCaseSections({
+      intl,
+      status,
+      isPathologist: false,
+      decalcificationRequired: true,
+      configurationProperties,
+    });
+  const railAt = (status, rows) =>
+    deriveRailItems(sectionsAt(status), {
+      intl,
+      status,
+      hasCurrentReport: false,
+      openRequestNames: [],
+      caseInfo: caseAt(status, rows),
+    });
+  const item = (items, id) => items.find((entry) => entry.id === id);
+
+  it("badges each section with how many slides are done, and Complete once all are", () => {
+    const sections = sectionsAt("STAINING");
+
+    expect(
+      sectionBadge(byId(sections, STAINING_SECTION_ID), {
+        caseInfo: caseAt("STAINING"),
+      }),
+    ).toEqual({
+      kind: "partial",
+      textKey: "pathology.badge.stainedOf",
+      values: { stained: 2, total: 3 },
+    });
+    expect(
+      sectionBadge(byId(sections, COVERSLIPPING_SECTION_ID), {
+        caseInfo: caseAt("STAINING"),
+      }),
+    ).toEqual({
+      kind: "partial",
+      textKey: "pathology.badge.qcPassedOf",
+      values: { passed: 1, total: 3 },
+    });
+    expect(
+      sectionBadge(byId(sections, STAINING_SECTION_ID), {
+        caseInfo: caseAt("STAINING", [slides[0]]),
+      }),
+    ).toEqual({ kind: "complete", textKey: "common.complete" });
+    expect(
+      sectionBadge(byId(sections, STAINING_SECTION_ID), {
+        caseInfo: caseAt("STAINING", []),
+      }),
+    ).toBeNull();
+  });
+
+  it("shows no count on a case that left the bench with nothing recorded, and reads it Not recorded in the summary", () => {
+    ["READY_PATHOLOGIST", "COMPLETED"].forEach((status) => {
+      const sections = sectionsAt(status);
+      expect(
+        sectionBadge(byId(sections, STAINING_SECTION_ID), {
+          caseInfo: caseAt(status, nothingRecorded),
+        }),
+      ).toBeNull();
+      expect(
+        slideWorkStatement(intl, {
+          stage: "COVERSLIPPING",
+          summary: coverslipSummary(slideWorkBlocks, nothingRecorded),
+          status,
+        }).value,
+      ).toBe(messages["common.notRecorded"]);
+    });
+  });
+
+  it("keeps counting at the bench even with nothing recorded, since the bench still owes the work", () => {
+    expect(
+      slideWorkReading(
+        stainingSummary(slideWorkBlocks, nothingRecorded),
+        "COVERSLIPPING",
+      ),
+    ).toBe("count");
+    expect(
+      slideWorkReading(
+        stainingSummary(slideWorkBlocks, nothingRecorded),
+        "READY_PATHOLOGIST",
+      ),
+    ).toBe("notRecorded");
+    expect(
+      slideWorkReading(stainingSummary(slideWorkBlocks, []), "STAINING"),
+    ).toBe("none");
+  });
+
+  it("names the outstanding slides on the rail once the case stands at the stage, and leaves the step not complete", () => {
+    const items = railAt("STAINING", slides);
+    const staining = item(items, STAINING_SECTION_ID);
+
+    expect(staining.complete).toBe(false);
+    expect(staining.pendingTitle).toBe(
+      intl.formatMessage(
+        { id: "pathology.badge.outstanding" },
+        { designations: "A2.1" },
+      ),
+    );
+    expect(item(items, COVERSLIPPING_SECTION_ID).pendingLabel).toBeUndefined();
+  });
+
+  it("keeps the staining step open and named at coverslipping while a slide is still unstained", () => {
+    const staining = item(railAt("COVERSLIPPING", slides), STAINING_SECTION_ID);
+
+    expect(staining.complete).toBe(false);
+    expect(staining.pendingTitle).toContain("A2.1");
+  });
+
+  it("ticks both steps by passage once the case has left the bench, recorded or not, and names nothing", () => {
+    [slides, nothingRecorded].forEach((rows) => {
+      const items = railAt("READY_PATHOLOGIST", rows);
+      [STAINING_SECTION_ID, COVERSLIPPING_SECTION_ID].forEach((id) => {
+        expect(item(items, id).complete).toBe(true);
+        expect(item(items, id).pendingLabel).toBeUndefined();
+      });
+    });
+  });
+
+  it("reads the summary line as a count, names the outstanding on hover at the stage, and N/A with the stage switched off", () => {
+    const staining = slideWorkStatement(intl, {
+      stage: "STAINING",
+      summary: stainingSummary(slideWorkBlocks, slides),
+      status: "STAINING",
+    });
+    expect(staining.value).toBe(
+      intl.formatMessage(
+        { id: "pathology.badge.stainedOf" },
+        { stained: 2, total: 3 },
+      ),
+    );
+    expect(staining.title).toContain("A2.1");
+
+    const earlier = slideWorkStatement(intl, {
+      stage: "COVERSLIPPING",
+      summary: coverslipSummary(slideWorkBlocks, slides, {
+        stainingTracked: true,
+      }),
+      status: "STAINING",
+    });
+    expect(earlier.title).toBeUndefined();
+
+    expect(
+      slideWorkStatement(intl, {
+        stage: "COVERSLIPPING",
+        summary: coverslipSummary(slideWorkBlocks, slides),
+        status: "STAINING",
+        configurationProperties: {
+          PATHOLOGY_STAGE_COVERSLIPPING_ENABLED: "false",
+        },
+      }).value,
+    ).toBe(messages["caseView.badge.notApplicable"]);
+    expect(
+      slideWorkStatement(intl, {
+        stage: "STAINING",
+        summary: stainingSummary([], []),
+        status: "STAINING",
+      }).value,
+    ).toBeNull();
+  });
+
+  it("reads whether staining is tracked once, for both summaries", () => {
+    const off = { PATHOLOGY_STAGE_STAINING_ENABLED: "false" };
+    const passedUnstained = {
+      blocks: slideWorkBlocks,
+      slides: [workSlide(5, "1", 1, { coverslipQc: "PASS" })],
+    };
+
+    expect(slideWorkSummaries(passedUnstained, off).stainingTracked).toBe(
+      false,
+    );
+    expect(
+      slideWorkSummaries(passedUnstained, off).COVERSLIPPING.complete,
+    ).toBe(true);
+    expect(slideWorkSummaries(passedUnstained, {}).COVERSLIPPING.complete).toBe(
+      false,
+    );
+  });
+});
+
+describe("sectionHoldsRecords, for a stage switched off with work on record", () => {
+  it("counts any slide for microtomy, a stain status for staining and a QC result for coverslipping", () => {
+    const plain = { slides: [{ id: 5, active: false }] };
+    const stained = { slides: [{ id: 5, stainStatus: "UNSATISFACTORY" }] };
+    const checked = { slides: [{ id: 5, coverslipQc: "FAIL" }] };
+
+    expect(sectionHoldsRecords("pathology-section-microtomy", plain)).toBe(
+      true,
+    );
+    expect(sectionHoldsRecords(STAINING_SECTION_ID, plain)).toBe(false);
+    expect(sectionHoldsRecords(STAINING_SECTION_ID, stained)).toBe(true);
+    expect(sectionHoldsRecords(COVERSLIPPING_SECTION_ID, stained)).toBe(false);
+    expect(sectionHoldsRecords(COVERSLIPPING_SECTION_ID, checked)).toBe(true);
+    expect(sectionHoldsRecords("pathology-section-grossing", checked)).toBe(
+      false,
+    );
+    expect(sectionHoldsRecords(STAINING_SECTION_ID, undefined)).toBe(false);
+  });
+
+  it("shows staining read-only and not tracked when the stage is off and a slide carries a status, and locked otherwise", () => {
+    const off = { PATHOLOGY_STAGE_STAINING_ENABLED: "false" };
+    const derive = (caseInfo) =>
+      byId(
+        deriveCaseSections({
+          intl,
+          status: "COVERSLIPPING",
+          isPathologist: false,
+          configurationProperties: off,
+          decalcificationRequired: true,
+          sectionHasRows: (section) =>
+            sectionHoldsRecords(section.id, caseInfo),
+        }),
+        STAINING_SECTION_ID,
+      );
+
+    const withRecords = derive({ slides: [{ id: 5, stainStatus: "STAINED" }] });
+    expect(withRecords.state).toBe(SECTION_STATE.READ_ONLY);
+    expect(withRecords.readOnlyBecauseUntracked).toBe(true);
+
+    const without = derive({ slides: [{ id: 5 }] });
+    expect(without.state).toBe(SECTION_STATE.DISABLED);
+    expect(without.lockedHintKey).toBe("pathology.locked.stageDisabled");
+  });
+});
+
+// Review section state (FR-10.12): one row of the table per test. The bench
+// works the requests from a read-only review, so "bench mode" is read-only
+// fields with the table's status actions live, and only the pathologist's
+// open review offers a new request.
+describe("the review section's state, by stage, requests on the case and viewer", () => {
+  const BENCH_STAGES = PATHOLOGY_STAGES.slice(
+    0,
+    PATHOLOGY_STAGES.indexOf("READY_PATHOLOGIST"),
+  );
+  const review = (status, requestCount, isPathologist) =>
+    byId(
+      deriveCaseSections({ intl, status, isPathologist, requestCount }),
+      REVIEW_SECTION_ID,
+    );
+
+  it.each(
+    BENCH_STAGES.flatMap((stage) => [
+      [stage, true],
+      [stage, false],
+    ]),
+  )(
+    "stays locked at %s with no request on the case (pathologist: %s)",
+    (status, isPathologist) => {
+      const section = review(status, 0, isPathologist);
+
+      expect(section.state).toBe(SECTION_STATE.DISABLED);
+      expect(section.benchRequests).toBeFalsy();
+    },
+  );
+
+  it.each(
+    BENCH_STAGES.flatMap((stage) => [
+      [stage, true],
+      [stage, false],
+    ]),
+  )(
+    "opens read-only in bench mode at %s once the case holds a request (pathologist: %s)",
+    (status, isPathologist) => {
+      const section = review(status, 1, isPathologist);
+
+      expect(section.state).toBe(SECTION_STATE.READ_ONLY);
+      expect(section.benchRequests).toBe(true);
+      expect(section.lockedHintKey).toBeUndefined();
+    },
+  );
+
+  it.each([
+    ["READY_PATHOLOGIST", 0],
+    ["READY_PATHOLOGIST", 2],
+    ["UNDER_REVIEW", 0],
+    ["UNDER_REVIEW", 2],
+  ])(
+    "is open for the pathologist at %s with %s requests on the case",
+    (status, count) => {
+      const section = review(status, count, true);
+
+      expect(section.state).toBe(SECTION_STATE.OPEN);
+      expect(section.benchRequests).toBeFalsy();
+    },
+  );
+
+  it.each(["READY_PATHOLOGIST", "UNDER_REVIEW"])(
+    "is in bench mode for anyone else at %s once the case holds a request",
+    (status) => {
+      const section = review(status, 2, false);
+
+      expect(section.state).toBe(SECTION_STATE.READ_ONLY);
+      expect(section.benchRequests).toBe(true);
+    },
+  );
+
+  it.each(["READY_PATHOLOGIST", "UNDER_REVIEW"])(
+    "is read-only with no actions for anyone else at %s with no request on the case",
+    (status) => {
+      const section = review(status, 0, false);
+
+      expect(section.state).toBe(SECTION_STATE.READ_ONLY);
+      expect(section.benchRequests).toBeFalsy();
+    },
+  );
+
+  // The bench-mode rule does not fire on a signed-out case: a released case's
+  // review is read-only for everyone (S8), and the case view offers no
+  // request action there (requestActionLock and the signed-out case view
+  // test).
+  it.each([
+    [0, true, SECTION_STATE.READ_ONLY],
+    [2, true, SECTION_STATE.READ_ONLY],
+    [0, false, SECTION_STATE.READ_ONLY],
+    [2, false, SECTION_STATE.READ_ONLY],
+  ])(
+    "is read-only once signed out, with %s requests (pathologist: %s), and never in bench mode",
+    (count, isPathologist, state) => {
+      const section = review("COMPLETED", count, isPathologist);
+
+      expect(section.state).toBe(state);
+      expect(section.benchRequests).toBeFalsy();
+    },
+  );
+
+  // FR-10.12: only the pathologist's open review offers New request, and
+  // Microtomy's Request slide and Request stain follow the same rule.
+  it.each([
+    ["READY_PATHOLOGIST", 0, true, true],
+    ["UNDER_REVIEW", 2, true, true],
+    ["READY_PATHOLOGIST", 2, false, false],
+    ["READY_PATHOLOGIST", 0, false, false],
+    ["MICROTOMY", 2, true, false],
+    ["MICROTOMY", 0, true, false],
+    ["COMPLETED", 2, true, false],
+    ["COMPLETED", 0, false, false],
+  ])(
+    "takes a new request at %s with %s requests (pathologist: %s): %s",
+    (status, count, isPathologist, takes) => {
+      expect(reviewTakesRequests(review(status, count, isPathologist))).toBe(
+        takes,
+      );
+    },
+  );
+
+  it("takes no request on any section but the review", () => {
+    const findings = byId(
+      deriveCaseSections({
+        intl,
+        status: "READY_PATHOLOGIST",
+        isPathologist: true,
+        readingStage: "READY_PATHOLOGIST",
+        findingsOpen: true,
+      }),
+      "pathology-section-findings",
+    );
+
+    expect(findings.state).toBe(SECTION_STATE.OPEN);
+    expect(reviewTakesRequests(findings)).toBe(false);
+  });
+
+  // Fail-safe: a status this build cannot place is never read as a bench
+  // stage, so a request on the case unlocks nothing there.
+  it("stays locked at a status this build does not know, whatever the case holds", () => {
+    expect(review("SOMETHING_NEW", 2, true).state).toBe(SECTION_STATE.DISABLED);
+  });
+
+  // The rule is the review's own: findings keeps the stage gate.
+  it("leaves the findings section locked at a bench stage however many requests the case holds", () => {
+    const findings = byId(
+      deriveCaseSections({
+        intl,
+        status: "MICROTOMY",
+        isPathologist: true,
+        requestCount: 2,
+      }),
+      "pathology-section-findings",
+    );
+
+    expect(findings.state).toBe(SECTION_STATE.DISABLED);
+  });
+});
+
+describe("requestActionLock", () => {
+  it("holds every request action on a signed-out case first", () => {
+    expect(
+      requestActionLock({ status: "COMPLETED", dirty: true, moving: true }),
+    ).toEqual({
+      disabled: true,
+      reasonKey: "pathology.locked.caseCompleted",
+    });
+  });
+
+  it.each([
+    ["a save", { saving: true }],
+    ["a move, a mark or another request", { moving: true }],
+  ])("holds them while %s is unanswered", (_label, flags) => {
+    expect(
+      requestActionLock({ status: "MICROTOMY", dirty: true, ...flags }),
+    ).toEqual({
+      disabled: true,
+      reasonKey: "pathology.locked.requestInFlight",
+    });
+  });
+
+  // The case is read again after every request action, which would replace
+  // what was typed.
+  it("holds them over unsaved work, saying to save or discard first", () => {
+    expect(requestActionLock({ status: "MICROTOMY", dirty: true })).toEqual({
+      disabled: true,
+      reasonKey: "pathology.locked.saveBeforeRequest",
+    });
+  });
+
+  it("lets them go on a clean, settled case", () => {
+    expect(requestActionLock({ status: "READY_PATHOLOGIST" })).toEqual({
+      disabled: false,
+      reasonKey: null,
+    });
+  });
+});
+
+describe("requestDraftBlockedReason, the first unmet rule of a new request", () => {
+  const draft = (overrides = {}) => ({
+    kind: "SLIDE",
+    targetId: "1",
+    stainId: "",
+    priority: "NORMAL",
+    instruction: "Two deeper levels",
+    ...overrides,
+  });
+
+  it("asks for an instruction first, before any target, as the server does", () => {
+    expect(
+      requestDraftBlockedReason(draft({ instruction: "   ", targetId: "" })),
+    ).toEqual({ key: "pathology.locked.requestInstructionRequired" });
+  });
+
+  it.each(["SLIDE", "STAIN"])("asks for the target of a %s request", (kind) => {
+    expect(requestDraftBlockedReason(draft({ kind, targetId: "" }))).toEqual({
+      key: "pathology.locked.requestTargetRequired",
+    });
+  });
+
+  it("asks for the stain of a stain request once its slide is picked", () => {
+    expect(
+      requestDraftBlockedReason(draft({ kind: "STAIN", stainId: "" })),
+    ).toEqual({ key: "pathology.locked.requestStainRequired" });
+  });
+
+  it("asks a block request for neither a target nor a stain", () => {
+    expect(
+      requestDraftBlockedReason(draft({ kind: "BLOCK", targetId: "" })),
+    ).toBeNull();
+  });
+
+  it("lets a complete slide or stain request go", () => {
+    expect(requestDraftBlockedReason(draft())).toBeNull();
+    expect(
+      requestDraftBlockedReason(draft({ kind: "STAIN", stainId: "31" })),
+    ).toBeNull();
+  });
+});
+
+describe("requestDraftBody, what raising a request posts", () => {
+  it("posts a slide request's block as its target and no stain", () => {
+    expect(
+      requestDraftBody({
+        kind: "SLIDE",
+        targetId: "4",
+        stainId: "31",
+        priority: "URGENT",
+        instruction: "  Two deeper levels ",
+      }),
+    ).toEqual({
+      kind: "SLIDE",
+      targetBlockId: 4,
+      targetSlideId: null,
+      stainId: null,
+      priority: "URGENT",
+      instruction: "Two deeper levels",
+    });
+  });
+
+  it("posts a stain request's slide as its target with the stain", () => {
+    expect(
+      requestDraftBody({
+        kind: "STAIN",
+        targetId: "7",
+        stainId: "31",
+        priority: "STAT",
+        instruction: "PAS",
+      }),
+    ).toEqual({
+      kind: "STAIN",
+      targetBlockId: null,
+      targetSlideId: 7,
+      stainId: "31",
+      priority: "STAT",
+      instruction: "PAS",
+    });
+  });
+
+  // A target picked for a slide request and left behind when the kind was
+  // switched must not travel with the block request.
+  it("posts no target and no stain for a block request, whatever was picked before the kind changed", () => {
+    expect(
+      requestDraftBody({
+        kind: "BLOCK",
+        targetId: "4",
+        stainId: "31",
+        priority: "NORMAL",
+        instruction: "Another block",
+      }),
+    ).toEqual({
+      kind: "BLOCK",
+      targetBlockId: null,
+      targetSlideId: null,
+      stainId: null,
+      priority: "NORMAL",
+      instruction: "Another block",
+    });
+  });
+});
+
+describe("requestStatusBody, what a status change posts", () => {
+  const request = (overrides = {}) => ({
+    id: 5,
+    kind: "SLIDE",
+    status: "OPENED",
+    ...overrides,
+  });
+
+  // `from` is the status the page showed, so a request changed in another
+  // tab is refused rather than changed twice.
+  it("names the status the page shows as the one it changes from", () => {
+    expect(
+      requestStatusBody(request({ status: "CANCELLED" }), "OPENED"),
+    ).toEqual({
+      from: "CANCELLED",
+      status: "OPENED",
+      cancelReason: null,
+      resultBlockId: null,
+      resultSlideId: null,
+    });
+  });
+
+  it("posts the fulfilling slide of a slide or stain request, and the block of a block request", () => {
+    expect(
+      requestStatusBody(request(), "COMPLETED", { resultId: "9" }),
+    ).toMatchObject({ resultBlockId: null, resultSlideId: 9 });
+    expect(
+      requestStatusBody(request({ kind: "STAIN" }), "COMPLETED", {
+        resultId: "9",
+      }),
+    ).toMatchObject({ resultBlockId: null, resultSlideId: 9 });
+    expect(
+      requestStatusBody(request({ kind: "BLOCK" }), "COMPLETED", {
+        resultId: "3",
+      }),
+    ).toMatchObject({ resultBlockId: 3, resultSlideId: null });
+  });
+
+  it("posts no result for a request on file with no kind", () => {
+    expect(
+      requestStatusBody(request({ kind: null }), "COMPLETED", {
+        resultId: "9",
+      }),
+    ).toMatchObject({ resultBlockId: null, resultSlideId: null });
+  });
+
+  it("posts the cancellation's reason trimmed, and no reason with any other status", () => {
+    expect(
+      requestStatusBody(request(), "CANCELLED", {
+        cancelReason: "  Tissue exhausted ",
+      }),
+    ).toMatchObject({ status: "CANCELLED", cancelReason: "Tissue exhausted" });
+    expect(
+      requestStatusBody(request(), "COMPLETED", { cancelReason: "x" }),
+    ).toMatchObject({ cancelReason: null });
+  });
+});
+
+describe("sign-out, reopen and the report in force", () => {
+  const ready = {
+    status: "UNDER_REVIEW",
+    releasable: true,
+    grossExam: "Grey-white tissue",
+    microscopyExam: "Benign glands",
+    conclusions: [{ id: 7, value: "Adenoma" }],
+    conclusionText: "",
+    assignedPathologistId: "11",
+    assignedTechnicianId: "12",
+  };
+
+  it("primaryAction_followsTheCaseAndTheRole", () => {
+    // B1: on the bench the next stage drives the primary for anyone.
+    expect(
+      primaryAction({
+        caseInfo: { status: "GROSSING" },
+        isPathologist: false,
+        nextStage: "PROCESSING",
+      }),
+    ).toBe("advance");
+    // B2: from the queue Begin review is the pathologist's alone, even when
+    // the server would already take a release.
+    expect(
+      primaryAction({
+        caseInfo: { status: "READY_PATHOLOGIST", releasable: true },
+        isPathologist: true,
+        nextStage: "UNDER_REVIEW",
+      }),
+    ).toBe("advance");
+    expect(
+      primaryAction({
+        caseInfo: { status: "READY_PATHOLOGIST" },
+        isPathologist: false,
+        nextStage: "UNDER_REVIEW",
+      }),
+    ).toBeNull();
+    // B3, B4: the reading stage signs out for a pathologist only.
+    expect(
+      primaryAction({ caseInfo: ready, isPathologist: true, nextStage: null }),
+    ).toBe("signOut");
+    expect(
+      primaryAction({ caseInfo: ready, isPathologist: false, nextStage: null }),
+    ).toBeNull();
+    // Not releasable: no sign-out.
+    expect(
+      primaryAction({
+        caseInfo: { ...ready, releasable: false },
+        isPathologist: true,
+        nextStage: null,
+      }),
+    ).toBeNull();
+    // B9, B10: a signed-out case reopens, for a pathologist only.
+    const signedOut = { ...ready, status: "COMPLETED", signedOut: true };
+    expect(primaryAction({ caseInfo: signedOut, isPathologist: true })).toBe(
+      "reopen",
+    );
+    expect(
+      primaryAction({ caseInfo: signedOut, isPathologist: false }),
+    ).toBeNull();
+    // B14: Completed but never released signs out by B3's rules.
+    expect(
+      primaryAction({
+        caseInfo: { ...ready, status: "COMPLETED", signedOut: false },
+        isPathologist: true,
+        nextStage: null,
+      }),
+    ).toBe("signOut");
+  });
+
+  it("signOutBlockedReason_walksItsOrder_onTheFormAsItStands", () => {
+    const reason = (patch, openRequestCount = 0) =>
+      signOutBlockedReason({
+        caseInfo: { ...ready, ...patch },
+        openRequestCount,
+      });
+    // Every rule unmet: the descriptions are named first.
+    const nothing = {
+      grossExam: " ",
+      conclusions: [],
+      conclusionText: "",
+      assignedPathologistId: null,
+      assignedTechnicianId: null,
+    };
+    expect(reason(nothing, 2)?.key).toBe(
+      "pathology.error.releaseWithoutDescriptions",
+    );
+    expect(
+      reason({ ...nothing, grossExam: "x", microscopyExam: "" }, 2)?.key,
+    ).toBe("pathology.error.releaseWithoutDescriptions");
+    expect(reason({ ...nothing, grossExam: "x" }, 2)?.key).toBe(
+      "pathology.error.releaseWithoutConclusion",
+    );
+    // A narrative alone is a conclusion; blank after trim is not.
+    expect(reason({ conclusions: [], conclusionText: "  " })?.key).toBe(
+      "pathology.error.releaseWithoutConclusion",
+    );
+    expect(reason({ conclusions: [], conclusionText: "Benign" })).toBeNull();
+    const withRequests = reason(
+      { assignedPathologistId: null, assignedTechnicianId: null },
+      2,
+    );
+    expect(withRequests).toEqual({
+      key: "pathology.error.releaseWithOpenRequests",
+      values: { count: 2 },
+    });
+    expect(
+      intl.formatMessage({ id: withRequests.key }, withRequests.values),
+    ).toContain("2 bench requests are still open");
+    expect(
+      reason({ assignedPathologistId: null, assignedTechnicianId: null })?.key,
+    ).toBe("pathology.locked.releaseNoPathologist");
+    expect(reason({ assignedTechnicianId: null })?.key).toBe(
+      "pathology.locked.releaseNoTechnician",
+    );
+    // What the form holds now is what counts, not what was stored.
+    expect(reason({})).toBeNull();
+  });
+
+  it("signOutBlockedReason_doesNotCountRequestsOnACompletedCase", () => {
+    expect(
+      signOutBlockedReason({
+        caseInfo: { ...ready, status: "COMPLETED" },
+        openRequestCount: 3,
+      }),
+    ).toBeNull();
+    expect(
+      signOutBlockedReason({
+        caseInfo: { ...ready, status: "UNDER_REVIEW" },
+        openRequestCount: 1,
+      })?.key,
+    ).toBe("pathology.error.releaseWithOpenRequests");
+  });
+
+  it("currentGeneratedReport_isTheNewestCurrentDraftOrFinal_neverAnUploadOrAVoidedOrSupersededRow", () => {
+    const row = (version, type, state) => ({ version, type, state });
+    expect(currentGeneratedReport(undefined)).toBeNull();
+    // Newest first, whatever order the rows come in; an upload never is.
+    expect(
+      currentGeneratedReport([
+        row(1, "DRAFT", "SUPERSEDED"),
+        row(4, "EXTERNAL", "CURRENT"),
+        row(2, "DRAFT", "CURRENT"),
+        row(3, "FINAL", "CURRENT"),
+      ])?.version,
+    ).toBe(3);
+    // After a reopen: a voided final over a superseded draft, nothing current.
+    expect(
+      currentGeneratedReport([
+        row(2, "FINAL", "VOIDED"),
+        row(1, "DRAFT", "SUPERSEDED"),
+        row(3, "EXTERNAL", "CURRENT"),
+      ]),
+    ).toBeNull();
+  });
+
+  it("currentReport_prefersAGeneratedRow_andSkipsVoidedAndSuperseded", () => {
+    const row = (version, type, state) => ({
+      id: version * 10,
+      version,
+      type,
+      state,
+    });
+    // U1: none.
+    expect(currentReport([])).toBeNull();
+    expect(currentReport(undefined)).toBeNull();
+    expect(reportSummary([])).toBeNull();
+    // U2: a current draft v2 over a superseded v1, a newer upload beside it.
+    const drafts = [
+      row(3, "EXTERNAL", "CURRENT"),
+      row(2, "DRAFT", "CURRENT"),
+      row(1, "DRAFT", "SUPERSEDED"),
+    ];
+    expect(currentReport(drafts)?.version).toBe(2);
+    expect(reportSummary(drafts)).toEqual({ version: 2, type: "DRAFT" });
+    // U3: a final v3 in force.
+    expect(
+      reportSummary([
+        row(3, "FINAL", "CURRENT"),
+        row(2, "DRAFT", "SUPERSEDED"),
+      ]),
+    ).toEqual({ version: 3, type: "FINAL" });
+    // U4, U7: only voided or superseded rows, as after a reopen.
+    expect(
+      currentReport([row(2, "FINAL", "VOIDED"), row(1, "DRAFT", "SUPERSEDED")]),
+    ).toBeNull();
+    // An upload alone is the report in force.
+    expect(
+      reportSummary([row(4, "EXTERNAL", "CURRENT"), row(2, "FINAL", "VOIDED")]),
+    ).toEqual({ version: 4, type: "EXTERNAL" });
+  });
+
+  it("theRail_completesReports_onlyWithACurrentRow", () => {
+    const sections = deriveCaseSections({
+      intl,
+      status: "COMPLETED",
+      isPathologist: true,
+    });
+    const reportsStep = (reports) =>
+      deriveRailItems(sections, {
+        intl,
+        status: "COMPLETED",
+        hasCurrentReport: Boolean(currentReport(reports)),
+        openRequestNames: [],
+      }).find((item) => item.id === "pathology-section-reports");
+    expect(reportsStep([]).complete).toBe(false);
+    expect(
+      reportsStep([{ id: 1, version: 1, type: "FINAL", state: "VOIDED" }])
+        .complete,
+    ).toBe(false);
+    expect(
+      reportsStep([{ id: 1, version: 3, type: "FINAL", state: "CURRENT" }])
+        .complete,
+    ).toBe(true);
+  });
+
+  it("formIsCritical_isTheFlagOrACriticalChip", () => {
+    // F1
+    expect(formIsCritical({})).toBe(false);
+    expect(formIsCritical(undefined)).toBe(false);
+    expect(formIsCritical({ conclusions: [{ id: 1, critical: false }] })).toBe(
+      false,
+    );
+    // F2
+    expect(
+      formIsCritical({
+        conclusions: [{ id: 1 }, { id: 2, critical: true }],
+      }),
+    ).toBe(true);
+    // F3
+    expect(formIsCritical({ criticalResultFlagged: true })).toBe(true);
+    // F4: the last critical chip removed and the flag cleared.
+    expect(
+      formIsCritical({ criticalResultFlagged: false, conclusions: [] }),
+    ).toBe(false);
   });
 });

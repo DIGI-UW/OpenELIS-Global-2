@@ -2,7 +2,6 @@ import ClinicalAttachmentPreview from "../../common/ClinicalAttachment/ClinicalA
 import React, { useEffect, useRef, useState } from "react";
 import {
   Button,
-  ComboBox,
   FileUploader,
   Heading,
   InlineNotification,
@@ -16,12 +15,14 @@ import config from "../../../config.json";
 import StatusBadge from "../../caseView/StatusBadge";
 import IdentifiedRow, { ListToolbar, RowIdentity } from "../IdentifiedRow";
 import LabelVerificationTag from "../LabelVerificationTag";
+import StainPicker from "../StainPicker";
 import {
   blockIdentifier,
   cassetteStateBadge,
   countedRows,
   deactivatedCount,
-  heldOrServedItems,
+  isDeactivatedRow,
+  isUnsavedRow,
   labelStreamUrl,
   microtomyGroups,
   nextUnverifiedSlide,
@@ -76,6 +77,10 @@ const MICROTOMY_SECTION_HEADER = sectionHeader(MICROTOMY_SECTION_ID);
  * and once saved and printed its label is checked against its block
  * (FR-7.3 to FR-7.5). With the stage switched off the slides on record are
  * shown read-only.
+ *
+ * `onRequestWork(kind, targetId)`, given only while the review takes a new
+ * request, puts Request slide on each saved block in use and Request stain
+ * on each saved slide in use, which start a request about it (FR-10.2).
  */
 const MicrotomySection = ({
   caseInfo,
@@ -90,6 +95,7 @@ const MicrotomySection = ({
   moving,
   onDeactivate,
   onVerifyLabel,
+  onRequestWork,
 }) => {
   const intl = useIntl();
   const deactivateLock = rowActionLock({
@@ -125,11 +131,6 @@ const MicrotomySection = ({
   const groups = microtomyGroups(blocks, slides, showDeactivated);
 
   const { patchRow, removeRow, addRow } = rowListEditors("slides", updateCase);
-  // The stains are a dictionary category the laboratory keeps, so an empty
-  // one is a configuration gap the bench is told about. Until the list has
-  // arrived there is nothing to pick and nothing yet to say about it.
-  const stainsUnknown = !Array.isArray(stains);
-  const noStains = !stainsUnknown && stains.length === 0;
 
   const verifyLockOf = (slide) =>
     verifyLabelLock({
@@ -142,6 +143,23 @@ const MicrotomySection = ({
       moving,
       verifying: Boolean(verifying[slide.id]),
     });
+
+  // A request names a row the server holds and still uses, so a row not yet
+  // saved, or deactivated, starts none.
+  const requestable = (row) =>
+    Boolean(onRequestWork) && !isUnsavedRow(row) && !isDeactivatedRow(row);
+
+  const requestButton = (kind, row, labelKey, nameKey, name) => (
+    <Button
+      kind="ghost"
+      size="sm"
+      id={"request" + kind + "-" + row.id}
+      aria-label={intl.formatMessage({ id: nameKey }, { name })}
+      onClick={() => onRequestWork(kind, row.id)}
+    >
+      <FormattedMessage id={labelKey} />
+    </Button>
+  );
 
   const unverified = unverifiedSlides(
     blocks,
@@ -398,11 +416,6 @@ const MicrotomySection = ({
     // The row's place in the case's own list, not in its group, so every
     // edit lands on this row.
     const index = slides.indexOf(slide);
-    const stainItems = heldOrServedItems(
-      stains,
-      slide.stainId,
-      caseInfo.stainNames,
-    );
     const verifyLock = verifyLockOf(slide);
     const verifyLockedReason = verifyLock.reasonKey
       ? intl.formatMessage({ id: verifyLock.reasonKey })
@@ -449,6 +462,14 @@ const MicrotomySection = ({
                 <FormattedMessage id="pathology.action.verifyLabel" />
               </Button>
             )}
+            {requestable(slide) &&
+              requestButton(
+                "STAIN",
+                slide,
+                "pathology.action.requestStain",
+                "pathology.action.requestStainOf",
+                slideOnBlockName(slide, blocks),
+              )}
             {/* The server leaves a deactivated slide untouched, so an image
                 attached to one would be dropped without a word. */}
             <p
@@ -512,36 +533,19 @@ const MicrotomySection = ({
               />
             </div>
             <div className="pathology-case-view__row-field">
-              <ComboBox
+              <StainPicker
                 id={"slideStain" + index}
-                size="md"
-                titleText={
+                slide={slide}
+                stains={stains}
+                stainNames={caseInfo.stainNames}
+                labelText={
                   <>
                     {intl.formatMessage({ id: "pathology.label.stain" })}
                     {hiddenName}
                   </>
                 }
-                placeholder={intl.formatMessage({ id: "common.select" })}
-                items={stainItems}
-                itemToString={(item) => item?.value ?? ""}
-                selectedItem={
-                  stainItems.find(
-                    (stain) => String(stain.id) === String(slide.stainId),
-                  ) ?? null
-                }
-                onChange={({ selectedItem }) =>
-                  patchRow(index, {
-                    stainId: selectedItem ? selectedItem.id : null,
-                  })
-                }
-                disabled={disabled || stainsUnknown || noStains}
-                helperText={
-                  // A row locked for its own reasons says nothing about the
-                  // list, which is not what keeps it locked.
-                  noStains && !disabled
-                    ? intl.formatMessage({ id: "pathology.empty.noStains" })
-                    : undefined
-                }
+                disabled={disabled}
+                onChange={(stainId) => patchRow(index, { stainId })}
               />
             </div>
             <div className="pathology-case-view__row-field">
@@ -656,6 +660,15 @@ const MicrotomySection = ({
             <FormattedMessage id="pathology.action.addSlide" />
           </Button>
         )}
+        {!group.legacy &&
+          requestable(block) &&
+          requestButton(
+            "SLIDE",
+            block,
+            "pathology.action.requestSlide",
+            "pathology.action.requestSlideOf",
+            designation,
+          )}
         {/* A disabled button takes no focus and shows its title to a mouse
             only, so the reason is also written out under it. */}
         {hintText && (

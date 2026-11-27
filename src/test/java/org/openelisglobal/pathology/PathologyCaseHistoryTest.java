@@ -4,6 +4,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
@@ -11,6 +13,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.audittrail.action.workers.AuditTrailItem;
+import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.services.historyservices.ProgramSampleHistoryService;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
@@ -69,6 +72,7 @@ public class PathologyCaseHistoryTest extends PathologyCaseTestSupport {
     @Test
     public void aRelease_readsAsOneStatusLineOnTheCaseHistory() {
         storeAt(PathologyStatus.READY_PATHOLOGIST);
+        closeTheFixtureRequest();
         PathologySampleForm form = caseViewForm();
         form.setRelease(true);
 
@@ -109,6 +113,89 @@ public class PathologyCaseHistoryTest extends PathologyCaseTestSupport {
             assertTrue("nothing reads as changing " + unchanged + ", which no entry changed",
                     linesFor(items, unchanged).isEmpty());
         }
+    }
+
+    /**
+     * A diagnosis stored before codes were checked may name no entry; saving
+     * another change over it still writes the history row, which prints that id as
+     * stored.
+     */
+    @Test
+    public void aChangeOverAStoredCodeThatNamesNoEntry_stillWritesTheHistoryRow() {
+        try (PathologyFindingsDictionary dictionary = PathologyFindingsDictionary.seed(jdbcTemplate)) {
+            jdbcTemplate.update("DELETE FROM clinlims.pathology_conclusion WHERE pathology_sample_id = ?", CASE_ID);
+            storeConclusion(9751, PathologyFindingsDictionary.ADENOCARCINOMA);
+            storeConclusion(9752, PathologyFindingsDictionary.NO_ENTRY);
+            String before = pathologySampleService.get(CASE_ID).getGrossExam();
+            PathologySampleForm form = caseViewForm();
+            form.setGrossExam("Changed over a stored code that names no entry");
+
+            save(form);
+
+            assertEquals("the save wrote its history row", 1, caseSaveDiffs().size());
+            assertEquals("which reads as the description changed",
+                    List.of(List.of(before, "Changed over a stored code that names no entry")),
+                    linesFor(auditTrail(), "grossExam"));
+            assertEquals("a history line is a record: the dead entry is printed as its stored id beside the live name",
+                    "Value: Adenocarcinoma; Value: " + PathologyFindingsDictionary.NO_ENTRY,
+                    new TransactionTemplate(transactionManager)
+                            .execute(status -> pathologySampleService.get(CASE_ID).getConclusions_Audit()));
+        } finally {
+            jdbcTemplate.update("DELETE FROM clinlims.pathology_conclusion WHERE id IN (9751, 9752)");
+        }
+    }
+
+    /** The microscopic description and the review notes read as their own lines. */
+    @Test
+    public void findingsAndReviewNotesReadOnTheCaseHistory() {
+        storeAt(PathologyStatus.UNDER_REVIEW);
+        String before = pathologySampleService.get(CASE_ID).getMicroscopyExam();
+        PathologySampleForm form = caseViewForm();
+        form.setMicroscopyExam("Cells in sheets");
+        form.setReviewNotes("Ask for levels");
+
+        save(form);
+
+        List<AuditTrailItem> items = auditTrail();
+        assertEquals("the microscopic description reads from the old text to the new",
+                List.of(List.of(StringUtils.defaultString(before), "Cells in sheets")),
+                linesFor(items, "microscopyExam"));
+        assertEquals("the review notes read from nothing to the notes", List.of(List.of("", "Ask for levels")),
+                linesFor(items, "reviewNotes"));
+    }
+
+    /**
+     * Reports left the case, so a save no longer names them; a reports line a save
+     * wrote before then still prints as it was recorded.
+     */
+    @Test
+    public void anOldReportsLine_stillPrints_andNewSavesWriteNone() {
+        History oldRow = new History();
+        oldRow.setReferenceId(String.valueOf(CASE_ID));
+        oldRow.setReferenceTable(referenceTablesService.getReferenceTableByName("PATHOLOGY_SAMPLE").getId());
+        oldRow.setActivity("U");
+        oldRow.setTimestamp(Timestamp.valueOf("2024-06-11 09:00:00"));
+        oldRow.setSysUserId(TECHNICIAN_ID);
+        oldRow.setChanges(
+                "<reports>File Type : PDF, Report Type: Pathology Report</reports>".getBytes(StandardCharsets.UTF_8));
+        historyService.insert(oldRow);
+        PathologySampleForm form = caseViewForm();
+        form.setGrossExam("A change after reports left the case");
+
+        save(form);
+
+        assertEquals("the old line prints as recorded",
+                List.of(List.of("File Type : PDF, Report Type: Pathology Report", "")),
+                linesFor(auditTrail(), "reports"));
+        List<String> saveRows = caseSaveDiffs().stream().map(this::changesOf)
+                .filter(changes -> changes.contains("grossExam")).collect(Collectors.toList());
+        assertEquals("setup: the save wrote its history row", 1, saveRows.size());
+        assertFalse("and that row names no reports", saveRows.get(0).contains("<reports>"));
+    }
+
+    private void storeConclusion(int id, String code) {
+        jdbcTemplate.update("INSERT INTO clinlims.pathology_conclusion (id, pathology_sample_id, type, value,"
+                + " last_updated) VALUES (?, ?, 'DICTIONARY', ?, now())", id, CASE_ID, code);
     }
 
     // helpers

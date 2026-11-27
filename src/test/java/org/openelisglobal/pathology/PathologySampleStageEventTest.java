@@ -36,6 +36,7 @@ import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.program.service.PathologyStageConflictException;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.openelisglobal.program.valueholder.pathology.PathologyStageEvent;
+import org.openelisglobal.program.valueholder.pathology.StainStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.concurrent.DelegatingSecurityContextExecutorService;
 
@@ -66,9 +67,15 @@ public class PathologySampleStageEventTest extends PathologyCaseTestSupport {
 
     private StageSwitches switches;
 
+    /**
+     * The fixture's open request is closed, so a case sent to the pathologist is
+     * held by its stage work alone; one test opens it again to show it holds the
+     * case too.
+     */
     @Before
-    public void switchEveryStageOn() {
+    public void switchEveryStageOnAndCloseTheFixtureRequest() {
         switches = StageSwitches.allOn();
+        closeTheFixtureRequest();
     }
 
     @After
@@ -206,7 +213,8 @@ public class PathologySampleStageEventTest extends PathologyCaseTestSupport {
         assertEquals("sent forward", "FORWARD", events.get(0).get("direction"));
         assertEquals("by the user who released it", TECHNICIAN_ID, operatorOf(events.get(0), "entered_by"));
         assertEquals("audited as the sign-out, from the pathologist's queue",
-                Map.of("verb", PathologySampleService.PATHOLOGY_CASE_SIGNED_OUT, "stageFrom", "READY_PATHOLOGIST"),
+                Map.of("verb", PathologySampleService.PATHOLOGY_CASE_SIGNED_OUT, "stageFrom", "READY_PATHOLOGIST",
+                        "criticalResultEmitted", false),
                 payloadOf(onlyStageAudit()));
     }
 
@@ -257,7 +265,8 @@ public class PathologySampleStageEventTest extends PathologyCaseTestSupport {
         assertEquals("the case stays completed", "COMPLETED", storedStage());
         assertEquals("with no second entry onto the stage it already stands at", 0, stageEvents().size());
         assertEquals("the release is audited as the sign-out, from Completed",
-                Map.of("verb", PathologySampleService.PATHOLOGY_CASE_SIGNED_OUT, "stageFrom", "COMPLETED"),
+                Map.of("verb", PathologySampleService.PATHOLOGY_CASE_SIGNED_OUT, "stageFrom", "COMPLETED",
+                        "criticalResultEmitted", false),
                 payloadOf(onlyStageAudit()));
 
         PathologySampleForm again = caseViewForm();
@@ -559,12 +568,237 @@ public class PathologySampleStageEventTest extends PathologyCaseTestSupport {
         assertEquals("the fixture's blockless slide is the only one, and the case moves on", "STAINING", storedStage());
     }
 
-    /** From the pathologist's queue the bench has nothing to send the case to. */
+    // ---- staining and coverslipping (FR-8.1, FR-8.4) ----
+
+    /**
+     * Staining is finished once every slide in use is marked stained; the refusal
+     * names the ones still pending, block first.
+     */
+    @Test
+    public void advancingFromStainingWithAPendingSlide_isRefusedNamingIt() {
+        List<Integer> slides = twoSlidesFromA1At(PathologyStatus.STAINING);
+        PathologyCaseRows.storeStainStatus(jdbcTemplate, slides.get(0), StainStatus.STAINED);
+
+        LocalizedValidationException refusal = assertRefusedWith("pathology.error.stainingIncomplete",
+                () -> pathologySampleService.advance(CASE_ID, PathologyStatus.STAINING, TECHNICIAN_ID));
+
+        assertEquals("the refusal names the slide still to stain", Map.of("designations", "A1.2"), refusal.getParams());
+        assertEquals("the case stays at staining", "STAINING", storedStage());
+        assertEquals("and no entry is written", 0, stageEvents().size());
+    }
+
+    /** An unsatisfactory stain holds the case like a pending one (FR-8.3). */
+    @Test
+    public void advancingFromStainingWithAnUnsatisfactorySlide_isRefused() {
+        List<Integer> slides = twoSlidesFromA1At(PathologyStatus.STAINING);
+        PathologyCaseRows.storeStainStatus(jdbcTemplate, slides.get(0), StainStatus.STAINED);
+        PathologyCaseRows.storeStainStatus(jdbcTemplate, slides.get(1), StainStatus.UNSATISFACTORY);
+
+        LocalizedValidationException refusal = assertRefusedWith("pathology.error.stainingIncomplete",
+                () -> pathologySampleService.advance(CASE_ID, PathologyStatus.STAINING, TECHNICIAN_ID));
+
+        assertEquals("naming the slide to restain or recut", Map.of("designations", "A1.2"), refusal.getParams());
+    }
+
+    /** A retired slide, the one a recut replaced, no longer holds the case. */
+    @Test
+    public void advancingFromStainingWithEverySlideInUseStained_sendsItOn() {
+        List<Integer> slides = twoSlidesFromA1At(PathologyStatus.STAINING);
+        PathologyCaseRows.storeStainStatus(jdbcTemplate, slides.get(0), StainStatus.STAINED);
+        pathologySampleService.deactivateSlide(slides.get(1), "recut", TECHNICIAN_ID);
+
+        pathologySampleService.advance(CASE_ID, PathologyStatus.STAINING, TECHNICIAN_ID);
+
+        assertEquals("the case goes on to coverslipping", "COVERSLIPPING", storedStage());
+    }
+
+    /** Staining needs no parent block, so a slide with none on record counts. */
+    @Test
+    public void aSlideWithNoBlockOnRecord_holdsTheCaseAtStaining() {
+        storeAt(PathologyStatus.STAINING);
+
+        assertRefusedWith("pathology.error.stainingIncomplete",
+                () -> pathologySampleService.advance(CASE_ID, PathologyStatus.STAINING, TECHNICIAN_ID));
+
+        PathologyCaseRows.storeStainStatus(jdbcTemplate, LEGACY_SLIDE_ID, StainStatus.STAINED);
+        pathologySampleService.advance(CASE_ID, PathologyStatus.STAINING, TECHNICIAN_ID);
+        assertEquals("once stained it moves on", "COVERSLIPPING", storedStage());
+    }
+
+    /**
+     * Coverslipping is finished once every slide in use passed its check; one
+     * awaiting its check and one that failed are both named.
+     */
+    @Test
+    public void advancingFromCoverslippingWithASlideAwaitingOrFailed_isRefusedNamingThem() {
+        List<Integer> slides = twoSlidesFromA1At(PathologyStatus.COVERSLIPPING);
+        slides.forEach(slideId -> PathologyCaseRows.storeStainStatus(jdbcTemplate, slideId, StainStatus.STAINED));
+        PathologyCaseRows.storeCoverslipQc(jdbcTemplate, slides.get(1), "FAIL");
+
+        LocalizedValidationException refusal = assertRefusedWith("pathology.error.coverslipQcIncomplete",
+                () -> pathologySampleService.advance(CASE_ID, PathologyStatus.COVERSLIPPING, TECHNICIAN_ID));
+
+        assertEquals("the refusal names the slide awaiting its check and the one that failed",
+                Map.of("designations", "A1.1, A1.2"), refusal.getParams());
+        assertEquals("the case stays at coverslipping", "COVERSLIPPING", storedStage());
+    }
+
+    @Test
+    public void advancingFromCoverslippingWithEverySlidePassed_sendsItToThePathologist() {
+        List<Integer> slides = twoSlidesFromA1At(PathologyStatus.COVERSLIPPING);
+        slides.forEach(slideId -> {
+            PathologyCaseRows.storeStainStatus(jdbcTemplate, slideId, StainStatus.STAINED);
+            PathologyCaseRows.storeCoverslipQc(jdbcTemplate, slideId, "PASS");
+        });
+
+        pathologySampleService.advance(CASE_ID, PathologyStatus.COVERSLIPPING, TECHNICIAN_ID);
+
+        assertEquals("the case reaches the pathologist", "READY_PATHOLOGIST", storedStage());
+    }
+
+    /**
+     * The same send with the fixture's request still open is refused, naming it,
+     * until the request is acknowledged (FR-10.11).
+     */
+    @Test
+    public void advancingFromCoverslippingWithEverySlidePassed_whileARequestIsOpen_isRefusedNamingIt() {
+        jdbcTemplate.update("UPDATE clinlims.pathology_request SET status = 'OPENED' WHERE id = ?", FIXTURE_REQUEST_ID);
+        List<Integer> slides = twoSlidesFromA1At(PathologyStatus.COVERSLIPPING);
+        slides.forEach(slideId -> {
+            PathologyCaseRows.storeStainStatus(jdbcTemplate, slideId, StainStatus.STAINED);
+            PathologyCaseRows.storeCoverslipQc(jdbcTemplate, slideId, "PASS");
+        });
+
+        LocalizedValidationException refusal = assertRefusedWith("pathology.error.openRequestsUnacknowledged",
+                () -> pathologySampleService.advance(CASE_ID, PathologyStatus.COVERSLIPPING, TECHNICIAN_ID));
+
+        assertEquals("the refusal names the open request", Map.of("instructions", "Histology review"),
+                refusal.getParams());
+        assertEquals("the case stays at coverslipping", "COVERSLIPPING", storedStage());
+        pathologySampleService.advance(CASE_ID, PathologyStatus.COVERSLIPPING, TECHNICIAN_ID,
+                List.of(FIXTURE_REQUEST_ID));
+        assertEquals("acknowledged, it reaches the pathologist", "READY_PATHOLOGIST", storedStage());
+    }
+
+    /**
+     * A slide passed at coverslipping and then found unsatisfactory is not stained,
+     * so it still holds the case where the laboratory tracks Staining.
+     */
+    @Test
+    public void advancingFromCoverslipping_needsEveryPassedSlideStainedToo() {
+        List<Integer> slides = twoSlidesFromA1At(PathologyStatus.COVERSLIPPING);
+        slides.forEach(slideId -> PathologyCaseRows.storeCoverslipQc(jdbcTemplate, slideId, "PASS"));
+        PathologyCaseRows.storeStainStatus(jdbcTemplate, slides.get(0), StainStatus.STAINED);
+
+        LocalizedValidationException refusal = assertRefusedWith("pathology.error.coverslipQcIncomplete",
+                () -> pathologySampleService.advance(CASE_ID, PathologyStatus.COVERSLIPPING, TECHNICIAN_ID));
+        assertEquals(Map.of("designations", "A1.2"), refusal.getParams());
+
+        ConfigurationProperties.getInstance().setPropertyValue(Property.PATHOLOGY_STAGE_STAINING_ENABLED, "false");
+        pathologySampleService.advance(CASE_ID, PathologyStatus.COVERSLIPPING, TECHNICIAN_ID);
+        assertEquals("with staining switched off the check alone is asked", "READY_PATHOLOGIST", storedStage());
+    }
+
+    /**
+     * The refusal names the slides in the order the case view lists them, by block
+     * and then in the order they were cut, whatever order the rows come back in.
+     */
+    @Test
+    public void theStainingRefusal_namesSlidesByBlockThenInTheOrderTheyWereCut() {
+        storeAt(PathologyStatus.MICROTOMY);
+        jdbcTemplate.update("DELETE FROM clinlims.pathology_slide WHERE id = ?", LEGACY_SLIDE_ID);
+        saveBlocks(postedBlock(null, "Bench A"), postedBlock(null, "Bench B"));
+        int a1 = idOfBlockDesignated("A1");
+        int a2 = idOfBlockDesignated("A2");
+        storeAsBlock(a1);
+        storeAsBlock(a2);
+        saveSlides(postedSlide(a2));
+        saveSlides(postedSlide(a1), postedSlide(a1));
+        storeAt(PathologyStatus.STAINING);
+
+        LocalizedValidationException refusal = assertRefusedWith("pathology.error.stainingIncomplete",
+                () -> pathologySampleService.advance(CASE_ID, PathologyStatus.STAINING, TECHNICIAN_ID));
+
+        assertEquals("A2.1 was cut first, yet A1's slides come first", Map.of("designations", "A1.1, A1.2, A2.1"),
+                refusal.getParams());
+    }
+
+    /** Retiring every slide must not open the Staining gate. */
+    @Test
+    public void advancingFromStainingWithNoSlideInUse_isRefused() {
+        List<Integer> slides = twoSlidesFromA1At(PathologyStatus.STAINING);
+        slides.forEach(slideId -> pathologySampleService.deactivateSlide(slideId, "dropped", TECHNICIAN_ID));
+
+        assertRefusedWith("pathology.error.microtomyIncomplete",
+                () -> pathologySampleService.advance(CASE_ID, PathologyStatus.STAINING, TECHNICIAN_ID));
+        assertEquals("the case stays at staining", "STAINING", storedStage());
+    }
+
+    /** Nor the Coverslipping gate. */
+    @Test
+    public void advancingFromCoverslippingWithNoSlideInUse_isRefused() {
+        List<Integer> slides = twoSlidesFromA1At(PathologyStatus.COVERSLIPPING);
+        slides.forEach(slideId -> pathologySampleService.deactivateSlide(slideId, "dropped", TECHNICIAN_ID));
+
+        assertRefusedWith("pathology.error.microtomyIncomplete",
+                () -> pathologySampleService.advance(CASE_ID, PathologyStatus.COVERSLIPPING, TECHNICIAN_ID));
+        assertEquals("the case stays at coverslipping", "COVERSLIPPING", storedStage());
+    }
+
+    /** A retired slide, the one a recut replaced, no longer holds Coverslipping. */
+    @Test
+    public void advancingFromCoverslippingWithARetiredSlideAwaiting_sendsItOn() {
+        List<Integer> slides = twoSlidesFromA1At(PathologyStatus.COVERSLIPPING);
+        PathologyCaseRows.storeStainStatus(jdbcTemplate, slides.get(0), StainStatus.STAINED);
+        PathologyCaseRows.storeCoverslipQc(jdbcTemplate, slides.get(0), "PASS");
+        pathologySampleService.deactivateSlide(slides.get(1), "cracked, recut", TECHNICIAN_ID);
+
+        pathologySampleService.advance(CASE_ID, PathologyStatus.COVERSLIPPING, TECHNICIAN_ID);
+
+        assertEquals("the retired slide does not hold the case", "READY_PATHOLOGIST", storedStage());
+    }
+
+    /**
+     * A return from Coverslipping to Staining keeps what the slides carry, so a
+     * case sent back for one slide does not lose the others' marks, and it moves on
+     * again once they hold.
+     */
+    @Test
+    public void aReturnFromCoverslipping_keepsTheMarksAndTheCaseMovesOnAgain() {
+        List<Integer> slides = twoSlidesFromA1At(PathologyStatus.COVERSLIPPING);
+        slides.forEach(slideId -> {
+            PathologyCaseRows.storeStainStatus(jdbcTemplate, slideId, StainStatus.STAINED);
+            PathologyCaseRows.storeCoverslipQc(jdbcTemplate, slideId, "PASS");
+        });
+
+        pathologySampleService.returnToPreviousStage(CASE_ID, PathologyStatus.COVERSLIPPING, "restain A1.2",
+                TECHNICIAN_ID);
+
+        assertEquals("back at staining", "STAINING", storedStage());
+        for (Integer slideId : slides) {
+            Map<String, Object> work = slideWork(slideId);
+            assertEquals("the stain status stays", "STAINED", work.get("stain_status"));
+            assertEquals("and so does the coverslip check", "PASS", work.get("coverslip_qc"));
+        }
+        pathologySampleService.advance(CASE_ID, PathologyStatus.STAINING, TECHNICIAN_ID);
+        pathologySampleService.advance(CASE_ID, PathologyStatus.COVERSLIPPING, TECHNICIAN_ID);
+        assertEquals("and the case moves on to the pathologist", "READY_PATHOLOGIST", storedStage());
+    }
+
+    /**
+     * Where review is switched off nothing follows the pathologist's queue, and a
+     * case under review is moved only by a release or a return.
+     */
     @Test
     public void advancingBeyondTheBench_isRefused() {
+        ConfigurationProperties.getInstance().setPropertyValue(Property.PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED, "false");
         storeAt(PathologyStatus.READY_PATHOLOGIST);
         assertRefusedWith("pathology.error.advanceBeyondBench",
                 () -> pathologySampleService.advance(CASE_ID, PathologyStatus.READY_PATHOLOGIST, TECHNICIAN_ID));
+
+        storeAt(PathologyStatus.UNDER_REVIEW);
+        assertRefusedWith("pathology.error.advanceBeyondBench",
+                () -> pathologySampleService.advance(CASE_ID, PathologyStatus.UNDER_REVIEW, TECHNICIAN_ID));
 
         storeAt(PathologyStatus.COMPLETED);
         assertRefusedWith("pathology.error.caseCompleted",
@@ -576,6 +810,7 @@ public class PathologySampleStageEventTest extends PathologyCaseTestSupport {
     @Test
     public void advancing_skipsAStageTheDeploymentSwitchedOff() {
         storeAt(PathologyStatus.STAINING);
+        PathologyCaseRows.storeStainStatus(jdbcTemplate, LEGACY_SLIDE_ID, StainStatus.STAINED);
         ConfigurationProperties.getInstance().setPropertyValue(Property.PATHOLOGY_STAGE_COVERSLIPPING_ENABLED, "false");
 
         pathologySampleService.advance(CASE_ID, PathologyStatus.STAINING, TECHNICIAN_ID);
@@ -826,7 +1061,8 @@ public class PathologySampleStageEventTest extends PathologyCaseTestSupport {
     }
 
     private boolean isRunReferenceRecordable() {
-        return pathologySampleService.isRunReferenceRecordable(pathologySampleService.get(CASE_ID));
+        return pathologySampleService.isRunReferenceRecordable(pathologySampleService.get(CASE_ID),
+                PathologyStatus.PROCESSING);
     }
 
     private List<Map<String, Object>> stageEvents() {
@@ -867,6 +1103,21 @@ public class PathologySampleStageEventTest extends PathologyCaseTestSupport {
         List<History> audit = stageAudit();
         assertEquals("one move, one audit entry", 1, audit.size());
         return audit.get(0);
+    }
+
+    /**
+     * Two slides A1.1 and A1.2 cut from block A1, the fixture's own slide gone, on
+     * a case standing at the stage given.
+     */
+    private List<Integer> twoSlidesFromA1At(PathologyStatus stage) {
+        storeAt(PathologyStatus.MICROTOMY);
+        jdbcTemplate.update("DELETE FROM clinlims.pathology_slide WHERE id = ?", LEGACY_SLIDE_ID);
+        int blockId = cutEmbeddedBlock();
+        saveSlides(postedSlide(blockId), postedSlide(blockId));
+        List<Integer> slides = slidesCutFrom(blockId).stream().map(slide -> ((Number) slide.get("id")).intValue())
+                .collect(Collectors.toList());
+        storeAt(stage);
+        return slides;
     }
 
     /** The newest slide cut from the block, as stored. */

@@ -3,7 +3,10 @@ package org.openelisglobal.program.controller.pathology;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import jakarta.persistence.PessimisticLockException;
+import java.sql.SQLException;
 import org.junit.Test;
+import org.springframework.dao.CannotAcquireLockException;
 
 /**
  * Designations are worked out in memory, so two saves adding a cassette at the
@@ -43,6 +46,24 @@ public class PathologyControllerDesignationCollisionTest {
                 + " reaches the designation index", PathologyController.concurrentSaveConflict(hibernate));
         assertTrue("whichever layer reports it", PathologyController.concurrentSaveConflict(jpa));
         assertTrue("including Spring's translation of it", PathologyController.concurrentSaveConflict(spring));
+    }
+
+    /**
+     * Two writes to one case that wait on each other's rows end with a lock the
+     * database would not grant; that is the same race and the same conflict.
+     */
+    @Test
+    public void aLockTheDatabaseWouldNotGrant_isACollision() {
+        assertTrue("a deadlock the database broke, by its state", PathologyController.concurrentSaveConflict(
+                new RuntimeException("save failed", new SQLException("deadlock detected", "40P01"))));
+        assertTrue("a lock it gave up waiting on, by its state", PathologyController
+                .concurrentSaveConflict(new RuntimeException(new SQLException("lock not available", "55P03"))));
+        assertTrue("as the persistence layer reports it",
+                PathologyController.concurrentSaveConflict(new PessimisticLockException()));
+        assertTrue("or as Spring translates it",
+                PathologyController.concurrentSaveConflict(new CannotAcquireLockException("lock")));
+        assertFalse("another database failure is not",
+                PathologyController.concurrentSaveConflict(new RuntimeException(new SQLException("syntax", "42601"))));
     }
 
     @Test

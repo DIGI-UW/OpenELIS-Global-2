@@ -71,5 +71,5 @@
         type="DICTIONARY" value="Benign Tumor" />
     <pathology_report id="601"
         last_updated="2024-06-10 12:00:00.0" pathology_sample_id="1"
-        file_type="PDF" report_type="PATHOLOGY" />
+        file_type="PDF" report_type="EXTERNAL" />
 </dataset>

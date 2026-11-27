@@ -1,8 +1,12 @@
 package org.openelisglobal.program.controller.pathology;
 
+import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.OptimisticLockException;
+import jakarta.persistence.PessimisticLockException;
+import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -11,28 +15,36 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.StaleStateException;
+import org.hibernate.exception.LockAcquisitionException;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.util.DashboardPage;
 import org.openelisglobal.common.rest.util.DashboardPaging;
 import org.openelisglobal.program.bean.PathologyDashBoardCount;
 import org.openelisglobal.program.service.PathologyCaseRuleException;
 import org.openelisglobal.program.service.PathologyDisplayService;
+import org.openelisglobal.program.service.PathologyReportService;
 import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.program.service.PathologySampleService.LabelVerification;
 import org.openelisglobal.program.service.ProgramSampleLabUnitScope;
+import org.openelisglobal.program.service.ReportPaths;
 import org.openelisglobal.program.util.PathologyStages;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem;
 import org.openelisglobal.program.valueholder.pathology.PathologyDisplayItem;
+import org.openelisglobal.program.valueholder.pathology.PathologyReport.PathologyReportType;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
+import org.openelisglobal.program.valueholder.pathology.ReportView;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -55,6 +67,10 @@ public class PathologyController extends PathologyRestController {
     private SystemUserService systemUserService;
     @Autowired
     private ProgramSampleLabUnitScope programSampleLabUnitScope;
+    @Autowired
+    private PathologyReportService pathologyReportService;
+    @Autowired
+    private ServletContext servletContext;
 
     /**
      * Ids of the cases the last search found, in pages of paging.results.pageSize.
@@ -186,19 +202,56 @@ public class PathologyController extends PathologyRestController {
             }
             throw e;
         }
+        if (Boolean.TRUE.equals(form.getRelease())) {
+            issueFinalReport(pathologySampleId, form);
+        }
 
         return ResponseEntity.ok(form);
     }
 
     /**
-     * Walks the cause chain for a designation unique index by name, or for the
-     * version check a save loses when another save of the same case committed
-     * first, which is how that race usually ends; package-private for its test.
+     * The sign-out has committed; its final report is a second step, so a template
+     * failure is reported in the answer and never undoes the sign-out. A report
+     * that is not the final, as when the case was reopened before this step ran, is
+     * a failed step too: the answer names only a final.
+     */
+    private void issueFinalReport(Integer pathologySampleId, PathologySampleForm form) {
+        try {
+            ReportView report = pathologyReportService.generate(pathologySampleId, form.getSystemUserId(),
+                    ReportPaths.of(servletContext));
+            if (PathologyReportType.FINAL.name().equals(report.type())) {
+                form.setFinalReport(report);
+            } else {
+                form.setFinalReportFailed(true);
+            }
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            form.setFinalReportFailed(true);
+        }
+    }
+
+    /**
+     * Postgres states for a lock it would not grant: a deadlock it broke, and a
+     * lock it gave up waiting on.
+     */
+    private static final Set<String> LOST_LOCK_STATES = Set.of("40P01", "55P03");
+
+    /**
+     * Walks the cause chain for a designation unique index by name, for the version
+     * check a save loses when another save of the same case committed first, which
+     * is how that race usually ends, or for a lock the database gave up waiting on
+     * or broke to end a deadlock between two writes to one case; package-private
+     * for its test.
      */
     static boolean concurrentSaveConflict(Throwable failure) {
         for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
             if (cause instanceof OptimisticLockException || cause instanceof StaleStateException
-                    || cause instanceof OptimisticLockingFailureException) {
+                    || cause instanceof OptimisticLockingFailureException || cause instanceof PessimisticLockException
+                    || cause instanceof LockTimeoutException || cause instanceof PessimisticLockingFailureException
+                    || cause instanceof LockAcquisitionException) {
+                return true;
+            }
+            if (cause instanceof SQLException sqlFailure && LOST_LOCK_STATES.contains(sqlFailure.getSQLState())) {
                 return true;
             }
             if (cause.getMessage() != null && (cause.getMessage().contains("pathology_block_designation_uk")

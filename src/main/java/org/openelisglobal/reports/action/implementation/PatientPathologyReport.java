@@ -3,7 +3,9 @@ package org.openelisglobal.reports.action.implementation;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.program.service.PathologyDisplayService;
+import org.openelisglobal.program.util.DictionaryEntryNames;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion.ConclusionType;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
@@ -15,6 +17,16 @@ public class PatientPathologyReport extends PatientProgramReport {
 
     private PathologySample pathologySample;
 
+    private boolean amended;
+
+    /**
+     * Prints the report's corrected-report line, for a final issued after the case
+     * was reopened. Set before the report is initialized, which fills the data.
+     */
+    public void setAmended(boolean amended) {
+        this.amended = amended;
+    }
+
     @Override
     protected String getReportName() {
         return "PatientPathologyReport";
@@ -24,14 +36,17 @@ public class PatientPathologyReport extends PatientProgramReport {
     protected void setAdditionalReportItems() {
         data.setGrossExam(pathologySample.getGrossExam());
         data.setMicroExam(pathologySample.getMicroscopyExam());
+        data.setCorrectedResult(amended);
         pathologySample.getConclusions().size();
         Optional<PathologyConclusion> conclusion = pathologySample.getConclusions().stream()
                 .filter(e -> e.getType() == ConclusionType.TEXT).findFirst();
         data.setTextConclusion(conclusion.isPresent() ? conclusion.get().getValue() : "");
 
-        List<String> codedConclusions = pathologySample.getConclusions().stream()
-                .filter(e -> e.getType() == ConclusionType.DICTIONARY)
-                .map(e -> dictionaryService.get(e.getValue()).getLocalizedName()).collect(Collectors.toList());
+        List<String> codedConclusions = DictionaryEntryNames
+                .namedPairs(dictionaryService,
+                        pathologySample.getConclusions().stream().filter(e -> e.getType() == ConclusionType.DICTIONARY)
+                                .map(PathologyConclusion::getValue))
+                .stream().map(IdValuePair::getValue).collect(Collectors.toList());
         data.setCodedConclusion(codedConclusions);
     }
 

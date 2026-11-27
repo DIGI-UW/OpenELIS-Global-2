@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet id="assert-pathology-report-versions"
+        author="openelis">
+        <preConditions onFail="HALT" onError="HALT">
+            <sqlCheck expectedResult="4">
+                SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_schema = 'clinlims'
+                AND table_name = 'pathology_report'
+                AND column_name IN ('version_number', 'voided', 'generated_at',
+                'generated_by')
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_schema = 'clinlims'
+                AND table_name = 'pathology_report'
+                AND column_name = 'voided'
+                AND data_type = 'boolean'
+                AND is_nullable = 'NO'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM information_schema.table_constraints
+                WHERE table_schema = 'clinlims'
+                AND table_name = 'pathology_report'
+                AND constraint_type = 'FOREIGN KEY'
+                AND constraint_name = 'pathology_report_generated_by_fk'
+            </sqlCheck>
+            <!-- Every old row is an uploaded report; none is left as the old constant. -->
+            <sqlCheck expectedResult="4">
+                SELECT COUNT(*) FROM clinlims.pathology_report
+                WHERE id IN (990911, 990912, 990913, 990914)
+                AND report_type = 'EXTERNAL' AND voided = false AND generated_by IS
+                NULL
+            </sqlCheck>
+            <!-- Rows with a file are numbered by id within their case. -->
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.pathology_report
+                WHERE id = 990911 AND version_number = 1 AND generated_at =
+                make_timestamp(2024,3,1,10,0,0)
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.pathology_report
+                WHERE id = 990913 AND version_number = 2 AND generated_at =
+                make_timestamp(2024,3,3,10,0,0)
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.pathology_report
+                WHERE id = 990914 AND version_number = 1 AND generated_at =
+                make_timestamp(2024,4,1,10,0,0)
+            </sqlCheck>
+            <!-- The placeholder with no file is kept, with no number and no date. -->
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.pathology_report
+                WHERE id = 990912 AND version_number IS NULL AND generated_at IS NULL
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM pg_constraint
+                WHERE conname = 'pathology_report_type_ck'
+                AND pg_get_constraintdef(oid) LIKE '%DRAFT%'
+                AND pg_get_constraintdef(oid) LIKE '%FINAL%'
+                AND pg_get_constraintdef(oid) LIKE '%EXTERNAL%'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM pg_indexes
+                WHERE schemaname = 'clinlims'
+                AND tablename = 'pathology_report'
+                AND indexname = 'pathology_report_version_uk'
+                AND indexdef LIKE 'CREATE UNIQUE INDEX%'
+            </sqlCheck>
+            <!-- The direction check takes REOPEN and a reason is still needed outside
+                FORWARD. -->
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM pg_constraint
+                WHERE conname = 'pathology_stage_event_direction_ck'
+                AND pg_get_constraintdef(oid) LIKE '%REOPEN%'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM pg_constraint
+                WHERE conname = 'pathology_stage_event_return_reason_ck'
+                AND pg_get_constraintdef(oid) LIKE '%FORWARD%'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.pathology_stage_event
+                WHERE id = 990921 AND direction = 'RETURN' AND reason = 'Recut'
+            </sqlCheck>
+            <!-- The critical-result flag is off on every case on file. -->
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_schema = 'clinlims'
+                AND table_name = 'pathology_sample'
+                AND column_name = 'critical_result_flagged'
+                AND data_type = 'boolean'
+                AND is_nullable = 'NO'
+            </sqlCheck>
+            <sqlCheck expectedResult="2">
+                SELECT COUNT(*) FROM clinlims.pathology_sample
+                WHERE id IN (990901, 990902) AND critical_result_flagged = false
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.reference_tables
+                WHERE name = 'PATHOLOGY_REPORT' AND keep_history = 'Y' AND is_hl7_encoded
+                = 'N'
+            </sqlCheck>
+        </preConditions>
+        <comment>Every assertion lives in the preConditions above.</comment>
+        <sql>SELECT 1;</sql>
+    </changeSet>
+</databaseChangeLog>

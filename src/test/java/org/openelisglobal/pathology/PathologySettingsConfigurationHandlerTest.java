@@ -20,6 +20,7 @@ public class PathologySettingsConfigurationHandlerTest extends BaseWebContextSen
 
     private static final String SETTING = "pathology.microtomy.scanVerificationRequired";
     private static final String ROWS = "pathology.caseView.priorResultsRows";
+    private static final String CRITICAL = "pathology.criticalResult.codes";
 
     @Autowired
     private PathologySettingsConfigurationHandler handler;
@@ -33,12 +34,12 @@ public class PathologySettingsConfigurationHandlerTest extends BaseWebContextSen
                 + "SELECT nextval('clinlims.site_information_domain_seq'), 'resultConfiguration', "
                 + "'site information which effects the handling of results' "
                 + "WHERE NOT EXISTS (SELECT 1 FROM clinlims.site_information_domain WHERE name = 'resultConfiguration')");
-        removeBothSettings();
+        removeAllSettings();
     }
 
     @After
     public void cleanUp() {
-        removeBothSettings();
+        removeAllSettings();
     }
 
     @Test
@@ -76,6 +77,29 @@ public class PathologySettingsConfigurationHandlerTest extends BaseWebContextSen
         assertEquals("nor the row count an administrator set", "12", storedValue(ROWS));
     }
 
+    @Test
+    public void theCriticalCodesSetting_isCreatedEmpty_andNeverOverwritten() throws Exception {
+        load();
+
+        assertEquals("the setting is created once", 1,
+                jdbcTemplate.queryForObject("SELECT count(*) FROM clinlims.site_information WHERE name = ?",
+                        Integer.class, CRITICAL).intValue());
+        String created = storedValue(CRITICAL);
+        assertEquals("and is created empty", "", created == null ? "" : created);
+        assertEquals("the setting is text", "text", jdbcTemplate.queryForObject(
+                "SELECT value_type FROM clinlims.site_information WHERE name = ?", String.class, CRITICAL));
+        assertEquals("the setting sits in Result Entry Configuration", "resultConfiguration",
+                jdbcTemplate.queryForObject(
+                        "SELECT d.name FROM clinlims.site_information s "
+                                + "JOIN clinlims.site_information_domain d ON d.id = s.domain_id WHERE s.name = ?",
+                        String.class, CRITICAL));
+
+        jdbcTemplate.update("UPDATE clinlims.site_information SET value = 'C, D0' WHERE name = ?", CRITICAL);
+        load();
+
+        assertEquals("a later load never overwrites the administrator's starts", "C, D0", storedValue(CRITICAL));
+    }
+
     private void load() throws Exception {
         try (InputStream csv = new ClassPathResource("configuration/pathology-settings/default.csv").getInputStream()) {
             handler.processConfiguration(csv, "default.csv");
@@ -91,7 +115,7 @@ public class PathologySettingsConfigurationHandlerTest extends BaseWebContextSen
                 name);
     }
 
-    private void removeBothSettings() {
-        jdbcTemplate.update("DELETE FROM clinlims.site_information WHERE name IN (?, ?)", SETTING, ROWS);
+    private void removeAllSettings() {
+        jdbcTemplate.update("DELETE FROM clinlims.site_information WHERE name IN (?, ?, ?)", SETTING, ROWS, CRITICAL);
     }
 }

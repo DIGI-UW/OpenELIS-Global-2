@@ -14,10 +14,12 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.program.service.PriorResultsService;
 import org.openelisglobal.program.valueholder.AnatomicPathologyBench;
 import org.openelisglobal.program.valueholder.PriorResultRow;
 import org.openelisglobal.program.valueholder.PriorResults;
+import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -60,6 +62,9 @@ public class PriorResultsServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private PriorResultsService priorResultsService;
+
+    @Autowired
+    private PathologySampleService pathologySampleService;
 
     private String rowsSetting;
 
@@ -154,6 +159,26 @@ public class PriorResultsServiceTest extends BaseWebContextSensitiveTest {
 
         assertEquals("NOT_REPORTED", row.conclusionState());
         assertNull("the draft text stays on the case", row.conclusion());
+    }
+
+    @Test
+    public void aReopenedCase_readsNotReported_untilSignedOutAgain() {
+        // Signed out as the record reads it: at Completed, entered forward.
+        jdbcTemplate.update("INSERT INTO clinlims.pathology_stage_event (id, pathology_sample_id, stage, entered_at,"
+                + " entered_by, direction, last_updated) VALUES (9441, 11, 'COMPLETED', now(), 1, 'FORWARD', now())");
+        try {
+            pathologySampleService.reopen(11, PathologyStatus.COMPLETED, "Amended diagnosis", VIEWER);
+
+            PriorResultRow reopened = rowOf(everyPriorOf(AnatomicPathologyBench.PATHOLOGY, 15), "PATHOLOGY", 11);
+            assertEquals("a reopened case reads as not reported", "NOT_REPORTED", reopened.conclusionState());
+            assertNull("and sends no conclusion while it is amended", reopened.conclusion());
+
+            jdbcTemplate.update("UPDATE clinlims.pathology_sample SET status = 'COMPLETED' WHERE id = 11");
+            assertEquals("signed out again, it is reported", "REPORTED",
+                    rowOf(everyPriorOf(AnatomicPathologyBench.PATHOLOGY, 15), "PATHOLOGY", 11).conclusionState());
+        } finally {
+            PathologyCaseRows.clearStageHistory(jdbcTemplate, 11);
+        }
     }
 
     @Test

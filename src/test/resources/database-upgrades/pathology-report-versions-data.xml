@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet id="fixture-pathology-report-versions-data"
+        author="openelis">
+        <comment>Two cases on file before reports were versioned. Case 1 holds
+            three rows of the old constant type, the middle one a placeholder
+            with no file; case 2 holds one. A stage event that returned a case,
+            with its reason, must come out unchanged.</comment>
+        <sql>
+            INSERT INTO clinlims.system_user
+            (id, login_name, last_name, first_name, is_active, is_employee,
+            lastupdated)
+            VALUES
+            (990901, 'prv990901', 'Versions', 'Fixture', 'Y', 'Y', now());
+        </sql>
+        <sql>
+            INSERT INTO clinlims.sample
+            (id, accession_number, entered_date, received_date, lastupdated)
+            VALUES
+            (990901, 'PRV26000000001', now(), now(), now()),
+            (990902, 'PRV26000000002', now(), now(), now());
+        </sql>
+        <sql>
+            INSERT INTO clinlims.pathology_sample
+            (id, sample_id, status, last_updated)
+            VALUES
+            (990901, 990901, 'READY_PATHOLOGIST', now()),
+            (990902, 990902, 'READY_PATHOLOGIST', now());
+        </sql>
+        <sql>
+            INSERT INTO clinlims.pathology_report
+            (id, pathology_sample_id, report_type, image, file_type, last_updated)
+            VALUES
+            (990911, 990901, 'PATHOLOGY', decode('255044462d', 'hex'), 'PDF',
+            make_timestamp(2024,3,1,10,0,0)),
+            (990912, 990901, 'PATHOLOGY', NULL, NULL, make_timestamp(2024,3,2,10,0,0)),
+            (990913, 990901, 'PATHOLOGY', decode('255044462d', 'hex'), 'PDF',
+            make_timestamp(2024,3,3,10,0,0)),
+            (990914, 990902, 'PATHOLOGY', decode('255044462d', 'hex'), 'PDF',
+            make_timestamp(2024,4,1,10,0,0));
+        </sql>
+        <sql>
+            INSERT INTO clinlims.pathology_stage_event
+            (id, pathology_sample_id, stage, entered_at, entered_by, direction,
+            reason, last_updated)
+            VALUES
+            (990921, 990901, 'GROSSING', now(), 990901, 'RETURN', 'Recut',
+            now());
+        </sql>
+    </changeSet>
+</databaseChangeLog>

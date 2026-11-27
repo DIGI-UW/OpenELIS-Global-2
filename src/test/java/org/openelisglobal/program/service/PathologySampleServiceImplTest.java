@@ -54,7 +54,6 @@ public class PathologySampleServiceImplTest {
         existingPathologySample.setRequests(new ArrayList<>());
         existingPathologySample.setTechniques(new ArrayList<>());
         existingPathologySample.setConclusions(new ArrayList<>());
-        existingPathologySample.setReports(new ArrayList<>());
 
         Sample sample = new Sample();
         sample.setId("1");

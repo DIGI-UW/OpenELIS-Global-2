@@ -1,5 +1,6 @@
 package org.openelisglobal.program.controller.pathology;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Min;
 import java.util.ArrayList;
 import java.util.List;
@@ -11,6 +12,7 @@ import org.openelisglobal.program.valueholder.pathology.PathologyReport;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestStatus;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
+import org.openelisglobal.program.valueholder.pathology.ReportView;
 
 public class PathologySampleForm {
 
@@ -31,6 +33,12 @@ public class PathologySampleForm {
 
     private List<String> techniques;
 
+    /**
+     * Not read: a case save no longer writes requests. Each is raised and changes
+     * status through its own endpoint, so it keeps its id, who raised it and when.
+     * The field stays so a page or helper that still posts it binds, and what it
+     * posts is ignored.
+     */
     private List<PathologyRequestForm> requests;
 
     private List<String> resolvedRequests;
@@ -41,14 +49,39 @@ public class PathologySampleForm {
 
     private String microscopyExam;
 
+    /** Null when the client did not post it, so the stored notes stand. */
+    private String reviewNotes;
+
     /** Null when the client did not post it, so the stored flag stands. */
     private Boolean decalcificationRequired;
+
+    /** Null when the client did not post it, so the stored flag stands. */
+    private Boolean criticalResultFlagged;
+
+    /**
+     * The answer's final report, issued after a sign-out; never read when posted.
+     */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private ReportView finalReport;
+
+    /**
+     * The answer says the sign-out's report step failed; never read when posted.
+     */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private boolean finalReportFailed;
 
     /**
      * The processor run, written once on the case's Processing entry. Null when the
      * client did not post it; ignored whenever no entry would take it.
      */
     private String runReference;
+
+    /**
+     * The coverslipping batch, written once on the case's Coverslipping entry
+     * (FR-8.4). Null when the client did not post it; ignored whenever no entry
+     * would take it.
+     */
+    private String coverslipRunReference;
 
     private List<String> conclusions;
 
@@ -155,6 +188,38 @@ public class PathologySampleForm {
         this.microscopyExam = microscopyExam;
     }
 
+    public Boolean getCriticalResultFlagged() {
+        return criticalResultFlagged;
+    }
+
+    public void setCriticalResultFlagged(Boolean criticalResultFlagged) {
+        this.criticalResultFlagged = criticalResultFlagged;
+    }
+
+    public ReportView getFinalReport() {
+        return finalReport;
+    }
+
+    public void setFinalReport(ReportView finalReport) {
+        this.finalReport = finalReport;
+    }
+
+    public boolean isFinalReportFailed() {
+        return finalReportFailed;
+    }
+
+    public void setFinalReportFailed(boolean finalReportFailed) {
+        this.finalReportFailed = finalReportFailed;
+    }
+
+    public String getReviewNotes() {
+        return reviewNotes;
+    }
+
+    public void setReviewNotes(String reviewNotes) {
+        this.reviewNotes = reviewNotes;
+    }
+
     public Boolean getDecalcificationRequired() {
         return decalcificationRequired;
     }
@@ -169,6 +234,14 @@ public class PathologySampleForm {
 
     public void setRunReference(String runReference) {
         this.runReference = runReference;
+    }
+
+    public String getCoverslipRunReference() {
+        return coverslipRunReference;
+    }
+
+    public void setCoverslipRunReference(String coverslipRunReference) {
+        this.coverslipRunReference = coverslipRunReference;
     }
 
     public String getConclusionText() {

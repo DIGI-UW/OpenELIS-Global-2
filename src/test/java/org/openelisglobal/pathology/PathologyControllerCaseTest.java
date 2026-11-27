@@ -11,6 +11,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletResponse;
 
@@ -132,6 +133,102 @@ public class PathologyControllerCaseTest extends PathologyControllerTestSupport 
                 bodyOf(response).get("messageArgs"));
         assertEquals("and no slide is cut from it", Integer.valueOf(0), jdbcTemplate.queryForObject(
                 "SELECT count(*) FROM clinlims.pathology_slide WHERE block_id = ?", Integer.class, LEGACY_BLOCK_ID));
+    }
+
+    /**
+     * Each new refusal of the case save reaches the screen as its message id, with
+     * the retired diagnosis named.
+     */
+    @Test
+    public void aRefusedFinding_isAnsweredWithItsMessageKey() throws Exception {
+        try (PathologyFindingsDictionary dictionary = PathologyFindingsDictionary.seed(jdbcTemplate)) {
+            assertRefused("a reading written on the bench", saveBody(",\"microscopyExam\":\"Changed\""),
+                    "pathology.error.findingsLocked");
+
+            storeAt(PathologyStatus.UNDER_REVIEW);
+            assertRefused("a narrative longer than its column",
+                    saveBody(",\"conclusionText\":\"" + StringUtils.repeat("n", 256) + "\""),
+                    "pathology.error.conclusionTooLong");
+            Map<String, Object> retired = assertRefused("a retired diagnosis",
+                    saveBody(",\"conclusions\":[\"" + PathologyFindingsDictionary.OLD_TERM + "\"]"),
+                    "pathology.error.conclusionNotInUse");
+            assertEquals("naming it", Map.of("name", "Old term"), retired.get("messageArgs"));
+            assertRefused("a release with a blank microscopic description",
+                    saveBody(",\"microscopyExam\":\" \",\"release\":true"),
+                    "pathology.error.releaseWithoutDescriptions");
+
+            jdbcTemplate.update("UPDATE clinlims.pathology_request SET status = 'COMPLETED' WHERE id = ?",
+                    FIXTURE_REQUEST_ID);
+            assertEquals("setup: the case is signed out", HttpStatus.OK.value(),
+                    postAsTechnician(CASE_VIEW, saveBody(",\"release\":true")).getStatus());
+            assertRefused("an edit after the sign-out", saveBody(",\"microscopyExam\":\"Changed\""),
+                    "pathology.error.caseCompleted");
+        }
+    }
+
+    /**
+     * A case a pathologist is reading is bench work still: the dashboard counts it
+     * as in progress and no longer as awaiting review.
+     */
+    @Test
+    public void aCaseUnderReview_countsAsInProgress_notAsAwaitingReview() throws Exception {
+        storeAt(PathologyStatus.READY_PATHOLOGIST);
+        Map<String, Object> inTheQueue = counts();
+
+        storeAt(PathologyStatus.UNDER_REVIEW);
+        Map<String, Object> underReview = counts();
+
+        assertEquals("the case leaves the queue's tile", number(inTheQueue, "awaitingReview") - 1,
+                number(underReview, "awaitingReview"));
+        assertEquals("and joins work in progress", number(inTheQueue, "inProgress") + 1,
+                number(underReview, "inProgress"));
+    }
+
+    /**
+     * The tiles follow the case's status: signed out it counts as complete, and
+     * reopened it is work in progress again.
+     */
+    @Test
+    public void theCounts_followTheCase_throughSignOutAndReopen() throws Exception {
+        jdbcTemplate.update("UPDATE clinlims.pathology_request SET status = 'COMPLETED' WHERE id = ?",
+                FIXTURE_REQUEST_ID);
+        storeAt(PathologyStatus.UNDER_REVIEW);
+        Map<String, Object> underReview = counts();
+
+        assertEquals("setup: the case is signed out", HttpStatus.OK.value(),
+                postAsTechnician(CASE_VIEW, saveBody(",\"release\":true")).getStatus());
+        Map<String, Object> signedOut = counts();
+        assertEquals("the case leaves work in progress", number(underReview, "inProgress") - 1,
+                number(signedOut, "inProgress"));
+        assertEquals("and counts as complete", number(underReview, "complete") + 1, number(signedOut, "complete"));
+
+        assertEquals("setup: the case is reopened", HttpStatus.OK.value(),
+                postAsTechnician(CASE_VIEW + "/reopen", "{\"from\":\"COMPLETED\",\"reason\":\"Amended diagnosis\"}")
+                        .getStatus());
+        Map<String, Object> reopened = counts();
+        assertEquals("reopened, it is work in progress again", number(underReview, "inProgress"),
+                number(reopened, "inProgress"));
+        assertEquals("and no longer complete", number(underReview, "complete"), number(reopened, "complete"));
+        assertEquals("nor awaiting review", number(underReview, "awaitingReview"), number(reopened, "awaitingReview"));
+    }
+
+    private Map<String, Object> counts() throws Exception {
+        MockHttpServletResponse response = mockMvc
+                .perform(get("/rest/pathology/dashboard/count").with(user("technician1"))).andReturn().getResponse();
+        assertEquals("the tiles are served", HttpStatus.OK.value(), response.getStatus());
+        return bodyOf(response);
+    }
+
+    private static long number(Map<String, Object> counts, String tile) {
+        return ((Number) counts.get(tile)).longValue();
+    }
+
+    private Map<String, Object> assertRefused(String what, String body, String messageKey) throws Exception {
+        MockHttpServletResponse response = postAsTechnician(CASE_VIEW, body);
+        assertEquals(what + " is refused", HttpStatus.BAD_REQUEST.value(), response.getStatus());
+        Map<String, Object> answer = bodyOf(response);
+        assertEquals(what + ", with the message the screen translates", messageKey, answer.get("messageKey"));
+        return answer;
     }
 
     /** What the case view posts, with the fields a test adds. */

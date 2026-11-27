@@ -3,12 +3,13 @@ package org.openelisglobal.program.controller.pathology;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
-import org.apache.commons.lang3.StringUtils;
 import org.hibernate.StaleStateException;
 import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.program.service.PathologyStageConflictException;
 import org.openelisglobal.program.service.ProgramSampleLabUnitScope;
+import org.openelisglobal.program.util.EnumNames;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.openelisglobal.program.valueholder.pathology.PathologyStageEvent;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -27,7 +28,8 @@ import org.springframework.web.bind.annotation.RestController;
  * its own request rather than a field of the case save, so every move names who
  * made it and when (FR-2.4, FR-2.5). The request carries the stage the page
  * showed, so a page another user has overtaken is told so instead of moving the
- * case twice.
+ * case twice, and a send to the pathologist names the open bench requests the
+ * page listed, so one raised behind the page is shown before it is passed over.
  */
 @RestController
 @RequestMapping(value = "/rest/pathology/caseView/{pathologySampleId}", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -48,7 +50,8 @@ public class PathologyStageRestController extends PathologyRestController {
         String sysUserId = getSysUserId(request);
         programSampleLabUnitScope.requireVisible(sysUserId, pathologySampleService.get(pathologySampleId));
         PathologyStageEvent entered = pathologySampleService.advance(pathologySampleId,
-                stageNamed(body == null ? null : body.from), sysUserId);
+                EnumNames.valueNamed(PathologyStatus.class, body == null ? null : body.from), sysUserId,
+                body == null || body.acknowledgedRequestIds == null ? List.of() : body.acknowledgedRequestIds);
         return ResponseEntity.ok(Map.of("status", entered.getStage().name()));
     }
 
@@ -59,7 +62,23 @@ public class PathologyStageRestController extends PathologyRestController {
         String sysUserId = getSysUserId(request);
         programSampleLabUnitScope.requireVisible(sysUserId, pathologySampleService.get(pathologySampleId));
         PathologyStageEvent entered = pathologySampleService.returnToPreviousStage(pathologySampleId,
-                stageNamed(body == null ? null : body.from), body == null ? null : body.reason, sysUserId);
+                EnumNames.valueNamed(PathologyStatus.class, body == null ? null : body.from),
+                body == null ? null : body.reason, sysUserId);
+        return ResponseEntity.ok(Map.of("status", entered.getStage().name()));
+    }
+
+    /**
+     * Reopens a signed-out case, with the stage the page showed and the reason, in
+     * the shapes a return answers with.
+     */
+    @PostMapping("/reopen")
+    public ResponseEntity<Map<String, Object>> reopen(@PathVariable("pathologySampleId") Integer pathologySampleId,
+            @RequestBody(required = false) ReturnRequest body, HttpServletRequest request) {
+        String sysUserId = getSysUserId(request);
+        programSampleLabUnitScope.requireVisible(sysUserId, pathologySampleService.get(pathologySampleId));
+        PathologyStageEvent entered = pathologySampleService.reopen(pathologySampleId,
+                EnumNames.valueNamed(PathologyStatus.class, body == null ? null : body.from),
+                body == null ? null : body.reason, sysUserId);
         return ResponseEntity.ok(Map.of("status", entered.getStage().name()));
     }
 
@@ -84,26 +103,19 @@ public class PathologyStageRestController extends PathologyRestController {
     }
 
     /**
-     * The stage the request names, or null when it names none or one that does not
-     * exist; the service refuses a move it cannot check against the page.
+     * The stage the page showed the case at and, when the move would send the case
+     * to the pathologist with bench requests open, the ids of the open requests the
+     * page listed and the user chose to send past (FR-10.11). A page that lists
+     * none sends the stage alone.
      */
-    private static PathologyStatus stageNamed(String from) {
-        if (StringUtils.isBlank(from)) {
-            return null;
-        }
-        try {
-            return PathologyStatus.valueOf(from.trim());
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
-    /** The stage the page showed the case at. */
     public static class AdvanceRequest {
         public String from;
+        public List<Integer> acknowledgedRequestIds;
     }
 
-    /** The stage the page showed the case at, and why it is sent back. */
+    /**
+     * The stage the page showed the case at, and why it is sent back or reopened.
+     */
     public static class ReturnRequest {
         public String from;
         public String reason;

@@ -10,19 +10,28 @@ import { FormattedMessage, useIntl } from "react-intl";
 import StatusBadge from "../../caseView/StatusBadge";
 import { stageLabel } from "../pathologyStages";
 
+// The tag a move against the stage order carries, in words.
+// i18n-keys: pathology.badge.returned, pathology.badge.reopened
+const DIRECTION_BADGE_KEYS = Object.freeze({
+  RETURN: "pathology.badge.returned",
+  REOPEN: "pathology.badge.reopened",
+});
+
 /**
  * The record of who moved the case and when, read-only: the operator and the
  * time come from the session and the server clock when the case is moved,
  * so nothing here is ever an input (S-8.2). A return is marked as one in
- * words, with the reason the bench gave beside it.
+ * words, with the reason the bench gave beside it, and a reopen of a
+ * signed-out case the same way, with the pathologist's reason.
  *
  * A list of one stage's entries leaves the stage column out, since every row
  * would repeat it, and the Returned tag then sits with the entry time, the
  * return's reason under it, so the list keeps one column fewer where the
- * section is narrow. The processor run is shown where the list is of
- * processing entries, so a run corrected by a return stays visible beside
- * the one it replaced; there it comes first, since the run is what tells one
- * processing entry from another.
+ * section is narrow. A stage that records a reference on its entry (the
+ * processor run at processing, the batch at coverslipping) shows it under the
+ * header `runReferenceKey` names, so a reference corrected by a return stays
+ * visible beside the one it replaced; there it comes first, since the
+ * reference is what tells one entry from another.
  *
  * The case's whole history leaves the completion columns out: an entry is
  * completed by the move that opens the next one, in the same moment and by
@@ -40,22 +49,26 @@ const StageEventList = ({
   ariaLabelKey,
   showStage = true,
   showCompletion = true,
-  showRunReference = false,
+  runReferenceKey = null,
 }) => {
+  const showRunReference = Boolean(runReferenceKey);
   const intl = useIntl();
 
   const returned = (event) =>
-    event.direction === "RETURN" && (
-      <StatusBadge kind="partial" textKey="pathology.badge.returned" />
+    DIRECTION_BADGE_KEYS[event.direction] && (
+      <StatusBadge
+        kind="partial"
+        textKey={DIRECTION_BADGE_KEYS[event.direction]}
+      />
     );
 
-  // With the stage column left out, the reason sits with the Returned tag.
+  // With the stage column left out, the reason sits with the tag.
   const showReasonColumn = showStage;
   const label = intl.formatMessage({ id: ariaLabelKey });
 
   // The run, where shown, leads the row.
   const headers = [
-    showRunReference && "pathology.label.runReference",
+    runReferenceKey,
     showStage && "pathology.label.stage",
     "pathology.label.enteredAt",
     "pathology.label.enteredBy",
