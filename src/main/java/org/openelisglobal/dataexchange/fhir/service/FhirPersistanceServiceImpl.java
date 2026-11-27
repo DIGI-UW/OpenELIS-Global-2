@@ -92,18 +92,25 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
 
     @Override
     public Bundle createFhirResourceInFhirStore(Resource resource) throws FhirLocalPersistingException {
+        if (noStore() || resource == null) {
+            return emptyTransactionResponse();
+        }
         String id = resource.getIdElement().getIdPart() == null ? "" : resource.getIdElement().getIdPart();
         return createFhirResourcesInFhirStore(Map.of(id, resource));
     }
 
     @Override
     public Bundle updateFhirResourceInFhirStore(Resource resource) throws FhirLocalPersistingException {
-        return updateFhirResourcesInFhirStore(Map.of(resource.getIdElement().getIdPart(), resource));
+        if (noStore() || resource == null) {
+            return emptyTransactionResponse();
+        }
+        String id = resource.getIdElement().getIdPart() == null ? "" : resource.getIdElement().getIdPart();
+        return updateFhirResourcesInFhirStore(Map.of(id, resource));
     }
 
     @Override
     public Bundle createFhirResourcesInFhirStore(Map<String, Resource> resources) throws FhirLocalPersistingException {
-        if (noStore()) {
+        if (noStore() || resources == null || resources.isEmpty()) {
             return emptyTransactionResponse();
         }
         Bundle transactionBundle = makeTransactionBundleForCreate(resources);
@@ -119,7 +126,7 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
 
     @Override
     public Bundle updateFhirResourcesInFhirStore(Map<String, Resource> resources) throws FhirLocalPersistingException {
-        if (noStore()) {
+        if (noStore() || resources == null || resources.isEmpty()) {
             return emptyTransactionResponse();
         }
         Bundle transactionBundle = makeTransactionBundleForUpdate(resources);
@@ -137,6 +144,10 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
     public Bundle createUpdateFhirResourcesInFhirStore(Map<String, Resource> createResources,
             Map<String, Resource> updateResources) throws FhirLocalPersistingException {
         if (noStore()) {
+            return emptyTransactionResponse();
+        }
+        if ((createResources == null || createResources.isEmpty())
+                && (updateResources == null || updateResources.isEmpty())) {
             return emptyTransactionResponse();
         }
         Bundle transactionBundle = new Bundle();
@@ -160,6 +171,9 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
     @Override
     public Bundle createUpdateFhirResourcesInFhirStore(FhirOperations fhirOperations)
             throws FhirLocalPersistingException {
+        if (noStore() || fhirOperations == null) {
+            return emptyTransactionResponse();
+        }
         List<FhirOperations> fhirOperationsList = Arrays.asList(fhirOperations);
         return createUpdateFhirResourcesInFhirStore(fhirOperationsList);
     }
@@ -167,7 +181,7 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
     @Override
     public Bundle createUpdateFhirResourcesInFhirStore(List<FhirOperations> fhirOperationsList)
             throws FhirLocalPersistingException {
-        if (noStore()) {
+        if (noStore() || fhirOperationsList == null || fhirOperationsList.isEmpty()) {
             return emptyTransactionResponse();
         }
         Bundle transactionBundle = new Bundle();
@@ -193,7 +207,7 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
     @Override
     public List<ServiceRequest> getAllServiceRequestByAccessionNumber(String accessionNumber) {
         List<ServiceRequest> serviceRequests = new ArrayList<>();
-        if (noStore()) {
+        if (noStore() || StringUtils.isBlank(accessionNumber)) {
             return serviceRequests;
         }
         Bundle searchBundle = localFhirClient.search().forResource(ServiceRequest.class) //
@@ -215,7 +229,7 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
 
     @Override
     public Optional<Organization> getFhirOrganizationByName(String orgName) {
-        if (noStore()) {
+        if (noStore() || StringUtils.isBlank(orgName)) {
             return Optional.empty();
         }
         Bundle bundle = localFhirClient.search() //
@@ -231,7 +245,7 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
 
     @Override
     public Optional<Organization> getFhirOrganizationByUuid(String uuid) {
-        if (localFhirClient == null || StringUtils.isBlank(uuid)) {
+        if (noStore() || StringUtils.isBlank(uuid)) {
             return Optional.empty();
         }
         try {
@@ -244,15 +258,11 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
 
     @Override
     public Optional<Patient> getPatientByUuid(String uuid) {
+        if (noStore() || StringUtils.isBlank(uuid)) {
+            return Optional.empty();
+        }
 
         try {
-
-            if (localFhirClient == null) {
-                LogEvent.logError(this.getClass().getSimpleName(), "getPatientByUuid",
-                        "Local FHIR client is null — store unavailable");
-                return Optional.empty();
-            }
-
             Bundle bundle = localFhirClient.search().forResource(Patient.class).returnBundle(Bundle.class).where(
                     Patient.IDENTIFIER.exactly().systemAndIdentifier(fhirConfig.getOeFhirSystem() + "/pat_uuid", uuid))
                     .execute();
@@ -274,7 +284,7 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
 
     @Override
     public Optional<ServiceRequest> getServiceRequestByAnalysisUuid(String uuid) {
-        if (noStore()) {
+        if (noStore() || StringUtils.isBlank(uuid)) {
             return Optional.empty();
         }
         Bundle bundle = localFhirClient.search() //
@@ -291,7 +301,7 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
 
     @Override
     public Optional<Specimen> getSpecimenBySampleItemUuid(String uuid) {
-        if (noStore()) {
+        if (noStore() || StringUtils.isBlank(uuid)) {
             return Optional.empty();
         }
         Bundle bundle = localFhirClient.search() //
@@ -308,7 +318,7 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
 
     @Override
     public Optional<Specimen> getSpecimenByUuid(String uuid) {
-        if (noStore()) {
+        if (noStore() || StringUtils.isBlank(uuid)) {
             return Optional.empty();
         }
         Bundle bundle = localFhirClient.search() //
@@ -324,7 +334,7 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
 
     @Override
     public Optional<ServiceRequest> getServiceRequestBySpecimenUuid(String specimenUuid) {
-        if (noStore()) {
+        if (noStore() || StringUtils.isBlank(specimenUuid)) {
             return Optional.empty();
         }
         Bundle bundle = localFhirClient.search() //
@@ -340,7 +350,7 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
 
     @Override
     public Optional<org.hl7.fhir.r4.model.SupplyDelivery> getSupplyDeliveryByUuid(String uuid) {
-        if (noStore()) {
+        if (noStore() || StringUtils.isBlank(uuid)) {
             return Optional.empty();
         }
         Bundle bundle = localFhirClient.search() //
@@ -356,7 +366,7 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
 
     @Override
     public Optional<DiagnosticReport> getDiagnosticReportByAnalysisUuid(String uuid) {
-        if (noStore()) {
+        if (noStore() || StringUtils.isBlank(uuid)) {
             return Optional.empty();
         }
         Bundle bundle = localFhirClient.search() //
@@ -429,7 +439,7 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
 
     @Override
     public Optional<Task> getTaskBasedOnServiceRequest(String referringId) {
-        if (noStore()) {
+        if (noStore() || StringUtils.isBlank(referringId)) {
             return Optional.empty();
         }
 
@@ -494,7 +504,7 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
 
     @Override
     public Optional<ServiceRequest> getServiceRequestByReferingId(String referringId) {
-        if (noStore()) {
+        if (noStore() || StringUtils.isBlank(referringId)) {
             return Optional.empty();
         }
         ServiceRequest serviceRequest = null;
@@ -542,7 +552,7 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
 
     @Override
     public Optional<Task> getTaskBasedOnTask(String taskId) {
-        if (noStore()) {
+        if (noStore() || StringUtils.isBlank(taskId)) {
             return Optional.empty();
         }
         Bundle bundle = localFhirClient.search() //
