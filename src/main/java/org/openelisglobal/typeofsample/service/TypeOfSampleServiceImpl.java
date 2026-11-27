@@ -222,6 +222,7 @@ public class TypeOfSampleServiceImpl extends AuditableBaseObjectServiceImpl<Type
         typeOfSampleIdToNameMap = null;
         typeOfSampleWellKnownNameToIdMap = null;
         testIdToTypeOfSampleMap = null;
+        panelIdToTypeOfSampleMap = null;
     }
 
     private synchronized void createTypeOfSampleIdentityMap() {
@@ -269,6 +270,9 @@ public class TypeOfSampleServiceImpl extends AuditableBaseObjectServiceImpl<Type
     @Transactional(readOnly = true)
     public synchronized List<TypeOfSample> getTypeOfSampleForPanelId(String id) {
         if (panelIdToTypeOfSampleMap == null) {
+            if (typeOfSampleIdtoTypeOfSampleMap == null) {
+                createTypeOfSampleIdentityMap();
+            }
             panelIdToTypeOfSampleMap = new HashMap<>();
 
             List<Panel> panels = panelService.getAllActivePanels();
@@ -278,8 +282,16 @@ public class TypeOfSampleServiceImpl extends AuditableBaseObjectServiceImpl<Type
                         .getTypeOfSamplePanelsForPanel(panel.getId());
                 List<TypeOfSample> typeOfSampleList = new ArrayList<>();
                 for (TypeOfSamplePanel typeOfSamplePanel : typeOfSamplePanels) {
-                    typeOfSampleList.add(typeOfSampleIdtoTypeOfSampleMap
-                            .get(baseObjectDAO.getTypeOfSampleById(typeOfSamplePanel.getTypeOfSampleId()).getId()));
+                    TypeOfSample loaded = baseObjectDAO.getTypeOfSampleById(typeOfSamplePanel.getTypeOfSampleId());
+                    if (loaded == null) {
+                        continue;
+                    }
+                    TypeOfSample typeOfSample = typeOfSampleIdtoTypeOfSampleMap.get(loaded.getId());
+                    if (typeOfSample == null) {
+                        typeOfSample = loaded;
+                        typeOfSampleIdtoTypeOfSampleMap.put(loaded.getId(), loaded);
+                    }
+                    typeOfSampleList.add(typeOfSample);
                 }
                 panelIdToTypeOfSampleMap.put(panel.getId(), typeOfSampleList);
             }
