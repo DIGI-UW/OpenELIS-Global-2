@@ -13,6 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.sampleitem.dao.SampleItemDAO;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
@@ -47,6 +48,9 @@ public class SampleStorageServiceFlexibleAssignmentTest {
     @Mock
     private org.openelisglobal.sampleitem.service.SampleItemService sampleItemService;
 
+    @Mock
+    private UserContextHolder userContextHolder;
+
     @InjectMocks
     private SampleStorageServiceImpl sampleStorageService;
 
@@ -57,6 +61,7 @@ public class SampleStorageServiceFlexibleAssignmentTest {
     private StorageRoom testRoom;
     private static final String TEST_EXTERNAL_ID = "EXT-2024-001";
     private static final String TEST_SAMPLE_ITEM_ID = "123";
+    private static final Integer ACTING_USER_ID = 42;
 
     @Before
     public void setUp() {
@@ -95,6 +100,7 @@ public class SampleStorageServiceFlexibleAssignmentTest {
         // Mock external ID lookup for resolveSampleItem (ID lookup has been removed)
         lenient().when(sampleItemService.getSampleItemsByExternalID(TEST_EXTERNAL_ID))
                 .thenReturn(java.util.Collections.singletonList(testSampleItem));
+        lenient().when(userContextHolder.requireSysUserId()).thenReturn(String.valueOf(ACTING_USER_ID));
     }
 
     @Test
@@ -120,8 +126,10 @@ public class SampleStorageServiceFlexibleAssignmentTest {
             SampleStorageAssignment a = (SampleStorageAssignment) assignment;
             return a.getLocationId().equals(10) &&
                    a.getLocationType().equals("device") &&
-                   a.getPositionCoordinate() == null;
+                   a.getPositionCoordinate() == null &&
+                   ACTING_USER_ID.equals(a.getAssignedByUserId());
         }));
+        verify(sampleStorageMovementDAO).insert(argThat(movement -> ACTING_USER_ID.equals(movement.getMovedByUserId())));
     }
 
     @Test
@@ -274,6 +282,8 @@ public class SampleStorageServiceFlexibleAssignmentTest {
             SampleStorageAssignment a = (SampleStorageAssignment) assignment;
             return a.getLocationId().equals(20) && a.getLocationType().equals("shelf");
         }));
+        verify(sampleStorageMovementDAO)
+                .insert(argThat(movement -> ACTING_USER_ID.equals(movement.getMovedByUserId())));
     }
 
     @Test
@@ -341,6 +351,36 @@ public class SampleStorageServiceFlexibleAssignmentTest {
         assertEquals(Integer.valueOf(1), result.get("assignedBy"));
         assertEquals("A5", result.get("positionCoordinate"));
         assertEquals("Test notes", result.get("notes"));
+    }
+
+    @Test
+    public void getSampleItemLocation_reportsTheTemperatureOfTheDeviceHoldingTheRack() {
+        testDevice.setTemperatureSetting(new java.math.BigDecimal("-20.0"));
+        SampleStorageAssignment assignment = new SampleStorageAssignment();
+        assignment.setId(101);
+        assignment.setSampleItem(testSampleItem);
+        assignment.setLocationId(30);
+        assignment.setLocationType("rack");
+        when(sampleStorageAssignmentDAO.findBySampleItemId(TEST_SAMPLE_ITEM_ID)).thenReturn(assignment);
+        when(storageLocationService.get(30, StorageRack.class)).thenReturn(testRack);
+
+        Map<String, Object> result = sampleStorageService.getSampleItemLocation(TEST_SAMPLE_ITEM_ID);
+
+        assertEquals("OGC-1424: order entry compares this with the test catalog's storage condition", "-20.0",
+                result.get("temperatureSetting"));
+    }
+
+    @Test
+    public void getSampleItemLocation_reportsNoTemperatureForADeviceThatRecordsNone() {
+        SampleStorageAssignment assignment = new SampleStorageAssignment();
+        assignment.setId(102);
+        assignment.setSampleItem(testSampleItem);
+        assignment.setLocationId(10);
+        assignment.setLocationType("device");
+        when(sampleStorageAssignmentDAO.findBySampleItemId(TEST_SAMPLE_ITEM_ID)).thenReturn(assignment);
+        when(storageLocationService.get(10, StorageDevice.class)).thenReturn(testDevice);
+
+        assertEquals("", sampleStorageService.getSampleItemLocation(TEST_SAMPLE_ITEM_ID).get("temperatureSetting"));
     }
 
     @Test

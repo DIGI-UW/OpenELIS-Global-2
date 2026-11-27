@@ -85,6 +85,12 @@ public enum AlertType {
     CRITICAL_RESULT,
 
     /**
+     * Automatic EQA result submission exhausted its retries; entity is the EQA
+     * CYCLE that could not be submitted
+     */
+    EQA_SUBMISSION_FAILED,
+
+    /**
      * Microbiology critical communication requiring acknowledgment. The clinical
      * communication remains authoritative; this type projects it into the shared
      * alert workflow.

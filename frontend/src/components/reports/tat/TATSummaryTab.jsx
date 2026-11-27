@@ -5,6 +5,7 @@ import TATBreakdownTable from "./TATBreakdownTable";
 import { formatTat } from "./tatUtils";
 import { QASparseList } from "../../qa/common/QAEmptyState";
 
+import useInAppNavigation from "../../common/useInAppNavigation";
 const STAT_CARDS = [
   { key: "totalCount", labelId: "reports.tat.totalResults", isCount: true },
   { key: "mean", labelId: "reports.tat.meanTat" },
@@ -17,6 +18,7 @@ const STAT_CARDS = [
 
 function TATSummaryTab({ data, loading, filters }) {
   const intl = useIntl();
+  const navigate = useInAppNavigation();
 
   if (loading) {
     return (
@@ -54,6 +56,7 @@ function TATSummaryTab({ data, loading, filters }) {
           />
           <a
             href="/MasterListsPage/calendarManagement"
+            onClick={navigate("/MasterListsPage/calendarManagement")}
             style={{ fontSize: "12px", marginTop: "0.25rem", display: "inline-block" }}
           >
             <FormattedMessage id="reports.tat.manageCalendar" />
@@ -71,6 +74,7 @@ function TATSummaryTab({ data, loading, filters }) {
           />
           <a
             href="/MasterListsPage/calendarManagement"
+            onClick={navigate("/MasterListsPage/calendarManagement")}
             style={{ fontSize: "12px", marginTop: "0.25rem", display: "inline-block" }}
           >
             <FormattedMessage id="reports.tat.manageCalendar" />

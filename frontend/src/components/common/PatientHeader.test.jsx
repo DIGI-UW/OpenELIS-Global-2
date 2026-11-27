@@ -159,4 +159,21 @@ describe("PatientHeader", () => {
     expect(container).not.toHaveTextContent("Dr Okello");
     expect(screen.queryByTestId("case-status")).toBeNull();
   });
+
+  it("shows no literal undefined while the patient's names are still loading", () => {
+    const { container } = renderHeader({
+      firstName: undefined,
+      lastName: undefined,
+      patientName: "",
+    });
+
+    expect(container).not.toHaveTextContent("undefined");
+    expect(screen.getByTestId("avatar")).toHaveTextContent(/^$/);
+  });
+
+  it("joins the last and first name when no full name is given", () => {
+    renderHeader({ patientName: "" });
+
+    expect(screen.getByTestId("avatar")).toHaveTextContent("Lovelace Ada");
+  });
 });

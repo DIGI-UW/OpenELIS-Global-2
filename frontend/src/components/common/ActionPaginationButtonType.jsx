@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import React, { useEffect, useState } from "react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 
+import useInAppNavigation from "./useInAppNavigation";
 const ActionPaginationButtonType = ({
   selectedRowIds,
   modifyButton,
@@ -23,6 +24,7 @@ const ActionPaginationButtonType = ({
   type,
 }) => {
   const intl = useIntl();
+  const navigate = useInAppNavigation();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 530);
 
   useEffect(() => {
@@ -85,8 +87,9 @@ const ActionPaginationButtonType = ({
                   style={{ width: isMobile ? "100%" : "auto" }}
                   onClick={() => {
                     if (selectedRowIds.length === 1) {
-                      const url = `${modifyButtonRedirectLink}${id}${otherParmsInLink}`;
-                      window.location.href = url;
+                      navigate(
+                        `${modifyButtonRedirectLink}${id}${otherParmsInLink}`,
+                      )();
                     }
                   }}
                   disabled={modifyButton}
@@ -105,7 +108,7 @@ const ActionPaginationButtonType = ({
                   style={{ width: isMobile ? "100%" : "auto" }}
                   data-cy="add-button"
                   onClick={() => {
-                    window.location.href = `${addButtonRedirectLink}`;
+                    navigate(`${addButtonRedirectLink}`)();
                   }}
                 >
                   <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.add" />

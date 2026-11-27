@@ -100,7 +100,11 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
         try {
             String referenceId = newObject.getStringId();
-            hist.setReferenceId(referenceId);
+            if (isNumericKey(referenceId)) {
+                hist.setReferenceId(referenceId);
+            } else {
+                hist.setReferenceKey(referenceId);
+            }
             hist.setSysUserId(sysUserId);
 
             Timestamp timestamp = newObject.getLastupdated();

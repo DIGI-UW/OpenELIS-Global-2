@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { createMemoryHistory } from "history";
@@ -10,8 +10,9 @@ import messages from "../../languages/en.json";
 import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 import Index from "./Index";
 
-const { getFromOpenElisServer } = vi.hoisted(() => ({
+const { getFromOpenElisServer, tableProps } = vi.hoisted(() => ({
   getFromOpenElisServer: vi.fn(),
+  tableProps: vi.fn(),
 }));
 
 vi.mock("../utils/Utils", () => ({
@@ -20,7 +21,10 @@ vi.mock("../utils/Utils", () => ({
 }));
 
 vi.mock("./AnalyserResults", () => ({
-  default: () => <div>Analyzer result table</div>,
+  default: (props) => {
+    tableProps(props);
+    return <div>Analyzer result table</div>;
+  },
 }));
 
 const renderPage = (initialEntry) => {
@@ -59,6 +63,7 @@ const renderPage = (initialEntry) => {
 describe("Analyzer results page", () => {
   beforeEach(() => {
     getFromOpenElisServer.mockReset();
+    tableProps.mockReset();
   });
 
   it("returns to the analyzer dashboard when no analyzer is selected", async () => {
@@ -67,6 +72,127 @@ describe("Analyzer results page", () => {
     expect(await screen.findByText("Analyzer dashboard")).toBeInTheDocument();
     expect(history.location.pathname).toBe("/analyzers");
     expect(getFromOpenElisServer).not.toHaveBeenCalled();
+  });
+
+  it("selects a mapped result as the action row when a held result comes first", async () => {
+    getFromOpenElisServer.mockImplementation((_url, callback) =>
+      callback({
+        type: "GeneXpert",
+        resultList: [
+          {
+            id: "held",
+            sampleGroupingNumber: 1,
+            importIssueReason: "unknown_analyzer_result_value",
+          },
+          { id: "mapped", sampleGroupingNumber: 1 },
+        ],
+        paging: { totalPages: 1, currentPage: 1 },
+      }),
+    );
+
+    renderPage("/AnalyzerResults?id=5");
+
+    await waitFor(() =>
+      expect(tableProps.mock.lastCall[0].sampleGroup[0].id).toBe("mapped"),
+    );
+  });
+
+  it("restores unsaved choices for current worklist rows after mapping review", async () => {
+    getFromOpenElisServer.mockImplementation((_url, callback) =>
+      callback({
+        type: "GeneXpert",
+        resultList: [
+          { id: "held", importIssueReason: "unknown_analyzer_result_value" },
+          { id: "mapped", isAccepted: false, note: "" },
+        ],
+        paging: { totalPages: 2, currentPage: 2 },
+      }),
+    );
+    const history = renderPage({
+      pathname: "/AnalyzerResults",
+      search: "?id=5",
+      state: {
+        worklistDraft: {
+          analyzerId: "5",
+          page: 2,
+          edits: {
+            held: { isAccepted: true },
+            mapped: { isAccepted: true, note: "Review before release" },
+          },
+        },
+      },
+    });
+
+    await waitFor(() =>
+      expect(tableProps.mock.lastCall[0].results.resultList[1]).toMatchObject({
+        isAccepted: true,
+        note: "Review before release",
+      }),
+    );
+    expect(tableProps.mock.lastCall[0].results.resultList[0].isAccepted).toBe(
+      undefined,
+    );
+    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+      "/rest/AnalyzerResults?id=5&page=2",
+      expect.any(Function),
+    );
+    expect(history.location.state).toBeUndefined();
+  });
+
+  it("reapplies a dismissal draft only to surviving editable rows and clears it after Save", async () => {
+    getFromOpenElisServer.mockImplementation((_url, callback) =>
+      callback({
+        type: "GeneXpert",
+        resultList: [
+          { id: "mapped", isAccepted: false, note: "", result: "original" },
+          {
+            id: "still-held",
+            importIssueReason: "unknown_analyzer_result_value",
+          },
+        ],
+        paging: { totalPages: 1, currentPage: 1 },
+      }),
+    );
+    renderPage("/AnalyzerResults?id=5");
+    await waitFor(() =>
+      expect(tableProps.mock.lastCall[0].results.resultList).toHaveLength(2),
+    );
+    const edits = {
+      isAccepted: true,
+      note: "Checked",
+      result: "edited",
+      typeOfSampleId: "2",
+      chosenAnalysisId: "10",
+      redirectAccession: "ACC-2",
+      redirectReason: "Corrected tube",
+    };
+
+    act(() =>
+      tableProps.mock.lastCall[0].refreshResults(1, {
+        mapped: edits,
+        removed: { isAccepted: true },
+        "still-held": { isAccepted: true },
+      }),
+    );
+
+    await waitFor(() =>
+      expect(tableProps.mock.lastCall[0].results.resultList[0]).toMatchObject(
+        edits,
+      ),
+    );
+    expect(tableProps.mock.lastCall[0].restoredEdits).toEqual({
+      mapped: edits,
+    });
+    expect(
+      tableProps.mock.lastCall[0].results.resultList[1].isAccepted,
+    ).toBeUndefined();
+    act(() => tableProps.mock.lastCall[0].refreshResults(1));
+    await waitFor(() =>
+      expect(tableProps.mock.lastCall[0].restoredEdits).toEqual({}),
+    );
+    expect(tableProps.mock.lastCall[0].results.resultList[0].isAccepted).toBe(
+      false,
+    );
   });
 
   it("finds an accession on a one-page analyzer worklist", async () => {

@@ -148,7 +148,10 @@ const PanelBasicInfoSection = ({ panel, isCreate, onSaved }) => {
             saveExisting(created.id);
           } else {
             setSaving(false);
-            notify(NotificationKinds.error, "error.panel.save");
+            notify(
+              NotificationKinds.error,
+              REFUSAL_MESSAGES[created?.refusal] || "error.panel.save",
+            );
           }
         },
       );
@@ -168,7 +171,8 @@ const PanelBasicInfoSection = ({ panel, isCreate, onSaved }) => {
             ? intl.formatMessage({ id: "placeholder.panel.name" })
             : undefined
         }
-        maxLength={20}
+        maxCount={20}
+        enableCounter
         onChange={(e) => setName(e.target.value)}
       />
       <div>

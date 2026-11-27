@@ -93,4 +93,43 @@ describe("OrderReferralRequest referral rows", () => {
     expect(kept.referrer).toBe("Dr Who");
     expect(kept.sentDate).toBe("01/01/2026");
   });
+
+  it("gives a test ticked later the same default reason and laboratory", () => {
+    const setReferralRequests = vi.fn();
+    renderWith(
+      [{ testId: "6", reasonForReferral: "1", institute: "4", referrer: "" }],
+      setReferralRequests,
+      TESTS,
+    );
+
+    const added = setReferralRequests.mock.calls
+      .at(-1)[0]
+      .find((row) => row.testId === "10");
+    expect(added.reasonForReferral).toBe("1");
+    expect(added.institute).toBe("4");
+  });
+
+  it("does not crash when the referral lists failed to load", () => {
+    const setReferralRequests = vi.fn();
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <UserSessionDetailsContext.Provider
+          value={{
+            userSessionDetails: { firstName: "Test", lastName: "User" },
+          }}
+        >
+          <OrderReferralRequest
+            index={0}
+            selectedTests={TESTS}
+            referralReasons={[]}
+            referralOrganizations={[]}
+            referralRequests={[]}
+            setReferralRequests={setReferralRequests}
+          />
+        </UserSessionDetailsContext.Provider>
+      </IntlProvider>,
+    );
+
+    expect(setReferralRequests.mock.calls.at(-1)[0]).toHaveLength(2);
+  });
 });

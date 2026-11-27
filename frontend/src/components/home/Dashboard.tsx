@@ -23,6 +23,7 @@ import {
   InlineNotification,
   Stack,
 } from "@carbon/react";
+import useInAppNavigation from "../common/useInAppNavigation";
 import ServerPageArrows from "../common/ServerPageArrows";
 import "./Dashboard.css";
 import {
@@ -67,6 +68,7 @@ import {
 } from "../utils/Utils";
 import { FormattedMessage, useIntl } from "react-intl";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import ExtensionSlot from "../../modules/ExtensionSlot";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 
@@ -117,6 +119,12 @@ const ALL_SECTIONS = "all";
 
 const HomeDashBoard: React.FC<DashBoardProps> = () => {
   const intl = useIntl();
+  const navigate = useInAppNavigation();
+  const orderLink = (type: string, labNumber: string) =>
+    type == "ORDERS_IN_PROGRESS"
+      ? "/Results?accessionNumber=" + encodeURIComponent(labNumber)
+      : "/validation?type=order&accessionNumber=" +
+        encodeURIComponent(labNumber);
 
   const [counts, setCounts] = useState({
     ordersInProgress: 0,
@@ -322,7 +330,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       value: counts.ordersRejectedToday,
     },
     {
-      title: <FormattedMessage id="dashboard.unprints.results.label" />,
+      title: <FormattedMessage id="dashboard.unprinted.results.label" />,
       type: "UN_PRINTED_RESULTS",
       value: counts.unPritendResults,
     },
@@ -390,6 +398,11 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     }
   };
 
+  const openTile = (tile) =>
+    tile.type === "UN_PRINTED_RESULTS"
+      ? navigate("/ReportPrintQueue?type=patient&printStatus=unprinted")()
+      : handleMaximizeClick(tile);
+
   const handleMaximizeClick = (tile) => {
     if (
       testSections?.length > 0 ||
@@ -453,12 +466,8 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
               selectedTile.type == "ORDERS_READY_FOR_VALIDATION" ? (
                 <Link
                   style={{ color: "blue" }}
-                  href={
-                    selectedTile.type == "ORDERS_IN_PROGRESS"
-                      ? "/result?type=order&doRange=false&accessionNumber=" +
-                        cell.value
-                      : "validation?type=order&accessionNumber=" + cell.value
-                  }
+                  href={orderLink(selectedTile.type, cell.value)}
+                  onClick={navigate(orderLink(selectedTile.type, cell.value))}
                 >
                   <u>{convertAlphaNumLabNumForDisplay(cell.value)}</u>
                 </Link>
@@ -483,38 +492,38 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   const orderHeaders = [
     {
       key: "priority",
-      header: <FormattedMessage id="eorder.priority" />,
+      header: intl.formatMessage({ id: "eorder.priority" }),
     },
     {
       key: "orderDate",
-      header: <FormattedMessage id="sample.label.orderdate" />,
+      header: intl.formatMessage({ id: "sample.label.orderdate" }),
     },
     {
       key: "patientId",
-      header: <FormattedMessage id="patient.id" />,
+      header: intl.formatMessage({ id: "patient.id" }),
     },
     {
       key: "labNumber",
-      header: <FormattedMessage id="eorder.labNumber" />,
+      header: intl.formatMessage({ id: "eorder.labNumber" }),
     },
     {
       key: "testName",
-      header: <FormattedMessage id="eorder.test.name" />,
+      header: intl.formatMessage({ id: "eorder.test.name" }),
     },
   ];
 
   const userHeaders = [
     {
       key: "userFirstName",
-      header: "First Name",
+      header: intl.formatMessage({ id: "login.login.first" }),
     },
     {
       key: "userLastName",
-      header: "Last Name",
+      header: intl.formatMessage({ id: "login.login.last" }),
     },
     {
       key: "countOfOrdersEntered",
-      header: "Orders Entered",
+      header: intl.formatMessage({ id: "dashboard.user.ordersEntered" }),
     },
   ];
 
@@ -551,7 +560,8 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
               <ClickableTile
                 key={index}
                 className="dashboard-tile"
-                onClick={() => handleMaximizeClick(tile)}
+                role="button"
+                onClick={() => openTile(tile)}
               >
                 {TileIcon && (
                   <div className="tile-leading-icon">
@@ -562,11 +572,14 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                 <p className="dashboard-tile__subtitle">
                   {tile.subTitle ?? " "}
                 </p>
-                <h2 className="dashboard-tile__value">{tile.value}</h2>
+                <p className="dashboard-tile__value">{tile.value}</p>
 
                 <div className="tile-icon">
                   <div
-                    onClick={() => handleMaximizeClick(tile)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openTile(tile);
+                    }}
                     className="icon-wrapper"
                   >
                     <Maximize
@@ -579,6 +592,10 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
               </ClickableTile>
             );
           })}
+          <ExtensionSlot
+            name="home.dashboard.cards"
+            context={{ user: userSessionDetails }}
+          />
         </div>
       ) : (
         <div className="dashboard-view">
@@ -591,9 +608,9 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                 <p className="dashboard-tile__subtitle-view">
                   {selectedTile.subTitle ?? " "}
                 </p>
-                <h1 className="dashboard-tile__value-view">
+                <p className="dashboard-tile__value-view">
                   {selectedTile.value}
-                </h1>
+                </p>
                 {
                   <div className="tile-icon">
                     <div onClick={handleMinimizeClick} className="icon-wrapper">
@@ -617,7 +634,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                         <p className="dashboard-tile__subtitle">
                           {tile.subTitle}
                         </p>
-                        <h2 className="dashboard-tile__value">{tile.value}</h2>
+                        <p className="dashboard-tile__value">{tile.value}</p>
                       </Tile>
                     ))}
                   </div>

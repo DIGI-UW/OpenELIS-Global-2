@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Set;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.dictionary.service.DictionaryService;
@@ -15,6 +16,7 @@ import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.sample.service.SampleLabUnitScopeService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
@@ -52,6 +54,8 @@ public class VectorDeconvolutionRestController extends BaseRestController {
 
     @Autowired
     private SampleService sampleService;
+    @Autowired
+    private SampleLabUnitScopeService sampleLabUnitScopeService;
 
     @Autowired
     private VectorPoolService vectorPoolService;
@@ -69,9 +73,11 @@ public class VectorDeconvolutionRestController extends BaseRestController {
     private DictionaryService dictionaryService;
 
     @GetMapping(value = "/worklist", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<DeconvolutionWorklistRowDTO>> getWorklist() {
+    public ResponseEntity<List<DeconvolutionWorklistRowDTO>> getWorklist(HttpServletRequest http) {
         try {
-            List<Sample> samples = sampleService.getAllMatching("domain", VECTOR_DOMAIN);
+            String userId = getSysUserId(http);
+            List<Sample> samples = sampleService.getAllMatching("domain", VECTOR_DOMAIN).stream()
+                    .filter(sample -> sampleLabUnitScopeService.isVisible(userId, sample)).toList();
             List<DeconvolutionWorklistRowDTO> rows = new ArrayList<>();
             for (Sample s : samples) {
                 for (VectorPool pool : vectorPoolService.getBySampleId(s.getId())) {
@@ -97,6 +103,9 @@ public class VectorDeconvolutionRestController extends BaseRestController {
         try {
             DeconvolutionResult result = deconvolutionService.initiate(request, getSysUserId(http));
             return ResponseEntity.status(HttpStatus.CREATED).body(result);
+        } catch (LocalizedValidationException e) {
+            return ResponseEntity.badRequest()
+                    .body(java.util.Map.of("messageKey", e.getErrorCode(), "messageArgs", e.getParams()));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
         } catch (IllegalStateException e) {

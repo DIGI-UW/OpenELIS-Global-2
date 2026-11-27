@@ -53,4 +53,6 @@ public class AnalyzerDeliveryReceipt extends BaseObject<String> {
     private String acceptedBy;
     @Column(name = "accepted_at", nullable = false)
     private Timestamp acceptedAt;
+    @Column(name = "bundle_json", columnDefinition = "TEXT")
+    private String bundleJson;
 }

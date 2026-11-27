@@ -61,6 +61,7 @@ vi.mock("../../esignature/ESignatureButton", () => ({
 vi.mock("../../common/PageBreadCrumb", () => ({ default: () => <div /> }));
 
 import UnifiedResults from "./UnifiedResults";
+import { chooseLabUnit } from "./chooseLabUnit.test-utils";
 
 const LAB_UNITS = [{ id: "56", value: "Biochemistry", domain: "CLINICAL" }];
 const STATUSES = [{ id: "4", value: "Not started" }];
@@ -92,9 +93,7 @@ const renderPage = (worklistResponse: unknown) => {
       <UnifiedResults />
     </IntlProvider>,
   );
-  fireEvent.change(screen.getByLabelText(/Lab Unit/i), {
-    target: { value: "56" },
-  });
+  chooseLabUnit("Biochemistry");
 };
 
 const notification = () =>

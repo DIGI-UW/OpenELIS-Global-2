@@ -142,7 +142,6 @@ public class LoginPageController extends BaseController {
         boolean authenticated = !userModuleService.isSessionExpired(request);
         UserSession session = new UserSession();
         session.setAuthenticated(authenticated);
-        session.setSessionId(request.getSession().getId());
         if (authenticated) {
             SystemUser user = systemUserService.get(getSysUserId(request));
             setLoginMethod(request, session);
@@ -161,11 +160,10 @@ public class LoginPageController extends BaseController {
                 }
             }
             setLabunitRolesForExistingUser(request, session);
-            // qa.* permission keys derive from the same role names on every
+            // Permission keys derive from the same role names on every
             // login path — setLabunitRolesForExistingUser populates roles for
             // form, SAML, and OAuth logins before this line.
-            session.setPermissions(
-                    roleModuleService.getPermittedModuleNames(session.getRoles(), Constants.QA_PERMISSION_PREFIX));
+            session.setPermissions(roleModuleService.getPermittedModuleNames(session.getRoles()));
         }
         return session;
     }

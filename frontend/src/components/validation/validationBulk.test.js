@@ -5,9 +5,15 @@
  */
 import {
   bulkOutcomeKey,
+  bulkSuccessMessages,
   bulkReleaseRequest,
   clearRows,
+  earlierLevelClearRows,
+  nextLevelOf,
+  scopeToSignable,
+  signClearMessages,
   triageRows,
+  waitingForOthers,
 } from "./validationTriage";
 
 const row = (id, overrides = {}) => ({
@@ -37,6 +43,20 @@ describe("clearRows", () => {
     ]);
     expect(clearRows(triaged).map((r) => r.id)).toEqual([0, 2, 3]);
     expect(clearRows(undefined)).toEqual([]);
+  });
+
+  it("leaves out rows at an earlier review level or that this user cannot sign (OGC-1364 v2)", () => {
+    const triaged = triageRows([
+      row(0, { reviewLevels: 2, reviewLevel: 1 }),
+      row(1, { reviewLevels: 2, reviewLevel: 2 }),
+      row(2, {
+        reviewLevels: 2,
+        reviewLevel: 2,
+        reviewBlockedReason: "alreadySigned",
+      }),
+      row(3),
+    ]);
+    expect(clearRows(triaged).map((r) => r.id)).toEqual([1, 3]);
   });
 });
 
@@ -77,7 +97,30 @@ describe("bulkReleaseRequest", () => {
     ).toMatchObject({ testSectionId: "7", doRange: true, rows: [] });
     expect(
       bulkReleaseRequest(undefined, "?type=testDate&date=01/09/2026", []),
-    ).toMatchObject({ testDate: "01/09/2026", doRange: true });
+    ).toMatchObject({
+      fromDate: "01/09/2026",
+      toDate: "01/09/2026",
+      doRange: true,
+    });
+  });
+
+  it("OGC-1418: carries the whole combined search, so the release covers only the rows it shows", () => {
+    expect(
+      bulkReleaseRequest(
+        undefined,
+        "?labNumber=ACC1..ACC9&testSectionId=7&fromDate=01/09/2026&toDate=30/09/2026&patientId=42",
+        [],
+      ),
+    ).toMatchObject({
+      labNumberFrom: "ACC1",
+      labNumberTo: "ACC9",
+      testSectionId: "7",
+      fromDate: "01/09/2026",
+      toDate: "30/09/2026",
+      patientId: "42",
+      accessionNumber: "",
+      doRange: true,
+    });
   });
 });
 
@@ -113,5 +156,148 @@ describe("bulkOutcomeKey", () => {
     expect(bulkOutcomeKey(undefined)).toBe(
       "label.validation.bulk.error.generic",
     );
+  });
+});
+
+describe("bulkSuccessMessages (OGC-1608)", () => {
+  it("names tests validated in part apart from the ones released", () => {
+    expect(
+      bulkSuccessMessages({ released: ["1"], accepted: ["2"], skipped: [] }),
+    ).toEqual([
+      { id: "label.validation.bulk.success", values: { count: 1 } },
+      { id: "label.validation.bulk.accepted", values: { count: 1 } },
+    ]);
+    expect(bulkSuccessMessages({ released: [], accepted: ["2"] })).toEqual([
+      { id: "label.validation.bulk.accepted", values: { count: 1 } },
+    ]);
+    expect(
+      bulkSuccessMessages({ released: ["1"], skipped: [{}], accepted: [] }),
+    ).toEqual([
+      {
+        id: "label.validation.bulk.partial",
+        values: { released: 1, skipped: 1 },
+      },
+    ]);
+  });
+});
+
+describe("sequential sign-off in the queue (OGC-1364 v2 slice 2)", () => {
+  const level = (n, of, overrides = {}) => ({
+    sequentialSignOff: true,
+    reviewLevels: of,
+    reviewLevel: n,
+    reviewBlockedReason: null,
+    ...overrides,
+  });
+
+  it("a row someone else must sign waits for others; rows without the policy never do", () => {
+    expect(
+      waitingForOthers(
+        row(0, level(2, 2, { reviewBlockedReason: "alreadySigned" })),
+      ),
+    ).toBe(true);
+    expect(
+      waitingForOthers(row(1, level(1, 2, { selfValidationBlocked: true }))),
+    ).toBe(true);
+    expect(waitingForOthers(row(2, level(1, 2)))).toBe(false);
+    expect(waitingForOthers(row(3, { selfValidationBlocked: true }))).toBe(
+      false,
+    );
+    expect(waitingForOthers(row(4))).toBe(false);
+    expect(
+      waitingForOthers(
+        row(5, {
+          reviewLevels: 1,
+          reviewLevel: 1,
+          selfValidationBlocked: true,
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it("scoping hides rows waiting for others unless they are asked for", () => {
+    const triaged = triageRows([
+      row(0, level(1, 2)),
+      row(1, level(2, 2, { reviewBlockedReason: "alreadySigned" })),
+      row(
+        2,
+        level(2, 2, { reviewBlockedReason: "roleRequired", clear: false }),
+      ),
+    ]);
+    expect(scopeToSignable(triaged, false).map((item) => item.row.id)).toEqual([
+      0,
+    ]);
+    expect(scopeToSignable(triaged, true).map((item) => item.row.id)).toEqual([
+      0, 1, 2,
+    ]);
+  });
+
+  it("only clear rows at an earlier level this person can sign are bulk signed", () => {
+    const triaged = triageRows([
+      row(0, level(1, 2)),
+      row(1, level(2, 2)),
+      row(2, level(1, 3, { clear: false })),
+      row(3, level(2, 3, { reviewBlockedReason: "alreadySigned" })),
+      row(4, level(1, 2, { selfValidationBlocked: true })),
+      row(5),
+      row(6, level(2, 3)),
+      row(7, { reviewLevels: 2, reviewLevel: 1 }),
+    ]);
+    expect(earlierLevelClearRows(triaged).map((r) => r.id)).toEqual([0, 6]);
+    expect(earlierLevelClearRows(undefined)).toEqual([]);
+  });
+
+  it("names the level the bulk signature signs when every row shares it", () => {
+    expect(nextLevelOf([row(0, level(1, 2)), row(1, level(1, 3))])).toBe(1);
+    expect(nextLevelOf([row(0, level(1, 2)), row(1, level(2, 3))])).toBe(null);
+    expect(nextLevelOf([])).toBe(null);
+  });
+
+  it("reports what the bulk signature signed and skipped", () => {
+    expect(signClearMessages({ signed: ["101", "102"], skipped: [] })).toEqual({
+      id: "label.validation.bulk.signed",
+      values: { count: 2 },
+    });
+    expect(
+      signClearMessages({
+        signed: ["101"],
+        skipped: [{ analysisId: "102", reason: "alreadySigned" }],
+      }),
+    ).toEqual({
+      id: "label.validation.bulk.signedPartial",
+      values: { signed: 1, skipped: 1 },
+    });
+    expect(
+      signClearMessages({ signed: [], skipped: [{ reason: "notClear" }] }),
+    ).toEqual({
+      id: "label.validation.bulk.error.nothingSigned",
+      values: {},
+    });
+  });
+
+  it("says why the bulk signature was refused in signing words", () => {
+    const key = (response) => signClearMessages(response).id;
+    expect(key({ error: "bulkReleaseDisabled" })).toBe(
+      "label.validation.bulk.error.signDisabled",
+    );
+    expect(key({ error: "sequentialSignOffOff" })).toBe(
+      "label.validation.bulk.error.sequentialSignOffOff",
+    );
+    expect(key({ error: "signatureMismatch" })).toBe(
+      "label.validation.review.error.signatureMismatch",
+    );
+    expect(key({ error: "signatureUnknown" })).toBe(
+      "label.validation.review.error.signatureUnknown",
+    );
+    expect(key({ error: "noRows" })).toBe(
+      "label.validation.bulk.error.nothingSigned",
+    );
+    expect(key({ error: "somethingElse" })).toBe(
+      "label.validation.bulk.error.signGeneric",
+    );
+    expect(key(null)).toBe("label.validation.bulk.error.signGeneric");
+    expect(
+      key({ signed: [], skipped: [{ reason: "stale" }, { reason: "stale" }] }),
+    ).toBe("label.validation.bulk.error.stale");
   });
 });

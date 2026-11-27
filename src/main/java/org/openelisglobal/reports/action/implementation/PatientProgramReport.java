@@ -500,7 +500,7 @@ public abstract class PatientProgramReport extends Report implements IReportCrea
                     }
                 } else {
                     ResultService resultResultService = SpringContext.getBean(ResultService.class);
-                    reportResult = resultResultService.getResultValue(result, true);
+                    reportResult = resultResultService.formatResultForDisplay(result, true);
                 }
             } else {
                 // If multiple results it can be a quantified result, multiple

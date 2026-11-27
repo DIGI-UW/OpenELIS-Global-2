@@ -12,6 +12,7 @@ import { getFromOpenElisServer } from "../../../utils/Utils";
 import CustomDatePicker from "../../../common/CustomDatePicker";
 import { ConfigurationContext } from "../../../layout/Layout";
 import { formatIsoDateForBackend } from "../../dateUtils";
+import SearchableSelect from "../../../common/SearchableSelect";
 
 /**
  * ClinicalInfoSection - Clinical diagnosis and payment status
@@ -29,6 +30,12 @@ const ClinicalInfoSection = ({ orderData, setOrderData, isReadOnly }) => {
   const { configurationProperties = {} } =
     useContext(ConfigurationContext) || {};
   const dateLocale = configurationProperties.DEFAULT_DATE_LOCALE || "en-US";
+  // FR-B28: the order-level Payment status is the only paid marker and shows
+  // only where the laboratory tracks payment; the billing reference shows only
+  // where billing references are used, labelled as the laboratory names it.
+  const trackPayment = configurationProperties.TRACK_PATIENT_PAYMENT === "true";
+  const billingReferenceOn =
+    configurationProperties.USE_BILLING_REFERENCE_NUMBER === "true";
 
   // Payment options state - fetched from API
   const [paymentOptions, setPaymentOptions] = useState([]);
@@ -85,11 +92,14 @@ const ClinicalInfoSection = ({ orderData, setOrderData, isReadOnly }) => {
   const testLocationCodes =
     orderData?.sampleOrderItems?.testLocationCodeList || [];
   const testLocationCode = orderData?.sampleOrderItems?.testLocationCode || "";
+  const otherTestLocationCodeId =
+    orderData?.sampleOrderItems?.otherTestLocationCodeId || "";
   const isOtherLocation =
-    testLocationCode &&
-    !testLocationCodes.some(
-      (code) => String(code.id) === String(testLocationCode),
-    );
+    Boolean(testLocationCode) &&
+    (String(testLocationCode) === String(otherTestLocationCodeId) ||
+      !testLocationCodes.some(
+        (code) => String(code.id) === String(testLocationCode),
+      ));
 
   // Handle payment status change
   const handlePaymentStatusChange = (e) => {
@@ -143,31 +153,50 @@ const ClinicalInfoSection = ({ orderData, setOrderData, isReadOnly }) => {
           />
         </Column>
 
-        <Column lg={8} md={4} sm={4}>
-          <Select
-            id="paymentStatus"
-            labelText={intl.formatMessage({
-              id: "order.paymentStatus",
-              defaultMessage: "Payment Status",
-            })}
-            value={orderData?.sampleOrderItems?.paymentOptionSelection || ""}
-            onChange={handlePaymentStatusChange}
-            helperText={intl.formatMessage({
-              id: "order.paymentStatus.helper",
-              defaultMessage: "How payment will be handled for this order.",
-            })}
-            disabled={isReadOnly}
-          >
-            <SelectItem key="" value="" text="" />
-            {paymentStatuses.map((status) => (
-              <SelectItem
-                key={status.id}
-                value={status.id}
-                text={status.value}
-              />
-            ))}
-          </Select>
-        </Column>
+        {billingReferenceOn && (
+          <Column lg={8} md={4} sm={4}>
+            <TextInput
+              id="billingReferenceNumber"
+              labelText={
+                configurationProperties.BILLING_REFERENCE_NUMBER_LABEL ||
+                intl.formatMessage({ id: "order.billing.reference" })
+              }
+              value={orderData?.sampleOrderItems?.billingReferenceNumber || ""}
+              onChange={(e) =>
+                updateOrderField("billingReferenceNumber", e.target.value)
+              }
+              disabled={isReadOnly}
+            />
+          </Column>
+        )}
+
+        {trackPayment && (
+          <Column lg={8} md={4} sm={4}>
+            <Select
+              id="paymentStatus"
+              labelText={intl.formatMessage({
+                id: "order.paymentStatus",
+                defaultMessage: "Payment Status",
+              })}
+              value={orderData?.sampleOrderItems?.paymentOptionSelection || ""}
+              onChange={handlePaymentStatusChange}
+              helperText={intl.formatMessage({
+                id: "order.paymentStatus.helper",
+                defaultMessage: "How payment will be handled for this order.",
+              })}
+              disabled={isReadOnly}
+            >
+              <SelectItem key="" value="" text="" />
+              {paymentStatuses.map((status) => (
+                <SelectItem
+                  key={status.id}
+                  value={status.id}
+                  text={status.value}
+                />
+              ))}
+            </Select>
+          </Column>
+        )}
 
         {/* requestDate has always been on the payload, defaulted to today and
             stamped server-side, with no input bound to it. */}
@@ -182,6 +211,7 @@ const ClinicalInfoSection = ({ orderData, setOrderData, isReadOnly }) => {
               orderData?.sampleOrderItems?.requestDate || "",
               dateLocale,
             )}
+            updateStateValue
             onChange={handleDateChange("requestDate")}
             disabled={isReadOnly}
           />
@@ -198,6 +228,7 @@ const ClinicalInfoSection = ({ orderData, setOrderData, isReadOnly }) => {
               orderData?.sampleOrderItems?.nextVisitDate || "",
               dateLocale,
             )}
+            updateStateValue
             onChange={handleDateChange("nextVisitDate")}
             disabled={isReadOnly}
           />
@@ -205,34 +236,22 @@ const ClinicalInfoSection = ({ orderData, setOrderData, isReadOnly }) => {
 
         {testLocationCodes.length > 0 && (
           <Column lg={8} md={4} sm={4}>
-            <Select
+            <SearchableSelect
               id="testLocationCode"
               labelText={intl.formatMessage({
                 id: "order.testLocationCode",
                 defaultMessage: "Sampling Performed At",
               })}
-              value={isOtherLocation ? "other" : testLocationCode}
-              onChange={(e) =>
-                updateOrderField(
-                  "testLocationCode",
-                  e.target.value === "other" ? "" : e.target.value,
-                )
-              }
+              options={testLocationCodes}
+              value={testLocationCode}
+              onChange={(id) => {
+                updateOrderField("testLocationCode", id);
+                if (id !== String(otherTestLocationCodeId)) {
+                  updateOrderField("otherLocationCode", "");
+                }
+              }}
               disabled={isReadOnly}
-            >
-              <SelectItem key="" value="" text="" />
-              {testLocationCodes.map((code) => (
-                <SelectItem key={code.id} value={code.id} text={code.value} />
-              ))}
-              <SelectItem
-                key="other"
-                value="other"
-                text={intl.formatMessage({
-                  id: "order.testLocationCode.other",
-                  defaultMessage: "Other",
-                })}
-              />
-            </Select>
+            />
           </Column>
         )}
 

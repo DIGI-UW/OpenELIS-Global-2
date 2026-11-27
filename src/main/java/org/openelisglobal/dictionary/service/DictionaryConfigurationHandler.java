@@ -2,18 +2,19 @@ package org.openelisglobal.dictionary.service;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.common.util.CsvParsingUtil;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
 import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
+import org.openelisglobal.dictionaryterminology.service.DictionaryTerminologyMappingService;
+import org.openelisglobal.localization.ShippedLabels;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.service.LocalizationValueService;
 import org.openelisglobal.localization.service.SupportedLocaleService;
@@ -27,16 +28,19 @@ import org.springframework.transaction.annotation.Transactional;
  * dictionary entries and their categories.
  *
  * Expected CSV format:
- * category,dictEntry,localAbbreviation,isActive,sortOrder,loincCode,localization:en,localization:fr
- * Sample Types,Blood,BLD,Y,1,26881-3,Blood,Sang Sample
- * Types,Serum,SER,Y,2,26882-1,Serum,Sérum
+ * category,dictEntry,localAbbreviation,isActive,sortOrder,loincCode,displayKey,localization:en,localization:fr
+ * Sample Types,Blood,BLD,Y,1,26881-3,dictionary.sampleTypes.blood,Blood,Sang
+ * Sample Types,Serum,SER,Y,2,26882-1,dictionary.sampleTypes.serum,Serum,Sérum
  *
  * Notes: - First line is the header (required) - category and dictEntry are
  * required fields - localAbbreviation, isActive, sortOrder, loincCode are
  * optional - isActive defaults to "Y" if not specified - localization:xx
  * columns (where xx is a locale code like en, fr, es) provide translations - If
  * no localization columns are provided, dictEntry is used as the default value
- * for the fallback locale
+ * for the fallback locale - displayKey (optional) names the entry's key in the
+ * interface catalogue; an entry OpenELIS ships carries one so its label is
+ * translated in Transifex (OGC-1507), and the localization columns are then
+ * written as shipped labels that never replace a lab's own label
  */
 @Component
 public class DictionaryConfigurationHandler implements DomainConfigurationHandler {
@@ -58,6 +62,9 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
     @Autowired
     private SupportedLocaleService supportedLocaleService;
 
+    @Autowired
+    private DictionaryTerminologyMappingService answerTerminology;
+
     @Override
     public String getDomainName() {
         return "dictionaries";
@@ -76,7 +83,7 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
     @Override
     @Transactional
     public void processConfiguration(InputStream inputStream, String fileName) throws Exception {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+        BufferedReader reader = CsvParsingUtil.openCsvReader(inputStream);
 
         String headerLine = reader.readLine();
         if (headerLine == null) {
@@ -92,6 +99,7 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
         int isActiveIndex = findColumnIndex(headers, "isActive");
         int sortOrderIndex = findColumnIndex(headers, "sortOrder");
         int loincCodeIndex = findColumnIndex(headers, "loincCode");
+        int displayKeyIndex = findColumnIndex(headers, "displayKey");
 
         // Detect localization columns (localization:en, localization:fr, etc.)
         Map<String, Integer> localizationColumns = detectLocalizationColumns(headers);
@@ -110,7 +118,7 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
             try {
                 String[] values = parseCsvLine(line);
                 Dictionary dictionary = processCsvLine(values, categoryIndex, dictEntryIndex, localAbbreviationIndex,
-                        isActiveIndex, sortOrderIndex, loincCodeIndex, localizationColumns);
+                        isActiveIndex, sortOrderIndex, loincCodeIndex, displayKeyIndex, localizationColumns);
                 if (dictionary != null) {
                     processedDictionaries.add(dictionary);
                 }
@@ -197,6 +205,23 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
         }
     }
 
+    /**
+     * The row a file line updates: a shipped entry by its display key, which a
+     * rename in Test Management leaves alone (it rewrites dictEntry), else the
+     * entry of that name in the category.
+     */
+    private Dictionary findExisting(String dictEntry, String categoryName, String displayKey) {
+        if (!displayKey.isEmpty()) {
+            for (Dictionary keyed : dictionaryService.getAllMatching("nameKey", displayKey)) {
+                if (keyed.getDictionaryCategory() != null
+                        && categoryName.equals(keyed.getDictionaryCategory().getCategoryName())) {
+                    return keyed;
+                }
+            }
+        }
+        return dictionaryService.getDictionaryEntryByNameAndCategoryName(dictEntry, categoryName);
+    }
+
     private int findColumnIndex(String[] headers, String columnName) {
         for (int i = 0; i < headers.length; i++) {
             if (columnName.equalsIgnoreCase(headers[i])) {
@@ -207,7 +232,7 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
     }
 
     private Dictionary processCsvLine(String[] values, int categoryIndex, int dictEntryIndex,
-            int localAbbreviationIndex, int isActiveIndex, int sortOrderIndex, int loincCodeIndex,
+            int localAbbreviationIndex, int isActiveIndex, int sortOrderIndex, int loincCodeIndex, int displayKeyIndex,
             Map<String, Integer> localizationColumns) {
 
         String categoryName = getValueOrEmpty(values, categoryIndex);
@@ -230,21 +255,30 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
         // description would silently fail for legacy categories where name and
         // description diverge (e.g. id=218: name="Marital Status Demographic
         // Information", description="Possible marriage status").
-        Dictionary existingDict = dictionaryService.getDictionaryEntryByNameAndCategoryName(dictEntry, categoryName);
+        Dictionary existingDict = findExisting(dictEntry, categoryName,
+                getValueOrEmpty(values, displayKeyIndex).trim());
+        Dictionary saved;
         if (existingDict != null) {
             updateDictionaryFromCsv(existingDict, values, category, localAbbreviationIndex, isActiveIndex,
-                    sortOrderIndex, loincCodeIndex, dictEntry, localizationColumns);
+                    sortOrderIndex, loincCodeIndex, displayKeyIndex, dictEntry, localizationColumns);
             dictionaryService.update(existingDict);
-            return existingDict;
+            saved = existingDict;
         } else {
             Dictionary newDict = new Dictionary();
             newDict.setDictEntry(dictEntry);
             updateDictionaryFromCsv(newDict, values, category, localAbbreviationIndex, isActiveIndex, sortOrderIndex,
-                    loincCodeIndex, dictEntry, localizationColumns);
+                    loincCodeIndex, displayKeyIndex, dictEntry, localizationColumns);
             String dictId = dictionaryService.insert(newDict);
             newDict.setId(dictId);
-            return newDict;
+            saved = newDict;
         }
+        // A row without a loincCode leaves the answer's LOINC mappings as they are,
+        // so they may come from the answer-terminology import instead.
+        String loincCode = getValueOrEmpty(values, loincCodeIndex);
+        if (!loincCode.isEmpty()) {
+            answerTerminology.syncLegacyLoinc(saved.getId(), loincCode, "1");
+        }
+        return saved;
     }
 
     private String getValueOrEmpty(String[] values, int index) {
@@ -309,8 +343,8 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
     }
 
     private void updateDictionaryFromCsv(Dictionary dictionary, String[] values, DictionaryCategory category,
-            int localAbbreviationIndex, int isActiveIndex, int sortOrderIndex, int loincCodeIndex, String dictEntry,
-            Map<String, Integer> localizationColumns) {
+            int localAbbreviationIndex, int isActiveIndex, int sortOrderIndex, int loincCodeIndex, int displayKeyIndex,
+            String dictEntry, Map<String, Integer> localizationColumns) {
 
         dictionary.setDictionaryCategory(category);
 
@@ -339,6 +373,11 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
         String loincCode = getValueOrEmpty(values, loincCodeIndex);
         if (!loincCode.isEmpty()) {
             dictionary.setLoincCode(loincCode);
+        }
+
+        String displayKey = getValueOrEmpty(values, displayKeyIndex).trim();
+        if (!displayKey.isEmpty()) {
+            dictionary.setNameKey(displayKey);
         }
 
         // Handle localization
@@ -409,13 +448,16 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
 
             // Now set all translations using the service (including any beyond en/fr)
             for (Map.Entry<String, String> entry : translations.entrySet()) {
-                localizationValueService.setTranslation(localizationId, entry.getKey(), entry.getValue(), "1");
+                localizationValueService.setSystemTranslation(localizationId, entry.getKey(), entry.getValue(), "1",
+                        false);
             }
         } else {
             // Update existing localization translations
             String localizationId = localization.getId();
+            boolean keepSiteLabels = ShippedLabels.isShipped(dictionary.getNameKey());
             for (Map.Entry<String, String> entry : translations.entrySet()) {
-                localizationValueService.setTranslation(localizationId, entry.getKey(), entry.getValue(), "1");
+                localizationValueService.setSystemTranslation(localizationId, entry.getKey(), entry.getValue(), "1",
+                        keepSiteLabels);
             }
         }
     }

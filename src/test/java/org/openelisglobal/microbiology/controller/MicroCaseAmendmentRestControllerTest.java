@@ -16,8 +16,6 @@ import org.openelisglobal.microbiology.form.MicroReportVersionForm;
 import org.openelisglobal.microbiology.service.MicroCaseAmendmentService;
 import org.openelisglobal.microbiology.service.MicroReportVersionService;
 import org.openelisglobal.microbiology.valueholder.MicroCaseAmendment;
-import org.openelisglobal.microbiology.valueholder.MicroReportVersion;
-import org.openelisglobal.microbiology.valueholder.MicroReportVersionSource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -82,16 +80,13 @@ public class MicroCaseAmendmentRestControllerTest {
     public void reportHistoryIncludesNormalizedAnalysisAndResultSources() {
         MicroCaseAmendmentService amendmentService = org.mockito.Mockito.mock(MicroCaseAmendmentService.class);
         MicroReportVersionService versionService = org.mockito.Mockito.mock(MicroReportVersionService.class);
-        MicroReportVersion version = new MicroReportVersion();
-        version.setId("version-1");
-        version.setCaseId("case-1");
-        version.setVersionNumber(1);
-        MicroReportVersionSource source = new MicroReportVersionSource();
-        source.setReportVersionId("version-1");
-        source.setAnalysisId("42");
-        source.setResultId("201");
-        when(versionService.getVersions("case-1")).thenReturn(List.of(version));
-        when(versionService.getSourcesForCase("case-1")).thenReturn(List.of(source));
+        var version = new MicroReportVersionForm();
+        version.id = "version-1";
+        var source = new org.openelisglobal.microbiology.form.MicroReportVersionSourceForm();
+        source.analysisId = "42";
+        source.resultId = "201";
+        version.sources.add(source);
+        when(versionService.getVersionForms("case-1")).thenReturn(List.of(version));
 
         ResponseEntity<List<MicroReportVersionForm>> response = new MicroCaseAmendmentRestController(amendmentService,
                 versionService).getReportVersions("case-1");

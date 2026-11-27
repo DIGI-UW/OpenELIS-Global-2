@@ -229,9 +229,9 @@ public class CalendarManagementRestController extends BaseRestController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "name is required");
         }
         try {
-            holiday.setHolidayDate(Date.valueOf(dateStr));
-        } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid date format, expected yyyy-MM-dd");
+            holiday.setHolidayDate(Date.valueOf(LocalDate.parse(dateStr)));
+        } catch (DateTimeParseException | IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid date, expected a valid yyyy-MM-dd date");
         }
         holiday.setHolidayName(name.trim());
         holiday.setIsRecurring(Boolean.TRUE.equals(body.get("isRecurring")));
@@ -245,9 +245,10 @@ public class CalendarManagementRestController extends BaseRestController {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "date must not be blank");
             }
             try {
-                holiday.setHolidayDate(Date.valueOf(dateStr));
-            } catch (IllegalArgumentException e) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid date format, expected yyyy-MM-dd");
+                holiday.setHolidayDate(Date.valueOf(LocalDate.parse(dateStr)));
+            } catch (DateTimeParseException | IllegalArgumentException e) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Invalid date, expected a valid yyyy-MM-dd date");
             }
         }
         if (body.containsKey("name")) {
@@ -308,10 +309,10 @@ public class CalendarManagementRestController extends BaseRestController {
 
                 PublicHoliday holiday = new PublicHoliday();
                 try {
-                    holiday.setHolidayDate(Date.valueOf(parts.get(0).trim()));
+                    holiday.setHolidayDate(Date.valueOf(LocalDate.parse(parts.get(0).trim())));
                 } catch (DateTimeParseException | IllegalArgumentException e) {
                     parseErrors.add(new PublicHolidayService.ImportError(rowNum,
-                            "Invalid date format: " + parts.get(0).trim()));
+                            "Invalid date, expected a valid yyyy-MM-dd date: " + parts.get(0).trim()));
                     continue;
                 }
                 holiday.setHolidayName(parts.get(1).trim());

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { DataTableSkeleton, Dropdown, Tag } from "@carbon/react";
+import { DataTableSkeleton, Dropdown, Link, Tag } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import { formatTimestamp } from "./qcDashboardUtils";
@@ -29,6 +29,7 @@ const HEADERS = [
   { key: "totalRuns", labelKey: "qc.bench.column.runs" },
   { key: "failedRuns", labelKey: "common.failed" },
   { key: "lastRun", labelKey: "qc.bench.column.lastRun" },
+  { key: "resultRun", labelKey: "qc.bench.column.resultRun" },
 ];
 
 const BenchQcTab = () => {
@@ -63,6 +64,20 @@ const BenchQcTab = () => {
         row.failedRuns
       ),
     lastRun: formatTimestamp(row.lastRun),
+    resultRun: row.lastRunId ? (
+      <Link
+        href={`/Results?run=${row.lastRunId}`}
+        title={intl.formatMessage(
+          { id: "qc.dashboard.openRun" },
+          { run: `RUN-${row.lastRunId}` },
+        )}
+        data-testid={`bench-qc-run-${row.testSectionId}-${row.testId}-${row.source}`}
+      >
+        {`RUN-${row.lastRunId}`}
+      </Link>
+    ) : (
+      "-"
+    ),
   }));
 
   if (loading) {

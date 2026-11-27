@@ -6,6 +6,7 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -24,6 +25,7 @@ import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
+import org.openelisglobal.reports.valueholder.DocumentTrack;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.service.ResultServiceImpl;
 import org.openelisglobal.result.valueholder.Result;
@@ -59,6 +61,9 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     @Autowired
     private NoteService noteService;
 
+    @Autowired
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     private static String TABLE_REFERENCE_ID;
     private final String DEFAULT_ANALYSIS_TYPE = "MANUAL";
 
@@ -79,11 +84,17 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     }
 
     @Override
+    @Transactional
     public String insert(Analysis analysis) {
         if (analysis.getFhirUuid() == null) {
             analysis.setFhirUuid(UUID.randomUUID());
         }
-        return super.insert(analysis);
+        String id = super.insert(analysis);
+        if (eventPublisher != null) {
+            eventPublisher.publishEvent(new org.openelisglobal.analysis.valueholder.AnalysisCreatedEvent(analysis,
+                    analysis.getSysUserId()));
+        }
+        return id;
     }
 
     /**
@@ -292,8 +303,40 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
         if (sample == null) {
             return false;
         }
-        return SpringContext.getBean(IReportTrackingService.class).getLastReportForSample(sample,
-                ReportTrackingService.ReportType.PATIENT) != null;
+        // The Report Print Queue's own definition of printed (OGC-431 FR-9.3): the
+        // last printed version matches what is released now.
+        org.openelisglobal.common.services.IStatusService statusService = SpringContext
+                .getBean(org.openelisglobal.common.services.IStatusService.class);
+        List<String> excluded = List.of(
+                statusService.getStatusID(org.openelisglobal.common.services.StatusService.AnalysisStatus.Canceled),
+                statusService
+                        .getStatusID(org.openelisglobal.common.services.StatusService.AnalysisStatus.SampleRejected));
+        return SpringContext.getBean(org.openelisglobal.reportqueue.dao.ReportQueueQueryDAO.class).isPrinted(
+                Long.valueOf(sample.getId()),
+                statusService.getStatusID(org.openelisglobal.common.services.StatusService.AnalysisStatus.Finalized),
+                excluded);
+    }
+
+    @Override
+    public boolean releasedResultHasBeenReported(Analysis analysis) {
+        if (analysis == null) {
+            return false;
+        }
+        if (analysis.isCorrectedSincePatientReport()) {
+            return true;
+        }
+        if (analysis.getReleasedDate() == null) {
+            return false;
+        }
+        org.openelisglobal.sample.valueholder.Sample sample = SpringContext
+                .getBean(org.openelisglobal.analysis.service.AnalysisAnchorService.class).resolveSample(analysis);
+        if (sample == null) {
+            return false;
+        }
+        DocumentTrack lastReport = SpringContext.getBean(IReportTrackingService.class).getLastReportForSample(sample,
+                ReportTrackingService.ReportType.PATIENT);
+        return lastReport != null && lastReport.getReportTime() != null
+                && !lastReport.getReportTime().before(analysis.getReleasedDate());
     }
 
     @Override
@@ -474,6 +517,45 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     public List<Analysis> getAllAnalysisByTestSectionAndStatus(String sectionId, List<String> statusList,
             boolean sortedByDateAndAccession) {
         return baseObjectDAO.getAllAnalysisByTestSectionAndStatus(sectionId, statusList, sortedByDateAndAccession);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<String> getTestSectionIdsWithPendingAnalyses() {
+        return new HashSet<>(baseObjectDAO.getTestSectionIdsWithAnalysesNotInStatus(terminalAnalysisStatusIds()));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<String> getTestSectionIdsWithAnyAnalyses() {
+        // Empty exclusion list = every analysis counts, terminal or not.
+        return new HashSet<>(baseObjectDAO.getTestSectionIdsWithAnalysesNotInStatus(new ArrayList<>()));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long[] countAnalysesForLabUnit(String testSectionId) {
+        return baseObjectDAO.countAnalysesByTestSectionSplitByStatus(testSectionId, terminalAnalysisStatusIds());
+    }
+
+    /**
+     * The analysis statuses that count as finished. Finalized and Canceled are
+     * done; the four rejection statuses are dead ends the lab cannot act on any
+     * further. Anything else is still in flight.
+     */
+    private List<String> terminalAnalysisStatusIds() {
+        IStatusService statusService = SpringContext.getBean(IStatusService.class);
+        List<String> terminalStatuses = new ArrayList<>();
+        for (StatusService.AnalysisStatus status : new StatusService.AnalysisStatus[] {
+                StatusService.AnalysisStatus.Finalized, StatusService.AnalysisStatus.Canceled,
+                StatusService.AnalysisStatus.SampleRejected, StatusService.AnalysisStatus.TechnicalRejected,
+                StatusService.AnalysisStatus.BiologistRejected, StatusService.AnalysisStatus.RejectedByReferenceLab }) {
+            String id = statusService.getStatusID(status);
+            if (id != null) {
+                terminalStatuses.add(id);
+            }
+        }
+        return terminalStatuses;
     }
 
     @Override

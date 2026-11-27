@@ -13,6 +13,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,11 +40,17 @@ import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 public class LegacyTestConfigurationRefusalIntegrationTest extends BaseWebContextSensitiveTest {
 
     private static final String UOM_PREFIX = "LTCRIT";
+    private static final String METHOD_NAME = "LTCRIT Method";
+    /** Ids for the Results and Validation roles if this test must seed them. */
+    private static final long RESULTS_ROLE_ID = 95501L;
+    private static final long VALIDATION_ROLE_ID = 95502L;
 
     @Autowired
     private DataSource dataSource;
     @Autowired
     private UomCreateRestController uomCreateRestController;
+    @Autowired
+    private MethodCreateRestController methodCreateRestController;
     @Autowired
     private MethodRenameEntryRestController methodRenameEntryRestController;
     @Autowired
@@ -63,9 +70,9 @@ public class LegacyTestConfigurationRefusalIntegrationTest extends BaseWebContex
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.setMessageInterpolator(new ParameterMessageInterpolator());
         validator.afterPropertiesSet();
-        validatingMvc = MockMvcBuilders
-                .standaloneSetup(target(uomCreateRestController), target(methodRenameEntryRestController),
-                        target(testSectionRenameEntryRestController), target(testSectionOrderRestController))
+        validatingMvc = MockMvcBuilders.standaloneSetup(target(uomCreateRestController),
+                target(methodCreateRestController), target(methodRenameEntryRestController),
+                target(testSectionRenameEntryRestController), target(testSectionOrderRestController))
                 .setValidator(validator).build();
     }
 
@@ -113,6 +120,78 @@ public class LegacyTestConfigurationRefusalIntegrationTest extends BaseWebContex
                 .andExpect(jsonPath("$.error").value("validation"));
     }
 
+    /**
+     * Manage Methods is the only method page left; a taken name used to come back
+     * 200 with nothing written, so the page reported success.
+     */
+    @Test
+    public void methodCreate_isCreatedOnce_andTheSameNameAgainIs409() throws Exception {
+        ensureRole(RESULTS_ROLE_ID, Constants.ROLE_RESULTS);
+        ensureRole(VALIDATION_ROLE_ID, Constants.ROLE_VALIDATION);
+        String body = "{\"methodEnglishName\":\"" + METHOD_NAME + "\",\"methodFrenchName\":\"" + METHOD_NAME + " FR\"}";
+        postJson("/rest/MethodCreate", body).andExpect(status().isOk());
+        postJson("/rest/MethodCreate", body).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("duplicate"));
+
+        assertEquals(Integer.valueOf(1),
+                jdbc.queryForObject("SELECT count(*) FROM clinlims.method WHERE name = ?", Integer.class, METHOD_NAME));
+    }
+
+    /**
+     * A method create grants the Results and Validation roles on the method's
+     * modules by role name, so both must exist; other fixtures truncate the shared
+     * role seed, so they are seeded here when absent rather than assumed.
+     */
+    private void ensureRole(long id, String name) {
+        Integer present = jdbc.queryForObject("SELECT count(*) FROM clinlims.system_role WHERE trim(name) = ?",
+                Integer.class, name);
+        if (present == 0) {
+            jdbc.update(
+                    "INSERT INTO clinlims.system_role (id, name, description, is_grouping_role, display_key,"
+                            + " active, editable) VALUES (?, ?, ?, false, ?, true, false)",
+                    id, name, name + " role", "role." + name.toLowerCase());
+        }
+    }
+
+    /**
+     * Manage Methods renames a method through MethodRenameEntry. A name another
+     * method already has used to be written anyway, and an unknown method was a
+     * 500; both are now refused and nothing is changed.
+     */
+    @Test
+    public void methodRename_refusesATakenName_andAnUnknownMethod_andRenamesOtherwise() throws Exception {
+        ensureRole(RESULTS_ROLE_ID, Constants.ROLE_RESULTS);
+        ensureRole(VALIDATION_ROLE_ID, Constants.ROLE_VALIDATION);
+        String second = METHOD_NAME + " Two";
+        postJson("/rest/MethodCreate",
+                "{\"methodEnglishName\":\"" + METHOD_NAME + "\",\"methodFrenchName\":\"" + METHOD_NAME + " FR\"}")
+                .andExpect(status().isOk());
+        postJson("/rest/MethodCreate",
+                "{\"methodEnglishName\":\"" + second + "\",\"methodFrenchName\":\"" + second + " FR\"}")
+                .andExpect(status().isOk());
+        String firstId = jdbc.queryForObject("SELECT CAST(id AS varchar) FROM clinlims.method WHERE name = ?",
+                String.class, METHOD_NAME);
+
+        postJson("/rest/MethodRenameEntry",
+                "{\"methodId\":\"" + firstId + "\",\"nameEnglish\":\"" + second + "\",\"nameFrench\":\"Autre\"}")
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error").value("duplicate"));
+        assertEquals(METHOD_NAME, englishNameOf(firstId));
+
+        postJson("/rest/MethodRenameEntry",
+                "{\"methodId\":\"99999999\",\"nameEnglish\":\"Nowhere\",\"nameFrench\":\"Nulle part\"}")
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.error").value("notFound"));
+
+        postJson("/rest/MethodRenameEntry", "{\"methodId\":\"" + firstId + "\",\"nameEnglish\":\"" + METHOD_NAME
+                + " Renamed\",\"nameFrench\":\"Renommee\"}").andExpect(status().isOk());
+        assertEquals(METHOD_NAME + " Renamed", englishNameOf(firstId));
+    }
+
+    private String englishNameOf(String methodId) {
+        return jdbc.queryForObject("SELECT lv.value FROM clinlims.method m JOIN clinlims.localization_value lv"
+                + " ON lv.localization_id = m.name_localization_id AND lv.locale = 'en' WHERE m.id = CAST(? AS numeric)",
+                String.class, methodId);
+    }
+
     private ResultActions postJson(String url, String body) throws Exception {
         return validatingMvc
                 .perform(post(url).contentType(MediaType.APPLICATION_JSON).content(body).session(adminSession()));
@@ -125,6 +204,15 @@ public class LegacyTestConfigurationRefusalIntegrationTest extends BaseWebContex
 
     private void cleanup() {
         jdbc.update("DELETE FROM clinlims.unit_of_measure WHERE name LIKE ?", UOM_PREFIX + "%");
+        jdbc.update("DELETE FROM clinlims.system_role_module WHERE system_module_id IN (SELECT id FROM"
+                + " clinlims.system_module WHERE name LIKE ?)", "%:" + METHOD_NAME + "%");
+        jdbc.update("DELETE FROM clinlims.system_module WHERE name LIKE ?", "%:" + METHOD_NAME + "%");
+        jdbc.update("DELETE FROM clinlims.localization_value WHERE localization_id IN (SELECT name_localization_id"
+                + " FROM clinlims.method WHERE name LIKE ?)", METHOD_NAME + "%");
+        jdbc.update(
+                "WITH removed AS (DELETE FROM clinlims.method WHERE name LIKE ? RETURNING name_localization_id)"
+                        + " DELETE FROM clinlims.localization WHERE id IN (SELECT name_localization_id FROM removed)",
+                METHOD_NAME + "%");
     }
 
     private static Object target(Object bean) {

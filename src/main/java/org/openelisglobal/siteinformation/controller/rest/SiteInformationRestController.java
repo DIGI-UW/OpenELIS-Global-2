@@ -20,12 +20,12 @@ import org.openelisglobal.common.util.URLUtil;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
-import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.siteinformation.form.SiteInformationForm;
 import org.openelisglobal.siteinformation.service.SiteInformationDomainService;
+import org.openelisglobal.siteinformation.service.SiteInformationInstructions;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.validator.SiteInformationFormValidator;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
@@ -131,6 +131,8 @@ public class SiteInformationRestController extends BaseController {
             newForm.setValueType(siteInformation.getValueType());
             newForm.setEditable(isEditable(siteInformation));
             newForm.setTag(siteInformation.getTag());
+            newForm.setLastupdated(
+                    siteInformation.getLastupdated() == null ? null : siteInformation.getLastupdated().getTime());
 
             if ("dictionary".equals(siteInformation.getValueType())) {
                 List<String> dictionaryValues = new ArrayList<>();
@@ -216,12 +218,7 @@ public class SiteInformationRestController extends BaseController {
     }
 
     private String getInstruction(SiteInformation siteInformation) {
-        String instruction = MessageUtil.getMessage(siteInformation.getInstructionKey());
-        if (GenericValidator.isBlankOrNull(instruction)) {
-            instruction = MessageUtil.getMessage(siteInformation.getDescriptionKey());
-        }
-
-        return GenericValidator.isBlankOrNull(instruction) ? siteInformation.getDescription() : instruction;
+        return SiteInformationInstructions.describe(siteInformation);
     }
 
     private void setLocalizationValues(SiteInformationForm form, SiteInformation siteInformation) {
@@ -240,13 +237,17 @@ public class SiteInformationRestController extends BaseController {
     @PostMapping(value = { "/NonConformityConfiguration", "/WorkplanConfiguration", "/PrintedReportsConfiguration",
             "/SampleEntryConfig", "/ResultConfiguration", "/MenuStatementConfig", "/PatientConfiguration",
             "/ValidationConfiguration", "/SiteInformation" }, consumes = MediaType.APPLICATION_JSON_VALUE)
-    public SiteInformationForm showUpdateSiteInformation(HttpServletRequest request, HttpServletResponse response,
-            @RequestBody @Valid SiteInformationForm form, BindingResult result, SessionStatus status,
-            RedirectAttributes redirectAttributes) {
+    public org.springframework.http.ResponseEntity<?> showUpdateSiteInformation(HttpServletRequest request,
+            HttpServletResponse response, @RequestBody @Valid SiteInformationForm form, BindingResult result,
+            SessionStatus status, RedirectAttributes redirectAttributes) {
         formValidator.validate(form, result);
         if (result.hasErrors()) {
             saveErrors(result);
-            return (form);
+            return org.springframework.http.ResponseEntity.ok(form);
+        }
+        if (isStale(request.getParameter(ID), form)) {
+            return org.springframework.http.ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT)
+                    .body(java.util.Map.of("error", "stale"));
         }
         String forward;
 
@@ -274,7 +275,19 @@ public class SiteInformationRestController extends BaseController {
             // signal to remove form from session
             status.setComplete();
         }
-        return (form);
+        return org.springframework.http.ResponseEntity.ok(form);
+    }
+
+    /**
+     * Whether the page that sent this save loaded an older version of the setting
+     * than the one stored now. A form without a version (older clients) is not
+     * checked.
+     */
+    private boolean isStale(String id, SiteInformationForm form) {
+        if (id == null || "0".equals(id) || "localization".equals(form.getTag())) {
+            return false;
+        }
+        return siteInformationService.changedSince(id, form.getLastupdated());
     }
 
     private String validateAndUpdateLocalization(HttpServletRequest request, String localizationId,

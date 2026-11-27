@@ -1,9 +1,12 @@
 package org.openelisglobal.patient.validator;
 
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.provider.query.PatientSearchResults;
 import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.search.service.SearchResultsService;
 import org.openelisglobal.spring.util.SpringContext;
@@ -62,7 +65,8 @@ public class ValidatePatientInfo {
 
                             if (existingResult == null || (existingResult != null
                                     && !existingResult.getNationalId().equals(newNationalId))) {
-                                errors.reject("error.duplicate.nationalId", null, null);
+                                errors.reject("error.duplicate.nationalId", null,
+                                        duplicateNationalIdMessage(newNationalId, result));
                             }
                         }
                     }
@@ -70,6 +74,22 @@ public class ValidatePatientInfo {
             }
         }
         validateBirthdateFormat(patientInfo, errors);
+    }
+
+    /**
+     * The refusal names the patient who already has the national id, with the birth
+     * date where one is recorded, so the user can find that record in the patient
+     * search instead of entering the person again.
+     */
+    private static String duplicateNationalIdMessage(String nationalId, PatientSearchResults existing) {
+        String name = Stream.of(existing.getLastName(), existing.getFirstName())
+                .filter(part -> !GenericValidator.isBlankOrNull(part)).collect(Collectors.joining(", "));
+        String birthDate = existing.getBirthdate();
+        if (GenericValidator.isBlankOrNull(birthDate)) {
+            return MessageUtil.getMessage("error.duplicate.nationalId.patient", new Object[] { nationalId, name });
+        }
+        return MessageUtil.getMessage("error.duplicate.nationalId.patient.born",
+                new Object[] { nationalId, name, birthDate });
     }
 
     private static void validateBirthdateFormat(PatientManagementInfo patientInfo, Errors errors) {

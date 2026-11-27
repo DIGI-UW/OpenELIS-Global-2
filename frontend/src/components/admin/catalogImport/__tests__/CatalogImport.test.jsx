@@ -145,6 +145,19 @@ describe("CatalogImport", () => {
     ).toHaveValue("");
   });
 
+  // OGC-1466 review: a file dropped again (or under the same name in another
+  // case) replaces the staged copy instead of adding a second row.
+  test("a file dropped twice is staged once", async () => {
+    renderPage();
+    await waitFor(() => expect(getFromOpenElisServer).toHaveBeenCalled());
+
+    await drop([csv("tests-cphl.csv")]);
+    await drop([csv("tests-cphl.csv"), csv("TESTS-CPHL.csv")]);
+
+    const table = await screen.findByTestId("catalog-import-files");
+    expect(table.querySelectorAll("tbody tr")).toHaveLength(1);
+  });
+
   test("previews before it can apply, and shows each file's counts and skipped rows", async () => {
     postToOpenElisServerFormDataJsonResponse.mockImplementation(
       (url, formData, callback) =>
@@ -192,6 +205,82 @@ describe("CatalogImport", () => {
     expect(
       screen.queryByTestId("catalog-import-apply-hint"),
     ).not.toBeInTheDocument();
+  });
+
+  test("a preview lists what a file takes away, ignores and leaves alone", async () => {
+    postToOpenElisServerFormDataJsonResponse.mockImplementation(
+      (url, formData, callback) =>
+        callback({
+          importRunId: "run-1",
+          unresolvedCount: 0,
+          files: [
+            {
+              domain: "tests",
+              fileName: "tests-cphl.csv",
+              created: 0,
+              updated: 0,
+              skipped: 1,
+              rows: [
+                {
+                  lineNumber: 0,
+                  outcome: "REMOVED",
+                  reason:
+                    "Escherichia coli removed from group Enterobacterales",
+                },
+                {
+                  lineNumber: 2,
+                  outcome: "WARNING",
+                  reason: "reportBehavior CASCADE is not read from panel files",
+                },
+                {
+                  lineNumber: 3,
+                  outcome: "UNCHANGED",
+                  reason: "Panel unchanged",
+                },
+              ],
+              error: null,
+            },
+          ],
+        }),
+    );
+    renderPage();
+    await waitFor(() => expect(getFromOpenElisServer).toHaveBeenCalled());
+    await drop([csv("tests-cphl.csv")]);
+
+    await userEvent.click(screen.getByRole("button", { name: "Preview" }));
+
+    await screen.findByTestId("catalog-import-plan");
+    expect(
+      screen.getByText("Escherichia coli removed from group Enterobacterales"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("reportBehavior CASCADE is not read from panel files"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Panel unchanged")).toBeInTheDocument();
+    expect(screen.getByText("tests-cphl.csv:3")).not.toHaveClass(
+      "cds--tag--red",
+    );
+  });
+
+  /** OGC-1466: a preview is about the files as typed; a type change asks for a new one. */
+  test("changing a file's catalog area after a preview turns Apply off", async () => {
+    applyAnswers({});
+    renderPage();
+    await waitFor(() => expect(getFromOpenElisServer).toHaveBeenCalled());
+    await drop([csv("tests-cphl.csv")]);
+    await userEvent.click(screen.getByRole("button", { name: "Preview" }));
+    await screen.findByRole("heading", { name: "What these files would do" });
+    const apply = screen.getByRole("button", { name: "Apply" });
+    expect(apply).toBeEnabled();
+
+    await userEvent.selectOptions(
+      screen.getByLabelText(/Catalog area/i, {
+        selector: "#domain-tests-cphl\\.csv",
+      }),
+      "result-limits",
+    );
+
+    expect(apply).toBeDisabled();
   });
 
   test("a refused apply keeps the preview on screen and says why", async () => {

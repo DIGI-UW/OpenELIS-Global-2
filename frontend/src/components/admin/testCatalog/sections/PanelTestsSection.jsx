@@ -3,6 +3,7 @@ import {
   Button,
   ComboBox,
   IconButton,
+  InlineNotification,
   Select,
   SelectItem,
   Stack,
@@ -21,6 +22,9 @@ import {
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
+import StaleSaveNotice, {
+  isStaleConflict,
+} from "../../../common/StaleSaveNotice";
 
 /**
  * OGC-224 — Panel editor · Tests (the centerpiece, FRS v2.2).
@@ -42,6 +46,12 @@ const PanelTestsSection = ({ panel, autoActivate, onSaved }) => {
 
   const [members, setMembers] = useState([]);
   const [loaded, setLoaded] = useState(false);
+  // A failed member-list load must never look like an empty panel: saving
+  // that empty list would remove every member (OGC-1456).
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [version, setVersion] = useState(null);
+  const [stale, setStale] = useState(false);
   const [candidates, setCandidates] = useState([]);
   const [sampleTypes, setSampleTypes] = useState([]);
   // optional narrowing of the picker by sample type — same control and
@@ -56,14 +66,22 @@ const PanelTestsSection = ({ panel, autoActivate, onSaved }) => {
     if (!panel?.id) {
       return;
     }
+    setLoaded(false);
+    setLoadFailed(false);
     getFromOpenElisServer(
       `/rest/test-catalog/panels/${panel.id}/test-order`,
       (res) => {
-        setMembers(Array.isArray(res?.tests) ? res.tests : []);
+        if (!Array.isArray(res?.tests)) {
+          setLoadFailed(true);
+          return;
+        }
+        setMembers(res.tests);
+        setVersion(res.version || null);
+        setStale(false);
         setLoaded(true);
       },
     );
-  }, [panel?.id]);
+  }, [panel?.id, reloadKey]);
 
   // Domain-guarded picker: only the panel's domain is ever fetched (the
   // server enforces the same guard on save). One fetch; Carbon filters
@@ -154,12 +172,14 @@ const PanelTestsSection = ({ panel, autoActivate, onSaved }) => {
       JSON.stringify({
         tests: members.map((m, i) => ({ testId: m.testId, position: i + 1 })),
         autoActivate: !!autoActivate,
+        version,
       }),
       async (response) => {
         setSaving(false);
         if (response && response.ok) {
           const body = await response.json();
           setMembers(Array.isArray(body?.tests) ? body.tests : []);
+          setVersion(body?.version || null);
           notify(NotificationKinds.success, "success.add.edited.msg");
           if (body?.panel) {
             onSaved(body.panel);
@@ -168,6 +188,13 @@ const PanelTestsSection = ({ panel, autoActivate, onSaved }) => {
         }
         // OGC-1232 — the domain guard names the tests it refused
         let body = null;
+        if (response && response.status === 409) {
+          body = await response.json().catch(() => null);
+          if (isStaleConflict(409, body)) {
+            setStale(true);
+            return;
+          }
+        }
         if (response && response.status === 422) {
           try {
             body = await response.json();
@@ -175,7 +202,15 @@ const PanelTestsSection = ({ panel, autoActivate, onSaved }) => {
             body = null;
           }
         }
-        if (body && body.domainConflict) {
+        if (body && body.refusal === "tests.activeNeedsTest") {
+          notify(NotificationKinds.error, "error.panel.tests.activeNeedsTest");
+          setReloadKey((k) => k + 1);
+        } else if (body && body.refusal === "tests.inactive") {
+          notify(NotificationKinds.error, "error.panel.tests.inactive", {
+            count: (body.refusedTests || []).length,
+            tests: (body.refusedTests || []).map((t) => t.name).join(", "),
+          });
+        } else if (body && body.domainConflict) {
           const conflict = body.domainConflict;
           notify(NotificationKinds.error, "error.panel.tests.domainConflict", {
             domain: domainLabel(conflict.domain),
@@ -193,10 +228,32 @@ const PanelTestsSection = ({ panel, autoActivate, onSaved }) => {
 
   return (
     <Stack gap={5} style={{ maxWidth: "46rem" }}>
-      <p style={{ fontSize: "0.875rem" }} data-testid="panel-tests-count">
-        <strong>{members.length}</strong>{" "}
-        <FormattedMessage id="label.panel.testsCount" />
-      </p>
+      {loadFailed && (
+        <div data-testid="panel-tests-load-error">
+          <InlineNotification
+            kind="error"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({ id: "error.title" })}
+            subtitle={intl.formatMessage({
+              id: "error.panel.tests.loadFailed",
+            })}
+          />
+          <Button
+            kind="tertiary"
+            size="sm"
+            onClick={() => setReloadKey((k) => k + 1)}
+          >
+            <FormattedMessage id="common.retry" />
+          </Button>
+        </div>
+      )}
+      {!loadFailed && (
+        <p style={{ fontSize: "0.875rem" }} data-testid="panel-tests-count">
+          <strong>{members.length}</strong>{" "}
+          <FormattedMessage id="label.panel.testsCount" />
+        </p>
+      )}
       {/* Add a test: an optional sample-type narrowing sits directly beside
           the autocomplete, mirroring Sample Type → Associated Tests. Fixed
           flex bases (no grow) keep the two controls adjacent. */}
@@ -366,12 +423,18 @@ const PanelTestsSection = ({ panel, autoActivate, onSaved }) => {
       >
         <FormattedMessage id="note.panel.positionShared" />
       </p>
+      {stale && (
+        <StaleSaveNotice
+          testId="panel-tests-stale-save"
+          onRefresh={() => setReloadKey((k) => k + 1)}
+        />
+      )}
       <div>
         <Button
           kind="primary"
           renderIcon={Add}
           onClick={handleSave}
-          disabled={saving || !loaded}
+          disabled={saving || !loaded || stale}
         >
           <FormattedMessage id="label.button.save" />
         </Button>

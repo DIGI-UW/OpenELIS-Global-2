@@ -3,25 +3,35 @@ package org.openelisglobal.microbiology.service;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelAntibioticDAO;
+import org.openelisglobal.microbiology.dao.MicroAstPanelAssignmentDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
-import org.openelisglobal.microbiology.dao.MicroCultureSetupDAO;
+import org.openelisglobal.microbiology.dao.MicroBreakpointRuleDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.dao.MicroPatientOriginDAO;
+import org.openelisglobal.microbiology.dao.MicroWhonetOrganismDAO;
 import org.openelisglobal.microbiology.form.MicroAntibioticAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAntibioticAdminForm;
-import org.openelisglobal.microbiology.form.MicroCultureSetupAdminForm;
 import org.openelisglobal.microbiology.form.MicroOrganismAdminForm;
+import org.openelisglobal.microbiology.form.MicroPanelCoverageForm;
 import org.openelisglobal.microbiology.form.MicroPatientOriginAdminForm;
 import org.openelisglobal.microbiology.form.MicroReferenceAdminPageForm;
 import org.openelisglobal.microbiology.form.MicroReferenceAdminQueryForm;
@@ -29,10 +39,11 @@ import org.openelisglobal.microbiology.form.MicroReferenceOptionForm;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic;
-import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
+import org.openelisglobal.microbiology.valueholder.MicroAstPanelAssignment;
+import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroPatientOrigin;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
+import org.openelisglobal.microbiology.valueholder.MicroWhonetOrganism;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,30 +51,34 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyReferenceAdminService {
 
-    private static final Pattern ORGANISM_WHONET = Pattern.compile("[a-z0-9]{3,10}");
+    private static final Pattern ORGANISM_WHONET = Pattern.compile("[a-z0-9+-]{3,10}");
     private static final Pattern ANTIBIOTIC_WHONET = Pattern.compile("[A-Z0-9]{2,10}");
     private static final Set<String> ROUTES = Set.of("ORAL", "IV", "BOTH", "TOPICAL");
-    private static final Set<String> REPORT_BEHAVIORS = Set.of("ALWAYS", "CASCADE", "SUPPRESS_UNLESS_RESISTANT");
+    private static final Set<String> SIGNIFICANCE = Set.of("USUALLY", "POSSIBLE", "RARE");
 
     private final MicroOrganismDAO organismDAO;
     private final MicroAntibioticDAO antibioticDAO;
     private final MicroAstPanelDAO panelDAO;
     private final MicroAstPanelAntibioticDAO panelAntibioticDAO;
-    @SuppressWarnings("unused")
-    private final MicroCultureSetupDAO cultureSetupDAO;
+    private final MicroAstPanelAssignmentDAO assignmentDAO;
+    private final MicroBreakpointRuleDAO breakpointRuleDAO;
     private final MicroPatientOriginDAO patientOriginDAO;
+    private final MicroWhonetOrganismDAO whonetOrganismDAO;
     private final MethodService methodService;
     private final TypeOfSampleService typeOfSampleService;
 
     public MicrobiologyReferenceAdminServiceImpl(MicroOrganismDAO organismDAO, MicroAntibioticDAO antibioticDAO,
             MicroAstPanelDAO panelDAO, MicroAstPanelAntibioticDAO panelAntibioticDAO,
-            MicroCultureSetupDAO cultureSetupDAO, MicroPatientOriginDAO patientOriginDAO, MethodService methodService,
-            TypeOfSampleService typeOfSampleService) {
+            MicroPatientOriginDAO patientOriginDAO, MethodService methodService,
+            TypeOfSampleService typeOfSampleService, MicroAstPanelAssignmentDAO assignmentDAO,
+            MicroBreakpointRuleDAO breakpointRuleDAO, MicroWhonetOrganismDAO whonetOrganismDAO) {
         this.organismDAO = organismDAO;
+        this.whonetOrganismDAO = whonetOrganismDAO;
         this.antibioticDAO = antibioticDAO;
         this.panelDAO = panelDAO;
         this.panelAntibioticDAO = panelAntibioticDAO;
-        this.cultureSetupDAO = cultureSetupDAO;
+        this.assignmentDAO = assignmentDAO;
+        this.breakpointRuleDAO = breakpointRuleDAO;
         this.patientOriginDAO = patientOriginDAO;
         this.methodService = methodService;
         this.typeOfSampleService = typeOfSampleService;
@@ -93,22 +108,27 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         if (request == null) {
             throw new IllegalArgumentException("Organism is required");
         }
-        String name = requireText(request.displayName, "displayName");
+        String name = maxLength(requireText(request.displayName, "Name"), 255, "Name");
         String code = normalizeOrganismCode(request.whonetCode);
-        requireText(request.organismGroup, "organismGroup");
-        requireText(request.initialSignificance, "initialSignificance");
         assertAvailable(organismDAO.findByDisplayNameIgnoreCase(name), id, "Organism name is already in use");
         assertAvailable(organismDAO.findByWhonetCodeIgnoreCase(code), id, "WHONET code is already in use");
 
         MicroOrganism organism = id == null ? new MicroOrganism()
                 : organismDAO.get(id).orElseThrow(() -> new IllegalArgumentException("Organism not found: " + id));
         organism.setDisplayName(name);
-        organism.setShortName(trimToNull(request.shortName));
+        organism.setShortName(maxLength(trimToNull(request.shortName), 100, "Short name"));
         organism.setWhonetCode(code);
-        organism.setOclCode(trimToNull(request.oclCode));
-        organism.setOrganismGroup(request.organismGroup.trim());
-        organism.setGramStain(trimToNull(request.gramStain));
-        organism.setInitialSignificance(request.initialSignificance.trim().toUpperCase(Locale.ROOT));
+        organism.setOclCode(maxLength(trimToNull(request.oclCode), 100, "OCL code"));
+        organism.setOrganismGroup(maxLength(trimToNull(request.organismGroup), 100, "Organism group"));
+        organism.setSusceptibilityProtocol(
+                MicroTbResistanceClassifier.Protocol.valueOf(request.susceptibilityProtocol).name());
+        organism.setGramStain(maxLength(trimToNull(request.gramStain), 20, "Gram stain"));
+        String significance = trimToNull(request.initialSignificance);
+        significance = significance == null ? null : significance.toUpperCase(Locale.ROOT);
+        if (significance != null && !SIGNIFICANCE.contains(significance)) {
+            throw new IllegalArgumentException("Initial significance must be USUALLY, POSSIBLE or RARE");
+        }
+        organism.setInitialSignificance(significance);
         organism.setDefaultAstPanelId(trimToNull(request.defaultAstPanelId));
         organism.setNotes(trimToNull(request.notes));
         organism.setIsActive(request.active ? "Y" : "N");
@@ -159,12 +179,13 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         if (request == null) {
             throw new IllegalArgumentException("Antibiotic is required");
         }
-        String name = requireText(request.displayName, "displayName");
+        String name = maxLength(requireText(request.displayName, "Name"), 255, "Name");
         String code = normalizeAntibioticCode(request.whonetCode);
-        String antibioticClass = requireText(request.antibioticClass, "antibioticClass");
-        String route = requireText(request.route, "route").toUpperCase(Locale.ROOT);
-        if (!ROUTES.contains(route)) {
-            throw new IllegalArgumentException("route must be ORAL, IV, BOTH, or TOPICAL");
+        String antibioticClass = maxLength(trimToNull(request.antibioticClass), 255, "Class");
+        String route = trimToNull(request.route);
+        route = route == null ? null : route.toUpperCase(Locale.ROOT);
+        if (route != null && !ROUTES.contains(route)) {
+            throw new IllegalArgumentException("Route must be ORAL, IV, BOTH or TOPICAL");
         }
         assertAvailable(antibioticDAO.findByDisplayNameIgnoreCase(name), id, "Antibiotic name is already in use");
         assertAvailable(antibioticDAO.findByWhonetCodeIgnoreCase(code), id, "WHONET code is already in use");
@@ -174,6 +195,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         antibiotic.setDisplayName(name);
         antibiotic.setWhonetCode(code);
         antibiotic.setAntibioticClass(antibioticClass);
+        antibiotic.setResistanceRole(MicroTbResistanceClassifier.Role.valueOf(request.resistanceRole).name());
         antibiotic.setRoute(route);
         antibiotic.setNotes(trimToNull(request.notes));
         antibiotic.setIsActive(request.active ? "Y" : "N");
@@ -205,16 +227,9 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     public MicroReferenceAdminPageForm<MicroAstPanelAdminForm> getAstPanels(MicroReferenceAdminQueryForm query) {
         MicroReferenceAdminQueryForm normalized = normalizeQuery(query);
         int offset = (normalized.page - 1) * normalized.pageSize;
-        List<MicroAstPanelAdminForm> rows = panelDAO.search(normalized.q, normalized.status, normalized.workflow,
+        List<MicroAstPanelAdminForm> rows = panelDAO.search(normalized.q, normalized.status, normalized.organismGroup,
                 normalized.sort, offset, normalized.pageSize).stream().map(this::toPanelForm).toList();
-        return page(rows, panelDAO.countSearch(normalized.q, normalized.status, normalized.workflow), normalized);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public MicroCultureSetupAdminForm getCultureSetup(String id) {
-        return toCultureSetupForm(cultureSetupDAO.get(id)
-                .orElseThrow(() -> new IllegalArgumentException("Culture setup not found: " + id)));
+        return page(rows, panelDAO.countSearch(normalized.q, normalized.status, normalized.organismGroup), normalized);
     }
 
     @Override
@@ -232,8 +247,12 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         panel.setLogicalKey(UUID.randomUUID().toString());
         panel.setVersionNumber(1);
         applyPanel(panel, request, actorId);
+        boolean defaultsChanged = applyDefaultFor(panel, request.defaultFor);
         panelDAO.insert(panel);
         savePanelRows(panel.getId(), request.antibiotics);
+        if (defaultsChanged) {
+            assignPanelDefaults(Map.of(), Set.of(panel.getId()), actorId);
+        }
         return toPanelForm(panel);
     }
 
@@ -255,23 +274,241 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         published.setLogicalKey(current.getLogicalKey());
         published.setVersionNumber(current.getVersionNumber() + 1);
         published.setSupersedesPanelId(current.getId());
+        published.setDefaultFor(current.getDefaultFor());
+        published.setDefaultForFile(current.getDefaultForFile());
+        published.setConfigurationContent(current.getConfigurationContent());
         applyPanel(published, request, actorId);
+        boolean defaultsChanged = applyDefaultFor(published, request.defaultFor);
         panelDAO.insert(published);
         savePanelRows(published.getId(), request.antibiotics);
+        for (MicroOrganism organism : organismDAO.getByDefaultAstPanelId(current.getId())) {
+            organism.setDefaultAstPanelId(published.getId());
+            organism.setLastUpdatedBy(actorId);
+            organismDAO.update(organism);
+        }
+        for (MicroAstPanelAssignment assignment : assignmentDAO.getOpenByPanelId(current.getId())) {
+            assignment.setPanelId(published.getId());
+            assignmentDAO.update(assignment);
+        }
+        if (defaultsChanged) {
+            assignPanelDefaults(Map.of(), Set.of(published.getId()), actorId);
+        }
         return toPanelForm(published);
+    }
+
+    private static boolean applyDefaultFor(MicroAstPanel panel, List<String> requested) {
+        if (requested == null) {
+            return false;
+        }
+        List<String> wanted = defaultForEntries(String.join(";", requested));
+        if (wanted.equals(defaultForEntries(panel.getDefaultFor()))) {
+            return false;
+        }
+        panel.setDefaultFor(String.join("; ", wanted));
+        panel.setDefaultForFile(null);
+        return true;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public MicroReferenceAdminPageForm<MicroCultureSetupAdminForm> getCultureSetups(
-            MicroReferenceAdminQueryForm query) {
-        MicroReferenceAdminQueryForm normalized = normalizeQuery(query);
-        int offset = (normalized.page - 1) * normalized.pageSize;
-        List<MicroCultureSetupAdminForm> rows = cultureSetupDAO.search(normalized.q, normalized.status,
-                normalized.workflow, normalized.sort, offset, normalized.pageSize).stream()
-                .map(this::toCultureSetupForm).toList();
-        return page(rows, cultureSetupDAO.countSearch(normalized.q, normalized.status, normalized.workflow),
-                normalized);
+    public List<MicroPanelCoverageForm> getPanelOrganismCoverage(List<String> antibioticIds, String protocol) {
+        Set<String> drugs = new HashSet<>(antibioticIds);
+        Map<String, Set<String>> byOrganism = new HashMap<>();
+        Map<String, Set<String>> byGroup = new HashMap<>();
+        Set<String> forEveryOrganism = new HashSet<>();
+        Map<List<String>, List<MicroBreakpointRule>> whonetRules = new HashMap<>();
+        for (MicroBreakpointRule rule : breakpointRuleDAO.getActiveByAntibioticIds(drugs)) {
+            if (rule.getOrganismCodeType() != null) {
+                whonetRules.computeIfAbsent(List.of(rule.getAntibioticId(), rule.getStandardId()),
+                        key -> new ArrayList<>()).add(rule);
+                continue;
+            }
+            Set<String> covered = rule.getOrganismId() != null
+                    ? byOrganism.computeIfAbsent(rule.getOrganismId(), key -> new HashSet<>())
+                    : rule.getOrganismGroup() != null
+                            ? byGroup.computeIfAbsent(rule.getOrganismGroup(), key -> new HashSet<>())
+                            : forEveryOrganism;
+            covered.add(rule.getAntibioticId());
+        }
+        List<MicroPanelCoverageForm> rows = new ArrayList<>();
+        Map<String, Set<String>> labGroups = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        Map<String, MicroWhonetOrganism> whonet = currentWhonetOrganisms();
+        for (MicroOrganism organism : organismDAO.getActiveOrganisms()) {
+            if (!Objects.equals(protocol, organism.getSusceptibilityProtocol())) {
+                continue;
+            }
+            Set<String> covered = new HashSet<>(forEveryOrganism);
+            covered.addAll(byOrganism.getOrDefault(organism.getId(), Set.of()));
+            organism.getLabGroups().forEach(group -> covered.addAll(byGroup.getOrDefault(group, Set.of())));
+            MicroWhonetOrganism whonetOrganism = whonetOrganism(whonet, organism);
+            if (whonetOrganism != null) {
+                whonetRules.forEach((drugAndEdition, edition) -> {
+                    if (MicroBreakpointServiceImpl.hasBreakpoint(edition, whonetOrganism)) {
+                        covered.add(drugAndEdition.get(0));
+                    }
+                });
+            }
+            rows.add(coverage(organism.getDisplayName(), false, covered.size(), drugs.size()));
+            for (String group : organism.getLabGroups()) {
+                labGroups.computeIfAbsent(group, key -> new HashSet<>()).addAll(covered);
+            }
+        }
+        labGroups.forEach((group, covered) -> rows.add(coverage(group, true, covered.size(), drugs.size())));
+        rows.sort(Comparator.comparingInt((MicroPanelCoverageForm row) -> -row.covered).thenComparing(row -> row.value,
+                String.CASE_INSENSITIVE_ORDER));
+        return rows;
+    }
+
+    private static MicroPanelCoverageForm coverage(String value, boolean group, int covered, int total) {
+        MicroPanelCoverageForm form = new MicroPanelCoverageForm();
+        form.value = value;
+        form.group = group;
+        form.covered = covered;
+        form.total = total;
+        return form;
+    }
+
+    @Override
+    @Transactional
+    public void assignPanelDefaults(Map<String, Integer> lines, String actorId) {
+        assignPanelDefaults(lines, lines.keySet(), actorId);
+    }
+
+    private void assignPanelDefaults(Map<String, Integer> lines, Set<String> checkedPanelIds, String actorId) {
+        List<MicroAstPanel> claimants = panelDAO.getAll().stream()
+                .filter(p -> "Y".equals(p.getIsCurrent()) && "Y".equals(p.getIsActive())
+                        && !defaultForEntries(p.getDefaultFor()).isEmpty())
+                .sorted(Comparator.comparing(MicroAstPanel::getName, String.CASE_INSENSITIVE_ORDER)).toList();
+        Map<String, MicroWhonetOrganism> whonet = currentWhonetOrganisms();
+        Map<String, String> whonetSpecies = new HashMap<>();
+        Map<String, Set<String>> whonetGenus = new HashMap<>();
+        claimants.stream().flatMap(panel -> defaultForEntries(panel.getDefaultFor()).stream()).distinct()
+                .forEach(entry -> {
+                    organismDAO.findByWhonetName(entry).ifPresent(named -> whonetSpecies.put(entry, named.getId()));
+                    whonetGenus.put(entry,
+                            whonet.values().stream().filter(row -> entry.equalsIgnoreCase(row.getGenus()))
+                                    .map(MicroWhonetOrganism::getGenusCode).filter(Objects::nonNull)
+                                    .collect(Collectors.toSet()));
+                });
+        Map<MicroOrganism, MicroAstPanel> winners = new LinkedHashMap<>();
+        Set<String> matched = new HashSet<>();
+        List<String> errors = new ArrayList<>();
+        for (var organism : organismDAO.getActiveOrganisms()) {
+            MicroWhonetOrganism whonetOrganism = whonetOrganism(whonet, organism);
+            Map<MicroAstPanel, String> bestEntries = new LinkedHashMap<>();
+            int bestRank = 0;
+            for (var panel : claimants) {
+                for (String entry : defaultForEntries(panel.getDefaultFor())) {
+                    int rank = specificity(entry, organism.getDisplayName(), organism.getLabGroups());
+                    if (organism.getId().equals(whonetSpecies.get(entry))) {
+                        rank = 3;
+                    } else if (rank < 2 && whonetOrganism != null
+                            && whonetGenus.get(entry).contains(whonetOrganism.getGenusCode())) {
+                        rank = 2;
+                    }
+                    if (rank > 0) {
+                        matched.add(panel.getId() + "\n" + entry);
+                    }
+                    if (rank > bestRank) {
+                        bestRank = rank;
+                        bestEntries.clear();
+                    }
+                    if (rank > 0 && rank == bestRank) {
+                        bestEntries.putIfAbsent(panel, entry);
+                    }
+                }
+            }
+            if (bestEntries.isEmpty()) {
+                continue;
+            }
+            var tied = new ArrayList<>(bestEntries.entrySet());
+            if (tied.size() > 1) {
+                errors.add(line(lines, bestEntries.keySet().toArray(MicroAstPanel[]::new)) + organism.getDisplayName()
+                        + " is claimed equally specifically by " + tied
+                                .stream().map(claim -> "\"" + claim.getKey().getName() + "\" (\"" + claim.getValue()
+                                        + "\", " + source(lines, claim.getKey()) + ")")
+                                .collect(Collectors.joining(", ")));
+                continue;
+            }
+            MicroAstPanel best = tied.get(0).getKey();
+            String bestEntry = tied.get(0).getValue();
+            // Identification assigns the default to every organism except NTM, and
+            // refuses a panel whose protocol differs from the organism's.
+            if (!"NTM".equals(organism.getSusceptibilityProtocol())
+                    && !Objects.equals(organism.getSusceptibilityProtocol(), best.getSusceptibilityProtocol())) {
+                errors.add(line(lines, best) + "panel \"" + best.getName() + "\" uses the "
+                        + best.getSusceptibilityProtocol() + " protocol but its defaultFor \"" + bestEntry
+                        + "\" matches " + organism.getDisplayName() + ", which uses "
+                        + organism.getSusceptibilityProtocol());
+            } else {
+                winners.put(organism, best);
+            }
+        }
+        for (var panel : claimants) {
+            if (checkedPanelIds.contains(panel.getId())) {
+                for (String entry : defaultForEntries(panel.getDefaultFor())) {
+                    if (!matched.contains(panel.getId() + "\n" + entry)) {
+                        errors.add(line(lines, panel) + "Panel \"" + panel.getName() + "\": defaultFor \"" + entry
+                                + "\" matches no organism");
+                    }
+                }
+            }
+        }
+        if (!errors.isEmpty()) {
+            throw new IllegalArgumentException(String.join("; ", errors));
+        }
+        winners.forEach((organism, panel) -> {
+            if (!panel.getId().equals(organism.getDefaultAstPanelId())) {
+                organism.setDefaultAstPanelId(panel.getId());
+                organism.setLastUpdatedBy(actorId);
+                organismDAO.update(organism);
+            }
+        });
+    }
+
+    private Map<String, MicroWhonetOrganism> currentWhonetOrganisms() {
+        return whonetOrganismDAO.getAll().stream()
+                .filter(row -> MicroWhonetOrganism.CURRENT.equals(row.getTaxonomicStatus())).collect(Collectors.toMap(
+                        row -> row.getWhonetOrgCode().toLowerCase(Locale.ROOT), row -> row, (first, second) -> first));
+    }
+
+    private static MicroWhonetOrganism whonetOrganism(Map<String, MicroWhonetOrganism> whonet, MicroOrganism organism) {
+        return organism.getWhonetCode() == null ? null : whonet.get(organism.getWhonetCode().toLowerCase(Locale.ROOT));
+    }
+
+    static List<String> defaultForEntries(String defaultFor) {
+        return defaultFor == null ? List.of()
+                : Stream.of(defaultFor.split(";")).map(String::trim).filter(entry -> !entry.isEmpty()).toList();
+    }
+
+    private static String source(Map<String, Integer> lines, MicroAstPanel panel) {
+        return lines.containsKey(panel.getId()) ? "line " + lines.get(panel.getId())
+                : Objects.requireNonNullElse(panel.getDefaultForFile(), "AST panels page");
+    }
+
+    private static String line(Map<String, Integer> lines, MicroAstPanel... panels) {
+        List<String> numbers = Stream.of(panels).map(panel -> lines.get(panel.getId())).filter(Objects::nonNull)
+                .sorted().map(String::valueOf).toList();
+        return numbers.isEmpty() ? ""
+                : (numbers.size() == 1 ? "Line " : "Lines ") + String.join(" and ", numbers) + ": ";
+    }
+
+    /**
+     * 3 for the species itself, 2 for its genus, 1 for one of its laboratory
+     * groups, 0 otherwise.
+     */
+    static int specificity(String entry, String organismName, Set<String> labGroups) {
+        if (entry.isBlank() || organismName == null) {
+            return 0;
+        }
+        String name = organismName.trim();
+        if (name.equalsIgnoreCase(entry)) {
+            return 3;
+        }
+        if (name.toLowerCase(Locale.ROOT).startsWith(entry.toLowerCase(Locale.ROOT) + " ")) {
+            return 2;
+        }
+        return labGroups.stream().anyMatch(entry::equalsIgnoreCase) ? 1 : 0;
     }
 
     @Override
@@ -287,47 +524,6 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     }
 
     @Override
-    @Transactional
-    public MicroCultureSetupAdminForm saveCultureSetup(String id, MicroCultureSetupAdminForm request, String actorId) {
-        requireActor(actorId);
-        if (request == null) {
-            throw new IllegalArgumentException("Culture setup is required");
-        }
-        String methodId = requireText(request.methodId, "methodId");
-        Method method = methodService.findById(methodId);
-        if (method == null) {
-            throw new IllegalArgumentException("Method not found: " + methodId);
-        }
-        String workflow = requireText(request.workflowType, "workflowType").toUpperCase(Locale.ROOT);
-        MicroWorkflowType.valueOf(workflow);
-        Optional<MicroCultureSetup> existingIdentity = cultureSetupDAO.findByMethodAndWorkflowType(methodId, workflow);
-        if (existingIdentity.isPresent() && !existingIdentity.get().getId().equals(id)) {
-            throw new MicroReferenceConflictException("A culture setup already exists for this Method and workflow");
-        }
-        MicroCultureSetup setup = id == null ? new MicroCultureSetup()
-                : cultureSetupDAO.get(id)
-                        .orElseThrow(() -> new IllegalArgumentException("Culture setup not found: " + id));
-        setup.setMethodId(methodId);
-        setup.setName(requireText(request.name, "name"));
-        setup.setWorkflowType(workflow);
-        setup.setMediaDefaults(trimToNull(request.mediaDefaults));
-        setup.setIncubationDefaults(trimToNull(request.incubationDefaults));
-        setup.setIncubationHours(optionalPositive(request.incubationHours, "incubationHours"));
-        setup.setSubcultureAtHours(optionalPositive(request.subcultureAtHours, "subcultureAtHours"));
-        setup.setMaxIncubationDays(optionalPositive(request.maxIncubationDays, "maxIncubationDays"));
-        setup.setAtmosphereDefaults(trimToNull(request.atmosphereDefaults));
-        setup.setReportableTestAnalyteId(trimToNull(request.reportableTestAnalyteId));
-        setup.setIsActive(request.active ? "Y" : "N");
-        setup.setLastUpdatedBy(actorId);
-        if (id == null) {
-            cultureSetupDAO.insert(setup);
-        } else {
-            cultureSetupDAO.update(setup);
-        }
-        return toCultureSetupForm(setup);
-    }
-
-    @Override
     @Transactional(readOnly = true)
     public List<MicroReferenceOptionForm> getOptions(String resource) {
         if ("methods".equals(resource)) {
@@ -335,15 +531,8 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
                     .sorted(Comparator.comparing(Method::getMethodName, String.CASE_INSENSITIVE_ORDER))
                     .map(method -> option(method.getId(), method.getMethodName(), method.getCode())).toList();
         }
-        if ("organisms".equals(resource)) {
-            return organismDAO.getActiveOrganisms().stream()
-                    .map(organism -> option(organism.getId(), organism.getDisplayName(), organism.getWhonetCode()))
-                    .toList();
-        }
-        if ("organism-groups".equals(resource)) {
-            return organismDAO.getActiveOrganisms().stream().map(MicroOrganism::getOrganismGroup)
-                    .filter(group -> group != null && !group.isBlank()).distinct().sorted(String.CASE_INSENSITIVE_ORDER)
-                    .map(group -> option(group, group, null)).toList();
+        if ("lab-organism-groups".equals(resource)) {
+            return organismDAO.getLabGroupNames().stream().map(group -> option(group, group, null)).toList();
         }
         if ("antibiotics".equals(resource)) {
             return antibioticDAO.getActiveAntibiotics().stream().map(
@@ -367,10 +556,9 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
             throw new IllegalArgumentException("AST panel is required");
         }
         panel.setName(requireText(request.name, "name"));
-        String workflow = requireText(request.workflowType, "workflowType").toUpperCase(Locale.ROOT);
-        MicroWorkflowType.valueOf(workflow);
-        panel.setWorkflowType(workflow);
         panel.setOrganismGroup(trimToNull(request.organismGroup));
+        panel.setSusceptibilityProtocol(
+                MicroTbResistanceClassifier.Protocol.valueOf(request.susceptibilityProtocol).name());
         panel.setSpecimenTypeId(trimToNull(request.specimenTypeId));
         panel.setIsActive(request.active ? "Y" : "N");
         panel.setIsCurrent("Y");
@@ -394,11 +582,8 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
             if (!seen.add(antibioticId)) {
                 throw new IllegalArgumentException("Duplicate antibiotic: " + antibioticId);
             }
-            if (row.tier == null || row.tier < 1 || row.tier > 3) {
-                throw new IllegalArgumentException("tier must be between 1 and 3");
-            }
-            if (!REPORT_BEHAVIORS.contains(row.reportBehavior)) {
-                throw new IllegalArgumentException("Invalid report behavior: " + row.reportBehavior);
+            if (row.diskContent != null && row.diskContent.trim().length() > 40) {
+                throw new IllegalArgumentException("Disk content is longer than 40 characters: " + antibioticId);
             }
         }
     }
@@ -410,8 +595,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
             row.setPanelId(panelId);
             row.setAntibioticId(request.antibioticId);
             row.setDisplayOrder(order++);
-            row.setTier(request.tier);
-            row.setReportBehavior(request.reportBehavior);
+            row.setDiskContent(trimToNull(request.diskContent));
             panelAntibioticDAO.insert(row);
         }
     }
@@ -424,6 +608,9 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         form.whonetCode = organism.getWhonetCode();
         form.oclCode = organism.getOclCode();
         form.organismGroup = organism.getOrganismGroup();
+        form.labGroups = organism.getLabGroups().isEmpty() ? null
+                : String.join("; ", new java.util.TreeSet<>(organism.getLabGroups()));
+        form.susceptibilityProtocol = organism.getSusceptibilityProtocol();
         form.gramStain = organism.getGramStain();
         form.initialSignificance = organism.getInitialSignificance();
         form.defaultAstPanelId = organism.getDefaultAstPanelId();
@@ -444,6 +631,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         form.displayName = antibiotic.getDisplayName();
         form.whonetCode = antibiotic.getWhonetCode();
         form.antibioticClass = antibiotic.getAntibioticClass();
+        form.resistanceRole = antibiotic.getResistanceRole();
         form.route = antibiotic.getRoute();
         form.notes = antibiotic.getNotes();
         form.active = "Y".equals(antibiotic.getIsActive());
@@ -459,9 +647,10 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         form.versionNumber = panel.getVersionNumber();
         form.supersedesPanelId = panel.getSupersedesPanelId();
         form.name = panel.getName();
-        form.workflowType = panel.getWorkflowType();
         form.organismGroup = panel.getOrganismGroup();
+        form.susceptibilityProtocol = panel.getSusceptibilityProtocol();
         form.specimenTypeId = panel.getSpecimenTypeId();
+        form.defaultFor = defaultForEntries(panel.getDefaultFor());
         form.active = "Y".equals(panel.getIsActive());
         form.current = "Y".equals(panel.getIsCurrent());
         form.publishedBy = panel.getPublishedBy();
@@ -476,28 +665,9 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
                 item.whonetCode = antibiotic.getWhonetCode();
             });
             item.displayOrder = row.getDisplayOrder();
-            item.tier = row.getTier();
-            item.reportBehavior = row.getReportBehavior();
+            item.diskContent = row.getDiskContent();
             form.antibiotics.add(item);
         }
-        return form;
-    }
-
-    private MicroCultureSetupAdminForm toCultureSetupForm(MicroCultureSetup setup) {
-        MicroCultureSetupAdminForm form = new MicroCultureSetupAdminForm();
-        form.id = setup.getId();
-        form.methodId = setup.getMethodId();
-        form.methodName = methodName(setup.getMethodId());
-        form.name = setup.getName();
-        form.workflowType = setup.getWorkflowType();
-        form.mediaDefaults = setup.getMediaDefaults();
-        form.incubationDefaults = setup.getIncubationDefaults();
-        form.incubationHours = setup.getIncubationHours();
-        form.subcultureAtHours = setup.getSubcultureAtHours();
-        form.maxIncubationDays = setup.getMaxIncubationDays();
-        form.atmosphereDefaults = setup.getAtmosphereDefaults();
-        form.reportableTestAnalyteId = setup.getReportableTestAnalyteId();
-        form.active = "Y".equals(setup.getIsActive());
         return form;
     }
 
@@ -509,11 +679,6 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         form.whonetCode = origin.getWhonetCode();
         form.active = "Y".equals(origin.getIsActive());
         return form;
-    }
-
-    private String methodName(String methodId) {
-        Method method = methodService.findById(methodId);
-        return method == null ? null : method.getMethodName();
     }
 
     private MicroReferenceOptionForm option(String id, String label, String code) {
@@ -552,17 +717,17 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     }
 
     private String normalizeOrganismCode(String code) {
-        String normalized = requireText(code, "whonetCode").toLowerCase(Locale.ROOT);
+        String normalized = requireText(code, "WHONET code").toLowerCase(Locale.ROOT);
         if (!ORGANISM_WHONET.matcher(normalized).matches()) {
-            throw new IllegalArgumentException("Organism WHONET code must be 3-10 lowercase letters or digits");
+            throw new IllegalArgumentException("Organism WHONET code must be 3-10 letters, digits, + or -");
         }
         return normalized;
     }
 
     private String normalizeAntibioticCode(String code) {
-        String normalized = requireText(code, "whonetCode").toUpperCase(Locale.ROOT);
+        String normalized = requireText(code, "WHONET code").toUpperCase(Locale.ROOT);
         if (!ANTIBIOTIC_WHONET.matcher(normalized).matches()) {
-            throw new IllegalArgumentException("Antibiotic WHONET code must be 2-10 uppercase letters or digits");
+            throw new IllegalArgumentException("Antibiotic WHONET code must be 2-10 letters or digits");
         }
         return normalized;
     }
@@ -573,6 +738,13 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
             throw new IllegalArgumentException(field + " is required");
         }
         return normalized;
+    }
+
+    private String maxLength(String value, int max, String field) {
+        if (value != null && value.length() > max) {
+            throw new IllegalArgumentException(field + " is longer than " + max + " characters");
+        }
+        return value;
     }
 
     private void requireActor(String actorId) {

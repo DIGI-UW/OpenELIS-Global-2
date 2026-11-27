@@ -91,6 +91,8 @@ public class AlertRestController extends ControllerUtills {
             Integer userId = Integer.valueOf(getSysUserId(httpRequest));
             Alert acknowledgedAlert = alertService.acknowledgeAlert(id, userId, request.getNotes());
             return ResponseEntity.ok(convertToDTO(acknowledgedAlert));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         } catch (Exception e) {

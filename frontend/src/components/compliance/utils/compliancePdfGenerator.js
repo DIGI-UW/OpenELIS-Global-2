@@ -1,6 +1,7 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import html2canvas from "html2canvas";
+import { labNow } from "../../utils/labClock";
 
 var MARGIN = 14;
 var PAGE_W = 210;
@@ -66,7 +67,7 @@ export function generateCompliancePdf(data, meta) {
   var drilldownRef = meta.drilldownRef;
   var compRef = meta.comparisonRef;
   var totalPages = 5;
-  var generated = meta.generatedAt || new Date().toLocaleString();
+  var generated = meta.generatedAt || labNow().toLocaleString();
 
   return Promise.all([
     captureChartImage(trendRef),
@@ -121,7 +122,10 @@ export function generateCompliancePdf(data, meta) {
     if (summary) {
       var kpis = [
         ["Total Orders", String(summary.totalOrders ?? "—")],
-        ["Compliance Rate", (summary.complianceRate ?? "—") + "%"],
+        [
+          "Compliance Rate",
+          summary.complianceRate != null ? summary.complianceRate + "%" : "—",
+        ],
         ["Total Exceedances", String(summary.totalExceedances ?? "—")],
         ["Sites Monitored", String(summary.sitesMonitored ?? "—")],
       ];

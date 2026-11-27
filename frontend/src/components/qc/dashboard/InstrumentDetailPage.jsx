@@ -9,6 +9,7 @@
 
 import React, { useState, useEffect, useLayoutEffect } from "react";
 import {
+  Link,
   Tag,
   Tile,
   Tabs,
@@ -233,6 +234,19 @@ const InstrumentDetailPage = () => {
                 <div className="instrument-detail-analyte-card__time">
                   {formatTimestamp(analyte.lastRunTime, intl)}
                 </div>
+                {analyte.lastRunId && (
+                  <div className="instrument-detail-analyte-card__time">
+                    <Link
+                      href={`/Results?run=${analyte.lastRunId}`}
+                      data-testid={`analyte-run-${analyte.testId}`}
+                    >
+                      {intl.formatMessage(
+                        { id: "qc.instrumentDetail.analyte.run" },
+                        { run: `RUN-${analyte.lastRunId}` },
+                      )}
+                    </Link>
+                  </div>
+                )}
               </Tile>
             ))}
           </div>

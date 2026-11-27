@@ -18,6 +18,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Button, Dropdown } from "@carbon/react";
 import { Renew } from "@carbon/icons-react";
+import { addDays, isLastDayOfMonth, lastDayOfMonth, subYears } from "date-fns";
 import { FormattedMessage, useIntl } from "react-intl";
 import { toLocalIsoDate } from "../../utils/Utils";
 import {
@@ -26,7 +27,6 @@ import {
 } from "../../utils/useServerData";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { formatTat, pctDelta, tatDelta } from "../../reports/tat/tatUtils";
-import { DAY_MS } from "../common/qaDates";
 import {
   NCE_DRILL_URL,
   NCE_LIST_URL,
@@ -38,6 +38,7 @@ import QITile from "./QITile";
 import useQiConfig from "./useQiConfig";
 import { rateTone, thresholdParts } from "./qiThresholds";
 import "../common/QAStyles.css";
+import { labNow } from "../../utils/labClock";
 
 const WINDOW_STORAGE_KEY = "qa.qi.dashboard.window";
 const REFRESH_COOLDOWN_MS = 30000;
@@ -49,17 +50,23 @@ const WINDOWS = [
   { id: "ytd", labelKey: "qa.qi.dashboard.window.ytd" },
 ];
 
-function windowDates(windowId) {
-  const to = new Date();
-  const from = new Date();
+export function windowDates(windowId, now = labNow()) {
+  const to = new Date(now);
+  const from = new Date(now);
   const days = WINDOWS.find((w) => w.id === windowId)?.days;
+  let priorFrom;
+  let priorTo;
   if (days) {
-    from.setDate(from.getDate() - days);
+    from.setDate(from.getDate() - (days - 1));
+    priorTo = addDays(from, -1);
+    priorFrom = addDays(from, -days);
   } else {
-    from.setMonth(0, 1); // year to date
+    from.setMonth(0, 1);
+    priorFrom = subYears(from, 1);
+    priorTo = isLastDayOfMonth(to)
+      ? lastDayOfMonth(subYears(to, 1))
+      : subYears(to, 1);
   }
-  const priorTo = new Date(from.getTime() - DAY_MS);
-  const priorFrom = new Date(from.getTime() - DAY_MS - (to - from));
   return {
     fromDate: toLocalIsoDate(from),
     toDate: toLocalIsoDate(to),

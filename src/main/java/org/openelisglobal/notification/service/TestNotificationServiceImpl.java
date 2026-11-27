@@ -1,31 +1,33 @@
 package org.openelisglobal.notification.service;
 
 import jakarta.annotation.PostConstruct;
-import java.util.List;
 import java.util.Optional;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.UserContextHolder;
+import org.openelisglobal.delivery.service.DeliveryOutboxService;
+import org.openelisglobal.delivery.service.DeliveryRequest;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
-import org.openelisglobal.notification.service.sender.ClientNotificationSender;
 import org.openelisglobal.notification.valueholder.AnalysisNotificationConfig;
-import org.openelisglobal.notification.valueholder.EmailNotification;
+import org.openelisglobal.notification.valueholder.NotificationChannel;
 import org.openelisglobal.notification.valueholder.NotificationConfig;
 import org.openelisglobal.notification.valueholder.NotificationConfigOption;
 import org.openelisglobal.notification.valueholder.NotificationConfigOption.NotificationMethod;
 import org.openelisglobal.notification.valueholder.NotificationConfigOption.NotificationNature;
 import org.openelisglobal.notification.valueholder.NotificationConfigOption.NotificationPersonType;
+import org.openelisglobal.notification.valueholder.NotificationLog.Product;
+import org.openelisglobal.notification.valueholder.NotificationPayload;
 import org.openelisglobal.notification.valueholder.NotificationPayloadTemplate;
 import org.openelisglobal.notification.valueholder.NotificationPayloadTemplate.NotificationPayloadType;
+import org.openelisglobal.notification.valueholder.NotificationRecipientType;
 import org.openelisglobal.notification.valueholder.PatientResultsViewNotificationPayload;
-import org.openelisglobal.notification.valueholder.RemoteNotification;
-import org.openelisglobal.notification.valueholder.SMSNotification;
 import org.openelisglobal.notification.valueholder.TestNotificationConfig;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.security.DaemonContextExecutor;
 import org.openelisglobal.testresultsview.service.ClientResultsViewInfoService;
@@ -56,13 +58,11 @@ public class TestNotificationServiceImpl implements TestNotificationService {
     private UserContextHolder userContextHolder;
     @Autowired
     private DaemonContextExecutor daemonContextExecutor;
+    @Autowired
+    private DeliveryOutboxService deliveryOutboxService;
 
     @Value("${org.openelisglobal.ozeki.active:false}")
     private Boolean ozekiActive;
-
-    @SuppressWarnings("rawtypes")
-    @Autowired
-    private List<ClientNotificationSender> notificationSenders;
 
     @PostConstruct
     public void init() {
@@ -78,22 +78,13 @@ public class TestNotificationServiceImpl implements TestNotificationService {
 
     private NotificationPayloadTemplate createSystemDefaultNotificationPayloadTemplate(NotificationPayloadType type) {
         NotificationPayloadTemplate template = new NotificationPayloadTemplate();
-        template.setMessageTemplate("[testName] testing results have been finalized for Patient : "
-                + "[patientFirstName] [patientLastNameInitial].\n\n" + "Result : [testResult]");
-        template.setSubjectTemplate("[testName] Testing Results");
+        DefaultPayloadTemplates.Default factory = DefaultPayloadTemplates.forType(type);
+        template.setMessageTemplate(factory.getMessage());
+        template.setSubjectTemplate(factory.getSubject());
         template.setSysUserId(userContextHolder.getDaemonSysUserId());
         template.setType(type);
         notificationPayloadTemplateService.save(template);
         return template;
-    }
-
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-    public void sendNotification(RemoteNotification clientNotification) {
-        for (ClientNotificationSender notificationSender : notificationSenders) {
-            if (clientNotification.getClass().isAssignableFrom(notificationSender.forClass())) {
-                notificationSender.send(clientNotification);
-            }
-        }
     }
 
     @Override
@@ -187,7 +178,6 @@ public class TestNotificationServiceImpl implements TestNotificationService {
     private void createAndSendResultsNotificationSMS(Person testPerson, Person receiverPerson,
             NotificationConfigOption option, String resultForDisplay, ClientResultsViewBean resultsViewInfo) {
         try {
-            SMSNotification smsNotification = new SMSNotification();
             String rawPhone = !GenericValidator.isBlankOrNull(receiverPerson.getPrimaryPhone())
                     ? receiverPerson.getPrimaryPhone()
                     : receiverPerson.getWorkPhone();
@@ -197,19 +187,11 @@ public class TestNotificationServiceImpl implements TestNotificationService {
                     phoneNumber = phoneNumber + ch;
                 }
             }
-            smsNotification.setReceiverPhoneNumber(phoneNumber);
-
-            NotificationPayloadTemplate template = findTemplate(option);
-            // TODO figure out where to store address and how to retrieve
-            smsNotification.setPayload(new PatientResultsViewNotificationPayload(resultsViewInfo.getPassword(),
-                    "someAddress", resultsViewInfo.getResult().getAnalysis().getTest().getName(), resultForDisplay,
-                    testPerson.getFirstName(), testPerson.getLastName().substring(0, 1), template));
-
-            sendNotification(smsNotification);
-            // getSenderForNotification(smsNotification).send(smsNotification);
+            NotificationPayload payload = payloadFor(option, resultForDisplay, resultsViewInfo, testPerson);
+            queue(NotificationChannel.SMS, receiverPerson, null, phoneNumber, payload, resultsViewInfo);
         } catch (RuntimeException e) {
             LogEvent.logError(this.getClass().getSimpleName(), "createAndSendResultsNotificationSMS",
-                    "could not send sms notification");
+                    "could not queue sms notification");
             LogEvent.logError(e);
         }
     }
@@ -217,23 +199,50 @@ public class TestNotificationServiceImpl implements TestNotificationService {
     private void createAndSendResultsNotificationEmail(Person testPerson, Person receiverPerson,
             NotificationConfigOption option, String resultForDisplay, ClientResultsViewBean resultsViewInfo) {
         try {
-            EmailNotification emailNotification = new EmailNotification();
-            emailNotification.setRecipientEmailAddress(receiverPerson.getEmail());
-            emailNotification.setBccs(option.getAdditionalContacts());
-
-            NotificationPayloadTemplate template = findTemplate(option);
-            // TODO figure out where to store address and how to retrieve
-            emailNotification.setPayload(new PatientResultsViewNotificationPayload(resultsViewInfo.getPassword(),
-                    "someAddress", resultsViewInfo.getResult().getAnalysis().getTest().getName(), resultForDisplay,
-                    testPerson.getFirstName(), testPerson.getLastName().substring(0, 1), template));
-
-            sendNotification(emailNotification);
+            NotificationPayload payload = payloadFor(option, resultForDisplay, resultsViewInfo, testPerson);
+            queue(NotificationChannel.EMAIL, receiverPerson, receiverPerson.getEmail(), null, payload, resultsViewInfo);
+            if (option.getAdditionalContacts() != null) {
+                for (String contact : option.getAdditionalContacts()) {
+                    if (!GenericValidator.isBlankOrNull(contact)) {
+                        queue(NotificationChannel.EMAIL, null, contact, null, payload, resultsViewInfo);
+                    }
+                }
+            }
         } catch (RuntimeException e) {
-            // TODO add redundancy mechanism in case can't reach SMTP server
             LogEvent.logError(this.getClass().getSimpleName(), "createAndSendResultsNotificationEmail",
-                    "could not send email notification");
+                    "could not queue email notification");
             LogEvent.logError(e);
         }
+    }
+
+    private NotificationPayload payloadFor(NotificationConfigOption option, String resultForDisplay,
+            ClientResultsViewBean resultsViewInfo, Person testPerson) {
+        NotificationPayloadTemplate template = findTemplate(option);
+        return new PatientResultsViewNotificationPayload(resultsViewInfo.getPassword(), "",
+                resultsViewInfo.getResult().getAnalysis().getTest().getName(), resultForDisplay, "", "", template);
+    }
+
+    /**
+     * One Sent Messages row per recipient and channel; the delivery worker sends
+     * it, retries it and records every attempt.
+     */
+    private void queue(NotificationChannel channel, Person receiver, String email, String phone,
+            NotificationPayload payload, ClientResultsViewBean resultsViewInfo) {
+        Sample sample = resultsViewInfo.getResult().getAnalysis().getSampleItem().getSample();
+        Person patient = sampleHumanService.getPatientForSample(sample).getPerson();
+        boolean toPatient = receiver != null && patient != null && receiver.getId() != null
+                && receiver.getId().equals(patient.getId());
+        String displayName = receiver == null ? (email == null ? phone : email)
+                : (receiver.getLastName() == null ? "" : receiver.getLastName() + ", ")
+                        + (receiver.getFirstName() == null ? "" : receiver.getFirstName());
+        DeliveryRequest request = new DeliveryRequest().setProduct(Product.NOTICE)
+                .setEventCode(NotificationPayloadType.TEST_RESULT.name())
+                .setRecipientType(receiver == null ? NotificationRecipientType.TYPED_ADDRESS
+                        : toPatient ? NotificationRecipientType.PATIENT : NotificationRecipientType.ORDERING_PROVIDER)
+                .setRecipientDisplayName(displayName).setRecipientEmail(email).setRecipientPhone(phone)
+                .setSubject(payload.getSubject()).setMessage(payload.getMessage())
+                .setReferenceAccession(sample.getAccessionNumber()).addChannel(channel);
+        deliveryOutboxService.enqueue(request);
     }
 
     private NotificationPayloadTemplate findTemplate(NotificationConfigOption option) {
@@ -274,17 +283,27 @@ public class TestNotificationServiceImpl implements TestNotificationService {
         }
     }
 
+    /**
+     * SMS goes through the SMS channel once it is set up; until then the gateways
+     * configured by property keep working as before.
+     */
     private boolean smsEnabledForSystem() {
-        return ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_RESULTS_BMP_SMS_ENABLED)
-                .equals(Boolean.TRUE.toString())
-                || ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_RESULTS_SMPP_SMS_ENABLED)
-                        .equals(Boolean.TRUE.toString())
-                || ozekiActive;
+        return deliveryOutboxService.isChannelSetUp(NotificationChannel.SMS)
+                || Boolean.TRUE.toString()
+                        .equals(ConfigurationProperties.getInstance()
+                                .getPropertyValue(Property.PATIENT_RESULTS_BMP_SMS_ENABLED))
+                || Boolean.TRUE.toString()
+                        .equals(ConfigurationProperties.getInstance()
+                                .getPropertyValue(Property.PATIENT_RESULTS_SMPP_SMS_ENABLED))
+                || Boolean.TRUE.equals(ozekiActive);
     }
 
+    /**
+     * Email is the Email channel on the Channels page, not the retired SMTP
+     * connection.
+     */
     private boolean emailEnabledForSystem() {
-        return ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_RESULTS_SMTP_ENABLED)
-                .equals(Boolean.TRUE.toString());
+        return deliveryOutboxService.isChannelSetUp(NotificationChannel.EMAIL);
     }
 
     private boolean canSendSMS(Person person) {

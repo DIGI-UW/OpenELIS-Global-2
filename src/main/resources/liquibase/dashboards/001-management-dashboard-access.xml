@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="openelisglobal" id="OGC-897-management-dashboard-module">
+        <comment>Register the dashboards.view.management permission key and gate its page URL</comment>
+        <sql>
+            INSERT INTO clinlims.system_module
+                (id, name, description, has_select_flag, has_add_flag, has_update_flag, has_delete_flag)
+            SELECT nextval('clinlims.system_module_seq'), 'dashboards.view.management',
+                   'View Management Dashboard', 'Y', 'N', 'N', 'N'
+            WHERE NOT EXISTS (SELECT 1 FROM clinlims.system_module WHERE name = 'dashboards.view.management');
+
+            INSERT INTO clinlims.system_module_url (id, url_path, system_module_id)
+            SELECT nextval('clinlims.system_module_url_seq'), '/dashboards/management', m.id
+            FROM clinlims.system_module m
+            WHERE m.name = 'dashboards.view.management'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_module_url WHERE url_path = '/dashboards/management');
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_module_url WHERE url_path = '/dashboards/management';
+                DELETE FROM clinlims.system_module WHERE name = 'dashboards.view.management';
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="OGC-897-management-dashboard-grants">
+        <comment>Grant the management dashboard to Global Administrator and every role holding qa.eqa.provider</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_module
+                (id, has_select, has_add, has_update, has_delete, system_role_id, system_module_id)
+            SELECT nextval('clinlims.system_role_module_seq'), 'Y', 'N', 'N', 'N', r.id, m.id
+            FROM clinlims.system_role r
+            JOIN clinlims.system_module m ON m.name = 'dashboards.view.management'
+            WHERE (r.name = 'Global Administrator'
+                   OR r.id IN (SELECT rm.system_role_id FROM clinlims.system_role_module rm
+                               JOIN clinlims.system_module p ON p.id = rm.system_module_id
+                               WHERE p.name = 'qa.eqa.provider'))
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_module x
+                              WHERE x.system_role_id = r.id AND x.system_module_id = m.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_module
+                WHERE system_module_id IN (SELECT id FROM clinlims.system_module WHERE name = 'dashboards.view.management');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- First under Reports: sibling orders differ between deployments, so it
+         takes one below the lowest. -->
+    <changeSet author="openelisglobal" id="OGC-897-management-dashboard-menu">
+        <comment>Add Management Overview as the first entry under Reports</comment>
+        <sql>
+            INSERT INTO clinlims.menu (id, parent_id, presentation_order, element_id, action_url, display_key,
+                                       tool_tip_key, new_window, is_active, hide_in_old_ui)
+            SELECT nextval('clinlims.menu_seq'), p.id,
+                   COALESCE((SELECT MIN(c.presentation_order) FROM clinlims.menu c WHERE c.parent_id = p.id), 1) - 1,
+                   'menu_reports_management_overview', '/dashboards/management',
+                   'sideNav.title.managementOverview', 'sideNav.title.managementOverview', false, true, true
+            FROM clinlims.menu p
+            WHERE p.element_id = 'menu_reports'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.menu WHERE element_id = 'menu_reports_management_overview');
+        </sql>
+        <rollback>
+            <sql>DELETE FROM clinlims.menu WHERE element_id = 'menu_reports_management_overview';</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

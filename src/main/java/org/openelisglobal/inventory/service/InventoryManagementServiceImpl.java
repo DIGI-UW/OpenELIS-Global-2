@@ -2,7 +2,9 @@ package org.openelisglobal.inventory.service;
 
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -17,6 +19,7 @@ import org.openelisglobal.inventory.valueholder.InventoryEnums.ReferenceType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
+import org.openelisglobal.inventory.valueholder.InventoryOrderCycle;
 import org.openelisglobal.inventory.valueholder.InventoryUsage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -29,6 +32,9 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
 
     @Autowired
     private InventoryItemService inventoryItemService;
+
+    @Autowired
+    private InventoryOrderCycleService inventoryOrderCycleService;
 
     @Autowired
     private InventoryLotService inventoryLotService;
@@ -70,6 +76,21 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
         return usageService.recordUsage(lot, quantityNeeded, testResultId, analysisId, sysUserId);
     }
 
+    @Override
+    @Transactional
+    public java.util.Optional<String> unavailableReason(Long lotId, Double quantityNeeded) {
+        InventoryLot lot = lotId == null ? null : inventoryLotService.getMatch("id", lotId).orElse(null);
+        if (lot == null) {
+            return java.util.Optional.of("INVENTORY_LOT_NOT_FOUND");
+        }
+        try {
+            validateSelectedLot(lot, quantityNeeded);
+            return java.util.Optional.empty();
+        } catch (InventoryLotUnavailableException e) {
+            return java.util.Optional.of(e.getCode());
+        }
+    }
+
     private void validateSelectedLot(InventoryLot lot, Double quantityNeeded) {
         String lotNumber = lot.getLotNumber();
         if (lot.isExpired()) {
@@ -99,10 +120,15 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
             throw new IllegalArgumentException("Quantity needed must be greater than 0");
         }
 
+        // Lock in id order so concurrent consumers queue without deadlocking.
+        List<InventoryLot> fefoLots = inventoryLotService.getAvailableLotsByItemFEFO(itemId);
+        fefoLots.stream().sorted(Comparator.comparing(InventoryLot::getId))
+                .forEach(inventoryLotService::refreshForUpdate);
+
         // The FEFO query has no expiry predicate; isAvailableForUse is the rule
         // check-availability answers with, so it decides here too.
-        List<InventoryLot> availableLots = inventoryLotService.getAvailableLotsByItemFEFO(itemId).stream()
-                .filter(InventoryLot::isAvailableForUse).collect(Collectors.toList());
+        List<InventoryLot> availableLots = fefoLots.stream().filter(InventoryLot::isAvailableForUse)
+                .collect(Collectors.toList());
 
         if (availableLots == null || availableLots.isEmpty()) {
             throw noAvailableLots(itemId);
@@ -220,6 +246,24 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
 
     @Override
     @Transactional
+    public List<InventoryLot> receiveInventoryBatch(List<InventoryLot> lots, String sysUserId) {
+        List<InventoryLot> received = new java.util.ArrayList<>();
+        if (lots == null || lots.isEmpty()) {
+            return received;
+        }
+        for (InventoryLot lot : lots) {
+            if (lot == null) {
+                continue;
+            }
+            // An id would turn the receipt into an overwrite of that lot.
+            lot.setId(null);
+            received.add(receiveInventory(lot, sysUserId));
+        }
+        return received;
+    }
+
+    @Override
+    @Transactional
     public InventoryLot receiveInventory(InventoryLot lotData, String sysUserId) {
         if (lotData == null) {
             throw new IllegalArgumentException("Lot data cannot be null");
@@ -257,7 +301,33 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
         transactionService.recordTransaction(savedLot.getId(), TransactionType.RECEIPT, savedLot.getCurrentQuantity(),
                 savedLot.getCurrentQuantity(), null, ReferenceType.RECEIPT.name(), "New inventory received", sysUserId);
 
+        closeOrderCycle(managedItem, sysUserId);
+
         return savedLot;
+    }
+
+    private void closeOrderCycle(InventoryItem item, String sysUserId) {
+        Timestamp orderedAt = item.getOrderedAt();
+        if (orderedAt == null) {
+            return;
+        }
+        // Not the lot's receipt date: every receive overwrites that with the server
+        // clock.
+        Timestamp receivedAt = new Timestamp(System.currentTimeMillis());
+
+        InventoryOrderCycle cycle = new InventoryOrderCycle();
+        cycle.setInventoryItem(item);
+        cycle.setOrderedAt(orderedAt);
+        cycle.setReceivedAt(receivedAt);
+        cycle.setLeadTimeDays((int) Duration.between(orderedAt.toInstant(), receivedAt.toInstant()).toDays());
+        cycle.setSysUserId(sysUserId);
+        inventoryOrderCycleService.insert(cycle);
+
+        item.setOrderedAt(null);
+        item.setOrderNote(null);
+        item.setOrderExpectedDate(null);
+        item.setSysUserId(sysUserId);
+        inventoryItemService.update(item);
     }
 
     /**

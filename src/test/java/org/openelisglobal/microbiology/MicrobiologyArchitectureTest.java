@@ -15,13 +15,14 @@ import org.junit.Test;
 import org.openelisglobal.microbiology.controller.rest.MicroAstAnalyzerEventRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroAstRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseAmendmentRestController;
-import org.openelisglobal.microbiology.controller.rest.MicroCaseInoculationRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseNonconformanceRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseReadinessRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseTimelineRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCriticalCommunicationRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCultureAnalyzerEventRestController;
+import org.openelisglobal.microbiology.controller.rest.MicroCultureCatalogRestController;
+import org.openelisglobal.microbiology.controller.rest.MicroCultureRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroIsolateRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroReportReleaseRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroWhonetReadinessRestController;
@@ -34,12 +35,12 @@ public class MicrobiologyArchitectureTest {
 
     @Test
     public void microbiologyControllersDoNotDeclareTransactions() {
-        Class<?>[] controllers = { MicroCaseRestController.class, MicroCaseInoculationRestController.class,
-                MicroCaseTimelineRestController.class, MicroIsolateRestController.class, MicroAstRestController.class,
-                MicroCaseReadinessRestController.class, MicrobiologyReferenceRestController.class,
-                MicroWorklistRestController.class, MicroCriticalCommunicationRestController.class,
-                MicroReportReleaseRestController.class, MicroWhonetReadinessRestController.class,
-                MicrobiologyUatScenarioRestController.class };
+        Class<?>[] controllers = { MicroCultureRestController.class, MicroCultureCatalogRestController.class,
+                MicroCaseRestController.class, MicroCaseTimelineRestController.class, MicroIsolateRestController.class,
+                MicroAstRestController.class, MicroCaseReadinessRestController.class,
+                MicrobiologyReferenceRestController.class, MicroWorklistRestController.class,
+                MicroCriticalCommunicationRestController.class, MicroReportReleaseRestController.class,
+                MicroWhonetReadinessRestController.class, MicrobiologyUatScenarioRestController.class };
         for (Class<?> controller : controllers) {
             assertFalse(controller.isAnnotationPresent(Transactional.class));
             for (Method method : controller.getDeclaredMethods()) {
@@ -50,11 +51,11 @@ public class MicrobiologyArchitectureTest {
 
     @Test
     public void userFacingMicrobiologyWriteControllersRequireBenchRoleBundles() {
-        Class<?>[] controllers = { MicroCaseRestController.class, MicroCaseInoculationRestController.class,
-                MicroCaseTimelineRestController.class, MicroCaseNonconformanceRestController.class,
-                MicroIsolateRestController.class, MicroAstRestController.class,
-                MicroCriticalCommunicationRestController.class, MicroReportReleaseRestController.class,
-                MicroCaseAmendmentRestController.class };
+        Class<?>[] controllers = { MicroCultureRestController.class, MicroCultureCatalogRestController.class,
+                MicroCaseRestController.class, MicroCaseTimelineRestController.class,
+                MicroCaseNonconformanceRestController.class, MicroIsolateRestController.class,
+                MicroAstRestController.class, MicroCriticalCommunicationRestController.class,
+                MicroReportReleaseRestController.class, MicroCaseAmendmentRestController.class };
         for (Class<?> controller : controllers) {
             var authorization = controller
                     .getAnnotation(org.springframework.security.access.prepost.PreAuthorize.class);
@@ -70,6 +71,28 @@ public class MicrobiologyArchitectureTest {
                                     + " must not weaken the class role-bundle boundary",
                             methodAuthorization.value().contains("isAuthenticated"));
                 }
+            }
+        }
+    }
+
+    @Test
+    public void cultureDaosUseTypedRepositoryBase() throws Exception {
+        Path implementations = Path.of(System.getProperty("user.dir"),
+                "src/main/java/org/openelisglobal/microbiology/daoimpl");
+        try (Stream<Path> files = Files.list(implementations)) {
+            for (Path file : files.filter(path -> path.getFileName().toString().endsWith(".java"))
+                    .filter(path -> path.getFileName().toString().startsWith("MicroCulture")
+                            || path.getFileName().toString().equals("MicroCaseInoculationDAOImpl.java"))
+                    .toList()) {
+                String name = file.getFileName().toString().replace(".java", "");
+                Class<?> implementation = Class.forName("org.openelisglobal.microbiology.daoimpl." + name);
+                assertTrue(name + " must use the repository DAO base",
+                        org.openelisglobal.common.daoimpl.BaseDAOImpl.class.isAssignableFrom(implementation));
+                assertTrue(name + " must declare entity and ID types",
+                        implementation.getGenericSuperclass() instanceof java.lang.reflect.ParameterizedType);
+                var types = ((java.lang.reflect.ParameterizedType) implementation.getGenericSuperclass())
+                        .getActualTypeArguments();
+                assertEquals(String.class, types[1]);
             }
         }
     }
@@ -101,10 +124,6 @@ public class MicrobiologyArchitectureTest {
             }
         }
 
-        assertNoForbiddenFixtureAccess(repositoryRoot.resolve(
-                "src/test/java/org/openelisglobal/testcatalog/controller/rest/TestCatalogEditorMicrobiologyTest.java"),
-                List.of("JdbcTemplate", "javax.sql.DataSource", "java.sql.Connection", "createNativeQuery",
-                        "INSERT INTO", "DELETE FROM", "nextval("));
         assertNoForbiddenFixtureAccess(
                 repositoryRoot.resolve(
                         "src/main/java/org/openelisglobal/microbiology/service/MicrobiologyUatScenarioService.java"),

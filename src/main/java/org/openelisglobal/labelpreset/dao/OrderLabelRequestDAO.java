@@ -14,4 +14,11 @@ public interface OrderLabelRequestDAO extends BaseDAO<OrderLabelRequest, Integer
 
     /** All label requests referencing a preset. */
     List<OrderLabelRequest> listByPresetId(Integer presetId);
+
+    /**
+     * Removes every label request rooted at a parent sample (the "order").
+     *
+     * @return the number of rows removed
+     */
+    int deleteByParentSampleId(String parentSampleId);
 }

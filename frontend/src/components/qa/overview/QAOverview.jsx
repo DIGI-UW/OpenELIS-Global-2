@@ -10,6 +10,7 @@ import RecentActivity from "./RecentActivity";
 import InspectorReadiness from "./InspectorReadiness";
 import "../common/QAStyles.css";
 import "./QAOverview.css";
+import { labNow } from "../../utils/labClock";
 
 /**
  * QA Overview landing page (OGC-694): six sections, each reading live data.
@@ -36,7 +37,7 @@ const QAOverview = () => {
           <p className="qa-overview-subtitle">
             <FormattedMessage id="qa.overview.subtitle" />
             {" · "}
-            {intl.formatDate(new Date(), {
+            {intl.formatDate(labNow(), {
               weekday: "long",
               year: "numeric",
               month: "long",

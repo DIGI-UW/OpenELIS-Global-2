@@ -13,13 +13,14 @@
 
 /**
  * The row count of a full server page, read off a page that is not the last
- * one. The last, or only, page does not tell, so the size seen before stands;
- * until one has been seen, the rows on the page are the best answer.
+ * one. A shorter last page keeps the size seen before. A list on one page
+ * holds all its rows, so its size is the rows on it, whatever an earlier
+ * search left; until any size has been seen, the rows on the page stand.
  */
 export function serverPageSizeOf(paging, rowsOnPage, previousSize) {
   const current = Number(paging?.currentPage) || 1;
   const total = Number(paging?.totalPages) || 1;
-  if (rowsOnPage > 0 && (current < total || !previousSize)) {
+  if (rowsOnPage > 0 && (current < total || total === 1 || !previousSize)) {
     return rowsOnPage;
   }
   return previousSize;

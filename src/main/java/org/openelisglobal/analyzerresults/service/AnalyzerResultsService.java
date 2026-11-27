@@ -5,6 +5,7 @@ import java.util.Map;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.analyzerresults.valueholder.SampleGrouping;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.result.valueholder.Result;
 
 public interface AnalyzerResultsService extends BaseObjectService<AnalyzerResults, String> {
 
@@ -14,12 +15,11 @@ public interface AnalyzerResultsService extends BaseObjectService<AnalyzerResult
 
     void insertAnalyzerResults(List<AnalyzerResults> results, String sysUserId);
 
-    void persistAnalyzerResults(List<AnalyzerResults> deletableAnalyzerResults, List<SampleGrouping> sampleGroupList,
-            String sysUserId);
+    /** @return the accepted results and the results calculations wrote from them */
+    List<Result> persistAnalyzerResults(List<AnalyzerResults> deletableAnalyzerResults,
+            List<SampleGrouping> sampleGroupList, String sysUserId);
 
     List<AnalyzerResults> findHeldMappingResultsByAnalyzer(String analyzerId);
-
-    List<AnalyzerResults> findHeldMappingResultsByProfile(String profileId, int profileRevision);
 
     Map<String, Long> countHeldResultsByAnalyzerIds(List<String> analyzerIds);
 }

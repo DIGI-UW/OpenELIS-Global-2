@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import { applyPlugin } from "jspdf-autotable";
+import { labNow } from "../../utils/labClock";
 
 // jspdf-autotable v5 does not patch the jsPDF prototype on a bare import;
 // applyPlugin restores the doc.autoTable() / doc.lastAutoTable used below.
@@ -209,7 +210,7 @@ export const generateVectorSurveillancePDF = (indices, scope, formatMessage) => 
   doc.setFontSize(8);
   doc.setFont(undefined, "normal");
   doc.text(
-    `${t("vectorReport.generated")} ${new Date().toLocaleString()}`,
+    `${t("vectorReport.generated")} ${labNow().toLocaleString()}`,
     14,
     doc.lastAutoTable.finalY + 10,
   );

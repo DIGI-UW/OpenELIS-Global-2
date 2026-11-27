@@ -124,7 +124,7 @@ describe("ReagentsQcSection (R5/R6)", () => {
   it("analyzer-loaded row is read-only and shows configured control lots", () => {
     respondWith({
       "/rest/results-entry/test/6/reagents": LINKS,
-      "/rest/qc/controlLots": [
+      "/rest/qc/results/control-lots": [
         {
           id: "cl-1",
           productName: "Liquichek L1",
@@ -173,7 +173,7 @@ describe("ReagentsQcSection (R5/R6)", () => {
     );
     // RDT capture needs no lot record — no bench-lot fetch
     expect(getMock).not.toHaveBeenCalledWith(
-      expect.stringContaining("/rest/qc/controlLots"),
+      expect.stringContaining("/rest/qc/results/control-lots"),
       expect.any(Function),
     );
     fireEvent.change(screen.getByLabelText("Control line"), {
@@ -205,7 +205,7 @@ describe("ReagentsQcSection (R5/R6)", () => {
   it("manual quantitative row records measured/expected/uncertainty against a bench lot", () => {
     respondWith({
       "/rest/results-entry/test/6/reagents": [],
-      "/rest/qc/controlLots?testId=6": [
+      "/rest/qc/results/control-lots?testId=6": [
         {
           id: "cl-9",
           productName: "Liquichek L1",
@@ -352,8 +352,164 @@ describe("ReagentsQcSection (R5/R6)", () => {
       target: { value: "kit A" },
     });
     fireEvent.click(screen.getByTestId("qc-record"));
-    expect(screen.getByText("Failed to fetch")).toBeInTheDocument();
+    expect(
+      screen.getByText(messages["label.results.control.capture.failed"]),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Failed to fetch")).toBeNull();
     expect(screen.queryByText(/Control result recorded/)).toBeNull();
+  });
+
+  it("OGC-1200: a control on a row with no stored result opens its run of one, shown above the row's open entry tools", () => {
+    respondWith({
+      "/rest/results-entry/test/13/reagents": [],
+      "/rest/result-runs/248": {
+        id: 248,
+        label: "RUN-248",
+        source: "RESULT_ENTRY",
+        state: "HELD",
+        reagentLot: null,
+        qc: {
+          overall: "HELD",
+          tests: [
+            { testId: "13", testName: "HIV", verdict: "FAIL", controls: [] },
+          ],
+        },
+      },
+    });
+    const held = {
+      runId: 248,
+      label: "RUN-248",
+      source: "RESULT_ENTRY",
+      held: true,
+      heldCause: "QC_FAILED",
+    };
+    postMock.mockImplementation(
+      (_url: string, _body: string, cb: (r: unknown) => void) => {
+        if (typeof cb === "function") {
+          cb({ id: "qc-1", runId: 248, waitingRun: held });
+        }
+      },
+    );
+    const onRowHoldChange = vi.fn();
+    wrap(
+      <ReagentsQcSection
+        testId="13"
+        analysisId="441"
+        testSectionId="36"
+        resultType="D"
+        editable
+        open
+        onToggle={() => {}}
+        onRowHoldChange={onRowHoldChange}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Control line"), {
+      target: { value: "INVALID" },
+    });
+    fireEvent.change(screen.getByLabelText("Kit lot"), {
+      target: { value: "UAT kit" },
+    });
+    fireEvent.click(screen.getByTestId("qc-record"));
+
+    expect(postMock.mock.calls[0][0]).toBe(
+      "/rest/result-runs/of-analysis/441/controls",
+    );
+    const summary = screen.getByTestId("row-run-summary");
+    expect(summary).toHaveTextContent("In RUN-248, Manual entry.");
+    expect(summary).toHaveTextContent("Held");
+    expect(screen.getByTestId("qc-capture-message")).toHaveTextContent(
+      "Control result recorded on RUN-248. It failed, so this row is held until the test is decided on the run.",
+    );
+    expect(screen.getByTestId("qc-record")).toBeInTheDocument();
+    expect(onRowHoldChange).toHaveBeenCalledWith(held);
+  });
+
+  it("OGC-1200: a row whose run of one is open keeps its reagent use under the run, for the save to take the lot", () => {
+    respondWith({
+      "/rest/results-entry/test/13/reagents": LINKS,
+      "/rest/inventory/lots/item/1/available": LOTS,
+      "/rest/result-runs/249": {
+        id: 249,
+        label: "RUN-249",
+        source: "RESULT_ENTRY",
+        state: "OPEN",
+        reagentLot: null,
+        qc: {
+          overall: "PASS",
+          tests: [
+            { testId: "13", testName: "HIV", verdict: "PASS", controls: [] },
+          ],
+        },
+      },
+    });
+    wrap(
+      <ReagentsQcSection
+        testId="13"
+        analysisId="441"
+        testSectionId="36"
+        resultType="N"
+        runId={249}
+        runOfOneOpen
+        editable
+        open
+        onToggle={() => {}}
+      />,
+    );
+
+    expect(screen.getByTestId("row-run-summary")).toHaveTextContent(
+      "In RUN-249, Manual entry.",
+    );
+    expect(screen.getByTestId("record-use-1")).toBeInTheDocument();
+    expect(screen.getByTestId("lot-LOT-2026-0421")).toBeInTheDocument();
+  });
+
+  it("OGC-1200: a row in a run shows the run read-only, with no use or control to record", () => {
+    respondWith({
+      "/rest/results-entry/test/13/reagents": LINKS,
+      "/rest/result-runs/247": {
+        id: 247,
+        label: "RUN-247",
+        source: "RESULT_ENTRY",
+        state: "COMPLETE",
+        reagentLot: "LOT-2026-0421",
+        qc: {
+          overall: "NOT_REQUIRED",
+          tests: [
+            {
+              testId: "13",
+              testName: "HIV",
+              verdict: "NOT_REQUIRED",
+              controls: [],
+            },
+          ],
+        },
+      },
+    });
+    wrap(
+      <ReagentsQcSection
+        testId="13"
+        analysisId="441"
+        testSectionId="36"
+        resultType="N"
+        runId={247}
+        hasSavedResult
+        editable={false}
+        open
+        onToggle={() => {}}
+      />,
+    );
+
+    const summary = screen.getByTestId("row-run-summary");
+    expect(summary).toHaveTextContent("Recorded in RUN-247, Manual entry.");
+    expect(screen.getByTestId("row-run-lot")).toHaveTextContent(
+      "Reagent lot LOT-2026-0421.",
+    );
+    expect(screen.getByTestId("row-run-link")).toHaveAttribute(
+      "href",
+      "/Results?run=247",
+    );
+    expect(screen.queryByTestId("qc-record")).not.toBeInTheDocument();
+    expect(screen.queryByText("Record use")).not.toBeInTheDocument();
   });
 
   it("a passing control confirms without the reporting-blocked warning", () => {
@@ -388,7 +544,7 @@ describe("ReagentsQcSection (R5/R6)", () => {
   it("a quantitative row with no bench lot says so instead of offering an empty picker", () => {
     respondWith({
       "/rest/results-entry/test/6/reagents": [],
-      "/rest/qc/controlLots?testId=6": [],
+      "/rest/qc/results/control-lots?testId=6": [],
     });
     wrap(
       <ReagentsQcSection
@@ -449,5 +605,42 @@ describe("ReagentsQcSection (R5/R6)", () => {
     );
     fireEvent.click(screen.getByTestId("record-use-1"));
     expect(screen.getByText("Insufficient stock")).toBeInTheDocument();
+  });
+
+  /**
+   * OGC-1408 — a Record use whose request got no answer (status 0) was
+   * reported as recorded, the way the control capture above once was.
+   */
+  it("a Record use that got no answer is never reported as recorded", () => {
+    respondWith({
+      "/rest/results-entry/test/6/reagents": LINKS,
+      "/rest/inventory/lots/item/1/available": LOTS,
+    });
+    postMock.mockImplementation(
+      (_url: string, _body: string, cb: (r: unknown) => void) => {
+        if (typeof cb === "function") {
+          cb({
+            error: "Failed to fetch",
+            message: "Failed to fetch",
+            status: 0,
+          });
+        }
+      },
+    );
+    wrap(
+      <ReagentsQcSection
+        testId="6"
+        analysisId="28"
+        editable
+        open
+        onToggle={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("record-use-1"));
+    expect(
+      screen.getByText(messages["label.results.reagents.recordFailed"]),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Recorded 1 mL/)).toBeNull();
+    expect(screen.queryByText("Failed to fetch")).toBeNull();
   });
 });

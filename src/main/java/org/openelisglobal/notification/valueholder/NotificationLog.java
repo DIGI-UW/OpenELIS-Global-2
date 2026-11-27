@@ -19,15 +19,16 @@ import java.util.Set;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * One row per notification fire-instance per recipient — backs the Sent
- * Messages admin tab. The dispatcher publishes a {@code
- * NotificationFiredEvent} after each fire; {@code NotificationLogService}
- * listens and writes a row here.
+ * One row per message per recipient, written as Queued before anything is
+ * attempted: this table is the delivery outbox and the Sent Messages log for
+ * every product (reports, alerts, notices, triggers, channel tests). The
+ * delivery worker claims the due channel rows and records each attempt.
  *
  * <p>
  * Per-channel outcomes are stored in {@code notification_log_channel} as an
  * {@code @ElementCollection} of {@link NotificationLogChannel}. Composite PK
  * (parent_id, channel); no Hibernate identity / optimistic-lock on the child.
+ * The worker updates those rows with SQL, never through this collection.
  *
  * <p>
  * {@code rendered_subject} + {@code rendered_message} hold the literal bytes
@@ -44,8 +45,18 @@ public class NotificationLog extends BaseObject<Long> {
 
     private static final long serialVersionUID = 1L;
 
+    /**
+     * QUEUED while any channel waits for the delivery worker and none has gone out;
+     * SENT once any channel succeeded; FAILED when every attempted channel is
+     * exhausted; SKIPPED when no channel was attempted at all.
+     */
     public enum OverallStatus {
-        SENT, FAILED
+        QUEUED, SENT, FAILED, SKIPPED
+    }
+
+    /** What the message carried: which product of Result Delivery queued it. */
+    public enum Product {
+        REPORT, ALERT, NOTICE, TRIGGER, TEST
     }
 
     @Id
@@ -95,6 +106,25 @@ public class NotificationLog extends BaseObject<Long> {
     // for original fires. Linked-list, not flat (decision #5).
     @Column(name = "resent_from_id")
     private Long resentFromId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "product", nullable = false, length = 16)
+    private Product product = Product.TRIGGER;
+
+    @Column(name = "rule_name", length = 255)
+    private String ruleName;
+
+    @Column(name = "report_version_id")
+    private Long reportVersionId;
+
+    @Column(name = "report_format", length = 16)
+    private String reportFormat;
+
+    @Column(name = "template_external_id", length = 255)
+    private String templateExternalId;
+
+    @Column(name = "template_variables", columnDefinition = "TEXT")
+    private String templateVariables;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "notification_log_channel", joinColumns = @JoinColumn(name = "notification_log_id"))
@@ -212,6 +242,54 @@ public class NotificationLog extends BaseObject<Long> {
 
     public void setResentFromId(Long resentFromId) {
         this.resentFromId = resentFromId;
+    }
+
+    public Product getProduct() {
+        return product;
+    }
+
+    public void setProduct(Product product) {
+        this.product = product == null ? Product.TRIGGER : product;
+    }
+
+    public String getRuleName() {
+        return ruleName;
+    }
+
+    public void setRuleName(String ruleName) {
+        this.ruleName = ruleName;
+    }
+
+    public Long getReportVersionId() {
+        return reportVersionId;
+    }
+
+    public void setReportVersionId(Long reportVersionId) {
+        this.reportVersionId = reportVersionId;
+    }
+
+    public String getReportFormat() {
+        return reportFormat;
+    }
+
+    public void setReportFormat(String reportFormat) {
+        this.reportFormat = reportFormat;
+    }
+
+    public String getTemplateExternalId() {
+        return templateExternalId;
+    }
+
+    public void setTemplateExternalId(String templateExternalId) {
+        this.templateExternalId = templateExternalId;
+    }
+
+    public String getTemplateVariables() {
+        return templateVariables;
+    }
+
+    public void setTemplateVariables(String templateVariables) {
+        this.templateVariables = templateVariables;
     }
 
     public Set<NotificationLogChannel> getChannels() {

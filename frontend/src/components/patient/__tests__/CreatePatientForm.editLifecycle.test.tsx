@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -246,5 +246,83 @@ describe("CreatePatientForm — age inputs are Formik fields", () => {
     ).toBeUndefined();
     expect(body.months).toBeUndefined();
     expect(body.days).toBeUndefined();
+  });
+});
+
+// OGC-1376: a patient screen opened before someone else saved the patient got a
+// raw 500 and no message. The server now refuses with a 409; the form says so
+// with Refresh, and keeps the versions each successful save returns.
+describe("CreatePatientForm — stale saves (OGC-1376)", () => {
+  const renderVersioned = () =>
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <CreatePatientForm
+          showActionsButton={true}
+          selectedPatient={{
+            patientPK: "EXISTING-1",
+            firstName: "Old",
+            lastName: "Patient",
+            gender: "M",
+            birthDateForDisplay: "01/15/1990",
+            nationalId: "EX-001",
+            patientLastUpdated: "2026-09-29 10:00:00.0",
+            personLastUpdated: "2026-09-29 10:00:00.1",
+          }}
+          onClear={() => {}}
+        />
+      </IntlProvider>,
+    );
+
+  test("a refused stale save shows the reason with Refresh and disables Save", async () => {
+    const user = userEvent.setup();
+    testState.postResponse = {
+      statusCode: 409,
+      status: 409,
+      error: "error.patient.staleSave",
+      messageKey: "error.patient.staleSave",
+    };
+    renderVersioned();
+    await flush();
+    await user.click(document.getElementById("patient-edit-toggle"));
+
+    await user.click(document.getElementById("submit"));
+    await flush();
+
+    const notice = screen.getByTestId("patient-stale-save");
+    expect(notice).toHaveTextContent("Save failed");
+    expect(
+      within(notice).getByRole("button", { name: "Refresh" }),
+    ).toBeInTheDocument();
+    expect(document.getElementById("submit")).toBeDisabled();
+  });
+
+  test("the next save carries the versions the last save returned", async () => {
+    const user = userEvent.setup();
+    testState.postResponse = {
+      status: "success",
+      patientId: "EXISTING-1",
+      patientLastUpdated: "2026-09-29 11:00:00.0",
+      personLastUpdated: "2026-09-29 11:00:00.1",
+    };
+    renderVersioned();
+    await flush();
+
+    await user.click(document.getElementById("patient-edit-toggle"));
+    await user.click(document.getElementById("submit"));
+    await flush();
+    await user.click(document.getElementById("patient-edit-toggle"));
+    await user.click(document.getElementById("submit"));
+    await flush();
+
+    const sent = testState.postToOpenElisServerJsonResponse.mock.calls.map(
+      ([, body]) => {
+        const parsed = JSON.parse(body);
+        return [parsed.patientLastUpdated, parsed.personLastUpdated];
+      },
+    );
+    expect(sent).toEqual([
+      ["2026-09-29 10:00:00.0", "2026-09-29 10:00:00.1"],
+      ["2026-09-29 11:00:00.0", "2026-09-29 11:00:00.1"],
+    ]);
   });
 });

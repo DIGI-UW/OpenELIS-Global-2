@@ -11,6 +11,7 @@ import json
 import os
 import pathlib
 import re
+import secrets
 import shutil
 import ssl
 import subprocess
@@ -30,21 +31,22 @@ SERVICES = {
     "fhir.openelis.org": "openelis-global-2-fhir",
     "frontend.openelis.org": "openelis-global-2-frontend",
     "proxy": "openelis-global-2-proxy",
+    "certs": "openelis-global-2-certs",
+    "openelis-analyzer-bridge": "openelis-global-2-analyzer-bridge",
+    "astm-simulator": "openelis-global-2-analyzer-mock",
 }
-ANALYZER_SERVICES = ("openelis-analyzer-bridge", "astm-simulator")
 SEED_SCRIPT = "projects/analyzer-harness/seed-analyzers.sh"
 BUNDLE_FILES = (
     "docker-compose.yml",
     "docker-compose.analyzers.yml",
     "volume/properties/common.properties",
-    "volume/openelis-analyzer-bridge/configuration.yml",
     SEED_SCRIPT,
-    "projects/analyzer-harness/seed-mvp-traffic.sh",
-    "projects/analyzer-harness/config-templates/tests/harness-tests.csv",
 )
+PAIRING_CODE = "ANALYZER_BRIDGE_PAIRING_CODE"
 DEFAULT_MOCK_URL = "http://127.0.0.1:8085"
 SMOKE_ANALYZER = "Cepheid GeneXpert (ASTM Mode)"
-SMOKE_DESTINATION = "tcp://openelis-analyzer-bridge:9600"
+SMOKE_DESTINATION = "tcp://openelis-analyzer-bridge:12001"
+SMOKE_SENDER_ID = "OE2-TEST-GENEXPERT"
 TEST_USER = "admin"
 TEST_PASS = "adminADMIN!"
 
@@ -61,7 +63,7 @@ def validate_manifest(manifest, namespace="itechuw"):
         raise ValueError("Testing requires a develop image manifest")
     images = manifest.get("images")
     if not isinstance(images, dict) or set(images) != set(SERVICES):
-        raise ValueError("Manifest must include exactly the five application images")
+        raise ValueError("Manifest must include exactly the published application images")
     for service, repository in SERVICES.items():
         reference = images[service]
         if not isinstance(reference, str) or not re.fullmatch(
@@ -122,11 +124,9 @@ def unpack_release(bundle, site_dir, sha):
         configuration = site_dir / "configuration"
         configuration.mkdir(exist_ok=True)
         catalog = configuration / "backend"
-        if not catalog.exists():
-            with tempfile.TemporaryDirectory(prefix="catalog-", dir=configuration) as catalog_staging:
-                seeded = pathlib.Path(catalog_staging) / "backend"
-                shutil.copytree(staging / "projects/analyzer-harness/config-templates", seeded)
-                seeded.rename(catalog)
+        # A new site uses the defaults packaged in its OE image. Existing
+        # uploaded catalogs remain site-owned and survive release changes.
+        catalog.mkdir(exist_ok=True)
         (staging / "configuration").symlink_to(configuration, target_is_directory=True)
         staging.rename(release)
         staging.mkdir()
@@ -143,14 +143,55 @@ def compose_command(site_dir, release, override=None):
     return command + (["-f", str(override)] if override else [])
 
 
+def read_env_file(path):
+    """Read KEY=VALUE lines the way Compose reads an env file, minus interpolation."""
+    environment = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.removeprefix("export ").split("=", 1)
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
+            value = value[1:-1]
+        else:
+            value = re.sub(r"\s+#.*$", "", value)
+        environment[key.strip()] = value
+    return environment
+
+
+def ensure_pairing_code(site_dir):
+    """Give the site the code OpenELIS and the Analyzer Bridge pair with, once, kept across deploys."""
+    env_file = site_dir / ".env"
+    if read_env_file(env_file).get(PAIRING_CODE):
+        return
+    text = env_file.read_text(encoding="utf-8")
+    separator = "" if not text or text.endswith("\n") else "\n"
+    env_file.write_text(f"{text}{separator}{PAIRING_CODE}={secrets.token_hex(16)}\n", encoding="utf-8")
+
+
 def site_settings(site_dir, release):
-    # Let Compose parse quoting and interpolation exactly as it does for the stack.
-    output = run(compose_command(site_dir, release) + ["config", "--environment"], site_dir, True)
-    environment = dict(line.split("=", 1) for line in output.splitlines() if "=" in line)
+    # Prefer Compose's own parse, which handles quoting and interpolation as it does for the stack.
+    # Older Compose releases without `config --environment` fail on it, so fall back to reading the
+    # site's env file directly: quotes and trailing comments are handled, interpolation is not.
+    try:
+        output = run(compose_command(site_dir, release) + ["config", "--environment"], site_dir, True)
+        environment = dict(line.split("=", 1) for line in output.splitlines() if "=" in line)
+    except subprocess.CalledProcessError:
+        environment = read_env_file(site_dir / ".env")
+    password_file = pathlib.Path(environment.get("OE_INITIAL_ADMIN_PASSWORD_FILE") or "./secrets/initial-admin-password")
+    if not password_file.is_absolute():
+        password_file = site_dir / password_file
+    password_file = password_file.resolve()
+    bootstrap_value = password_file.read_text(encoding="utf-8").strip() if password_file.is_file() else ""
+    if not bootstrap_value:
+        raise ValueError("Configure a nonempty, persistent OE_INITIAL_ADMIN_PASSWORD_FILE on the server")
     return {
         "TEST_USER": environment.get("TEST_USER") or environment.get("OE_ADMIN_USERNAME") or TEST_USER,
-        "TEST_PASS": environment.get("TEST_PASS") or environment.get("OE_ADMIN_PASSWORD") or TEST_PASS,
+        "TEST_PASS": environment.get("TEST_PASS") or environment.get("OE_ADMIN_PASSWORD")
+                     or bootstrap_value,
         "MOCK_URL": "http://127.0.0.1:" + (environment.get("ASTM_SIMULATOR_HTTP_PORT") or "8085"),
+        "OE_INITIAL_ADMIN_PASSWORD_FILE": str(password_file),
     }
 
 
@@ -159,27 +200,53 @@ def smoke_accession(run_id):
     return "DEV019" + digits.zfill(14)[-14:]
 
 
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, request, response, code, message, headers, url):
+        return None
+
+
 def http_json(method, url, body=None, username=TEST_USER, password=TEST_PASS, auth_origin=None):
     headers = {"Content-Type": "application/json"}
-    if auth_origin is None or url.startswith(auth_origin + "/"):
+    if auth_origin is not None and url.startswith(auth_origin + "/"):
+        if urllib.parse.urlsplit(url).scheme != "https":
+            raise ValueError("Deployment credentials require verified HTTPS")
         token = base64.b64encode(f"{username}:{password}".encode()).decode()
         headers["Authorization"] = "Basic " + token
     request = urllib.request.Request(url, method=method, data=None if body is None else json.dumps(body).encode(),
                                      headers=headers)
-    with urllib.request.urlopen(request, timeout=30, context=ssl._create_unverified_context()) as response:
+    opener = urllib.request.build_opener(NoRedirect(), urllib.request.HTTPSHandler(context=ssl.create_default_context()))
+    with opener.open(request, timeout=30) as response:
         return json.load(response)
 
 
+def smoke_analyzer(analyzers):
+    """The smoke test's analyzer, refused with the reason when it cannot receive a result."""
+    matches = [item for item in analyzers if item.get("name") == SMOKE_ANALYZER]
+    if len(matches) != 1:
+        raise RuntimeError(f"expected one analyzer named {SMOKE_ANALYZER!r}; found {len(matches)}")
+    analyzer = matches[0]
+    if analyzer.get("status") != "ACTIVE" or not analyzer.get("bridgeConnectionId"):
+        raise RuntimeError(
+            f"{SMOKE_ANALYZER} cannot receive the smoke result: status {analyzer.get('status')}, "
+            f"profile {analyzer.get('profileId') or 'none'}, "
+            f"Bridge connection {analyzer.get('bridgeConnectionId') or 'none'}")
+    return analyzer
+
+
 def verify_analyzer_delivery(api_base, mock_url, accession, http=http_json, sleep=time.sleep, timeout=120):
-    pushed = http("POST", mock_url + "/simulate/astm/genexpert_astm",
-                  {"destination": SMOKE_DESTINATION, "sample_id": accession})
+    analyzer_id = smoke_analyzer(http("GET", api_base + "/analyzer/analyzers").get("analyzers", []))["id"]
+    pushed = http("POST", mock_url + "/simulate/fixture/genexpert_astm/hivvl/quantified",
+                  {"destination": SMOKE_DESTINATION, "sample_id": accession, "sender_id": SMOKE_SENDER_ID})
     if pushed.get("pushed") != 1:
         raise RuntimeError(f"Mock did not deliver the smoke result: {pushed}")
-    analyzers = http("GET", api_base + "/analyzer/analyzers").get("analyzers", [])
-    analyzer_id = next(item["id"] for item in analyzers if item.get("name") == SMOKE_ANALYZER)
     deadline = time.monotonic() + timeout
     while True:
         response = http("GET", f"{api_base}/AnalyzerResults?id={analyzer_id}")
+        # The review list is paged by accession; read the page that holds this one.
+        page = next((term["value"] for term in response.get("paging", {}).get("searchTermToPage", [])
+                     if term.get("id") == accession), "1")
+        if page != "1":
+            response = http("GET", f"{api_base}/AnalyzerResults?id={analyzer_id}&page={page}")
         rows = [row for row in response.get("resultList", []) if row.get("accessionNumber") == accession]
         if rows:
             return {"accession": accession, "rows": len(rows)}
@@ -188,11 +255,37 @@ def verify_analyzer_delivery(api_base, mock_url, accession, http=http_json, slee
         sleep(3)
 
 
-def prune_releases(site_dir, current, previous):
+PRUNE_IMAGE = "alpine:3.21"
+
+
+def prune_releases(site_dir, current, previous, diagnostics=None):
+    """Remove releases other than the current and previous one.
+
+    This runs after the deployment is ready, so it never fails it. Containers can leave
+    files in an old release that the deploy user cannot delete (testing, 2026-10-20:
+    "[Errno 13] Permission denied: 'backend'"); such a release is removed through
+    Docker, and one that still cannot be removed is reported and left in place.
+    """
+    releases = site_dir / "releases"
     keep = {current.resolve()} | ({pathlib.Path(previous).resolve()} if previous else set())
-    for release in (site_dir / "releases").iterdir():
-        if release.resolve() not in keep:
+    warnings = []
+    for release in releases.iterdir():
+        if release.resolve() in keep:
+            continue
+        try:
             shutil.rmtree(release)
+            continue
+        except OSError:
+            pass
+        try:
+            run(["docker", "run", "--rm", "-v", f"{releases}:/releases", PRUNE_IMAGE,
+                 "rm", "-rf", f"/releases/{release.name}"], site_dir)
+        except (OSError, subprocess.CalledProcessError) as error:
+            warnings.append(f"could not remove old release {release}: {error}")
+    for warning in warnings:
+        print(f"Warning: {warning}", flush=True)
+    if warnings and diagnostics is not None:
+        (diagnostics / "prune-warnings.txt").write_text("\n".join(warnings) + "\n", encoding="utf-8")
 
 
 def deploy(request, diagnostics, bundle):
@@ -202,6 +295,8 @@ def deploy(request, diagnostics, bundle):
     spec.loader.exec_module(readiness)
     contract = request["readiness"]
     readiness.validate_contract(**contract)
+    if urllib.parse.urlsplit(contract["url"]).scheme != "https" or contract.get("insecure"):
+        raise ValueError("Testing deployment requires verified HTTPS")
     site_dir = pathlib.Path(request["deploy_path"]).resolve()
     if not (site_dir / ".env").is_file():
         raise ValueError("The server must have an existing configured .env")
@@ -215,13 +310,16 @@ def deploy(request, diagnostics, bundle):
         require_stack_owner(site_dir)
         state_dir.mkdir(exist_ok=True)
         release = unpack_release(bundle, site_dir, manifest["appSha"])
+        ensure_pairing_code(site_dir)
         settings = site_settings(site_dir, release)
         mock_url = request.get("mock_url", settings["MOCK_URL"])
         # Stage on the same filesystem so promotion is atomic.
         with tempfile.TemporaryDirectory(prefix="candidate-", dir=state_dir) as candidate_dir:
             candidate_override = pathlib.Path(candidate_dir) / override.name
             write_json(candidate_override, {"services": {service: {"image": image}
-                                                        for service, image in manifest["images"].items()}})
+                                                        for service, image in manifest["images"].items()},
+                                            "secrets": {"initial-admin-password": {
+                                                "file": settings["OE_INITIAL_ADMIN_PASSWORD_FILE"]}}})
             run(compose_command(site_dir, release, candidate_override) + ["pull"], site_dir)
             require_current_candidate(manifest["appSha"], site_dir)
             require_stack_owner(site_dir)
@@ -237,21 +335,29 @@ def deploy(request, diagnostics, bundle):
         run(compose + ["up", "-d"], site_dir)
         images = {}
         for service, reference in manifest["images"].items():
-            container = run(compose + ["ps", "-q", service], site_dir, True).strip()
+            container = run(compose + ["ps", "--all", "--quiet", service], site_dir, True).strip()
             if not container or "\n" in container:
-                raise ValueError(f"Expected one running container for {service}")
+                raise ValueError(f"Expected one container for {service}")
             actual = json.loads(run(["docker", "inspect", container], site_dir, True))[0]
             expected = json.loads(run(["docker", "image", "inspect", reference], site_dir, True))[0]
-            if not actual["State"]["Running"] or actual["Image"] != expected["Id"]:
-                raise ValueError(f"Running {service} does not match the published image")
+            if actual["Image"] != expected["Id"]:
+                raise ValueError(f"Selected {service} does not match the published image")
+            if service == "certs":
+                if actual["State"].get("Status") != "exited" or actual["State"].get("ExitCode") != 0:
+                    raise ValueError("Certificate initializer did not complete successfully")
+            elif not actual["State"]["Running"]:
+                raise ValueError(f"Expected running service {service}")
             images[service] = {"reference": reference, "imageId": actual["Image"]}
         report = readiness.wait_until_ready(**contract)
         write_json(diagnostics / "readiness.json", report)
         if not report["ready"]:
             raise RuntimeError("Application did not become ready; inspect deployment diagnostics")
+        seed_environment = {**os.environ, **settings, "DEV_STACK_TLS": "verified"}
+        if os.environ.get("SSL_CERT_FILE"):
+            seed_environment["CURL_CA_BUNDLE"] = os.environ["SSL_CERT_FILE"]
         run(["env", "BASE_URL=" + origin, "MOCK_URL=" + mock_url,
-             "bash", str(release / SEED_SCRIPT), "--ensure-connections", "--no-mock-network", "--activate"],
-            release, env={**os.environ, **settings})
+             "bash", str(release / SEED_SCRIPT), "--ensure-connections", "--no-mock-network"],
+            release, env=seed_environment)
         authenticated_http = functools.partial(http_json, username=settings["TEST_USER"],
                                                password=settings["TEST_PASS"], auth_origin=origin)
         delivery = verify_analyzer_delivery(origin + "/api/OpenELIS-Global/rest", mock_url,
@@ -263,7 +369,7 @@ def deploy(request, diagnostics, bundle):
                   "verification": {"readiness": report, "url": contract["url"], "analyzerDelivery": delivery}}
         write_json(target_path, target)
         write_json(diagnostics / "target.json", target)
-        prune_releases(site_dir, release, previous_release)
+        prune_releases(site_dir, release, previous_release, diagnostics)
         run(["docker", "image", "prune", "--all", "--force"], site_dir)
         print(f"Testing is ready at {manifest['appSha']}", flush=True)
     finally:
@@ -272,8 +378,7 @@ def deploy(request, diagnostics, bundle):
         else:
             status_compose = compose_command(site_dir, release)
             for filename, args in [("compose-status.txt", ["ps", "--all"]),
-                                   ("service-logs.txt", ["logs", "--no-color", "--tail", "250",
-                                                         *SERVICES, *ANALYZER_SERVICES])]:
+                                   ("service-logs.txt", ["logs", "--no-color", "--tail", "250", *SERVICES])]:
                 with (diagnostics / filename).open("w", encoding="utf-8") as output:
                     subprocess.run(status_compose + args, cwd=site_dir, stdout=output,
                                    stderr=subprocess.STDOUT, check=False)
@@ -288,7 +393,12 @@ def main():
     diagnostics.mkdir(exist_ok=True)
     try:
         request = json.loads(args.request.read_text(encoding="utf-8"))
-        with open("/tmp/openelis-testing-deploy.lock", "w", encoding="utf-8") as lock:
+        site_dir = pathlib.Path(request["deploy_path"]).resolve()
+        if not (site_dir / ".env").is_file():
+            raise ValueError("The server must have an existing configured .env")
+        state_dir = site_dir / ".openelis-ci"
+        state_dir.mkdir(mode=0o700, exist_ok=True)
+        with (state_dir / "deploy.lock").open("a", encoding="utf-8") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             deploy(request, diagnostics, run_dir / "deploy-bundle.tgz")
     except Exception as error:

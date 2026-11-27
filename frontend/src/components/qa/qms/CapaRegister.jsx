@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   DataTableSkeleton,
-  DatePicker,
   DatePickerInput,
   Dropdown,
   Pagination,
   Tag,
   TextInput,
 } from "@carbon/react";
+import { DatePicker } from "../../common/DatePicker";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, toLocalIsoDate } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
@@ -18,6 +18,7 @@ import { isoDaysFromToday } from "../common/qaDates";
 import QAEmptyState from "../common/QAEmptyState";
 import QAStatTiles from "../common/QAStatTiles";
 import "../common/QAStyles.css";
+import { labNow } from "../../utils/labClock";
 
 /**
  * Cross-NCE CAPA Register (OGC-707) at /qa/qms/capa-register. Read-only view of every
@@ -64,7 +65,7 @@ const CapaRegister = () => {
     );
   }, []);
 
-  const today = toLocalIsoDate(new Date());
+  const today = toLocalIsoDate(labNow());
   const weekAhead = isoDaysFromToday(7);
   const ninetyAgo = isoDaysFromToday(-90);
 
@@ -222,14 +223,10 @@ const CapaRegister = () => {
               value={[range.fromDate, range.toDate]}
               onChange={(dates) => {
                 setPage(0);
-                setRange(
-                  dates.length === 2
-                    ? {
-                        fromDate: toLocalIsoDate(dates[0]),
-                        toDate: toLocalIsoDate(dates[1]),
-                      }
-                    : { fromDate: "", toDate: "" },
-                );
+                setRange({
+                  fromDate: dates[0] ? toLocalIsoDate(dates[0]) : "",
+                  toDate: dates[1] ? toLocalIsoDate(dates[1]) : "",
+                });
               }}
             >
               <DatePickerInput

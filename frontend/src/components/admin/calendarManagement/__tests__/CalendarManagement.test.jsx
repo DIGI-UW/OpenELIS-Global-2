@@ -22,7 +22,9 @@ vi.mock("../../../layout/Layout", () => ({
   }),
 }));
 
-vi.mock("../../../utils/Utils", () => ({
+vi.mock("../../../utils/Utils", async (importOriginal) => ({
+  toLocalIsoDate: (await importOriginal()).toLocalIsoDate,
+  parseIsoDate: (await importOriginal()).parseIsoDate,
   getFromOpenElisServer: vi.fn(),
   postToOpenElisServerJsonResponse: vi.fn(),
 }));
@@ -110,6 +112,21 @@ describe("CalendarManagement", () => {
     });
   });
 
+  test("names the date and holiday name fields of the new row", async () => {
+    renderWithIntl(<CalendarManagement />);
+    fireEvent.click(screen.getByTestId("add-holiday-button"));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Date")).toHaveAttribute(
+        "id",
+        "new-holiday-date",
+      );
+    });
+    expect(screen.getByLabelText("Holiday Name")).toHaveAttribute(
+      "id",
+      "new-holiday-name",
+    );
+  });
+
   test("disables save when form is empty", async () => {
     renderWithIntl(<CalendarManagement />);
     fireEvent.click(screen.getByTestId("add-holiday-button"));
@@ -129,7 +146,9 @@ describe("CalendarManagement", () => {
 
   test("renders year dropdown", async () => {
     renderWithIntl(<CalendarManagement />);
-    expect(screen.getByTestId("year-dropdown")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: /^Year/ })).toHaveTextContent(
+      /^\d{4}/,
+    );
   });
 
   test("renders import and export buttons", async () => {

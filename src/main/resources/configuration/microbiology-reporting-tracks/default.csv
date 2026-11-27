@@ -1,0 +1,4 @@
+category,dictEntry,localAbbreviation,isActive,sortOrder
+Reporting track,Bacterial,BACTERIAL,Y,1
+Reporting track,TB,TB,Y,2
+Reporting track,Mycology,MYCOLOGY,Y,3

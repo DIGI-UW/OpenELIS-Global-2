@@ -3,8 +3,6 @@ package org.openelisglobal.qc.report;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import com.itextpdf.text.pdf.PdfReader;
-import com.itextpdf.text.pdf.parser.PdfTextExtractor;
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -22,6 +20,7 @@ import org.openelisglobal.qc.valueholder.QCControlLot;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCRuleViolation;
 import org.openelisglobal.qc.valueholder.QCStatistics;
+import org.openelisglobal.testsupport.PdfText;
 import org.springframework.context.support.ReloadableResourceBundleMessageSource;
 
 /**
@@ -78,12 +77,12 @@ public class QCExportWriterTest {
     public void benchCsvWritesOneRegisterRowPerControlRun() {
         BenchExportRow manual = new BenchExportRow(Timestamp.valueOf("2026-06-15 09:00:00"), "MANUAL", "Haematology",
                 "Bench Haemoglobin", "BENCH-A (NORMAL)", new BigDecimal("100.00"), new BigDecimal("5.00"),
-                new BigDecimal("112.50"), "PASS", "Bench Tech");
+                new BigDecimal("112.50"), "PASS", "Bench Tech", "RUN-42");
         // An RDT line has no lot, no number and no target. The register still has to
         // carry it, which is why bench QC is a flat export rather than one section per
         // control lot.
         BenchExportRow rdt = new BenchExportRow(Timestamp.valueOf("2026-06-15 10:00:00"), "RDT", "Parasitology",
-                "Bench Malaria RDT", "Malaria RDT, LOT-1", null, null, null, "INVALID", "Bench Tech");
+                "Bench Malaria RDT", "Malaria RDT, LOT-1", null, null, null, "INVALID", "Bench Tech", "");
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         QCExportWriter.writeBenchCsv(new BenchExport(List.of(manual, rdt), false), out);
@@ -100,6 +99,27 @@ public class QCExportWriterTest {
                 lines[2].contains("INVALID") && lines[2].contains(",,,"));
     }
 
+    /**
+     * OGC-1200 FR-G2: a control recorded on a run names that run in the register.
+     */
+    @Test
+    public void benchCsvNamesTheRunEachControlWasRecordedOn() {
+        BenchExportRow onRun = new BenchExportRow(Timestamp.valueOf("2026-06-15 09:00:00"), "MANUAL", "Biochemistry",
+                "Amylase", "BENCH-A (NORMAL)", new BigDecimal("80"), new BigDecimal("8"), new BigDecimal("140"), "FAIL",
+                "Bench Tech", "RUN-42");
+        BenchExportRow onNoRun = new BenchExportRow(Timestamp.valueOf("2026-06-15 10:00:00"), "MANUAL", "Biochemistry",
+                "Amylase", "BENCH-A (NORMAL)", new BigDecimal("80"), new BigDecimal("8"), new BigDecimal("81"), "PASS",
+                "Bench Tech", "");
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        QCExportWriter.writeBenchCsv(new BenchExport(List.of(onRun, onNoRun), false), out);
+        String[] lines = out.toString(StandardCharsets.UTF_8).split("\\R");
+
+        assertTrue("the header names the run column", lines[0].endsWith(",Results Run"));
+        assertTrue("the control on a run names it", lines[1].endsWith(",RUN-42"));
+        assertTrue("a control on no run leaves the column empty", lines[2].endsWith("Bench Tech,"));
+    }
+
     @Test
     public void pdfRendersTheReportWithItsInstrumentAndSigma() throws Exception {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -107,9 +127,7 @@ public class QCExportWriterTest {
         byte[] pdf = out.toByteArray();
 
         assertEquals("body should start with the PDF magic bytes", "%PDF-", new String(pdf, 0, 5));
-        PdfReader reader = new PdfReader(pdf);
-        String text = PdfTextExtractor.getTextFromPage(reader, 1);
-        reader.close();
+        String text = PdfText.ofPage(pdf, 1);
 
         assertTrue("report title present", text.contains("Quality Control Inspector Report"));
         assertTrue("lab name present", text.contains("Kisumu Reference Lab"));

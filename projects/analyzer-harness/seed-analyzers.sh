@@ -8,25 +8,23 @@ set -euo pipefail
 
 # --no-mock-network: the mock sends to each connection's own Bridge listener
 #   port, so a stack without the Docker socket skips per-analyzer networks.
-# --activate: initialize mappings and activate newly created priority connections,
-#   preserving existing shared mappings and connection activation choices.
+# --networks-only: create the mock transports and no analyzer, for a stack whose
+#   analyzers are all set up by the stories that run on it (the evidence recording).
+# A newly created analyzer is set up as an operator would in the setup screens:
+# its shipped defaults confirmed, applied and activated. An analyzer whose
+# defaults leave a row unresolved stays in Setup. This seed runs on dev, demo and
+# testing stacks only, never at a lab.
 ENSURE_CONNECTIONS=false
 MOCK_NETWORK=true
-ACTIVATE=false
-ACTIVATION_ARGS=()
-HAS_NEW_PRIORITY=false
+NETWORKS_ONLY=false
 for arg in "$@"; do
   case "$arg" in
     --ensure-connections) ENSURE_CONNECTIONS=true ;;
     --no-mock-network) MOCK_NETWORK=false ;;
-    --activate) ACTIVATE=true ;;
-    *) echo "Usage: $0 [--ensure-connections] [--no-mock-network] [--activate]" >&2; exit 2 ;;
+    --networks-only) NETWORKS_ONLY=true ;;
+    *) echo "Usage: $0 [--ensure-connections] [--no-mock-network] [--networks-only]" >&2; exit 2 ;;
   esac
 done
-if [ "$ACTIVATE" = true ] && [ "$ENSURE_CONNECTIONS" = false ]; then
-  echo "--activate requires --ensure-connections; the full seed already activates" >&2
-  exit 2
-fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -42,6 +40,7 @@ MOCK_URL="${MOCK_URL:-http://localhost:8085}"
 ANALYZER_API="$BASE_URL/api/OpenELIS-Global/rest/analyzer/analyzers"
 TYPE_API="$BASE_URL/api/OpenELIS-Global/rest/analyzer-types"
 LAB_UNITS_API="$BASE_URL/api/OpenELIS-Global/rest/test-catalog/lab-units"
+HARNESS_LAB_UNIT_NAME="${HARNESS_LAB_UNIT_NAME:-Molecular Biology}"
 
 TEST_USER="${TEST_USER:-admin}"
 TEST_PASS="${TEST_PASS:-adminADMIN!}"
@@ -51,9 +50,9 @@ if [ "${DEV_STACK_TLS:-self-signed}" = "self-signed" ]; then
   CURL_TLS_FLAG=--insecure
 fi
 
-GENEXPERT_PROFILE_ID="genexpert-astm"
-FLUOROCYCLER_PROFILE_ID="fluorocycler-xt"
-QUANTSTUDIO_PROFILE_ID="quantstudio"
+GENEXPERT_PROFILE_ID="cepheid-genexpert-astm"
+FLUOROCYCLER_PROFILE_ID="hain-fluorocycler-xt-madagascar"
+QUANTSTUDIO_PROFILE_ID="thermo-quantstudio"
 
 CATALOG_FILE="$(mktemp)"
 ANALYZERS_FILE="$(mktemp)"
@@ -105,18 +104,19 @@ PY
 }
 
 resolve_lab_unit_id() {
-  python3 - "$LAB_UNITS_FILE" <<'PY'
+  python3 - "$LAB_UNITS_FILE" "$HARNESS_LAB_UNIT_NAME" <<'PY'
 import json
 import sys
 
 with open(sys.argv[1], encoding="utf-8") as handle:
     lab_units = json.load(handle)
 
-if not isinstance(lab_units, list) or not lab_units:
-    raise SystemExit("expected at least one active lab unit")
-lab_unit_id = lab_units[0].get("id")
+matches = [unit for unit in lab_units if unit.get("name") == sys.argv[2]]
+if len(matches) != 1:
+    raise SystemExit(f"expected one active lab unit named {sys.argv[2]!r}; found {len(matches)}")
+lab_unit_id = matches[0].get("id")
 if lab_unit_id is None or str(lab_unit_id).strip() == "":
-    raise SystemExit("first active lab unit has no ID")
+    raise SystemExit(f"lab unit {sys.argv[2]!r} has no ID")
 print(lab_unit_id)
 PY
 }
@@ -169,8 +169,14 @@ PY
   local analyzer_id
   analyzer_id="$(find_analyzer_id "$name")"
   if [ "$ENSURE_CONNECTIONS" = true ] && [ -n "$analyzer_id" ]; then
-    echo "  Preserved existing connection: $name"
-    return 0
+    # A row from before profile-pinned analyzers (no profile, no Bridge connection) cannot receive
+    # anything, so it is set up like a new instance. A pinned one is the operator's and is kept as
+    # it is, inactive included: nothing here guesses whether it was disabled on purpose.
+    if [ -n "$(analyzer_field "$name" profileId)" ]; then
+      echo "  Preserved existing connection: $name"
+      return 0
+    fi
+    echo "  $name has no profile pin (from before profile-pinned analyzers); setting it up"
   fi
   local method="POST"
   local url="$ANALYZER_API"
@@ -185,12 +191,6 @@ PY
     action_label="Updated"
   fi
 
-  local mapping_mode="preserve"
-  if [ "$ACTIVATE" = true ] && { [ "$profile_id" = "$GENEXPERT_PROFILE_ID" ] || [ "$profile_id" = "$FLUOROCYCLER_PROFILE_ID" ]; }; then
-    fetch_json "$TYPE_API/$profile_id/mapping?revision=$profile_revision" "$RESPONSE_FILE" "$profile_id site mapping"
-    mapping_mode="$(python3 -c 'import json,sys; print("preserve" if json.load(open(sys.argv[1])).get("siteBindingId") else "initialize")' "$RESPONSE_FILE")"
-  fi
-
   local status
   status="$(curl -sS "$CURL_TLS_FLAG" --connect-timeout 5 --max-time 45 -o "$RESPONSE_FILE" -w "%{http_code}" -X "$method" "$url" -u "$TEST_USER:$TEST_PASS" -H "Content-Type: application/json" -d "$payload")"
   if [ "$status" != "$expected_status" ]; then
@@ -199,10 +199,79 @@ PY
     return 1
   fi
   echo "  $action_label: $name ($profile_id@$profile_revision)"
-  if [ "$ACTIVATE" = true ] && { [ "$profile_id" = "$GENEXPERT_PROFILE_ID" ] || [ "$profile_id" = "$FLUOROCYCLER_PROFILE_ID" ]; }; then
-    ACTIVATION_ARGS+=("$name" "$mapping_mode")
-    HAS_NEW_PRIORITY=true
+  if [ "$action" = "create" ] || [ "$ENSURE_CONNECTIONS" = true ]; then
+    set_up_like_an_operator "$(find_analyzer_id "$name")" "$name"
   fi
+}
+
+# One field of the named analyzer from the last analyzer list read, empty when absent.
+analyzer_field() {
+  python3 - "$ANALYZERS_FILE" "$1" "$2" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    analyzers = json.load(handle).get("analyzers", [])
+for item in analyzers:
+    if item.get("name") == sys.argv[2]:
+        value = item.get(sys.argv[3])
+        print("" if value in (None, 0) else value)
+        break
+PY
+}
+
+api_send() {
+  local method="$1"
+  local url="$2"
+  local body="$3"
+  curl -sS "$CURL_TLS_FLAG" --connect-timeout 5 --max-time 45 -o "$RESPONSE_FILE" -w "%{http_code}" -X "$method" "$url" \
+    -u "$TEST_USER:$TEST_PASS" -H "Content-Type: application/json" --data-binary "$body"
+}
+
+# Confirm every resolved row of the analyzer's own mapping, apply it and activate, as Verify,
+# Apply and "Finish and activate" do. Unresolved rows leave the analyzer in Setup.
+set_up_like_an_operator() {
+  local analyzer_id="$1"
+  local name="$2"
+  local request
+  local status
+  fetch_json "$ANALYZER_API/$analyzer_id/mapping" "$RESPONSE_FILE" "$name mapping"
+  request="$(python3 - "$RESPONSE_FILE" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    mapping = json.load(handle)
+confirmed, excluded, unresolved = [], [], []
+for test in mapping.get("tests", []):
+    sub = test.get("subIdentity") or ""
+    rows = [(test.get("mappingState"), None)] + [(r.get("mappingState"), r.get("rawValue")) for r in test.get("results", [])]
+    for state, raw in rows:
+        row = {"sourceRowKey": test["sourceRowKey"], "subIdentity": sub, "rawValue": raw}
+        {"BOUND": confirmed, "EXCLUDED": excluded}.get(state, unresolved).append(row)
+if unresolved:
+    print("")
+else:
+    print(json.dumps({
+        "baseMappingFingerprint": mapping["mappingFingerprint"],
+        "confirmedRows": confirmed,
+        "excludedRows": excluded,
+    }))
+PY
+)"
+  if [ -z "$request" ]; then
+    echo "  Left in Setup: $name has unresolved mapping rows to review in OpenELIS"
+    return 0
+  fi
+  status="$(api_send POST "$ANALYZER_API/$analyzer_id/mapping/confirm" "$request")"
+  [ "$status" = "200" ] || { echo "ERROR: Could not confirm $name's mapping (HTTP $status)" >&2; sed 's/^/  /' "$RESPONSE_FILE" >&2; return 1; }
+  fetch_json "$ANALYZER_API/$analyzer_id/mapping" "$RESPONSE_FILE" "$name mapping"
+  request="$(python3 -c 'import json,sys; m=json.load(open(sys.argv[1])); print(json.dumps({"mappingId": m["mappingId"], "revision": m["mappingRevision"], "mappingFingerprint": m["mappingFingerprint"]}))' "$RESPONSE_FILE")"
+  status="$(api_send PUT "$ANALYZER_API/$analyzer_id/mapping/apply" "$request")"
+  [ "$status" = "200" ] || { echo "ERROR: Could not apply $name's mapping (HTTP $status)" >&2; sed 's/^/  /' "$RESPONSE_FILE" >&2; return 1; }
+  status="$(api_send POST "$ANALYZER_API/$analyzer_id/activate" '{}')"
+  [ "$status" = "200" ] || { echo "ERROR: Could not activate $name (HTTP $status)" >&2; sed 's/^/  /' "$RESPONSE_FILE" >&2; return 1; }
+  echo "  Confirmed, applied and activated: $name"
 }
 
 lookup_mock_network_ip() {
@@ -255,18 +324,22 @@ PY
 
 verify_profile_pins() {
   fetch_json "$ANALYZER_API" "$ANALYZERS_FILE" "Analyzer list"
-  python3 - "$ANALYZERS_FILE" "$GENEXPERT_REVISION" "$QUANTSTUDIO_REVISION" "$FLUOROCYCLER_REVISION" <<'PY'
+  python3 - "$ANALYZERS_FILE" "$GENEXPERT_PROFILE_ID" "$GENEXPERT_REVISION" "$QUANTSTUDIO_PROFILE_ID" \
+    "$QUANTSTUDIO_REVISION" "$FLUOROCYCLER_PROFILE_ID" "$FLUOROCYCLER_REVISION" <<'PY'
 import json
 import sys
 
 with open(sys.argv[1], encoding="utf-8") as handle:
     analyzers = json.load(handle).get("analyzers", [])
 
+genexpert = (sys.argv[2], int(sys.argv[3]))
+quantstudio = (sys.argv[4], int(sys.argv[5]))
+fluorocycler = (sys.argv[6], int(sys.argv[7]))
 expected = {
-    "Cepheid GeneXpert (ASTM Mode)": ("genexpert-astm", int(sys.argv[2])),
-    "QuantStudio 5": ("quantstudio", int(sys.argv[3])),
-    "QuantStudio 7": ("quantstudio", int(sys.argv[3])),
-    "FluoroCycler XT": ("fluorocycler-xt", int(sys.argv[4])),
+    "Cepheid GeneXpert (ASTM Mode)": genexpert,
+    "QuantStudio 5": quantstudio,
+    "QuantStudio 7": quantstudio,
+    "FluoroCycler XT": fluorocycler,
 }
 problems = []
 for name, pin in expected.items():
@@ -313,30 +386,21 @@ if [ "$MOCK_NETWORK" = true ]; then
   echo "  genexpert -> $GENEXPERT_IP:9600"
 fi
 
+if [ "$NETWORKS_ONLY" = true ]; then
+  echo "Done. Mock transports only; no analyzer instances."
+  exit 0
+fi
+
 echo "Creating profile-pinned analyzer instances..."
-reconcile_profile_analyzer "Cepheid GeneXpert (ASTM Mode)" "$GENEXPERT_PROFILE_ID" "$GENEXPERT_REVISION" '{"port":9600}'
+reconcile_profile_analyzer "Cepheid GeneXpert (ASTM Mode)" "$GENEXPERT_PROFILE_ID" "$GENEXPERT_REVISION" '{"senderId":"OE2-TEST-GENEXPERT"}'
 reconcile_profile_analyzer "QuantStudio 5" "$QUANTSTUDIO_PROFILE_ID" "$QUANTSTUDIO_REVISION" '{"directory":"/data/analyzer-imports/quantstudio-5/incoming"}'
 reconcile_profile_analyzer "QuantStudio 7" "$QUANTSTUDIO_PROFILE_ID" "$QUANTSTUDIO_REVISION" '{"directory":"/data/analyzer-imports/quantstudio-7/incoming"}'
 reconcile_profile_analyzer "FluoroCycler XT" "$FLUOROCYCLER_PROFILE_ID" "$FLUOROCYCLER_REVISION" '{"directory":"/data/analyzer-imports/fluorocycler-xt/incoming"}'
 
-if [ "$ACTIVATE" = true ] && [ "$HAS_NEW_PRIORITY" = true ]; then
-  echo "Initializing newly created priority connections..."
-  BASE_URL="$BASE_URL" \
-  TEST_USER="$TEST_USER" \
-  TEST_PASS="$TEST_PASS" \
-    bash "$SCRIPT_DIR/seed-mvp-traffic.sh" --activate "${ACTIVATION_ARGS[@]}"
-fi
-
 if [ "$ENSURE_CONNECTIONS" = true ]; then
-  echo "Done. Missing harness connections created; existing configuration and review data preserved."
+  echo "Done. Missing and unpinned harness connections set up; pinned connections and review data preserved."
   exit 0
 fi
 
 verify_profile_pins
-echo "Preparing analyzer mappings and result traffic for visible stories..."
-BASE_URL="$BASE_URL" \
-TEST_USER="$TEST_USER" \
-TEST_PASS="$TEST_PASS" \
-DB_CONTAINER="${DB_CONTAINER:-openelisglobal-database}" \
-  bash "$SCRIPT_DIR/seed-mvp-traffic.sh"
-echo "Done. Four instances use the three validated Bridge profile families."
+echo "Done. Four instances use the three pinned Bridge profile families; mappings and traffic remain untouched."

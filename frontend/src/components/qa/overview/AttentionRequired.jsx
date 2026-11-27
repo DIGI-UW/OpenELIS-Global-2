@@ -16,6 +16,7 @@ import { toLocalIsoDate } from "../../utils/Utils";
 import { useServerData } from "../../utils/useServerData";
 import { isoDaysFromToday } from "../common/qaDates";
 import { deriveStatus } from "../common/capa";
+import { labNow } from "../../utils/labClock";
 
 // Live action-queue row: count badge + label, linked to the drill-through.
 // count === undefined -> loading, null -> fetch yielded no data.
@@ -55,7 +56,7 @@ const AttentionRequired = () => {
   const { loading: summaryLoading, summary } = useOverviewSummary();
   const { loading: callbacksLoading, callbacks } = useCallbackSummary(
     isoDaysFromToday(-1),
-    toLocalIsoDate(new Date()),
+    toLocalIsoDate(labNow()),
   );
   const capaQuery = useServerData("/rest/nce/capa-register");
   // OGC-711: hide the critical-NCE row when the NCE indicator is disabled.
@@ -79,7 +80,7 @@ const AttentionRequired = () => {
   const unconfirmed = callbacks
     ? callbacks.criticalCount - callbacks.confirmedCount
     : 0;
-  const today = toLocalIsoDate(new Date());
+  const today = toLocalIsoDate(labNow());
   const overdueCapas = counter(
     capaQuery.isLoading,
     Array.isArray(capaQuery.data) ? capaQuery.data : null,
@@ -148,7 +149,7 @@ const AttentionRequired = () => {
         <LiveRow
           count={eqaDue}
           labelKey="qa.overview.attention.eqaDue"
-          onClick={() => history.push("/qa/eqa/orders")}
+          onClick={() => history.push("/qa/eqa/my-cycles")}
         />
         <ComingSoon
           variant="row"

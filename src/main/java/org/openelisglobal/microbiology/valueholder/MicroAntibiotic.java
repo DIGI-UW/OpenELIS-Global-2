@@ -41,6 +41,28 @@ public class MicroAntibiotic extends BaseObject<String> {
     @Column(name = "is_active", nullable = false, length = 2)
     private String isActive = "Y";
 
+    @Column(name = "reference_source", length = 80)
+    private String referenceSource;
+
+    @Column(name = "reference_code", length = 120)
+    private String referenceCode;
+
+    public String getReferenceSource() {
+        return referenceSource;
+    }
+
+    public void setReferenceSource(String value) {
+        referenceSource = value;
+    }
+
+    public String getReferenceCode() {
+        return referenceCode;
+    }
+
+    public void setReferenceCode(String value) {
+        referenceCode = value;
+    }
+
     @Override
     public String getId() {
         return id;
@@ -113,5 +135,16 @@ public class MicroAntibiotic extends BaseObject<String> {
 
     public void setIsActive(String isActive) {
         this.isActive = isActive;
+    }
+
+    @Column(name = "resistance_role", nullable = false, length = 32)
+    private String resistanceRole = "NONE";
+
+    public String getResistanceRole() {
+        return resistanceRole;
+    }
+
+    public void setResistanceRole(String value) {
+        resistanceRole = value;
     }
 }

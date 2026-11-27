@@ -56,6 +56,7 @@ const unrecognized = {
   analyzerId: null,
   analyzerName: null,
   sourceId: "192.168.158.1",
+  sender: "CPHL^GeneXpert^6.2",
   protocol: "ASTM",
   attempts: 0,
   receivedAt: "2026-09-24T03:00:00Z",
@@ -114,7 +115,7 @@ describe("DeliveryIssuesPanel", () => {
       within(configRow).getByRole("button", { name: "Dismiss" }),
     ).toBeVisible();
 
-    const retryingRow = rowFor("Service Unavailable");
+    const retryingRow = rowFor("Previous attempt: Service Unavailable");
     expect(within(retryingRow).getByText("Retrying")).toBeVisible();
     expect(
       within(retryingRow).queryByRole("button", { name: "Retry" }),
@@ -133,12 +134,44 @@ describe("DeliveryIssuesPanel", () => {
     ).toBeVisible();
   });
 
+  it("does not claim the outbox is empty when a success response lacks rows", async () => {
+    getFromOpenElisServer.mockImplementation((_url, callback) =>
+      callback({ status: "success", data: { count: 0 } }),
+    );
+    renderPanel();
+
+    expect(
+      await screen.findByText(
+        "Undelivered results could not be loaded from the Analyzer Bridge.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByText("The Bridge has no undelivered results."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows an incomplete-list error instead of a false count", async () => {
+    getFromOpenElisServer.mockImplementation((_url, callback) =>
+      callback({
+        status: "error",
+        messageKey: "analyzer.deliveryIssues.error.incompleteList",
+      }),
+    );
+    renderPanel();
+
+    expect(
+      await screen.findByText(
+        "The Analyzer Bridge has more undelivered results than this view can load. Review the Bridge outbox directly.",
+      ),
+    ).toBeVisible();
+  });
+
   it("retries one result through OpenELIS and reloads the list", async () => {
     respondWith([deadLettered]);
     postToOpenElisServerJsonResponse.mockImplementation(
       (_url, _body, callback) => {
         respondWith([]);
-        callback({ status: "success", id: RECEIPT_ID });
+        callback({ status: "accepted", state: "QUEUED", id: RECEIPT_ID });
       },
     );
     renderPanel();
@@ -153,6 +186,75 @@ describe("DeliveryIssuesPanel", () => {
     expect(
       await screen.findByText("The Bridge has no undelivered results."),
     ).toBeVisible();
+    expect(
+      screen.queryByText(/Retry requested.*delivery is not yet confirmed/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows queued work without presenting the previous error as a current failure", async () => {
+    respondWith([
+      {
+        ...deadLettered,
+        state: "RECEIVED",
+        failureReason: null,
+        actionable: false,
+      },
+    ]);
+    renderPanel();
+    expect(await screen.findByText("Queued")).toBeVisible();
+    expect(
+      screen.getByText("Previous attempt: " + deadLettered.lastError),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Retry", exact: true }),
+    ).not.toBeInTheDocument();
+    respondWith([unrecognized]);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Refresh delivery status" }),
+    );
+    expect(await screen.findByText(unrecognized.lastError)).toBeVisible();
+    expect(screen.getByText("Not delivered")).toBeVisible();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Refresh delivery status" }),
+    );
+    expect(
+      screen.queryByText(/Retry requested.*delivery is not yet confirmed/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("distinguishes retry acceptance from delivery and keeps the unresolved reason", async () => {
+    respondWith([unrecognized]);
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (_url, _body, callback) =>
+        callback({ status: "accepted", state: "QUEUED", id: unrecognized.id }),
+    );
+    renderPanel();
+    await userEvent.click(await screen.findByRole("button", { name: "Retry" }));
+    expect(
+      await screen.findByText(/Retry requested.*delivery is not yet confirmed/),
+    ).toBeVisible();
+    expect(screen.getByText(unrecognized.lastError)).toBeVisible();
+    expect(screen.getByText("Not delivered")).toBeVisible();
+  });
+
+  it("clears a previous retry notice when a subsequent action fails", async () => {
+    respondWith([unrecognized]);
+    postToOpenElisServerJsonResponse
+      .mockImplementationOnce((_url, _body, callback) =>
+        callback({ status: "accepted", state: "QUEUED", id: unrecognized.id }),
+      )
+      .mockImplementationOnce((_url, _body, callback) =>
+        callback({ status: 409 }),
+      );
+    renderPanel();
+    await userEvent.click(await screen.findByRole("button", { name: "Retry" }));
+    expect(
+      await screen.findByText(/Retry requested.*delivery is not yet confirmed/),
+    ).toBeVisible();
+    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(
+      screen.queryByText(/Retry requested.*delivery is not yet confirmed/),
+    ).not.toBeInTheDocument();
   });
 
   it("shows why the Bridge refused an action", async () => {
@@ -178,6 +280,60 @@ describe("DeliveryIssuesPanel", () => {
     ).toBeVisible();
   });
 
+  it("says the Bridge is not paired instead of claiming it holds nothing", async () => {
+    getFromOpenElisServer.mockImplementation((_url, callback) =>
+      callback({
+        status: "success",
+        data: {
+          count: 0,
+          rows: [],
+          bridgeConfigured: true,
+          bridgePaired: false,
+        },
+      }),
+    );
+    renderPanel();
+
+    expect(
+      await screen.findByText("The Analyzer Bridge is not paired"),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        "Results it holds are listed here once it is paired on the Analyzers page.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByText("The Bridge has no undelivered results."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("says no Bridge address is configured instead of claiming it holds nothing", async () => {
+    getFromOpenElisServer.mockImplementation((_url, callback) =>
+      callback({
+        status: "success",
+        data: {
+          count: 0,
+          rows: [],
+          bridgeConfigured: false,
+          bridgePaired: false,
+        },
+      }),
+    );
+    renderPanel();
+
+    expect(
+      await screen.findByText(
+        "No Analyzer Bridge address is configured for OpenELIS.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByText("The Analyzer Bridge is not paired"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("The Bridge has no undelivered results."),
+    ).not.toBeInTheDocument();
+  });
+
   it("says so when the Bridge cannot be reached", async () => {
     getFromOpenElisServer.mockImplementation((_url, callback) =>
       callback(undefined),
@@ -194,5 +350,15 @@ describe("DeliveryIssuesPanel", () => {
         screen.queryByText("The Bridge has no undelivered results."),
       ).not.toBeInTheDocument(),
     );
+  });
+
+  it("names the sender field of a result from an instrument it does not know", async () => {
+    respondWith([unrecognized]);
+    renderPanel();
+
+    expect(
+      await screen.findByRole("columnheader", { name: "Sender" }),
+    ).toBeVisible();
+    expect(screen.getByText("CPHL^GeneXpert^6.2")).toBeVisible();
   });
 });

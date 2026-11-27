@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Tag, TextArea } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import ReferenceSection from "./ReferenceSection";
+import { DictionaryOption } from "./PolymorphicResultCell";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import {
   InterpretationBucket,
@@ -26,6 +27,11 @@ interface InterpretationSectionProps {
   testId?: string;
   componentId?: string;
   resultValue?: string;
+  /**
+   * The row's select-list options. A coded result and a bucket's match hold a
+   * dictionary id; the tech sees the option's text (OGC-1458).
+   */
+  dictionaryOptions?: DictionaryOption[];
   latestInterpretation?: string;
   draft: string | null;
   onDraftChange: (draft: string | null) => void;
@@ -38,6 +44,7 @@ const InterpretationSection: React.FC<InterpretationSectionProps> = ({
   testId,
   componentId,
   resultValue,
+  dictionaryOptions,
   latestInterpretation,
   draft,
   onDraftChange,
@@ -58,12 +65,16 @@ const InterpretationSection: React.FC<InterpretationSectionProps> = ({
       `/rest/results-entry/test/${testId}/interpretations`,
       (body: BucketWithComponent[]) => {
         const all = Array.isArray(body) ? body : [];
-        const scoped = componentId
-          ? all.filter((b) => b.componentId === componentId)
-          : all;
         // a single-component test's buckets apply even when the row carries no
         // component id (legacy rows)
-        setBuckets(scoped.length > 0 ? scoped : all);
+        const scoped = componentId
+          ? all.filter(
+              (b) =>
+                b.componentId != null &&
+                String(b.componentId) === String(componentId),
+            )
+          : all;
+        setBuckets(scoped);
         setLoaded(true);
       },
     );
@@ -73,6 +84,10 @@ const InterpretationSection: React.FC<InterpretationSectionProps> = ({
     () => matchingBucket(buckets, resultValue),
     [buckets, resultValue],
   );
+
+  const labelOf = (value?: string) =>
+    (dictionaryOptions || []).find((option) => option.id === value)?.value ??
+    value;
 
   const text = draft !== null ? draft : latestInterpretation || "";
   const hasContent =
@@ -91,7 +106,7 @@ const InterpretationSection: React.FC<InterpretationSectionProps> = ({
         fired
           ? intl.formatMessage(
               { id: "label.results.interpretation.ruleFired" },
-              { 0: fired.valueMatch },
+              { 0: labelOf(fired.valueMatch) },
             )
           : intl.formatMessage({ id: "label.results.interpretation.summary" })
       }
@@ -106,7 +121,10 @@ const InterpretationSection: React.FC<InterpretationSectionProps> = ({
         <div className="unifiedRuleBanner" data-testid="interpretation-rule">
           <FormattedMessage
             id="label.results.interpretation.ruleBanner"
-            values={{ 0: resultValue, 1: fired.valueMatch }}
+            values={{
+              0: labelOf(resultValue),
+              1: labelOf(fired.valueMatch),
+            }}
           />
         </div>
       )}
@@ -129,7 +147,7 @@ const InterpretationSection: React.FC<InterpretationSectionProps> = ({
                     data-testid={`bucket-${bucket.valueMatch}`}
                   >
                     <Tag size="sm" type={bucketTagType(bucket)}>
-                      {bucket.valueMatch}
+                      {labelOf(bucket.valueMatch)}
                     </Tag>
                     {matches && (
                       <Tag size="sm" type="blue">

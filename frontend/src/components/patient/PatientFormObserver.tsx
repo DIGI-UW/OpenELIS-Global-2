@@ -10,6 +10,13 @@ type OrderFormValues = Record<string, unknown> & {
 
 interface PatientFormObserverProps {
   setOrderFormValues: Dispatch<SetStateAction<OrderFormValues>>;
+  /**
+   * Writes the form into the order without counting it as an edit. Used when
+   * the form only restates the patient the order already holds (NO_ACTION),
+   * e.g. once the order's patient is saved and the form reopens on it; the
+   * host's ordinary setter would otherwise flag "Unsaved changes" (OGC-1443).
+   */
+  hydrateOrderFormValues?: Dispatch<SetStateAction<OrderFormValues>>;
   formAction: string;
   selectedPatient?: PatientRecord;
 }
@@ -71,18 +78,31 @@ const normalizePatientForComparison = (patient = {}) => ({
   addressHierarchy: normalizeAddressHierarchy(patient),
 });
 
+/**
+ * Writes the patient form into the order. A patient the order already holds
+ * (saved with the order, or chosen from the search) is never turned back into
+ * a new one: the order keeps its patientPK, and a form that would add the
+ * patient again updates it instead.
+ */
 export const mergePatientIntoOrderFormValues = (
   orderFormValues: OrderFormValues = {},
   values: PatientRecord = {},
   patientUpdateStatus: string,
 ) => {
+  const heldPatientPK = orderFormValues.patientProperties?.patientPK || "";
+  const keepsHeldPatient = !values.patientPK && heldPatientPK;
+  const nextStatus =
+    keepsHeldPatient && patientUpdateStatus === "ADD"
+      ? "UPDATE"
+      : patientUpdateStatus;
   const nextPatientProperties = {
     ...values,
-    patientUpdateStatus,
+    ...(keepsHeldPatient ? { patientPK: heldPatientPK } : {}),
+    patientUpdateStatus: nextStatus,
   };
 
   if (
-    orderFormValues.patientUpdateStatus === patientUpdateStatus &&
+    orderFormValues.patientUpdateStatus === nextStatus &&
     JSON.stringify(orderFormValues.patientProperties || {}) ===
       JSON.stringify(nextPatientProperties)
   ) {
@@ -91,7 +111,7 @@ export const mergePatientIntoOrderFormValues = (
 
   return {
     ...orderFormValues,
-    patientUpdateStatus,
+    patientUpdateStatus: nextStatus,
     patientProperties: nextPatientProperties,
   };
 };
@@ -113,7 +133,12 @@ export const derivePatientUpdateStatus = (
 
 const PatientFormObserver = (props: PatientFormObserverProps) => {
   const { values } = useFormikContext<PatientRecord>();
-  const { setOrderFormValues, formAction, selectedPatient } = props;
+  const {
+    setOrderFormValues,
+    hydrateOrderFormValues,
+    formAction,
+    selectedPatient,
+  } = props;
 
   useEffect(() => {
     const patientUpdateStatus = derivePatientUpdateStatus(
@@ -121,15 +146,25 @@ const PatientFormObserver = (props: PatientFormObserverProps) => {
       selectedPatient,
       formAction,
     );
+    const write =
+      patientUpdateStatus === "NO_ACTION" && hydrateOrderFormValues
+        ? hydrateOrderFormValues
+        : setOrderFormValues;
 
-    setOrderFormValues((previousOrderFormValues) =>
+    write((previousOrderFormValues) =>
       mergePatientIntoOrderFormValues(
         previousOrderFormValues,
         values,
         patientUpdateStatus,
       ),
     );
-  }, [formAction, selectedPatient, setOrderFormValues, values]);
+  }, [
+    formAction,
+    hydrateOrderFormValues,
+    selectedPatient,
+    setOrderFormValues,
+    values,
+  ]);
 
   return null;
 };

@@ -2,6 +2,8 @@ package org.openelisglobal.microbiology.valueholder;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.sql.Timestamp;
@@ -19,12 +21,9 @@ public class MicroCase extends BaseObject<String> {
     @Column(name = "id", length = 36)
     private String id = UUID.randomUUID().toString();
 
-    @Column(name = "sample_item_id", nullable = false, precision = 10, scale = 0)
+    @Column(name = "sample_item_id", precision = 10, scale = 0)
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String sampleItemId;
-
-    @Column(name = "workflow_type", nullable = false, length = 40)
-    private String workflowType;
 
     @Column(name = "stage", nullable = false, length = 40)
     private String stage = MicroCaseStage.RECEIVED.name();
@@ -51,6 +50,55 @@ public class MicroCase extends BaseObject<String> {
     @Column(name = "final_release_state", nullable = false, length = 40)
     private String finalReleaseState = MicroCaseFinalReleaseState.NOT_READY.name();
 
+    @Column(name = "sample_id")
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String sampleId;
+
+    @Column(name = "sample_type_id")
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String sampleTypeId;
+
+    @Column(name = "lab_unit_id")
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String labUnitId;
+
+    @Column(name = "program_id")
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String programId;
+
+    @Column(name = "site_id")
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String siteId;
+
+    @Column(name = "culture_purpose", nullable = false, length = 32)
+    private String culturePurpose;
+
+    public String getCulturePurpose() {
+        return culturePurpose == null ? MicroCulturePurpose.defaultFor(siteId != null) : culturePurpose;
+    }
+
+    public void setCulturePurpose(String culturePurpose) {
+        this.culturePurpose = culturePurpose;
+    }
+
+    @jakarta.persistence.PrePersist
+    public void initializePurpose() {
+        if (culturePurpose == null)
+            culturePurpose = MicroCulturePurpose.defaultFor(siteId != null);
+    }
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", length = 20)
+    private MicroCaseStatus status = MicroCaseStatus.ACTIVE;
+
+    public MicroCaseStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(MicroCaseStatus status) {
+        this.status = status;
+    }
+
     @Override
     public String getId() {
         return id;
@@ -67,14 +115,6 @@ public class MicroCase extends BaseObject<String> {
 
     public void setSampleItemId(String sampleItemId) {
         this.sampleItemId = sampleItemId;
-    }
-
-    public String getWorkflowType() {
-        return workflowType;
-    }
-
-    public void setWorkflowType(String workflowType) {
-        this.workflowType = workflowType;
     }
 
     public String getStage() {
@@ -139,5 +179,45 @@ public class MicroCase extends BaseObject<String> {
 
     public void setFinalReleaseState(String finalReleaseState) {
         this.finalReleaseState = finalReleaseState;
+    }
+
+    public String getSampleId() {
+        return sampleId;
+    }
+
+    public void setSampleId(String sampleId) {
+        this.sampleId = sampleId;
+    }
+
+    public String getSampleTypeId() {
+        return sampleTypeId;
+    }
+
+    public void setSampleTypeId(String sampleTypeId) {
+        this.sampleTypeId = sampleTypeId;
+    }
+
+    public String getLabUnitId() {
+        return labUnitId;
+    }
+
+    public void setLabUnitId(String labUnitId) {
+        this.labUnitId = labUnitId;
+    }
+
+    public String getSiteId() {
+        return siteId;
+    }
+
+    public void setSiteId(String siteId) {
+        this.siteId = siteId;
+    }
+
+    public String getProgramId() {
+        return programId;
+    }
+
+    public void setProgramId(String programId) {
+        this.programId = programId;
     }
 }

@@ -1,5 +1,5 @@
 import React from "react";
-import { FormattedMessage, injectIntl } from "react-intl";
+import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { useHistory, useParams } from "react-router-dom";
 import "../Style.css";
 import {
@@ -23,6 +23,7 @@ const breadcrumbs = [
 ];
 
 function PatientManagement() {
+  const intl = useIntl();
   const history = useHistory();
   const { patientId } = useParams<{ patientId?: string }>();
 
@@ -103,7 +104,7 @@ function PatientManagement() {
           {isEditMode && loading && (
             <Column lg={16} md={8} sm={4}>
               <Loading
-                description={<FormattedMessage id="loading.label" />}
+                description={intl.formatMessage({ id: "loading.label" })}
                 withOverlay={false}
               />
             </Column>

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useIntl, FormattedMessage } from "react-intl";
 import { Button, TextInput } from "@carbon/react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
+import { RequiredMarker, requiredProps } from "../../../common/RequiredMarker";
 
 /**
  * Lab Number control shared by every order-entry lane.
@@ -43,7 +44,7 @@ const LabNumberField = ({
         }
         setIsGenerating(false);
         if (response?.body) {
-          onLabNumberChange(response.body);
+          onLabNumberChange(response.body, { generated: true });
         }
       },
     );
@@ -72,9 +73,10 @@ const LabNumberField = ({
                 id="order.labNumber"
                 defaultMessage="Lab Number"
               />
-              <span className="required-indicator"> *</span>
+              <RequiredMarker />
             </span>
           }
+          {...requiredProps()}
           value={value}
           onChange={(event) => onLabNumberChange(event.target.value)}
           invalid={invalid}

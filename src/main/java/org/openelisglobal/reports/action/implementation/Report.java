@@ -77,6 +77,9 @@ public abstract class Report implements IReportCreator {
     /** OGC-686: latest release date among those tests; null before any is seen. */
     private LocalDate accreditationReleaseDate;
 
+    private List<byte[]> accreditationLogos = new ArrayList<>();
+    private String accreditationNotesLine;
+
     @Override
     public void setRequestedReport(String report) {
         requestedReport = report;
@@ -187,6 +190,8 @@ public abstract class Report implements IReportCreator {
         AccreditationReportData accreditation = SpringContext.getBean(AccreditationReportService.class)
                 .resolve(accreditedCandidateTestIds, accreditationReleaseDate);
         List<byte[]> logos = accreditation.getLogos();
+        accreditationLogos = logos;
+        accreditationNotesLine = accreditation.getNotesLine();
         for (int slot = 0; slot < logos.size(); slot++) {
             reportParameters.put("accredLogo" + (slot + 1), new ByteArrayInputStream(logos.get(slot)));
         }
@@ -195,13 +200,38 @@ public abstract class Report implements IReportCreator {
         }
     }
 
+    /** OGC-686 — the accreditation logos to print, empty when nothing qualifies. */
+    protected List<byte[]> getAccreditationLogos() {
+        return accreditationLogos;
+    }
+
+    /** OGC-686 — the accreditation notes line, or null. */
+    protected String getAccreditationNotesLine() {
+        return accreditationNotesLine;
+    }
+
     @Override
     public byte[] runReport() throws UnsupportedEncodingException, IOException, SQLException, IllegalStateException,
             JRException, ParseException {
+        return errorFound ? ReportErrorPdf.render(errorMsgs) : renderReport();
+    }
+
+    /**
+     * The report's PDF once its content is built. Reports still drawn by a Jasper
+     * template fill it with {@link #getReportDataSource()}.
+     */
+    protected byte[] renderReport() throws UnsupportedEncodingException, IOException, SQLException,
+            IllegalStateException, JRException, ParseException {
         return JasperRunManager.runReportToPdf(fullReportFilename, getReportParameters(), getReportDataSource());
     }
 
-    public abstract JRDataSource getReportDataSource() throws IllegalStateException;
+    /**
+     * Rows for the Jasper template; reports that override {@link #renderReport()}
+     * have none.
+     */
+    public JRDataSource getReportDataSource() throws IllegalStateException {
+        return null;
+    }
 
     @Override
     public HashMap<String, Object> getReportParameters() throws IllegalStateException {
@@ -380,5 +410,11 @@ public abstract class Report implements IReportCreator {
         return new ArrayList<>();
     }
 
-    protected abstract String reportFileName();
+    /**
+     * The Jasper template's name; reports that override {@link #renderReport()}
+     * have none.
+     */
+    protected String reportFileName() {
+        return null;
+    }
 }

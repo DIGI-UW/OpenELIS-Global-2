@@ -17,7 +17,9 @@
 package org.openelisglobal.localization.daoimpl;
 
 import jakarta.persistence.TypedQuery;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.localization.dao.LocalizationDAO;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -31,6 +33,38 @@ public class LocalizationDAOImpl extends BaseDAOImpl<Localization, String> imple
 
     public LocalizationDAOImpl() {
         super(Localization.class);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Map<String, String> displayKeysByLocalizationId() {
+        Map<String, String> keys = new HashMap<>();
+        List<Object[]> rows = entityManager.createNativeQuery(
+                "SELECT CAST(name_localization_id AS varchar), display_key FROM clinlims.nce_category"
+                        + " WHERE name_localization_id IS NOT NULL AND display_key IS NOT NULL"
+                        + " UNION ALL SELECT CAST(name_localization_id AS varchar), display_key FROM clinlims.nce_type"
+                        + " WHERE name_localization_id IS NOT NULL AND display_key IS NOT NULL"
+                        + " UNION ALL SELECT CAST(name_localization_id AS varchar), display_key FROM clinlims.dictionary"
+                        + " WHERE name_localization_id IS NOT NULL AND display_key IS NOT NULL")
+                .getResultList();
+        for (Object[] row : rows) {
+            keys.put((String) row[0], (String) row[1]);
+        }
+        return keys;
+    }
+
+    @Override
+    public void syncStoredTestNames(String localizationId) {
+        if (localizationId == null) {
+            return;
+        }
+        entityManager.flush();
+        entityManager
+                .createNativeQuery("UPDATE clinlims.test t SET name = lv.value"
+                        + " FROM clinlims.localization_value lv WHERE t.name_localization_id = CAST(:id AS numeric)"
+                        + " AND lv.localization_id = t.name_localization_id AND lv.locale = 'en'"
+                        + " AND BTRIM(lv.value) <> '' AND t.name IS DISTINCT FROM lv.value")
+                .setParameter("id", localizationId).executeUpdate();
     }
 
     @Override

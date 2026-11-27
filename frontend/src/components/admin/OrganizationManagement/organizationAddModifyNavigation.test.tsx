@@ -28,6 +28,8 @@ vi.mock("../../utils/Utils", async () => {
   };
 });
 
+const addNotification = vi.fn();
+
 const renderScreen = (at: string) =>
   render(
     <MemoryRouter initialEntries={[at]}>
@@ -36,7 +38,7 @@ const renderScreen = (at: string) =>
           value={{
             notificationVisible: false,
             setNotificationVisible: vi.fn(),
-            addNotification: vi.fn(),
+            addNotification,
           }}
         >
           <IntlProvider locale="en" messages={messages}>
@@ -69,6 +71,7 @@ describe("OrganizationAddModify navigation", () => {
       },
     );
     (postToOpenElisServerJsonResponse as ReturnType<typeof vi.fn>).mockReset();
+    addNotification.mockReset();
   });
 
   it("bounces to the list when opened with no ID to edit", async () => {
@@ -97,14 +100,49 @@ describe("OrganizationAddModify navigation", () => {
       (
         postToOpenElisServerJsonResponse as ReturnType<typeof vi.fn>
       ).mockImplementation(
-        (url: string, body: string, callback: (status: number) => void) =>
-          callback(200),
+        (url: string, body: string, callback: (r: unknown) => void) =>
+          callback({ success: true }),
       );
       fireEvent.click(screen.getByText("Save"));
       act(() => {
         vi.advanceTimersByTime(200);
       });
       expect(await screen.findByText("organization list")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("stays on the form and says the save failed when the server refuses it", async () => {
+    vi.useFakeTimers();
+    try {
+      renderScreen("/MasterListsPage/organizationEdit?ID=5");
+      // Any edit enables Save.
+      fireEvent.change(
+        document.getElementById("org-name") as HTMLInputElement,
+        {
+          target: { value: "Org A Updated" },
+        },
+      );
+      (
+        postToOpenElisServerJsonResponse as ReturnType<typeof vi.fn>
+      ).mockImplementation(
+        (url: string, body: string, callback: (r: unknown) => void) =>
+          callback({ status: 500, error: "Request failed (HTTP 500)" }),
+      );
+      fireEvent.click(screen.getByText("Save"));
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "error" }),
+      );
+      expect(addNotification).not.toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "success" }),
+      );
+      expect(screen.queryByText("organization list")).toBeNull();
+      expect(document.getElementById("org-name")).not.toBeNull();
     } finally {
       vi.useRealTimers();
     }
@@ -118,5 +156,96 @@ describe("OrganizationAddModify navigation", () => {
 
     expect(await screen.findByText("organization list")).toBeInTheDocument();
     expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+  });
+});
+
+describe("OrganizationAddModify fields", () => {
+  beforeEach(() => {
+    (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockReset();
+    (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockImplementation(
+      (url: string, callback: (r: unknown) => void) => {
+        if (url.startsWith("/rest/Organization?ID=")) {
+          return callback({
+            id: "5",
+            organizationName: "Org A",
+            cliaNum: "05D1234567",
+            orgTypes: [],
+            selectedTypes: [],
+          });
+        }
+        return callback([]);
+      },
+    );
+  });
+
+  it("names every text field for assistive technology, the CLIA number included", () => {
+    const errors = vi.spyOn(console, "error");
+    renderScreen("/MasterListsPage/organizationEdit?ID=5");
+
+    expect(
+      screen.getByLabelText(messages["organization.organizationName"]),
+    ).toHaveValue("Org A");
+    expect(
+      screen.getByLabelText(messages["organization.clia.number"]),
+    ).toHaveValue("05D1234567");
+    for (const key of [
+      "organization.short.CI",
+      "organization.isActive",
+      "organization.internetaddress",
+      "organization.streetAddress",
+      "organization.city",
+    ]) {
+      expect(screen.getByLabelText(messages[key])).toBeInTheDocument();
+    }
+    expect(
+      errors.mock.calls.some(([message]) =>
+        String(message).includes("`labelText` is marked as required"),
+      ),
+    ).toBe(false);
+    errors.mockRestore();
+  });
+
+  it("keeps a street address and city as long as the columns that store them", async () => {
+    renderScreen("/MasterListsPage/organizationEdit?ID=5");
+    const street = screen.getByLabelText(
+      messages["organization.streetAddress"],
+    );
+    const city = screen.getByLabelText(messages["organization.city"]);
+
+    await userEvent.type(street, "Section 12, Lot 34, Boram Road");
+    await userEvent.type(city, "Port Moresby National Capital");
+
+    expect(street).toHaveValue("Section 12, Lot 34, Boram Road");
+    expect(city).toHaveValue("Port Moresby National Capital");
+  });
+
+  it("shows the laboratory's contact email and saves a change to it", async () => {
+    (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockImplementation(
+      (url: string, callback: (r: unknown) => void) => {
+        if (url.startsWith("/rest/Organization?ID=")) {
+          return callback({
+            id: "5",
+            organizationName: "Org A",
+            email: "old@lab.example.org",
+            orgTypes: [],
+            selectedTypes: [],
+          });
+        }
+        return callback([]);
+      },
+    );
+    (postToOpenElisServerJsonResponse as ReturnType<typeof vi.fn>).mockReset();
+    renderScreen("/MasterListsPage/organizationEdit?ID=5");
+    const email = screen.getByLabelText(messages["organization.email"]);
+    expect(email).toHaveValue("old@lab.example.org");
+
+    await userEvent.clear(email);
+    await userEvent.type(email, "qa@lab.example.org");
+    await userEvent.click(screen.getByText("Save"));
+
+    const [, body] = (
+      postToOpenElisServerJsonResponse as ReturnType<typeof vi.fn>
+    ).mock.calls[0];
+    expect(JSON.parse(body).email).toBe("qa@lab.example.org");
   });
 });

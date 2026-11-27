@@ -9,8 +9,15 @@ import org.openelisglobal.inventory.valueholder.InventoryLot;
 
 public interface InventoryLotService extends BaseObjectService<InventoryLot, Long> {
 
+    /** Return only lots with the requested status. */
+    List<InventoryLot> getByStatus(LotStatus status);
+
     /** Locks and returns a lot for an atomic eligibility check and consumption. */
     InventoryLot getForUpdate(Long lotId);
+
+    void refreshForUpdate(InventoryLot lot);
+
+    void refuseStatusThatMovesStock(InventoryLot lot, LotStatus status);
 
     /**
      * Get available lots for an item sorted by FEFO (First Expired, First Out)
@@ -33,6 +40,12 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
      * Get expired lots that are still marked as ACTIVE
      */
     List<InventoryLot> getExpiredActiveLots();
+
+    /**
+     * ACTIVE or IN_USE lots with stock whose effective expiry is past or within
+     * daysAhead.
+     */
+    List<InventoryLot> getStockedLotsExpiringWithin(int daysAhead);
 
     /**
      * Get lot by lot number
@@ -90,7 +103,7 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
      * @param sysUserId   The user performing the action
      * @return The updated lot
      */
-    InventoryLot adjustLotQuantity(Long lotId, Double newQuantity, String reason, String sysUserId);
+    InventoryLot adjustLotQuantity(Long lotId, Double newQuantity, String reason, String notes, String sysUserId);
 
     /**
      * Dispose of a lot

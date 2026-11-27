@@ -1,5 +1,6 @@
 import { test, expect } from "../../../helpers/test-base";
 import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
+import { csrfToken } from "../../../helpers/api-session";
 
 /**
  * OGC-1122 — the Panels section's inline "Create new panel" used to do nothing
@@ -29,7 +30,24 @@ test.describe("OGC-1122 inline panel create", () => {
     const memberships = page.getByRole("table", { name: "panel-memberships" });
 
     await page.locator("#new-panel-name").fill(name);
+    // The new panel is switched on once this test is its member; listen first.
+    const created = page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/rest/test-catalog/panels") &&
+        response.request().method() === "POST",
+    );
+    const activated = page.waitForResponse(
+      (response) =>
+        /\/rest\/test-catalog\/panels\/\d+\/basic-info$/.test(response.url()) &&
+        response.request().method() === "PUT",
+    );
     await page.getByTestId("create-panel-button").click();
+    const panelId = String(
+      ((await (await created).json()) as { id: string }).id,
+    );
+    expect((await activated).status(), "the new panel is switched on").toBe(
+      200,
+    );
 
     await expect(
       memberships.getByRole("row", { name: new RegExp(name) }),
@@ -60,6 +78,16 @@ test.describe("OGC-1122 inline panel create", () => {
     expect(readBack.map((m) => m.panelName)).toContain(name);
 
     // Put the seeded test back the way it was found: drop only the membership.
+    // An active panel cannot lose its only test, so the new panel is switched
+    // off first.
+    const deactivated = await page.request.put(
+      `${API}/rest/test-catalog/panels/${panelId}/basic-info`,
+      {
+        headers: { "X-CSRF-Token": await csrfToken(page) },
+        data: { active: false },
+      },
+    );
+    expect(deactivated.status(), "deactivate the new panel").toBe(200);
     const row = page
       .getByRole("table", { name: "panel-memberships" })
       .getByRole("row", { name: new RegExp(name) });

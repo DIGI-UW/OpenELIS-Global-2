@@ -24,7 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import org.apache.commons.validator.GenericValidator;
-import org.jfree.util.Log;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.project.service.ProjectService;
 import org.openelisglobal.project.valueholder.Project;
@@ -116,6 +116,10 @@ public class ExportStudyProjectByDate extends CSVSampleExportReport implements I
             add1LineErrorMessage("report.error.message.project.missing");
             return false;
         }
+        if (getProjectList().stream().noneMatch(study -> study.getId().equals(project.getId()))) {
+            add1LineErrorMessage("report.error.message.project.notExportable");
+            return false;
+        }
         return true;
     }
 
@@ -125,7 +129,7 @@ public class ExportStudyProjectByDate extends CSVSampleExportReport implements I
             csvColumnBuilder = getColumnBuilder(projectStr);
             csvColumnBuilder.buildDataSource();
         } catch (Exception e) {
-            Log.error("Error in " + this.getClass().getSimpleName() + ".createReportItems: ", e);
+            LogEvent.logError("Error in " + this.getClass().getSimpleName() + ".createReportItems: ", e);
             add1LineErrorMessage("report.error.message.general.error");
         }
     }
@@ -179,17 +183,17 @@ public class ExportStudyProjectByDate extends CSVSampleExportReport implements I
     private CSVColumnBuilder getColumnBuilder(String projectId) {
         String projectTag = CIColumnBuilder.translateProjectId(projectId);
         if (projectTag.equals("ARVB")) {
-            return new ARVInitialColumnBuilder(dateRange, projectStr);
+            return new ARVInitialColumnBuilder(dateRange, projectStr, dateType);
         } else if (projectTag.equals("ARVS")) {
-            return new ARVFollowupColumnBuilder(dateRange, projectStr);
+            return new ARVFollowupColumnBuilder(dateRange, projectStr, dateType);
         } else if (projectTag.equalsIgnoreCase("DBS")) {
             return new StudyEIDColumnBuilder(dateRange, projectStr, dateType);
         } else if (projectTag.equalsIgnoreCase("VLS")) {
             return new StudyVLColumnBuilder(dateRange, projectStr, dateType);
         } else if (projectTag.equalsIgnoreCase("RTN")) {
-            return new RTNColumnBuilder(dateRange, projectStr);
+            return new RTNColumnBuilder(dateRange, projectStr, dateType);
         } else if (projectTag.equalsIgnoreCase("IND")) {
-            return new RTNColumnBuilder(dateRange, projectStr);
+            return new RTNColumnBuilder(dateRange, projectStr, dateType);
         } else if (projectTag.equalsIgnoreCase("RTRI")) {
             return new RTRIColumnBuilder(dateRange, projectStr, dateType);
         } else if (projectTag.equalsIgnoreCase("HPV")) {
@@ -199,9 +203,12 @@ public class ExportStudyProjectByDate extends CSVSampleExportReport implements I
     }
 
     /**
+     * The studies this export has columns for, in the order they are offered. Any
+     * other project (Testing, Quality Control) cannot be exported here.
+     *
      * @return a list of the correct projects for display
      */
-    protected List<Project> getProjectList() {
+    public List<Project> getProjectList() {
         List<Project> projects = new ArrayList<>();
         Project project = new Project();
         project.setProjectName("Antiretroviral Study");
@@ -209,6 +216,7 @@ public class ExportStudyProjectByDate extends CSVSampleExportReport implements I
         project.setProjectName("Antiretroviral Followup Study");
         projects.add(SpringContext.getBean(ProjectService.class).getProjectByName(project, false, false));
         project.setProjectName("Routine HIV Testing");
+        projects.add(SpringContext.getBean(ProjectService.class).getProjectByName(project, false, false));
         project.setProjectName("Early Infant Diagnosis for HIV Study");
         projects.add(SpringContext.getBean(ProjectService.class).getProjectByName(project, false, false));
         project.setProjectName("Viral Load Results");

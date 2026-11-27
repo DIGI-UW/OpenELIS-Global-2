@@ -85,6 +85,17 @@
     }
   }
 
+  .order-status-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .order-referral-line {
+    font-size: 0.75rem;
+    color: var(--cds-text-secondary);
+  }
+
   .order-progress {
     display: flex;
     align-items: center;
@@ -368,6 +379,11 @@
     bottom: 0;
     background: transparent;
     cursor: not-allowed;
+  }
+
+  /* An NCE can be reported on an order that can no longer be edited. */
+  .inline-nce-form {
+    pointer-events: auto;
   }
 }
 
@@ -770,6 +786,16 @@
   overflow-x: clip;
   overflow-y: visible;
   padding: 1.5rem;
+  // The workflow container is already --cds-layer; a default Tile matches it.
+  background-color: var(--cds-layer-02);
+
+  .cds--css-grid {
+    row-gap: 1rem;
+  }
+
+  .cds--css-grid + .cds--css-grid {
+    margin-top: 1rem;
+  }
 
   .section-title {
     margin: 0 0 1rem 0;
@@ -906,11 +932,30 @@
   color: var(--cds-text-secondary);
 }
 
+.order-attachment-list {
+  margin-top: 1rem;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--cds-border-subtle);
+  }
+
+  .order-attachment-size {
+    font-size: 0.875rem;
+    color: var(--cds-text-secondary);
+  }
+}
+
 /* Selected Entity Card */
 .selected-entity-card {
   margin-top: 1rem;
   padding: 1rem;
   background-color: var(--cds-layer-02);
+  border: 1px solid var(--cds-border-subtle);
   border-left: 4px solid var(--cds-support-success);
   border-radius: 4px;
 
@@ -952,10 +997,34 @@
 
 /* Sample & Test Section */
 
+.micro-sample-callout {
+  margin-top: 1rem;
+  max-inline-size: none;
+}
+
+.micro-sample-note__line {
+  display: block;
+}
+
+.micro-sample-note__results {
+  margin-top: 0.5rem;
+  color: var(--cds-text-secondary);
+  font-size: 0.875rem;
+}
+
+.micro-sample-note__site {
+  display: block;
+}
+
+.micro-test-tag {
+  margin-inline-start: 0.5rem;
+}
+
 .sample-card {
   margin-bottom: 1.5rem;
   padding: 1rem;
   background-color: var(--cds-layer-02);
+  border: 1px solid var(--cds-border-subtle);
   border-radius: 4px;
 
   .sample-card-header {
@@ -1687,27 +1756,26 @@
   }
 }
 
-.env-manifest-datetime {
-  height: 2rem;
-  font-size: 0.8125rem;
-  font-family: inherit;
-  padding: 0 0.5rem;
-  border: 1px solid var(--cds-border-strong-01, #8d8d8d);
-  background: var(--cds-field-01, #fff);
-  color: var(--cds-text-primary, #161616);
-  border-radius: 0;
-  width: 100%;
-  min-width: 10rem;
-  outline: none;
+.env-manifest-when {
+  display: flex;
+  gap: 0.25rem;
+  align-items: flex-start;
 
-  &:focus {
-    outline: 2px solid var(--cds-focus, #0f62fe);
-    outline-offset: -2px;
+  > .cds--form-item {
+    flex: 0 0 auto;
   }
 
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
+  .cds--date-picker__input {
+    inline-size: 8.5rem;
+  }
+
+  .cds--time-picker__input-field {
+    width: 6.5rem !important;
+  }
+
+  .cds--form-requirement {
+    white-space: normal;
+    max-width: 10rem;
   }
 }
 
@@ -1756,4 +1824,120 @@
   font-size: 0.75rem;
   color: var(--cds-text-secondary);
   margin: 0.25rem 0 0.5rem;
+}
+
+/* ==========================================================================
+   Saved order: next step
+   ========================================================================== */
+.order-saved-next-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+
+  .cds--inline-notification {
+    margin: 0;
+  }
+}
+
+// OGC-1611 FR-B24, B26: a clinical sample's container with its cap colour
+// and the Proposed, Draw and Edited tags.
+.sample-container-field {
+  .sample-container-tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+    min-height: 1.5rem;
+  }
+
+  .containerTypeSwatch {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 1px solid var(--cds-border-strong, #8d8d8d);
+    border-radius: 50%;
+  }
+
+  .sample-container-proposed {
+    display: inline-flex;
+  }
+}
+
+// The Prepare Samples test picker shows each name in full. Carbon truncates a
+// long tag label and then wraps it in a tooltip button, which put a button
+// inside the clickable tag's own button.
+.available-tags,
+.selected-tags {
+  .cds--tag {
+    max-inline-size: none;
+    block-size: auto;
+  }
+
+  .cds--tag__label {
+    overflow: visible;
+    white-space: normal;
+    text-overflow: clip;
+  }
+}
+
+// OGC-768: regulation-driven environmental orders
+.compliance-standard-stack {
+  display: grid;
+  gap: var(--cds-spacing-04);
+  margin-top: var(--cds-spacing-05);
+}
+
+.compliance-standard-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cds-spacing-03);
+}
+
+.compliance-standard-regulation {
+  display: flex;
+  align-items: center;
+  gap: var(--cds-spacing-03);
+  margin: var(--cds-spacing-03) 0;
+
+  code {
+    font-family: var(--cds-code-02-font-family, "IBM Plex Mono", monospace);
+    font-size: 1.125rem;
+  }
+}
+
+.compliance-test-plan {
+  margin-top: var(--cds-spacing-06);
+
+  .compliance-test-plan-list > li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--cds-spacing-03);
+    padding: var(--cds-spacing-02) 0;
+  }
+
+  .compliance-limit-compare {
+    width: 100%;
+    font-size: 0.875rem;
+
+    th,
+    td {
+      padding: var(--cds-spacing-01) var(--cds-spacing-03);
+      text-align: start;
+    }
+  }
+}
+
+.compliance-quick-add {
+  margin-top: var(--cds-spacing-05);
+
+  .compliance-quick-add-chip {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--cds-spacing-03);
+    margin-bottom: var(--cds-spacing-03);
+  }
 }

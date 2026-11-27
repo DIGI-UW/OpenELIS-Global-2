@@ -20,6 +20,7 @@ const { orderContextValue, postToOpenElisServerJsonResponse, layoutProps } =
       resetOrder: vi.fn(),
       labNumber: "DEV01260000000000001",
       markStepComplete: vi.fn(),
+      adoptProgress: vi.fn(),
     },
     postToOpenElisServerJsonResponse: vi.fn(),
     layoutProps: vi.fn(),
@@ -62,9 +63,20 @@ vi.mock("../api/sampleAcceptanceApi", () => ({
   getEnforcement: vi.fn().mockResolvedValue({ clinical: "ADVISORY" }),
 }));
 
-vi.mock("./sections/SampleAcceptanceReview", () => ({
-  default: () => <div data-testid="sample-acceptance-review" />,
+const { unacceptedForReview } = vi.hoisted(() => ({
+  unacceptedForReview: { current: [] },
 }));
+vi.mock("./sections/SampleAcceptanceReview", async () => {
+  const { useEffect } = await import("react");
+  return {
+    default: ({ onUnacceptedChange }) => {
+      useEffect(() => {
+        onUnacceptedChange?.(unacceptedForReview.current);
+      }, [onUnacceptedChange]);
+      return <div data-testid="sample-acceptance-review" />;
+    },
+  };
+});
 
 vi.mock("../../nonconform/common/InlineNceForm", () => ({
   default: () => null,
@@ -114,15 +126,39 @@ describe("OrderQA", () => {
     ).not.toBeInTheDocument();
   });
 
+  // OGC-1483: an EQA proficiency sample has no patient to show.
+  it("shows no Patient block for an EQA order", () => {
+    const original = orderContextValue.orderData;
+    orderContextValue.orderData = {
+      patientProperties: {},
+      sampleOrderItems: { ...original.sampleOrderItems, isEQASample: true },
+    };
+    try {
+      renderQa();
+      expect(
+        screen.queryByText(messages["qa.summary.patient"]),
+      ).not.toBeInTheDocument();
+    } finally {
+      orderContextValue.orderData = original;
+    }
+  });
+
+  it("shows the Patient block for a clinical order", () => {
+    renderQa();
+    expect(
+      screen.getByText(messages["qa.summary.patient"]),
+    ).toBeInTheDocument();
+  });
+
   it("does not load a checklist configuration of its own", () => {
     renderQa();
 
     expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
   });
 
-  // The dashboard reads the presence of this record to mark the order
-  // complete, so submission must still write it.
-  it("records the QA review against the lab number on submit", async () => {
+  // OGC-1266 FR-F3: Release for testing records the Sample check and asks
+  // the server to release the order in the same call.
+  it("releases the order against the lab number on submit", async () => {
     postToOpenElisServerJsonResponse.mockImplementation(
       (_url, _body, callback) => callback({ success: true }),
     );
@@ -132,8 +168,108 @@ describe("OrderQA", () => {
 
     expect(postToOpenElisServerJsonResponse).toHaveBeenCalledWith(
       "/rest/qa-checklist",
-      JSON.stringify({ labNumber: "DEV01260000000000001" }),
+      JSON.stringify({ labNumber: "DEV01260000000000001", release: true }),
       expect.any(Function),
     );
+    expect(layoutProps).toHaveBeenCalledWith(
+      expect.objectContaining({
+        primaryLabelId: "order.sampleCheck.release",
+        title: "order.step.sampleCheck",
+      }),
+    );
+  });
+
+  // OGC-1266 FR-F4: under Optional acceptance a release with unanswered items
+  // needs a reason; the field appears once the server has asked for it and the
+  // next release carries it.
+  it("asks for a reason when the server requires one, then sends it", async () => {
+    postToOpenElisServerJsonResponse.mockImplementationOnce(
+      (_url, _body, callback) =>
+        callback({ success: false, error: "order.release.reasonRequired" }),
+    );
+    renderQa();
+
+    await screen.getByText("Submit Order").click();
+    const reason = await screen.findByLabelText(
+      messages["order.sampleCheck.proceedReason"],
+    );
+
+    postToOpenElisServerJsonResponse.mockImplementationOnce(
+      (_url, _body, callback) => callback({ success: true }),
+    );
+    const { default: userEvent } = await import("@testing-library/user-event");
+    await userEvent.setup().type(reason, "Checklist not in use here");
+    await screen.getByText("Submit Order").click();
+
+    expect(postToOpenElisServerJsonResponse).toHaveBeenLastCalledWith(
+      "/rest/qa-checklist",
+      JSON.stringify({
+        labNumber: "DEV01260000000000001",
+        release: true,
+        releaseNote: "Checklist not in use here",
+      }),
+      expect.any(Function),
+    );
+  });
+
+  // OGC-1443: answered items on a sample that was never accepted were called
+  // "unanswered"; the prompt now names the samples not accepted yet.
+  it("names the samples not accepted yet when a reason is needed, never calling answered items unanswered", async () => {
+    unacceptedForReview.current = ["DEV01260000000000001-2 Urine"];
+    postToOpenElisServerJsonResponse.mockImplementationOnce(
+      (_url, _body, callback) =>
+        callback({ success: false, error: "order.release.reasonRequired" }),
+    );
+    try {
+      renderQa();
+
+      await screen.getByText("Submit Order").click();
+      const reason = await screen.findByLabelText(
+        "Reason for releasing before every sample is accepted",
+      );
+      expect(reason).toBeVisible();
+      expect(
+        screen.getByText(
+          "Not accepted yet: DEV01260000000000001-2 Urine. Answers count once you press Accept sample.",
+        ),
+      ).toBeVisible();
+      expect(screen.queryByText(/unanswered/i)).toBeNull();
+    } finally {
+      unacceptedForReview.current = [];
+    }
+  });
+
+  // Found in review: the environmental and vector lanes have no Prepare
+  // Samples step, so their Sample check must not wait for one.
+  it("lets an environmental order release from Entered", () => {
+    orderContextValue.progress = { status: "ENTERED" };
+    orderContextValue.orderData.sampleOrderItems.environmentalFields.workflowType =
+      "environmental";
+    renderQa();
+
+    expect(layoutProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({ canProceed: true, toContinue: [] }),
+    );
+    orderContextValue.orderData.sampleOrderItems.environmentalFields.workflowType =
+      "clinical";
+    orderContextValue.progress = undefined;
+  });
+
+  // The Sample check cannot release an order whose samples are not prepared.
+  it("holds the release while Prepare Samples is incomplete", () => {
+    orderContextValue.progress = { status: "ENTERED" };
+    renderQa();
+
+    expect(layoutProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        canProceed: false,
+        toContinue: [
+          expect.objectContaining({
+            id: "order.sampleCheck.disabled.incomplete",
+          }),
+        ],
+      }),
+    );
+    orderContextValue.progress = undefined;
   });
 });

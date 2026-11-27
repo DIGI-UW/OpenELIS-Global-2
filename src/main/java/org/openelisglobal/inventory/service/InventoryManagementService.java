@@ -27,6 +27,14 @@ public interface InventoryManagementService {
             String sysUserId);
 
     /**
+     * Why the lot cannot give this quantity now (the code
+     * {@link #consumeSelectedLot} would refuse with), or empty when it can. Lets a
+     * caller inside a larger transaction skip a use without the refusal marking
+     * that transaction for rollback.
+     */
+    java.util.Optional<String> unavailableReason(Long lotId, Double quantityNeeded);
+
+    /**
      * Receive new inventory (creates new lot and records transaction)
      *
      * @param lotData   The lot data to create
@@ -34,6 +42,9 @@ public interface InventoryManagementService {
      * @return The created lot
      */
     InventoryLot receiveInventory(InventoryLot lotData, String sysUserId);
+
+    /** One transaction: a failing line rolls back the whole delivery. */
+    List<InventoryLot> receiveInventoryBatch(List<InventoryLot> lots, String sysUserId);
 
     /**
      * Check if sufficient inventory is available for a given item and quantity

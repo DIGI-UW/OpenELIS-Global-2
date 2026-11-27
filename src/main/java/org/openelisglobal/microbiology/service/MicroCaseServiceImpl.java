@@ -19,7 +19,6 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
 import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.qaevent.service.NceSpecimenService;
@@ -66,21 +65,16 @@ public class MicroCaseServiceImpl implements MicroCaseService {
 
     @Override
     @Transactional
-    public MicroCase createOrGetCase(String sampleItemId, MicroWorkflowType workflowType, String cultureMethodId,
-            String performedBy) {
+    public MicroCase createOrGetCase(String sampleItemId, String cultureMethodId, String performedBy) {
         requireText(sampleItemId, "sampleItemId");
-        if (workflowType == null) {
-            throw new IllegalArgumentException("workflowType is required");
-        }
 
-        MicroCase existing = caseDAO.getBySampleItemAndWorkflow(sampleItemId, workflowType.name());
-        if (existing != null) {
-            return existing;
+        List<MicroCase> existing = caseDAO.getBySampleItem(sampleItemId);
+        if (!existing.isEmpty()) {
+            return existing.get(0);
         }
 
         MicroCase microCase = new MicroCase();
         microCase.setSampleItemId(sampleItemId);
-        microCase.setWorkflowType(workflowType.name());
         microCase.setCultureMethodId(cultureMethodId);
         microCase.setStage(MicroCaseStage.RECEIVED.name());
         microCase.setCreatedAt(now());
@@ -94,15 +88,6 @@ public class MicroCaseServiceImpl implements MicroCaseService {
     @Transactional(readOnly = true)
     public MicroCase getCase(String caseId) {
         return caseDAO.get(caseId).orElse(null);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public MicroCase getCaseForSampleItemWorkflow(String sampleItemId, MicroWorkflowType workflowType) {
-        if (workflowType == null) {
-            return null;
-        }
-        return caseDAO.getBySampleItemAndWorkflow(sampleItemId, workflowType.name());
     }
 
     @Override
@@ -134,8 +119,6 @@ public class MicroCaseServiceImpl implements MicroCaseService {
         for (MicroIsolate isolate : isolates) {
             form.isolates.add(toIsolateForm(isolate));
         }
-        form.workflowChangeRequiresConfirmation = !MicroCaseStage.RECEIVED.name().equals(microCase.getStage())
-                || !isolates.isEmpty();
         for (MicroCase sibling : caseDAO.getBySampleItem(microCase.getSampleItemId())) {
             if (!microCase.getId().equals(sibling.getId())) {
                 form.siblingCases.add(toLookupForm(sibling));
@@ -207,7 +190,6 @@ public class MicroCaseServiceImpl implements MicroCaseService {
         MicroCaseDetailForm form = new MicroCaseDetailForm();
         form.id = microCase.getId();
         form.sampleItemId = microCase.getSampleItemId();
-        form.workflowType = microCase.getWorkflowType();
         form.stage = microCase.getStage();
         form.priority = microCase.getPriority();
         form.cultureMethodId = microCase.getCultureMethodId();
@@ -266,7 +248,6 @@ public class MicroCaseServiceImpl implements MicroCaseService {
         MicroCaseLookupForm form = new MicroCaseLookupForm();
         form.id = microCase.getId();
         form.sampleItemId = microCase.getSampleItemId();
-        form.workflowType = microCase.getWorkflowType();
         form.stage = microCase.getStage();
         form.priority = microCase.getPriority();
         return form;

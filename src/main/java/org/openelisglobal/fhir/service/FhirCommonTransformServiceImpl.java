@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.hibernate.LazyInitializationException;
 import org.hl7.fhir.r4.model.Address;
 import org.hl7.fhir.r4.model.Annotation;
 import org.hl7.fhir.r4.model.ContactPoint;
@@ -31,6 +32,7 @@ import org.openelisglobal.dataexchange.fhir.service.FhirFacilityOrganizationServ
 import org.openelisglobal.dataexchange.fhir.service.TempIdGenerator;
 import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.person.valueholder.Person;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -47,16 +49,16 @@ public class FhirCommonTransformServiceImpl implements FhirCommonTransformServic
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformToTelecom", "transformToTelecom called");
 
         List<ContactPoint> contactPoints = new ArrayList<>();
-        if (person.getPrimaryPhone() != null) {
+        if (!GenericValidator.isBlankOrNull(person.getPrimaryPhone())) {
             contactPoints.add(new ContactPoint().setSystem(ContactPointSystem.PHONE).setValue(person.getPrimaryPhone())
                     .setUse(ContactPointUse.MOBILE));
         }
 
-        if (person.getEmail() != null) {
+        if (!GenericValidator.isBlankOrNull(person.getEmail())) {
             contactPoints.add(new ContactPoint().setSystem(ContactPointSystem.EMAIL).setValue(person.getEmail()));
         }
 
-        if (person.getFax() != null) {
+        if (!GenericValidator.isBlankOrNull(person.getFax())) {
             contactPoints.add(new ContactPoint().setSystem(ContactPointSystem.FAX).setValue(person.getFax()));
         }
 
@@ -116,8 +118,38 @@ public class FhirCommonTransformServiceImpl implements FhirCommonTransformServic
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformNoteToAnnotation",
                 "transformNoteToAnnotation called");
 
+        if (note == null) {
+            return null;
+        }
+
         Annotation annotation = new Annotation();
-        annotation.setText(note.getText());
+        if (note.getText() != null) {
+            annotation.setText(note.getText());
+        }
+        if (note.getLastupdated() != null) {
+            annotation.setTime(note.getLastupdated());
+        }
+        if (note.getSystemUser() != null) {
+            try {
+                SystemUser author = note.getSystemUser();
+                String first = author.getFirstName();
+                String last = author.getLastName();
+                String authorName = null;
+                if (!GenericValidator.isBlankOrNull(first) || !GenericValidator.isBlankOrNull(last)) {
+                    authorName = ((first != null ? first : "") + " " + (last != null ? last : "")).trim();
+                }
+                if (GenericValidator.isBlankOrNull(authorName)
+                        && !GenericValidator.isBlankOrNull(author.getLoginName())) {
+                    authorName = author.getLoginName().trim();
+                }
+                if (!GenericValidator.isBlankOrNull(authorName)) {
+                    annotation.setAuthor(new StringType(authorName));
+                }
+            } catch (LazyInitializationException e) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "transformNoteToAnnotation",
+                        "Could not lazily initialize note system user: " + e.getMessage());
+            }
+        }
         return annotation;
     }
 
@@ -172,6 +204,9 @@ public class FhirCommonTransformServiceImpl implements FhirCommonTransformServic
     public Identifier createIdentifier(String system, String value) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "createIdentifier", "createIdentifier called");
 
+        if (GenericValidator.isBlankOrNull(value)) {
+            return null;
+        }
         Identifier identifier = new Identifier();
         identifier.setValue(value);
 

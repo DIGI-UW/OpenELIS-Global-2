@@ -13,7 +13,6 @@
  */
 package org.openelisglobal.reports.action.implementation;
 
-import com.itextpdf.text.DocumentException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.sql.SQLException;
@@ -23,9 +22,10 @@ import java.util.List;
 import net.sf.jasperreports.engine.JRException;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.reports.form.ReportForm;
+import org.openpdf.text.DocumentException;
 
 public interface IReportCreator {
-    String INCOMPLETE_PARAMS = "Incompleate parameters";
+    String INCOMPLETE_PARAMS = "Incomplete parameters";
     String INVALID_PARAMS = "Invalid parameters";
     String SUCCESS = IActionConstants.FWD_SUCCESS;
 

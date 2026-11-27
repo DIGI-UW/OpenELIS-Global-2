@@ -14,9 +14,6 @@
 package org.openelisglobal.menu.util;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -26,28 +23,28 @@ import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.menu.service.MenuConfigurationSeeder;
 import org.openelisglobal.menu.service.MenuService;
 import org.openelisglobal.menu.valueholder.Menu;
 import org.openelisglobal.spring.util.SpringContext;
-import org.springframework.core.env.Environment;
 
 public class MenuUtil {
 
     private static List<MenuItem> root;
     private static final List<Menu> insertedMenus = new ArrayList<>();
-    private static final MenuService menuService = SpringContext.getBean(MenuService.class);
-    private static final ObjectMapper objectMapper = new ObjectMapper();
-    private static final String MENU_CONFIG_PATH = "/var/lib/openelis-global/menu/menu_config.json";
-    private static final String MENU_CONFIG_AUTOCREATE_PROPERTY = "org.openelisglobal.menu.configuration.autocreate";
 
-    private static File configurationFile() {
-        return new File(SpringContext.getBean(Environment.class)
-                .getProperty("org.openelisglobal.menu.configuration.file", MENU_CONFIG_PATH));
+    /**
+     * Looked up per call, not in the class initializer: the string checks of this
+     * class ({@link #isModuleEntry}) are used where no Spring context exists yet,
+     * and an eager lookup made the class unloadable in that case.
+     */
+    private static MenuService menuService() {
+        return SpringContext.getBean(MenuService.class);
     }
 
     /**
      * The intent of this method is to allow menu items to be added outside of the
-     * database. Typically plugins
+     * database.
      *
      * @param menu The menu item to be added
      */
@@ -57,6 +54,25 @@ public class MenuUtil {
     }
 
     // Update Menu items added outside the database
+    /**
+     * Drops an in-memory entry (one added through {@link #addMenu}) and rebuilds
+     * the tree.
+     */
+    public static void removeMenu(String elementId) {
+        if (insertedMenus.removeIf(menu -> elementId != null && elementId.equals(menu.getElementId()))) {
+            forceRebuild();
+        }
+    }
+
+    /**
+     * Whether an entry with this element id was contributed in memory by a module
+     * (id {@code module:<elementId>}).
+     */
+    public static boolean isModuleEntry(String elementId) {
+        return elementId != null && insertedMenus.stream().anyMatch(menu -> elementId.equals(menu.getElementId())
+                && menu.getId() != null && menu.getId().startsWith("module:"));
+    }
+
     public static void updateMenu(Menu menu) {
         insertedMenus.forEach(insertedMenu -> {
             if (insertedMenu.getElementId().equals(menu.getElementId())) {
@@ -81,12 +97,8 @@ public class MenuUtil {
             createTree();
         }
 
-        // Apply menu filtering if enabled
-        if (isMenuFilteringEnabled()) {
-            return filterMenuTree(root);
-        }
-
-        return root;
+        // Filtered here, not in MenuController, so banner.jsp gets the same tree.
+        return menuService().filterByPrivilege(root);
     }
 
     public static List<MenuItem> getUnfilteredMenuTree() {
@@ -98,9 +110,7 @@ public class MenuUtil {
     }
 
     private static void createTree() {
-        List<Menu> menuList = new ArrayList<>(menuService.getAll());
-
-        MenuConfigurationLoader.loadConfiguredMenus(configurationFile(), menuList);
+        List<Menu> menuList = new ArrayList<>(menuService().getAll());
 
         Map<String, Menu> idToMenuMap = new HashMap<>();
 
@@ -147,8 +157,29 @@ public class MenuUtil {
         }
 
         sortChildren(rootWrapper);
+        // The rows took the file's selection when the menu was seeded; entries added at
+        // runtime take it here.
+        dropLeftOut(rootWrapper, runtimeEntriesLeftOut(rootWrapper.getChildMenus()));
 
         root = rootWrapper.getChildMenus();
+    }
+
+    /** Empty in a context without the seeder, which has no selection to apply. */
+    private static Set<String> runtimeEntriesLeftOut(List<MenuItem> tree) {
+        try {
+            return SpringContext.getBean(MenuConfigurationSeeder.class).leftOut(tree);
+        } catch (org.springframework.beans.factory.NoSuchBeanDefinitionException e) {
+            return Set.of();
+        }
+    }
+
+    private static void dropLeftOut(MenuItem parent, Set<String> leftOut) {
+        if (leftOut.isEmpty()) {
+            return;
+        }
+        parent.getChildMenus().removeIf(child -> insertedMenus.stream().anyMatch(menu -> menu == child.getMenu())
+                && leftOut.contains(child.getMenu().getElementId()));
+        parent.getChildMenus().forEach(child -> dropLeftOut(child, leftOut));
     }
 
     private static void createMenuItems(Map<Menu, MenuItem> menuToMenuItemMap, Menu menu) {
@@ -246,62 +277,21 @@ public class MenuUtil {
     }
 
     /**
-     * Checks if menu filtering is enabled via configuration property. Uses Spring's
-     * Environment to read the property, similar to @Value annotation.
-     *
-     * @return true if menu filtering should be applied
+     * The menu tree as the configuration's "includes" (whitelist) or "excludes"
+     * (blacklist) would show it, or null when it has neither.
      */
-    private static boolean isMenuFilteringEnabled() {
-        try {
-            // Use Spring's Environment to read the property (same way @Value works)
-            Environment environment = SpringContext.getBean(Environment.class);
-            String autocreateValue = environment.getProperty(MENU_CONFIG_AUTOCREATE_PROPERTY);
-            return "true".equalsIgnoreCase(autocreateValue);
-        } catch (Exception e) {
-            // Fallback to ConfigurationProperties if Environment is not available
-            LogEvent.logDebug("MenuUtil", "isMenuFilteringEnabled",
-                    "Could not read property via Environment " + e.getMessage());
-
-            return false;
+    public static List<MenuItem> filterByConfiguration(List<MenuItem> menuTree, JsonNode configNode) {
+        Set<String> elementIds = new HashSet<>();
+        Set<String> wildcardParentIds = new HashSet<>();
+        if (configNode.has("includes") && configNode.get("includes").isArray()) {
+            extractElementIds(configNode.get("includes"), elementIds, wildcardParentIds);
+            return filterByIncludes(menuTree, elementIds, wildcardParentIds);
         }
-    }
-
-    /**
-     * Filters the menu tree based on the menu configuration file. Supports both
-     * "includes" (whitelist) and "excludes" (blacklist) modes.
-     *
-     * @param menuTree The original menu tree
-     * @return The filtered menu tree
-     */
-    private static List<MenuItem> filterMenuTree(List<MenuItem> menuTree) {
-        try {
-            File configFile = configurationFile();
-            if (!configFile.exists() || !configFile.isFile()) {
-                LogEvent.logWarn("MenuUtil", "filterMenuTree",
-                        "Menu config file not found at: " + MENU_CONFIG_PATH + ". Skipping menu filtering.");
-                return menuTree;
-            }
-
-            JsonNode configNode = objectMapper.readTree(configFile);
-            Set<String> elementIds = new HashSet<>();
-            Set<String> wildcardParentIds = new HashSet<>();
-
-            // Check for includes or excludes
-            if (configNode.has("includes") && configNode.get("includes").isArray()) {
-                extractElementIds(configNode.get("includes"), elementIds, wildcardParentIds);
-                return filterByIncludes(menuTree, elementIds, wildcardParentIds);
-            } else if (configNode.has("excludes") && configNode.get("excludes").isArray()) {
-                extractElementIds(configNode.get("excludes"), elementIds, wildcardParentIds);
-                return filterByExcludes(menuTree, elementIds, wildcardParentIds);
-            } else {
-                LogEvent.logWarn("MenuUtil", "filterMenuTree",
-                        "Menu config file does not contain 'includes' or 'excludes' array. Skipping menu filtering.");
-                return menuTree;
-            }
-        } catch (IOException e) {
-            LogEvent.logError("Error reading menu config file: " + MENU_CONFIG_PATH, e);
-            return menuTree;
+        if (configNode.has("excludes") && configNode.get("excludes").isArray()) {
+            extractElementIds(configNode.get("excludes"), elementIds, wildcardParentIds);
+            return filterByExcludes(menuTree, elementIds, wildcardParentIds);
         }
+        return null;
     }
 
     /**
@@ -360,7 +350,7 @@ public class MenuUtil {
      *                          included
      * @return The filtered menu tree containing only included items
      */
-    private static List<MenuItem> filterByIncludes(List<MenuItem> menuTree, Set<String> includes,
+    public static List<MenuItem> filterByIncludes(List<MenuItem> menuTree, Set<String> includes,
             Set<String> wildcardParentIds) {
         return filterByIncludes(menuTree, includes, wildcardParentIds, false);
     }

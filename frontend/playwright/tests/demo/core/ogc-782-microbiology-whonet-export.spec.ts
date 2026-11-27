@@ -1,7 +1,26 @@
 import { expect, test } from "../../../helpers/test-base";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
-import { seedMicrobiologyWhonetExport } from "../../../helpers/seed-microbiology-data";
+import {
+  seedMicrobiologyWhonetExport,
+  type SeededMicrobiologyWhonetExport,
+} from "../../../helpers/seed-microbiology-data";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
+
+// Other specs export WHONET data on the same date; the seed's own specimen
+// type limits the export to this case.
+const exportQuery = (seeded: SeededMicrobiologyWhonetExport) => {
+  const params = new URLSearchParams({
+    from: seeded.exportDate,
+    to: seeded.exportDate,
+    significance: "CLINICALLY_SIGNIFICANT",
+    dedup: "FIRST_ISOLATE_7_DAY",
+    step: "configure",
+    page: "1",
+    pageSize: "20",
+  });
+  params.append("specimen", seeded.sampleTypeId);
+  return params.toString();
+};
 
 test.describe("OGC-782 M4 WHONET export demo", () => {
   test("previews finalized bacteriology and generates CSV", async ({
@@ -10,15 +29,7 @@ test.describe("OGC-782 M4 WHONET export demo", () => {
     test.setTimeout(180_000);
     const demo = createDemoPresentation(page, testInfo);
     const seeded = await seedMicrobiologyWhonetExport(page);
-    const query = new URLSearchParams({
-      from: seeded.exportDate,
-      to: seeded.exportDate,
-      significance: "CLINICALLY_SIGNIFICANT",
-      dedup: "FIRST_ISOLATE_7_DAY",
-      step: "configure",
-      page: "1",
-      pageSize: "20",
-    }).toString();
+    const query = exportQuery(seeded);
 
     await demo.chapter({
       eyebrow: "OGC-782 M4",
@@ -195,15 +206,7 @@ test.describe("OGC-782 M4 WHONET export demo", () => {
     );
     const demo = createDemoPresentation(page, testInfo);
     const seeded = await seedMicrobiologyWhonetExport(page);
-    const query = new URLSearchParams({
-      from: seeded.exportDate,
-      to: seeded.exportDate,
-      significance: "CLINICALLY_SIGNIFICANT",
-      dedup: "FIRST_ISOLATE_7_DAY",
-      step: "configure",
-      page: "1",
-      pageSize: "20",
-    }).toString();
+    const query = exportQuery(seeded);
     const expectNoHorizontalPageOverflow = async () => {
       const dimensions = await page.evaluate(() => ({
         pageWidth: document.documentElement.scrollWidth,

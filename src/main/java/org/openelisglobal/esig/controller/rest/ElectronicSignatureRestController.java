@@ -1,14 +1,8 @@
 package org.openelisglobal.esig.controller.rest;
 
-import com.itextpdf.text.BaseColor;
-import com.itextpdf.text.Document;
-import com.itextpdf.text.DocumentException;
-import com.itextpdf.text.Font;
-import com.itextpdf.text.PageSize;
-import com.itextpdf.text.Phrase;
-import com.itextpdf.text.pdf.PdfPTable;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.awt.Color;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
@@ -31,6 +25,11 @@ import org.openelisglobal.esig.valueholder.EsigFirstUseCertification;
 import org.openelisglobal.esig.valueholder.SignatureMeaning;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.qa.security.QaPermissions;
+import org.openpdf.text.Document;
+import org.openpdf.text.DocumentException;
+import org.openpdf.text.Font;
+import org.openpdf.text.Phrase;
+import org.openpdf.text.pdf.PdfPTable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -235,8 +234,8 @@ public class ElectronicSignatureRestController extends BaseRestController {
     @PreAuthorize(QaPermissions.VIEW_QMS)
     public ResponseEntity<?> getSignatureLog(@RequestParam String fromDate, @RequestParam String toDate,
             @RequestParam(required = false) Long signerId, @RequestParam(required = false) String meaning,
-            @RequestParam(required = false) String recordType, @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "25") int pageSize) {
+            @RequestParam(required = false) String recordType, @RequestParam(required = false) String text,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "25") int pageSize) {
 
         if (page < 0) {
             page = 0;
@@ -251,9 +250,9 @@ public class ElectronicSignatureRestController extends BaseRestController {
         LogFilter filter = parseLogFilter(fromDate, toDate, meaning, recordType);
 
         List<ElectronicSignature> signatures = electronicSignatureService.searchSignatures(filter.start(), filter.end(),
-                signerId, filter.meaning(), filter.recordType(), page, pageSize);
+                signerId, filter.meaning(), filter.recordType(), text, page, pageSize);
         long totalCount = electronicSignatureService.countSearchSignatures(filter.start(), filter.end(), signerId,
-                filter.meaning(), filter.recordType());
+                filter.meaning(), filter.recordType(), text);
 
         Map<String, Object> response = new HashMap<>();
         response.put("items", signatures.stream().map(this::toSignatureResponse).toList());
@@ -269,9 +268,10 @@ public class ElectronicSignatureRestController extends BaseRestController {
     @PreAuthorize(QaPermissions.VIEW_QMS)
     public void exportSignatureLogCsv(@RequestParam String fromDate, @RequestParam String toDate,
             @RequestParam(required = false) Long signerId, @RequestParam(required = false) String meaning,
-            @RequestParam(required = false) String recordType, HttpServletResponse response) throws IOException {
+            @RequestParam(required = false) String recordType, @RequestParam(required = false) String text,
+            HttpServletResponse response) throws IOException {
 
-        List<ElectronicSignature> signatures = loadExportRows(fromDate, toDate, signerId, meaning, recordType);
+        List<ElectronicSignature> signatures = loadExportRows(fromDate, toDate, signerId, meaning, recordType, text);
 
         response.setContentType("text/csv");
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
@@ -297,22 +297,23 @@ public class ElectronicSignatureRestController extends BaseRestController {
     @PreAuthorize(QaPermissions.VIEW_QMS)
     public void exportSignatureLogPdf(@RequestParam String fromDate, @RequestParam String toDate,
             @RequestParam(required = false) Long signerId, @RequestParam(required = false) String meaning,
-            @RequestParam(required = false) String recordType, HttpServletResponse response) throws IOException {
+            @RequestParam(required = false) String recordType, @RequestParam(required = false) String text,
+            HttpServletResponse response) throws IOException {
 
-        List<ElectronicSignature> signatures = loadExportRows(fromDate, toDate, signerId, meaning, recordType);
+        List<ElectronicSignature> signatures = loadExportRows(fromDate, toDate, signerId, meaning, recordType, text);
 
         response.setContentType("application/pdf");
         response.setHeader("Content-Disposition", "attachment; filename=\"e-signature-log.pdf\"");
 
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         try {
-            Document document = new Document(PageSize.A4.rotate());
+            Document document = new Document(PdfExportSupport.pageSize().rotate());
             PdfExportSupport.openWithPageNumbers(document, response.getOutputStream(), "export.page");
 
-            Font titleFont = new Font(Font.FontFamily.HELVETICA, 14, Font.BOLD);
-            Font metaFont = new Font(Font.FontFamily.HELVETICA, 9);
-            Font headerFont = new Font(Font.FontFamily.HELVETICA, 10, Font.BOLD, BaseColor.WHITE);
-            Font cellFont = new Font(Font.FontFamily.HELVETICA, 9);
+            Font titleFont = new Font(Font.HELVETICA, 14, Font.BOLD);
+            Font metaFont = new Font(Font.HELVETICA, 9);
+            Font headerFont = new Font(Font.HELVETICA, 10, Font.BOLD, Color.WHITE);
+            Font cellFont = new Font(Font.HELVETICA, 9);
 
             PdfExportSupport.addHeading(document, MessageUtil.getMessage("esig.export.title"), titleFont, metaFont,
                     MessageUtil.getMessage("export.labName") + ": " + PdfExportSupport.labName(configurationProperties)
@@ -364,10 +365,10 @@ public class ElectronicSignatureRestController extends BaseRestController {
 
     /** The filtered rows both exports render, capped at the shared row limit. */
     private List<ElectronicSignature> loadExportRows(String fromDate, String toDate, Long signerId, String meaning,
-            String recordType) {
+            String recordType, String text) {
         LogFilter filter = parseLogFilter(fromDate, toDate, meaning, recordType);
         return electronicSignatureService.searchSignatures(filter.start(), filter.end(), signerId, filter.meaning(),
-                filter.recordType(), 0, PdfExportSupport.MAX_EXPORT_ROWS);
+                filter.recordType(), text, 0, PdfExportSupport.MAX_EXPORT_ROWS);
     }
 
     private String[] exportHeaders() {

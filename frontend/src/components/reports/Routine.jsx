@@ -25,6 +25,14 @@ export const RoutineReportsMenu = {
           link: "/RoutineReport?type=patient&report=patientCILNSP_vreduit",
           label: <FormattedMessage id="sidenav.label.statusreport" />,
         },
+        {
+          link: "/ReportPrintQueue",
+          label: <FormattedMessage id="sidenav.label.reports.printQueue" />,
+        },
+        {
+          link: "/SentMessages",
+          label: <FormattedMessage id="sidenav.label.reports.sentMessages" />,
+        },
       ],
     },
     {
@@ -135,7 +143,7 @@ export const RoutineReportsMenu = {
       SideNavMenuItem: [
         {
           link: "/LaporanHasil",
-          label: <FormattedMessage id="sideNav.label.laporanHasil" defaultMessage="Laporan Hasil (Compliance)" />,
+          label: <FormattedMessage id="sideNav.label.laporanHasil" defaultMessage="Compliance Report" />,
         },
       ],
     },

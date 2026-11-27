@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet id="134-analyzer-result-instrument-sample-flags" author="oe">
+        <comment>Keep the warnings an instrument raised about a sample (a hematology analyzer's alarms) on each of the sample's staged results, so the reviewer sees them with the results and they go on with them when accepted.</comment>
+        <addColumn schemaName="clinlims" tableName="analyzer_results">
+            <column name="instrument_sample_flags" type="VARCHAR(1024)"/>
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="analyzer_results" columnName="instrument_sample_flags"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

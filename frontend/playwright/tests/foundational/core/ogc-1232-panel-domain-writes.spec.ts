@@ -3,10 +3,11 @@ import { test, expect } from "../../../helpers/test-base";
 import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
 
 /**
- * OGC-1232: an operator can create an Environmental or Vector panel from the
- * legacy Create New Panel screen, a refused create is reported instead of
- * answered with 200, and the Panel Editor's domain guard says which member
- * tests stand in the way of a domain change instead of refusing silently.
+ * OGC-1232: a panel is filed under the chosen domain, a refused create is
+ * reported instead of answered with 200, and the Panel Editor's domain guard
+ * says which member tests stand in the way of a domain change instead of
+ * refusing silently. The legacy Create New Panel screen is gone; its REST
+ * endpoint is exercised directly.
  *
  * Every panel these tests touch is created by the tests themselves, so the
  * cases hold on any database.
@@ -14,7 +15,6 @@ import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
 
 const API = "/api/OpenELIS-Global";
 const run = Date.now().toString().slice(-6);
-const LOINC = `${run.slice(0, 5)}-${run.slice(5)}`;
 
 interface PanelRow {
   id: string;
@@ -52,56 +52,6 @@ const panelNamed = async (
 
 test.describe("Panel domain writes (OGC-1232)", () => {
   test.beforeEach(() => test.setTimeout(180_000));
-
-  test("the legacy Create New Panel screen files a panel under the chosen domain", async ({
-    page,
-  }) => {
-    const name = `E2E Env ${run}`;
-
-    await page.goto("/MasterListsPage/PanelCreate", {
-      waitUntil: "domcontentloaded",
-    });
-    await expect(page.locator("#eng")).toBeVisible({ timeout: NAV_TIMEOUT });
-    await expect(
-      page.locator('label[for="panel-domain-ENVIRONMENTAL"]'),
-    ).toBeVisible({ timeout: UI_TIMEOUT });
-
-    await page.locator("#eng").fill(name);
-    await page.locator("#fr").fill(name);
-    await page.locator("#smapleTypeSelect").selectOption({ index: 1 });
-    await page.locator("#loincPost").fill(LOINC);
-    // Carbon hides the radio input; the label is the click target.
-    await page.locator('label[for="panel-domain-ENVIRONMENTAL"]').click();
-    await expect(page.locator("#panel-domain-ENVIRONMENTAL")).toBeChecked();
-    await expect(page.getByTestId("panel-create-domain-helper")).toHaveText(
-      "Only Environmental-domain tests can be added to this panel.",
-    );
-
-    // exact names: the side navigation's "Sample Acceptance Checklist" also
-    // answers to a loose "Accept"
-    await page.getByRole("button", { name: "Next", exact: true }).click();
-    const created = page.waitForResponse(
-      (r) =>
-        r.url().endsWith("/rest/PanelCreate") &&
-        r.request().method() === "POST",
-    );
-    await page.getByRole("button", { name: "Accept", exact: true }).click();
-    await created;
-
-    await expect(
-      page.getByText(
-        "Panel created. It stays inactive until at least one test is assigned to it.",
-      ),
-    ).toBeVisible({ timeout: UI_TIMEOUT });
-    // The screen lists the new panel among the inactive ones and is ready for
-    // the next entry.
-    await expect(page.getByText(name)).toBeVisible({ timeout: UI_TIMEOUT });
-    await expect(page.locator("#eng")).toHaveValue("");
-
-    const stored = await panelNamed(page, name);
-    expect(stored, "the panel must exist").toBeTruthy();
-    expect(stored?.domain).toBe("ENVIRONMENTAL");
-  });
 
   test("the legacy create reports a refused insert instead of answering 200", async ({
     page,

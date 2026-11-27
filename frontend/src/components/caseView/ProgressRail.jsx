@@ -1,6 +1,13 @@
 import React from "react";
 import { useIntl } from "react-intl";
-import { ProgressIndicator, ProgressStep } from "@carbon/react";
+import {
+  Heading,
+  ProgressIndicator,
+  ProgressStep,
+  Section,
+  Tile,
+} from "@carbon/react";
+import "./caseView.scss";
 
 /**
  * The optional left-hand rail a case view shows once it has enough gated
@@ -31,6 +38,10 @@ import { ProgressIndicator, ProgressStep } from "@carbon/react";
  * components by name, and it carries the naming text in more places than a tag
  * beside a visually hidden span did.
  *
+ * The step's box bounds the visible text, not what there is to say, so a
+ * screen may send a shortened pendingLabel and the whole of it as
+ * pendingTitle for the hover; the visible text is also clamped to two lines.
+ *
  * One piece of Carbon behaviour the adopting screen should expect, because it
  * cannot be corrected from out here: Carbon withholds the button's own click
  * handler from the step it treats as current, while the key handler on that
@@ -41,58 +52,71 @@ import { ProgressIndicator, ProgressStep } from "@carbon/react";
 const ProgressRail = ({ items = [], currentIndex = 0, onNavigate }) => {
   const intl = useIntl();
 
+  // A titled tile, like the summary panel across the grid from it, so the
+  // three columns read as one composition; the heading's level follows the
+  // adopting screen's Section nesting.
   return (
-    <nav aria-label={intl.formatMessage({ id: "caseView.label.caseProgress" })}>
-      <ProgressIndicator
-        vertical
-        // Held below every step on purpose. Given a real index, Carbon rewrites
-        // each step before it with complete: true and discards what the step
-        // itself said, so a stage this deployment does not track would carry a
-        // completion checkmark and the assistive word "Complete" beside its own
-        // "N/A" as soon as the case moved past it. That is the rail asserting
-        // bench work on a stage nobody records. Below every step, Carbon stays
-        // in the one branch that preserves both flags, and completion and
-        // position are stated per step below instead.
-        currentIndex={-1}
-        // Wired only when the screen can act on it, so a rail with nowhere to
-        // navigate does not render steps that look clickable.
-        onChange={
-          onNavigate ? (index) => onNavigate(items[index].id) : undefined
-        }
+    <Tile className="case-view__rail">
+      <Section>
+        <Heading className="case-view__rail-title">
+          {intl.formatMessage({ id: "caseView.label.caseProgress" })}
+        </Heading>
+      </Section>
+      <nav
+        aria-label={intl.formatMessage({ id: "caseView.label.caseProgress" })}
       >
-        {items.map((item, index) => {
-          const {
-            id,
-            labelKey,
-            complete = false,
-            notApplicable = false,
-            pendingLabel,
-          } = item;
+        <ProgressIndicator
+          vertical
+          // Held below every step on purpose. Given a real index, Carbon rewrites
+          // each step before it with complete: true and discards what the step
+          // itself said, so a stage this deployment does not track would carry a
+          // completion checkmark and the assistive word "Complete" beside its own
+          // "N/A" as soon as the case moved past it. That is the rail asserting
+          // bench work on a stage nobody records. Below every step, Carbon stays
+          // in the one branch that preserves both flags, and completion and
+          // position are stated per step below instead.
+          currentIndex={-1}
+          // Wired only when the screen can act on it, so a rail with nowhere to
+          // navigate does not render steps that look clickable.
+          onChange={
+            onNavigate ? (index) => onNavigate(items[index].id) : undefined
+          }
+        >
+          {items.map((item, index) => {
+            const {
+              id,
+              labelKey,
+              complete = false,
+              notApplicable = false,
+              pendingLabel,
+              pendingTitle,
+            } = item;
 
-          const secondaryLabel =
-            pendingLabel ||
-            (notApplicable
-              ? intl.formatMessage({ id: "caseView.badge.notApplicable" })
-              : undefined);
+            const secondaryLabel =
+              pendingLabel ||
+              (notApplicable
+                ? intl.formatMessage({ id: "caseView.badge.notApplicable" })
+                : undefined);
 
-          return (
-            <ProgressStep
-              key={id}
-              label={intl.formatMessage({ id: labelKey })}
-              secondaryLabel={secondaryLabel}
-              complete={complete}
-              current={index === currentIndex}
-              disabled={notApplicable}
-              // Suppresses Carbon's own step title, which only repeats the
-              // label already on screen. It takes effect only because Carbon
-              // spreads the caller's remaining props after setting that title,
-              // so a reordering there would quietly restore the tooltip.
-              title={pendingLabel}
-            />
-          );
-        })}
-      </ProgressIndicator>
-    </nav>
+            return (
+              <ProgressStep
+                key={id}
+                label={intl.formatMessage({ id: labelKey })}
+                secondaryLabel={secondaryLabel}
+                complete={complete}
+                current={index === currentIndex}
+                disabled={notApplicable}
+                // Suppresses Carbon's own step title, which only repeats the
+                // label already on screen. It takes effect only because Carbon
+                // spreads the caller's remaining props after setting that title,
+                // so a reordering there would quietly restore the tooltip.
+                title={pendingTitle ?? pendingLabel}
+              />
+            );
+          })}
+        </ProgressIndicator>
+      </nav>
+    </Tile>
   );
 };
 

@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import {
   DataTableSkeleton,
-  DatePicker,
   DatePickerInput,
   Dropdown,
   Pagination,
   Tag,
 } from "@carbon/react";
+import { DatePicker } from "../../common/DatePicker";
 import { FormattedMessage, useIntl } from "react-intl";
 import { toLocalIsoDate } from "../../utils/Utils";
 import { INTERVALS } from "../../reports/tat/tatUtils";

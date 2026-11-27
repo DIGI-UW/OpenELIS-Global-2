@@ -44,6 +44,16 @@ public class NceCategoryServiceImpl extends AuditableBaseObjectServiceImpl<NceCa
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<IdValuePair> getAllCategoriesAsIdValuePairs() {
+        List<IdValuePair> result = new ArrayList<>();
+        for (NceCategory row : baseObjectDAO.getAllNceCategory()) {
+            result.add(new IdValuePair(String.valueOf(row.getId()), row.getLocalizedName()));
+        }
+        return result;
+    }
+
+    @Override
     protected NceCategoryDAO getBaseObjectDAO() {
         return baseObjectDAO;
     }

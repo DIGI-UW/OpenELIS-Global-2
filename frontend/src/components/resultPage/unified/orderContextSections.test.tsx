@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { IntlProvider } from "react-intl";
 import { vi } from "vitest";
 import messages from "../../../languages/en.json";
@@ -28,6 +28,7 @@ import {
   StorageSection,
   attachmentVisibleOnRow,
   storageAssignmentRequest,
+  useOrderContext,
 } from "./orderContextSections";
 
 /**
@@ -307,6 +308,28 @@ describe("orderContextSections (FR-C3/C5)", () => {
     expect(document.querySelector('input[type="file"]')).not.toBeNull();
   });
 
+  it("a review-only panel (editable=false) lists attachments but offers no upload", () => {
+    getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
+      if (typeof cb === "function") {
+        cb([
+          { id: 7, fileName: "scan.pdf", fileSizeBytes: 2048, analysisId: "" },
+        ]);
+      }
+    });
+    wrap(
+      <AttachmentsSection
+        open={true}
+        onToggle={() => {}}
+        accessionNumber="DEV1"
+        analysisId="25"
+        editable={false}
+      />,
+    );
+    expect(screen.getByText("scan.pdf")).toBeInTheDocument();
+    expect(screen.queryByText("Add attachment")).toBeNull();
+    expect(document.querySelector('input[type="file"]')).toBeNull();
+  });
+
   it("collapsed empty Attachments section summarizes as none", () => {
     getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
       if (typeof cb === "function") {
@@ -489,5 +512,49 @@ describe("orderContextSections (FR-C3/C5)", () => {
       expect.any(FormData),
       expect.any(Function),
     );
+  });
+});
+
+/**
+ * OGC-1361 — useOrderContext fetches the order once per accession. A review
+ * panel that closes before the order arrives (the validator released the row)
+ * must not be updated afterwards.
+ */
+const OrderProbe: React.FC<{ accession: string }> = ({ accession }) => {
+  const order = useOrderContext(accession);
+  return <span data-testid="order-loaded">{String(order.loaded)}</span>;
+};
+
+describe("useOrderContext", () => {
+  beforeEach(() => {
+    getMock.mockReset();
+  });
+
+  it("fills in the order when it arrives", () => {
+    render(<OrderProbe accession="ACC1" />);
+    expect(screen.getByTestId("order-loaded").textContent).toBe("false");
+
+    const [, callback] = getMock.mock.calls[0];
+    act(() => {
+      callback({ sampleOrderItems: {} });
+    });
+
+    expect(screen.getByTestId("order-loaded").textContent).toBe("true");
+  });
+
+  it("ignores an order that arrives after the panel closed", () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { unmount } = render(<OrderProbe accession="ACC2" />);
+    const [, callback] = getMock.mock.calls[0];
+    unmount();
+
+    callback({ sampleOrderItems: {} });
+
+    expect(
+      errors.mock.calls.some(([message]) =>
+        String(message).includes("unmounted component"),
+      ),
+    ).toBe(false);
+    errors.mockRestore();
   });
 });

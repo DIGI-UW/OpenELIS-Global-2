@@ -152,6 +152,30 @@ public class CatalogCsvLoaderIntegrationTest extends BaseWebContextSensitiveTest
     }
 
     @Test
+    public void tests_microbiologyRoutingSurvivesReloadAndRejectsInvalidRows() throws Exception {
+        loadSampleTypes();
+        String header = "testName,testSection,sampleType,localCode,opensMicrobiologyCase,microbiologyCaseRole,collectedInSets\n";
+        String culture = PREFIX + "Culture," + SECTION + "," + PREFIX + "Blood,I93CULT,Y,CULTURE,Y\n";
+        load(testHandler,
+                header + culture + PREFIX + "Bad routing," + SECTION + "," + PREFIX + "Blood,I93BAD,Y,DIRECT,Y\n",
+                "routing.csv");
+        assertEquals("SUMMARY file=routing.csv domain=tests created=1 updated=0 skipped=1",
+                testHandler.getLastSummary().toLine());
+        Map<String, Object> first = testRow(PREFIX + "Culture");
+        assertEquals(Boolean.TRUE, first.get("opens_microbiology_case"));
+        assertEquals("CULTURE", first.get("microbiology_case_role"));
+        assertEquals(Boolean.TRUE, first.get("collected_in_sets"));
+        load(testHandler, header + culture, "routing.csv");
+        load(testHandler, "testName,testSection,sampleType,localCode\n" + PREFIX + "Culture," + SECTION + "," + PREFIX
+                + "Blood,I93CULT\n", "ordinary-catalog.csv");
+        Map<String, Object> reloaded = testRow(PREFIX + "Culture");
+        assertEquals(first.get("id"), reloaded.get("id"));
+        assertEquals(Boolean.TRUE, reloaded.get("opens_microbiology_case"));
+        assertEquals("CULTURE", reloaded.get("microbiology_case_role"));
+        assertEquals(Boolean.TRUE, reloaded.get("collected_in_sets"));
+    }
+
+    @Test
     public void legacyVariants_areUpdatedInPlaceAndJoinPanelsForTheirSpecimens() throws Exception {
         loadSampleTypes();
         // The shape an earlier loader left behind: one record per specimen, both
@@ -222,7 +246,7 @@ public class CatalogCsvLoaderIntegrationTest extends BaseWebContextSensitiveTest
         assertEquals(Integer.valueOf(1), count("sampletype_test", "test_id = " + serumVariant));
         assertEquals(Integer.valueOf(1), count("sampletype_test", "test_id = " + plasmaVariant));
         assertEquals("the numeric result definition survives the update", Integer.valueOf(1),
-                count("test_result", "test_id = " + serumVariant + " AND significant_digits = 2 AND is_active"));
+                count("test_result", "test_id = " + serumVariant + " AND reporting_decimal_places = 2 AND is_active"));
         Map<String, Object> unlisted = testRow("IT1193VL(" + PREFIX + "Blood)");
         assertEquals("a variant for a specimen the row does not list is a different test and stays untouched",
                 Long.valueOf(bloodVariant), Long.valueOf(((Number) unlisted.get("id")).longValue()));
@@ -253,6 +277,125 @@ public class CatalogCsvLoaderIntegrationTest extends BaseWebContextSensitiveTest
         assertEquals("I93COL", testRow(PREFIX + "Collapsed(" + PREFIX + "Serum)").get("local_code"));
     }
 
+    // -- OGC-1466: the tests loader reads what Excel writes; preview changes
+    // nothing --
+
+    @Test
+    public void tests_aUtf8ByteOrderMarkAndLatin1AccentsAreRead() throws Exception {
+        loadSampleTypes();
+        String row = PREFIX + "Bom," + SECTION + "," + PREFIX + "Serum,,N,N,905,,,,I93BOM,,\n";
+        byte[] body = (TESTS_HEADER + row).getBytes(StandardCharsets.UTF_8);
+        byte[] withBom = new byte[body.length + 3];
+        withBom[0] = (byte) 0xEF;
+        withBom[1] = (byte) 0xBB;
+        withBom[2] = (byte) 0xBF;
+        System.arraycopy(body, 0, withBom, 3, body.length);
+        testHandler.processConfiguration(new ByteArrayInputStream(withBom), "tests-bom.csv");
+        assertEquals(1, testHandler.getLastSummary().getCreated());
+
+        String accented = PREFIX + "H\u00e9matie";
+        testHandler.processConfiguration(new ByteArrayInputStream(
+                (TESTS_HEADER + accented + "," + SECTION + "," + PREFIX + "Serum,,N,N,906,,,,I93HEM,,\n")
+                        .getBytes(java.nio.charset.Charset.forName("windows-1252"))),
+                "tests-latin1.csv");
+        assertEquals(Integer.valueOf(1), count("test", "description = '" + accented + "'"));
+    }
+
+    @Test
+    public void tests_aPreviewCountsARepeatedRowAsTheUpdateTheApplyMakes() throws Exception {
+        loadSampleTypes();
+        String row = PREFIX + "Twice," + SECTION + "," + PREFIX + "Serum,,N,N,907,,,,I93TWC,,\n";
+        byte[] csv = (TESTS_HEADER + row + row).getBytes(StandardCharsets.UTF_8);
+
+        testHandler.processConfiguration(new ByteArrayInputStream(csv), "tests-twice.csv", true);
+        String preview = testHandler.getLastSummary().toLine();
+        assertEquals("a preview stores nothing", Integer.valueOf(0), count("test", "local_code = 'I93TWC'"));
+
+        testHandler.processConfiguration(new ByteArrayInputStream(csv), "tests-twice.csv", false);
+        assertEquals(testHandler.getLastSummary().toLine(), preview);
+        assertEquals(1, testHandler.getLastSummary().getCreated());
+        assertEquals(1, testHandler.getLastSummary().getUpdated());
+    }
+
+    /**
+     * A preview opens the decision item once, so it can be resolved before the
+     * apply (OGC-1194), but never counts: previewing twice does not double it, and
+     * the apply counts the one occurrence.
+     */
+    @Test
+    public void tests_aPreviewOpensTheDecisionOnce_andOnlyTheApplyCountsIt() throws Exception {
+        loadSampleTypes();
+        String bogus = PREFIX + "No Such Section 1466";
+        byte[] csv = (TESTS_HEADER + PREFIX + "Orphan 1466," + bogus + "," + PREFIX + "Serum,,N,N,908,,,,,,\n")
+                .getBytes(StandardCharsets.UTF_8);
+
+        ImportRunContext.setPreview(true);
+        try {
+            testHandler.processConfiguration(new ByteArrayInputStream(csv), "tests-1466.csv", true);
+            testHandler.processConfiguration(new ByteArrayInputStream(csv), "tests-1466.csv", true);
+        } finally {
+            ImportRunContext.setPreview(false);
+        }
+        assertEquals(1, testHandler.getLastSummary().getSkipped());
+        assertEquals("one open item after two previews", Integer.valueOf(1),
+                count("unresolved_reference", "reference_value = '" + bogus + "' AND status = 'OPEN'"));
+        assertEquals("a preview counts nothing", Integer.valueOf(0),
+                jdbc.queryForObject("SELECT occurrences FROM clinlims.unresolved_reference WHERE reference_value = ?",
+                        Integer.class, bogus));
+
+        testHandler.processConfiguration(new ByteArrayInputStream(csv), "tests-1466.csv", false);
+        assertEquals(Integer.valueOf(1), count("unresolved_reference", "reference_value = '" + bogus + "'"));
+        assertEquals("the apply counts its one occurrence", Integer.valueOf(1),
+                jdbc.queryForObject("SELECT occurrences FROM clinlims.unresolved_reference WHERE reference_value = ?",
+                        Integer.class, bogus));
+    }
+
+    /**
+     * Previews then applies a file; the preview stores nothing and says what the
+     * apply does.
+     */
+    private void assertPreviewMatchesApply(DomainConfigurationHandler handler, String csv, String fileName,
+            String table, String where) throws Exception {
+        Integer before = count(table, where);
+        handler.processConfiguration(new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8)), fileName, true);
+        String preview = handler.getLastSummary().toLine();
+        assertEquals("a preview stores nothing", before, count(table, where));
+        handler.processConfiguration(new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8)), fileName, false);
+        assertEquals(handler.getLastSummary().toLine(), preview);
+    }
+
+    /**
+     * OGC-1466 review: a later row sees what earlier rows of the same file would
+     * create or change, in every loader, so the preview reports what the apply
+     * does.
+     */
+    @Test
+    public void aPreviewSeesEarlierRowsOfTheFile_inEveryLoader() throws Exception {
+        loadSampleTypes();
+        assertPreviewMatchesApply(testHandler,
+                TESTS_HEADER + PREFIX + "Recode," + SECTION + "," + PREFIX + "Serum,,N,N,909,,,,I93RCC,,\n"
+                        + PREFIX.toLowerCase() + "recode," + SECTION + "," + PREFIX + "Serum,,N,N,909,,,,I93RCE,,\n"
+                        + PREFIX + "Other," + SECTION + "," + PREFIX + "Serum,,N,N,910,,,,I93RCC,,\n",
+                "tests-recode.csv", "test", "local_code LIKE 'I93RC%'");
+        assertEquals("the re-coded test and the new one", Integer.valueOf(2),
+                count("test", "local_code IN ('I93RCC', 'I93RCE')"));
+
+        String typeRow = PREFIX + "Twice Type,I93TWT,H,Y,95\n";
+        assertPreviewMatchesApply(sampleTypeHandler,
+                "description,localAbbreviation,domain,isActive,sortOrder\n" + typeRow + typeRow,
+                "sample-types-twice.csv", "type_of_sample", "local_abbrev = 'I93TWT'");
+
+        String unitRow = PREFIX + "Twice Unit,Y,96,N," + PREFIX + "Twice Unit\n";
+        assertPreviewMatchesApply(sectionHandler,
+                "testSectionName,isActive,sortOrder,isExternal,localization:en\n" + unitRow + unitRow,
+                "sections-twice.csv", "test_section", "name = '" + PREFIX + "Twice Unit'");
+
+        String panelRow = PREFIX + "Twice Panel," + PREFIX + "Serum," + PREFIX + "Other,Y,97\n";
+        assertPreviewMatchesApply(panelHandler,
+                "panelName,sampleTypes,tests,isActive,sortOrder\n" + panelRow + panelRow, "panels-twice.csv", "panel",
+                "name = '" + PREFIX + "Twice Panel'");
+    }
+
     private void loadSampleTypes() throws Exception {
         load(sampleTypeHandler, "description,localAbbreviation,domain,isActive,sortOrder\n" + PREFIX
                 + "Serum,I93SER,H,Y,91\n" + PREFIX + "Plasma,I93PLA,H,Y,92\n" + PREFIX + "Blood,I93BLD,H,Y,93\n",
@@ -270,11 +413,11 @@ public class CatalogCsvLoaderIntegrationTest extends BaseWebContextSensitiveTest
                 testId, PREFIX + "Legacy", description, UUID.randomUUID().toString(), localizationId);
     }
 
-    private void insertNumericResult(long id, long testId, int significantDigits) {
+    private void insertNumericResult(long id, long testId, int reportingDecimalPlaces) {
         jdbc.update(
-                "INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, significant_digits, sort_order,"
+                "INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, reporting_decimal_places, sort_order,"
                         + " is_active, lastupdated) VALUES (?, ?, 'N', ?, 1, true, NOW())",
-                id, testId, significantDigits);
+                id, testId, reportingDecimalPlaces);
     }
 
     private void load(DomainConfigurationHandler handler, String csv, String fileName) throws Exception {
@@ -287,7 +430,7 @@ public class CatalogCsvLoaderIntegrationTest extends BaseWebContextSensitiveTest
 
     private Map<String, Object> testRow(String description) {
         return jdbc.queryForMap("SELECT id, description, local_code, is_reportable, notify_results, is_active,"
-                + " orderable, loinc, test_section_id, name_localization_id FROM clinlims.test WHERE description = ?",
+                + " orderable, loinc, test_section_id, name_localization_id, opens_microbiology_case, microbiology_case_role, collected_in_sets FROM clinlims.test WHERE description = ?",
                 description);
     }
 
@@ -302,6 +445,7 @@ public class CatalogCsvLoaderIntegrationTest extends BaseWebContextSensitiveTest
     }
 
     private void cleanup() {
+        jdbc.update("DELETE FROM clinlims.unresolved_reference WHERE reference_value LIKE 'IT1193%'");
         List<Long> testLocalizations = jdbc.queryForList(
                 "SELECT name_localization_id FROM clinlims.test"
                         + " WHERE description LIKE 'IT1193%' AND name_localization_id IS NOT NULL"

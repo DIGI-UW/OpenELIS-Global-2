@@ -7,6 +7,7 @@
   "overAllOptions": "All",
   "sample": "Serum",
   "searchTest": "Amylase(Serum)",
+  "calcResultTest": "Triglicerides(Serum)",
   "relation": "Is greater than",
   "numericValue": "0",
   "internalNote": "Internal Use Only",

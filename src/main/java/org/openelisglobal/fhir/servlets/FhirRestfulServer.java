@@ -30,5 +30,8 @@ public class FhirRestfulServer extends RestfulServer {
         List<IResourceProvider> providers = new ArrayList<>(providerMap.values());
 
         setResourceProviders(providers);
+
+        registerInterceptor(new FhirReadAuthorizationInterceptor());
+        registerInterceptor(new StrictSearchParameterInterceptor());
     }
 }

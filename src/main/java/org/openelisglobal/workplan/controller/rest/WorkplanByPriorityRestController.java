@@ -46,7 +46,7 @@ public class WorkplanByPriorityRestController extends WorkplanRestController {
             @RequestParam(name = "priority", defaultValue = "") OrderPriority priority)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
-        WorkplanPaging paging = new WorkplanPaging();
+        WorkplanPaging paging = new WorkplanPaging("priority:" + priority);
         WorkplanForm form = new WorkplanForm();
         List<TestResultItem> workplanTests = new ArrayList<TestResultItem>();
         List<TestResultItem> filteredTests = new ArrayList<TestResultItem>();
@@ -79,12 +79,15 @@ public class WorkplanByPriorityRestController extends WorkplanRestController {
         int sampleGroupingNumber = 0;
 
         if (priority != null) {
-            List<Analysis> analysisList = analysisService.getAnalysesByPriorityAndStatusId(priority, statusList);
+            List<Analysis> analysisList = withoutReferredOut(
+                    analysisService.getAnalysesByPriorityAndStatusId(priority, statusList));
             for (Analysis analysis : analysisList) {
                 TestResultItem testResultItem = new TestResultItem();
+                testResultItem.setAnalysisId(analysis.getId());
                 testResultItem.setTestId(analysis.getTest().getId());
                 Sample sample = analysis.getSampleItem().getSample();
                 testResultItem.setAccessionNumber(sample.getAccessionNumber());
+                markEqaSample(testResultItem, sample);
                 testResultItem.setReceivedDate(getReceivedDateDisplay(sample));
                 testResultItem.setTestName(TestServiceImpl.getUserLocalizedTestName(analysis.getTest()));
                 boolean nonConforming = QAService.isAnalysisParentNonConforming(analysis);

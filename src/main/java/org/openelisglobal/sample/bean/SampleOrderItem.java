@@ -273,6 +273,10 @@ public class SampleOrderItem implements Serializable {
     // for display
     private Collection testLocationCodeList;
 
+    // for display: the entry of testLocationCodeList that asks for a typed
+    // location
+    private String otherTestLocationCodeId;
+
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
             SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
     private String program;
@@ -320,6 +324,26 @@ public class SampleOrderItem implements Serializable {
     private String eqaParticipantId;
     private String eqaDeadline;
     private String eqaPriority;
+
+    // Panel receipt captured on the order form
+    private String eqaCycleId;
+    private String eqaReceivedTempC;
+    private Boolean eqaIntegrityOk;
+    private String eqaIntegrityNotes;
+    /** The imported consignment (shipping box) this receipt takes delivery of. */
+    private String eqaShippingBoxId;
+
+    /**
+     * Storage decisions that travel with the step's save (OGC-1266 FR-A5): the
+     * order-level "storage skipped" flag, and the step the client has completed at
+     * its complete level (a value of {@link OrderProgressStatus}), which the server
+     * records as the order's progress.
+     */
+    private Boolean storageSkipped;
+
+    @Pattern(regexp = "^(|ENTERED|SAMPLES_PREPARED)$", groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
+    private String progressStep;
 
     // Informed consent fields
     private Boolean consentGiven;
@@ -776,6 +800,14 @@ public class SampleOrderItem implements Serializable {
         this.testLocationCodeList = testLocationCodeList;
     }
 
+    public String getOtherTestLocationCodeId() {
+        return otherTestLocationCodeId;
+    }
+
+    public void setOtherTestLocationCodeId(String otherTestLocationCodeId) {
+        this.otherTestLocationCodeId = otherTestLocationCodeId;
+    }
+
     public String getProgram() {
         return program;
     }
@@ -928,6 +960,46 @@ public class SampleOrderItem implements Serializable {
         this.eqaPriority = eqaPriority;
     }
 
+    public String getEqaCycleId() {
+        return eqaCycleId;
+    }
+
+    public void setEqaCycleId(String eqaCycleId) {
+        this.eqaCycleId = eqaCycleId;
+    }
+
+    public String getEqaReceivedTempC() {
+        return eqaReceivedTempC;
+    }
+
+    public void setEqaReceivedTempC(String eqaReceivedTempC) {
+        this.eqaReceivedTempC = eqaReceivedTempC;
+    }
+
+    public Boolean getEqaIntegrityOk() {
+        return eqaIntegrityOk;
+    }
+
+    public void setEqaIntegrityOk(Boolean eqaIntegrityOk) {
+        this.eqaIntegrityOk = eqaIntegrityOk;
+    }
+
+    public String getEqaIntegrityNotes() {
+        return eqaIntegrityNotes;
+    }
+
+    public void setEqaIntegrityNotes(String eqaIntegrityNotes) {
+        this.eqaIntegrityNotes = eqaIntegrityNotes;
+    }
+
+    public String getEqaShippingBoxId() {
+        return eqaShippingBoxId;
+    }
+
+    public void setEqaShippingBoxId(String eqaShippingBoxId) {
+        this.eqaShippingBoxId = eqaShippingBoxId;
+    }
+
     public Map<String, Object> getEnvironmentalFields() {
         return environmentalFields;
     }
@@ -949,6 +1021,22 @@ public class SampleOrderItem implements Serializable {
             return (String) value;
         }
         return value.toString();
+    }
+
+    public Boolean getStorageSkipped() {
+        return storageSkipped;
+    }
+
+    public void setStorageSkipped(Boolean storageSkipped) {
+        this.storageSkipped = storageSkipped;
+    }
+
+    public String getProgressStep() {
+        return progressStep;
+    }
+
+    public void setProgressStep(String progressStep) {
+        this.progressStep = progressStep;
     }
 
     public Boolean getConsentGiven() {

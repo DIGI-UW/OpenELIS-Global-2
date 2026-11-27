@@ -29,11 +29,26 @@ public class PatientSearchParams extends BaseSearchParam {
     private DateRangeParam birthDate;
 
     private TokenAndListParam gender;
+    private StringAndListParam city;
+
+    private StringAndListParam state;
+
+    private StringAndListParam postalCode;
+
+    private StringAndListParam country;
+
+    private TokenAndListParam telecom;
+
+    private TokenAndListParam email;
+
+    private TokenAndListParam phone;
 
     private final Set<Include> revIncludes;
 
     public PatientSearchParams(TokenAndListParam id, TokenAndListParam identifier, StringAndListParam name,
             StringAndListParam given, StringAndListParam family, DateRangeParam birthDate, TokenAndListParam gender,
+            StringAndListParam city, StringAndListParam state, StringAndListParam postalCode,
+            StringAndListParam country, TokenAndListParam telecom, TokenAndListParam email, TokenAndListParam phone,
             DateRangeParam lastUpdated, SortSpec sort, Set<Include> revIncludes) {
 
         super(id, identifier, lastUpdated, sort);
@@ -43,6 +58,13 @@ public class PatientSearchParams extends BaseSearchParam {
         this.family = family;
         this.birthDate = birthDate;
         this.gender = gender;
+        this.city = city;
+        this.state = state;
+        this.postalCode = postalCode;
+        this.country = country;
+        this.telecom = telecom;
+        this.email = email;
+        this.phone = phone;
         this.revIncludes = revIncludes == null ? Collections.emptySet()
                 : Collections.unmodifiableSet(new HashSet<>(revIncludes));
     }
@@ -72,6 +94,27 @@ public class PatientSearchParams extends BaseSearchParam {
         if (getSort() != null) {
             map.setSortSpec(getSort());
         }
+        if (city != null) {
+            map.addParameter(Patient.SP_ADDRESS_CITY, city);
+        }
+        if (state != null) {
+            map.addParameter(Patient.SP_ADDRESS_STATE, state);
+        }
+        if (postalCode != null) {
+            map.addParameter(Patient.SP_ADDRESS_POSTALCODE, postalCode);
+        }
+        if (country != null) {
+            map.addParameter(Patient.SP_ADDRESS_COUNTRY, country);
+        }
+        if (telecom != null) {
+            map.addParameter(Patient.SP_TELECOM, telecom);
+        }
+        if (email != null) {
+            map.addParameter(Patient.SP_EMAIL, email);
+        }
+        if (phone != null) {
+            map.addParameter(Patient.SP_PHONE, phone);
+        }
 
         return map;
     }
@@ -94,6 +137,34 @@ public class PatientSearchParams extends BaseSearchParam {
 
     public TokenAndListParam getGender() {
         return gender;
+    }
+
+    public StringAndListParam getCity() {
+        return city;
+    }
+
+    public StringAndListParam getState() {
+        return state;
+    }
+
+    public StringAndListParam getPostalCode() {
+        return postalCode;
+    }
+
+    public StringAndListParam getCountry() {
+        return country;
+    }
+
+    public TokenAndListParam getTelecom() {
+        return telecom;
+    }
+
+    public TokenAndListParam getEmail() {
+        return email;
+    }
+
+    public TokenAndListParam getPhone() {
+        return phone;
     }
 
     public Set<Include> getRevIncludes() {

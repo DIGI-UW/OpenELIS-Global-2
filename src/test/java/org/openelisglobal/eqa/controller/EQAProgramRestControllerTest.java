@@ -14,6 +14,7 @@ import org.hibernate.ObjectNotFoundException;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
@@ -24,6 +25,7 @@ import org.openelisglobal.eqa.service.EQAProgramService;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQAProgramTest;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.systemuser.service.SystemUserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -35,6 +37,9 @@ public class EQAProgramRestControllerTest {
 
     @Mock
     private EQAProgramEnrollmentService enrollmentService;
+
+    @Mock
+    private SystemUserService systemUserService;
 
     @Mock
     private HttpServletRequest request;
@@ -71,7 +76,8 @@ public class EQAProgramRestControllerTest {
         when(programService.insert(any(EQAProgram.class))).thenReturn(1L);
         when(programService.get(1L)).thenReturn(program1);
 
-        Map<String, Object> body = Map.of("name", "Chemistry PT", "description", "Chemistry proficiency testing");
+        Map<String, Object> body = Map.of("name", "Chemistry PT", "description", "Chemistry proficiency testing",
+                "schemeType", "INTERNATIONAL_PT", "provider", "NHLS");
         ResponseEntity<?> response = controller.createProgram(request, body);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -79,6 +85,60 @@ public class EQAProgramRestControllerTest {
         Map<String, Object> dto = (Map<String, Object>) response.getBody();
         assertEquals("Chemistry PT", dto.get("name"));
         assertEquals(true, dto.get("isActive"));
+    }
+
+    /**
+     * The review gate. It is read by the auto-submit sweep, the cycle DTO and My
+     * Cycles, and was written by nothing, so outside the test suite it could only
+     * ever be its column default of false.
+     */
+    @Test
+    public void testCreateProgram_CarriesTheReviewGate() {
+        ArgumentCaptor<EQAProgram> written = ArgumentCaptor.forClass(EQAProgram.class);
+        when(programService.insert(any(EQAProgram.class))).thenReturn(1L);
+        program1.setRequiresCycleReview(true);
+        when(programService.get(1L)).thenReturn(program1);
+
+        ResponseEntity<?> response = controller.createProgram(request, Map.of("name", "Chemistry PT", "schemeType",
+                "INTERNATIONAL_PT", "provider", "NHLS", "requiresCycleReview", true));
+
+        verify(programService).insert(written.capture());
+        assertEquals("the gate reaches the row", Boolean.TRUE, written.getValue().getRequiresCycleReview());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> dto = (Map<String, Object>) response.getBody();
+        assertEquals("and comes back to the client", true, dto.get("requiresCycleReview"));
+    }
+
+    /** Left out of the request, a new scheme submits automatically as before. */
+    @Test
+    public void testCreateProgram_ReviewGateDefaultsOff() {
+        ArgumentCaptor<EQAProgram> written = ArgumentCaptor.forClass(EQAProgram.class);
+        when(programService.insert(any(EQAProgram.class))).thenReturn(1L);
+        when(programService.get(1L)).thenReturn(program1);
+
+        controller.createProgram(request,
+                Map.of("name", "Chemistry PT", "schemeType", "INTERNATIONAL_PT", "provider", "NHLS"));
+
+        verify(programService).insert(written.capture());
+        assertEquals(Boolean.FALSE, written.getValue().getRequiresCycleReview());
+    }
+
+    @Test
+    public void testUpdateProgram_TogglesTheReviewGateBothWays() {
+        program1.setRequiresCycleReview(false);
+        when(programService.get(1L)).thenReturn(program1);
+        when(programService.update(any(EQAProgram.class))).thenAnswer(call -> call.getArgument(0));
+
+        controller.updateProgram(request, 1L, Map.of("requiresCycleReview", true));
+        assertEquals(Boolean.TRUE, program1.getRequiresCycleReview());
+
+        controller.updateProgram(request, 1L, Map.of("requiresCycleReview", false));
+        assertEquals(Boolean.FALSE, program1.getRequiresCycleReview());
+
+        // A request that does not mention it leaves it where it was.
+        controller.updateProgram(request, 1L, Map.of("requiresCycleReview", true));
+        controller.updateProgram(request, 1L, Map.of("description", "unrelated edit"));
+        assertEquals(Boolean.TRUE, program1.getRequiresCycleReview());
     }
 
     @Test

@@ -1,5 +1,6 @@
 package org.openelisglobal.testsamplehandling.service;
 
+import java.util.Map;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.testsamplehandling.valueholder.TestSampleHandling;
 
@@ -17,4 +18,10 @@ public interface TestSampleHandlingService extends BaseObjectService<TestSampleH
      * audit trail). Returns the persisted row.
      */
     TestSampleHandling saveForTest(String testId, TestSampleHandling desired, String sysUserId);
+
+    /**
+     * {@link #saveForTest} for several tests in one transaction: either every test
+     * gets its storage or none does (the group editor's Storage save).
+     */
+    void saveForTests(Map<String, TestSampleHandling> desiredByTestId, String sysUserId);
 }

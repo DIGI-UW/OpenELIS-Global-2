@@ -87,4 +87,18 @@ describe("CaseViewLayout", () => {
       expect(className).toContain("cds--sm:col-span-4");
     }
   });
+  // Fields and tiles are the same light grey as the content area in this
+  // application's theme, so the grid brings its own surface; the class is
+  // what this test can see of it, the rule itself lives in caseView.scss.
+  it("carries the surface class on the layout grid", () => {
+    const { container } = render(
+      <CaseViewLayout summary={<div data-testid="summary" />}>
+        <div data-testid="centre" />
+      </CaseViewLayout>,
+    );
+
+    expect(container.querySelector(".cds--css-grid")).toHaveClass(
+      "case-view__layout",
+    );
+  });
 });

@@ -4,6 +4,7 @@ import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
 import LaporanHasilReport from "../LaporanHasilReport";
+import { ConfigurationContext } from "../../../layout/contexts";
 
 const MOCK_REPORT = {
   ineligibleCount: 3,
@@ -68,6 +69,7 @@ const MOCK_REPORT = {
       complianceStatus: "COMPLIANT",
       lastGenerated: "2026-04-05T10:30:00",
       hasBeenReleased: true,
+      reportIssued: true,
       gpsCoordinates: null,
       collectionMethod: null,
       waterTemp: null,
@@ -87,7 +89,9 @@ const MOCK_STATUSES = [
   { id: "BORDERLINE", text: "Borderline" },
 ];
 
-vi.mock("../../../utils/Utils", () => ({
+vi.mock("../../../utils/Utils", async (importOriginal) => ({
+  toLocalIsoDate: (await importOriginal()).toLocalIsoDate,
+  parseIsoDate: (await importOriginal()).parseIsoDate,
   getFromOpenElisServer: vi.fn((url, callback) => {
     if (url.includes("compliance-statuses")) {
       callback(MOCK_STATUSES);
@@ -114,11 +118,14 @@ describe("LaporanHasilReport", () => {
   it("renders title and subtitle", () => {
     renderWithIntl(<LaporanHasilReport />);
     expect(screen.getByText(/Compliance Report/i)).toBeInTheDocument();
-    expect(screen.getByText(/Generate compliance certificates for validated environmental orders/i)).toBeInTheDocument();
+    expect(screen.getByText(/Generate the results report or compliance certificate for validated environmental orders/i)).toBeInTheDocument();
   });
 
-  it("renders all 5 filter controls", () => {
+  it("renders all 6 filter controls", () => {
     renderWithIntl(<LaporanHasilReport />);
+    expect(
+      screen.getByRole("textbox", { name: "Lab number" }),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText(/Date From/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Date To/i)).toBeInTheDocument();
     expect(screen.getByText(/Compliance Status/i)).toBeInTheDocument();
@@ -158,6 +165,42 @@ describe("LaporanHasilReport", () => {
     expect(screen.getAllByText("✗ Non-Compliant").length + screen.getAllByText(/Non-Compliant/i).length).toBeGreaterThan(0);
   });
 
+  it("names an order with no graded result instead of showing its code", async () => {
+    const { getFromOpenElisServer } = await import("../../../utils/Utils");
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("compliance-statuses")) {
+        callback(MOCK_STATUSES);
+      } else {
+        callback({
+          ...MOCK_REPORT,
+          orders: [
+            {
+              ...MOCK_REPORT.orders[0],
+              complianceStatus: undefined,
+              testCount: 0,
+              parameterResults: [],
+            },
+          ],
+        });
+      }
+    });
+    try {
+      renderWithIntl(<LaporanHasilReport />);
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /Search/i }));
+      });
+
+      expect(screen.getByText("Not graded")).toBeInTheDocument();
+      expect(screen.queryByText("NONE")).not.toBeInTheDocument();
+    } finally {
+      getFromOpenElisServer.mockImplementation((url, callback) =>
+        callback(
+          url.includes("compliance-statuses") ? MOCK_STATUSES : MOCK_REPORT,
+        ),
+      );
+    }
+  });
+
   it("renders COMPLIANT as green tag", async () => {
     renderWithIntl(<LaporanHasilReport />);
     await act(async () => {
@@ -182,6 +225,362 @@ describe("LaporanHasilReport", () => {
       name: /Reissue with Amendment/i,
     });
     expect(reissueButtons).toHaveLength(1);
+  });
+
+  it("offers Generate PDF for a released order whose report was never issued", async () => {
+    const { getFromOpenElisServer } = await import("../../../utils/Utils");
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("compliance-statuses")) {
+        callback(MOCK_STATUSES);
+      } else {
+        callback({
+          ...MOCK_REPORT,
+          orders: [
+            {
+              ...MOCK_REPORT.orders[1],
+              lastGenerated: null,
+              hasBeenReleased: true,
+              reportIssued: false,
+            },
+          ],
+        });
+      }
+    });
+    try {
+      renderWithIntl(<LaporanHasilReport />);
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /Search/i }));
+      });
+
+      expect(
+        screen.getByRole("button", { name: /Generate PDF/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Reissue with Amendment/i }),
+      ).not.toBeInTheDocument();
+    } finally {
+      getFromOpenElisServer.mockImplementation((url, callback) =>
+        callback(
+          url.includes("compliance-statuses") ? MOCK_STATUSES : MOCK_REPORT,
+        ),
+      );
+    }
+  });
+
+  it("filters by results report among the compliance statuses", () => {
+    renderWithIntl(<LaporanHasilReport />);
+    fireEvent.click(
+      screen.getByRole("combobox", { name: /Compliance Status/i }),
+    );
+
+    expect(
+      screen.getByRole("option", { name: "Results report (no standard)" }),
+    ).toBeInTheDocument();
+  });
+
+  it("says why an order with results not yet validated has no certificate (OGC-1620)", async () => {
+    const { getFromOpenElisServer } = await import("../../../utils/Utils");
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("compliance-statuses")) {
+        callback(MOCK_STATUSES);
+      } else {
+        callback({
+          ...MOCK_REPORT,
+          orders: [
+            {
+              ...MOCK_REPORT.orders[0],
+              sampleId: 103,
+              labNumber: "ENV-2026-003",
+              complianceStatus: "INELIGIBLE",
+              ineligibleReason: "NOT_VALIDATED",
+              parameterResults: [],
+            },
+            {
+              ...MOCK_REPORT.orders[0],
+              sampleId: 104,
+              labNumber: "ENV-2026-004",
+              complianceStatus: "INELIGIBLE",
+              ineligibleReason: "NO_TESTS",
+              parameterResults: [],
+            },
+          ],
+        });
+      }
+    });
+    renderWithIntl(<LaporanHasilReport />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Search/i }));
+    });
+
+    expect(screen.getByText("Results not yet validated")).toBeInTheDocument();
+    expect(screen.getAllByText("— Ineligible")).toHaveLength(2);
+    expect(screen.queryByText("INELIGIBLE")).not.toBeInTheDocument();
+    expect(screen.getByText("No tests on this order")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Generate PDF/i }),
+    ).not.toBeInTheDocument();
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("compliance-statuses")) {
+        callback(MOCK_STATUSES);
+      } else {
+        callback(MOCK_REPORT);
+      }
+    });
+  });
+
+  it("explains a certificate the server refuses because results are not validated", async () => {
+    const { postToOpenElisServerForBlob } = await import(
+      "../../../utils/Utils"
+    );
+    postToOpenElisServerForBlob.mockImplementation(
+      (url, body, callback, errorCallback) =>
+        errorCallback(new Error("HTTP error! status: 409")),
+    );
+    renderWithIntl(<LaporanHasilReport />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Search/i }));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Generate PDF/i }));
+    });
+
+    expect(
+      screen.getByText(
+        "Every test must be validated before the report can be generated.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("counts a certificate as generated only the first time", async () => {
+    const { getFromOpenElisServer, postToOpenElisServerForBlob } = await import(
+      "../../../utils/Utils"
+    );
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("compliance-statuses")) {
+        callback(MOCK_STATUSES);
+      } else {
+        callback({
+          ...MOCK_REPORT,
+          generatedCount: 1,
+          notYetGeneratedCount: 1,
+          orders: [
+            { ...MOCK_REPORT.orders[0], lastGenerated: "2026-04-05T10:30:00" },
+            {
+              ...MOCK_REPORT.orders[0],
+              sampleId: 105,
+              labNumber: "ENV-2026-005",
+            },
+          ],
+        });
+      }
+    });
+    postToOpenElisServerForBlob.mockImplementation((url, body, callback) =>
+      callback(new Blob(["%PDF"]), {}),
+    );
+    global.URL.createObjectURL = vi.fn(() => "blob:x");
+    global.URL.revokeObjectURL = vi.fn();
+    const linkClick = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => {});
+    renderWithIntl(<LaporanHasilReport />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Search/i }));
+    });
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getAllByRole("button", { name: /Generate PDF/i })[0],
+      );
+    });
+
+    const tile = (label) =>
+      screen
+        .getAllByText(label, { exact: true })
+        .map((element) => element.closest(".cds--tile"))
+        .find(Boolean).textContent;
+    expect(tile("Not Yet Generated")).toBe("1Not Yet Generated");
+    expect(tile("Generated")).toBe("1Generated");
+    expect(linkClick).toHaveBeenCalledOnce();
+    linkClick.mockRestore();
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("compliance-statuses")) {
+        callback(MOCK_STATUSES);
+      } else {
+        callback(MOCK_REPORT);
+      }
+    });
+  });
+
+  describe("typed dates (OGC-1635)", () => {
+    const captureReportUrls = async () => {
+      const { getFromOpenElisServer } = await import("../../../utils/Utils");
+      const urls = [];
+      getFromOpenElisServer.mockImplementation((url, callback) => {
+        if (url.includes("compliance-statuses")) {
+          callback(MOCK_STATUSES);
+          return;
+        }
+        if (url.startsWith("/rest/complianceReport?")) urls.push(url);
+        callback(url.includes("standards") ? [] : MOCK_REPORT);
+      });
+      return urls;
+    };
+
+    const typeDate = (input, text) => {
+      act(() => input.focus());
+      fireEvent.click(input);
+      fireEvent.input(input, { target: { value: text } });
+    };
+
+    const clickSearch = async () => {
+      const search = screen.getByRole("button", { name: /^Search$/ });
+      act(() => {
+        fireEvent.touchStart(search);
+        fireEvent.mouseDown(search);
+        search.focus();
+      });
+      await act(async () => {
+        fireEvent.click(search);
+      });
+    };
+
+    it("searches with dates typed into both fields, then Search clicked", async () => {
+      const urls = await captureReportUrls();
+      renderWithIntl(<LaporanHasilReport />);
+
+      typeDate(screen.getByLabelText(/Date From/i), "11/11/2026");
+      typeDate(screen.getByLabelText(/Date To/i), "11/12/2026");
+      await clickSearch();
+
+      expect(urls.at(-1)).toBe(
+        "/rest/complianceReport?dateFrom=2026-11-11&dateTo=2026-11-12",
+      );
+      expect(screen.getByLabelText(/Date From/i)).toHaveValue("11/11/2026");
+    });
+
+    it("marks a typed text that is not a date and searches without it", async () => {
+      const urls = await captureReportUrls();
+      renderWithIntl(<LaporanHasilReport />);
+
+      typeDate(screen.getByLabelText(/Date From/i), "11/11/2026");
+      typeDate(screen.getByLabelText(/Date To/i), "13/45/2026");
+      await clickSearch();
+
+      expect(urls.at(-1)).toBe("/rest/complianceReport?dateFrom=2026-11-11");
+      expect(screen.getByLabelText(/Date To/i)).toHaveValue("13/45/2026");
+      expect(
+        screen.getByText("Enter a valid date as mm/dd/yyyy."),
+      ).toBeInTheDocument();
+    });
+
+    it("drops a committed date when the field is cleared", async () => {
+      const urls = await captureReportUrls();
+      renderWithIntl(<LaporanHasilReport />);
+
+      typeDate(screen.getByLabelText(/Date From/i), "11/11/2026");
+      await clickSearch();
+      expect(urls.at(-1)).toBe("/rest/complianceReport?dateFrom=2026-11-11");
+
+      typeDate(screen.getByLabelText(/Date From/i), "");
+      await clickSearch();
+      expect(urls.at(-1)).toBe("/rest/complianceReport?");
+    });
+  });
+
+  it("finds an order by lab number, typed or scanned, without dates (OGC-1619)", async () => {
+    const { getFromOpenElisServer } = await import("../../../utils/Utils");
+    const urls = [];
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("compliance-statuses")) {
+        callback(MOCK_STATUSES);
+        return;
+      }
+      urls.push(url);
+      callback(
+        url.includes("labNumber=NOPE")
+          ? {
+              ineligibleCount: 0,
+              generatedCount: 0,
+              notYetGeneratedCount: 0,
+              orders: [],
+              labNumberMatches: 0,
+            }
+          : MOCK_REPORT,
+      );
+    });
+    renderWithIntl(<LaporanHasilReport />);
+
+    const field = screen.getByRole("textbox", { name: "Lab number" });
+    fireEvent.change(field, { target: { value: "ENV-2026-001" } });
+    await act(async () => {
+      fireEvent.keyDown(field, { key: "Enter" });
+    });
+    expect(urls.at(-1)).toBe("/rest/complianceReport?labNumber=ENV-2026-001");
+
+    fireEvent.change(field, { target: { value: "NOPE" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Search/i }));
+    });
+    expect(screen.getByTestId("laporan-hasil-empty")).toHaveTextContent(
+      "No environmental order with lab number NOPE",
+    );
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("compliance-statuses")) {
+        callback(MOCK_STATUSES);
+      } else {
+        callback(MOCK_REPORT);
+      }
+    });
+  });
+
+  it("says a lab number matches when the filters hide its order, and when the list is cut", async () => {
+    const { getFromOpenElisServer } = await import("../../../utils/Utils");
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("compliance-statuses")) {
+        callback(MOCK_STATUSES);
+      } else if (url.includes("labNumber=ENV-2026-001")) {
+        callback({
+          ineligibleCount: 1,
+          generatedCount: 0,
+          notYetGeneratedCount: 0,
+          orders: [],
+          labNumberMatches: 1,
+        });
+      } else {
+        callback({ ...MOCK_REPORT, labNumberMatches: 200, labNumberLimited: true });
+      }
+    });
+    try {
+      renderWithIntl(<LaporanHasilReport />);
+      const field = screen.getByRole("textbox", { name: "Lab number" });
+
+      fireEvent.change(field, { target: { value: "ENV-2026-001" } });
+      await act(async () => {
+        fireEvent.keyDown(field, { key: "Enter" });
+      });
+      const empty = screen.getByTestId("laporan-hasil-empty");
+      expect(empty).toHaveTextContent(
+        "Lab number ENV-2026-001: 1 order matches, but the other filters hide it.",
+      );
+      expect(empty).not.toHaveTextContent("No environmental order");
+
+      fireEvent.change(field, { target: { value: "ENV" } });
+      await act(async () => {
+        fireEvent.keyDown(field, { key: "Enter" });
+      });
+      expect(
+        screen.getByText(
+          "More orders start with ENV than can be listed. Type more of the number to narrow the list.",
+        ),
+      ).toBeInTheDocument();
+    } finally {
+      getFromOpenElisServer.mockImplementation((url, callback) =>
+        callback(
+          url.includes("compliance-statuses") ? MOCK_STATUSES : MOCK_REPORT,
+        ),
+      );
+    }
   });
 
   it("shows empty state when no orders", async () => {
@@ -233,6 +632,94 @@ describe("LaporanHasilReport", () => {
     }
   });
 
+  it("lists every validated result, with the guideline and status only when a standard applies (OGC-1617)", async () => {
+    const { getFromOpenElisServer } = await import("../../../utils/Utils");
+    const rows = [
+      {
+        sampleNumber: "1",
+        sampleType: "Surface water",
+        parameter: "Free chlorine",
+        result: "0.1",
+        unit: "mg/L",
+        method: "DPD",
+        guideline: "0.2 - 5 mg/L",
+        status: "NON_COMPLIANT",
+      },
+      {
+        sampleNumber: "1",
+        sampleType: "Surface water",
+        parameter: "Turbidity",
+        result: "3",
+        unit: "NTU",
+        method: null,
+        guideline: null,
+        status: null,
+      },
+    ];
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("compliance-statuses")) {
+        callback(MOCK_STATUSES);
+      } else {
+        callback({
+          ...MOCK_REPORT,
+          orders: [
+            {
+              ...MOCK_REPORT.orders[1],
+              sampleId: 201,
+              labNumber: "ENV-RESULTS",
+              standardName: null,
+              regulationNumber: null,
+              complianceStatus: "NONE",
+              reportKind: "RESULTS",
+              hasBeenReleased: false,
+              reportIssued: false,
+              lastGenerated: null,
+              reportRows: [{ ...rows[1] }],
+            },
+            {
+              ...MOCK_REPORT.orders[0],
+              sampleId: 202,
+              labNumber: "ENV-CERT",
+              reportKind: "COMPLIANCE",
+              reportRows: rows,
+            },
+          ],
+        });
+      }
+    });
+    renderWithIntl(<LaporanHasilReport />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Search/i }));
+    });
+
+    expect(screen.getByText("Results report (no standard)")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Generate PDF/i })).toHaveLength(2);
+
+    const expand = screen.getAllByRole("button", { name: /expand/i });
+    await act(async () => {
+      fireEvent.click(expand[0]);
+      fireEvent.click(expand[1]);
+    });
+    const [resultsOnly, certificate] = screen.getAllByTestId(
+      "laporan-hasil-report-rows",
+    );
+    expect(resultsOnly).toHaveTextContent("Turbidity");
+    expect(resultsOnly).not.toHaveTextContent("Status");
+    expect(screen.getByTestId("laporan-hasil-results-only")).toBeInTheDocument();
+    expect(certificate).toHaveTextContent("Free chlorine");
+    expect(certificate).toHaveTextContent("0.2 - 5 mg/L");
+    expect(certificate).toHaveTextContent("Turbidity");
+    expect(certificate).toHaveTextContent("Status");
+
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("compliance-statuses")) {
+        callback(MOCK_STATUSES);
+      } else {
+        callback(MOCK_REPORT);
+      }
+    });
+  });
+
   it("shows analyst and manager signature names in expanded row", async () => {
     renderWithIntl(<LaporanHasilReport />);
     await act(async () => {
@@ -249,5 +736,39 @@ describe("LaporanHasilReport", () => {
       expect(screen.getByText(/Deri Rahmawati/i)).toBeInTheDocument();
       expect(screen.getByText(/Bambang Sutrisno/i)).toBeInTheDocument();
     }
+  });
+});
+
+// OGC-1657 walk: on a day-first site the report listed "2026-11-05 10:00" for
+// the collection, the detail and the signatures, and Last Generated in the
+// browser's locale.
+describe("LaporanHasilReport dates follow the site date format", () => {
+  it("shows collection, generation and signature times day first", async () => {
+    render(
+      <ConfigurationContext.Provider
+        value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "fr-FR" } }}
+      >
+        <IntlProvider locale="en" messages={messages}>
+          <LaporanHasilReport />
+        </IntlProvider>
+      </ConfigurationContext.Provider>,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Search/i }));
+    });
+
+    expect(screen.getAllByText("06/04/2026 07:30").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("04/03/2026").length).toBeGreaterThan(0);
+    expect(screen.getByText("05/04/2026 10:30")).toBeInTheDocument();
+    expect(screen.queryByText("2026-04-06 07:30")).toBeNull();
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getAllByRole("button", { name: /expand/i })[1],
+      );
+    });
+    expect(screen.getAllByText("06/04/2026 07:30").length).toBeGreaterThan(1);
+    expect(screen.getByText("06/04/2026 14:31")).toBeInTheDocument();
+    expect(screen.getByText("06/04/2026 15:22")).toBeInTheDocument();
   });
 });

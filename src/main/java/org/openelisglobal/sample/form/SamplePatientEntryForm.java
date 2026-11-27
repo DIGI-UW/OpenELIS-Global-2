@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.barcode.form.LabelsSectionForm;
 import org.openelisglobal.barcode.form.PostSavePrintDialogForm;
@@ -12,7 +13,6 @@ import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.labelpreset.dto.OrderLabelPersistRequest;
-import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.action.bean.PatientClinicalInfo;
 import org.openelisglobal.patient.action.bean.PatientEnhancedSearch;
@@ -34,6 +34,12 @@ public class SamplePatientEntryForm extends BaseForm {
     }
 
     private Boolean rememberSiteAndRequester;
+
+    /**
+     * Set on a successful save: tests on the order whose reference range will not
+     * be applied because the patient's sex or birth date is missing.
+     */
+    private List<String> rangeNotAppliedTests = new ArrayList<>();
 
     @ValidDate(relative = DateRelation.TODAY, groups = { SamplePatientEntry.class, SamplePatientEntryBatch.class })
     private String currentDate = "";
@@ -120,9 +126,9 @@ public class SamplePatientEntryForm extends BaseForm {
      * {@link JsonIgnoreProperties} even when the frontend omits it.
      */
     private OrderLabelPersistRequest labelPersistRequest;
+    private String cancelReason;
 
     @Valid
-    private MicroCaseOrderDetailRequestForm microbiologyOrderDetail;
 
     /**
      * Specimens requested at order entry, saved with the order in one transaction
@@ -142,14 +148,6 @@ public class SamplePatientEntryForm extends BaseForm {
 
     public void setRequestedSampleTypes(List<SampleTypeRequestDTO> requestedSampleTypes) {
         this.requestedSampleTypes = requestedSampleTypes;
-    }
-
-    public MicroCaseOrderDetailRequestForm getMicrobiologyOrderDetail() {
-        return microbiologyOrderDetail;
-    }
-
-    public void setMicrobiologyOrderDetail(MicroCaseOrderDetailRequestForm microbiologyOrderDetail) {
-        this.microbiologyOrderDetail = microbiologyOrderDetail;
     }
 
     public String getCurrentDate() {
@@ -382,5 +380,21 @@ public class SamplePatientEntryForm extends BaseForm {
 
     public void setLabelPersistRequest(OrderLabelPersistRequest labelPersistRequest) {
         this.labelPersistRequest = labelPersistRequest;
+    }
+
+    public List<String> getRangeNotAppliedTests() {
+        return rangeNotAppliedTests;
+    }
+
+    public void setRangeNotAppliedTests(List<String> rangeNotAppliedTests) {
+        this.rangeNotAppliedTests = rangeNotAppliedTests == null ? new ArrayList<>() : rangeNotAppliedTests;
+    }
+
+    public String getCancelReason() {
+        return cancelReason;
+    }
+
+    public void setCancelReason(String cancelReason) {
+        this.cancelReason = cancelReason;
     }
 }

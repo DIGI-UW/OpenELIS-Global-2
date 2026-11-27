@@ -5,6 +5,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.qc.dao.QCControlLotDAO;
 import org.openelisglobal.qc.dao.QCStatisticsDAO;
 import org.openelisglobal.qc.valueholder.QCControlLot;
+import org.openelisglobal.qc.valueholder.QCFrequencyType;
 import org.openelisglobal.qc.valueholder.QCStatistics;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -35,6 +36,7 @@ public class QCControlLotValidator {
      */
     public void validate(QCControlLot lot) {
         validateCalculationMethodConfig(lot);
+        validateFrequencyConfig(lot);
         validateBenchLotUsesFixedTargets(lot);
         validateActiveRequiresStatistics(lot);
         validateNoDuplicateLot(lot);
@@ -109,6 +111,21 @@ public class QCControlLotValidator {
             if (count == null || count <= 0) {
                 throw new IllegalArgumentException("Initial runs method requires a positive initial runs count");
             }
+        }
+    }
+
+    /**
+     * A custom window with no length would leave every batch on the lot overdue
+     * forever, so the hours are required with that type and must be positive
+     * wherever they are given (OGC-427).
+     */
+    private void validateFrequencyConfig(QCControlLot lot) {
+        if (lot.getQcFrequencyType() == QCFrequencyType.CUSTOM_HOURS
+                && (lot.getQcFrequencyHours() == null || lot.getQcFrequencyHours() <= 0)) {
+            throw new IllegalArgumentException("A custom QC frequency requires a positive number of hours");
+        }
+        if (lot.getShiftDefinitionHours() != null && lot.getShiftDefinitionHours() <= 0) {
+            throw new IllegalArgumentException("A shift length must be a positive number of hours");
         }
     }
 

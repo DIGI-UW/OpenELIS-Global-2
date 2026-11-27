@@ -703,7 +703,7 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
         if (localCode == null || localCode.isBlank()) {
             return null;
         }
-        String hql = "FROM Test t WHERE LOWER(t.localCode) = LOWER(:localCode) ORDER BY t.id";
+        String hql = "FROM Test t WHERE LOWER(TRIM(t.localCode)) = LOWER(:localCode) ORDER BY t.id";
         try {
             List<Test> tests = entityManager.unwrap(Session.class).createQuery(hql, Test.class)
                     .setParameter("localCode", localCode.trim()).setMaxResults(1).list();
@@ -712,6 +712,17 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
             handleException(e, "getTestByLocalCode");
         }
         return null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Test> getTestsByLocalCode(String localCode) {
+        if (localCode == null || localCode.isBlank()) {
+            return new ArrayList<>();
+        }
+        String hql = "FROM Test t WHERE LOWER(TRIM(t.localCode)) = LOWER(:localCode) ORDER BY t.id";
+        return entityManager.unwrap(Session.class).createQuery(hql, Test.class)
+                .setParameter("localCode", localCode.trim()).list();
     }
 
     @Override
@@ -844,6 +855,23 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
             handleException(e, "getTestsByTestSectionId");
         }
 
+        return null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Test> getAllTestsByTestSectionIds(List<String> ids) throws LIMSRuntimeException {
+        try {
+            // Deliberately no isActive filter — see getAllTestsByTestSectionIds
+            // on TestDAO. Viewer paths must see a deactivated test's in-flight
+            // work so it can still be completed.
+            String sql = "from Test t where t.testSection.id IN (:ids)";
+            Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
+            query.setParameterList("ids", ids);
+            return query.list();
+        } catch (RuntimeException e) {
+            handleException(e, "getAllTestsByTestSectionIds");
+        }
         return null;
     }
 

@@ -238,6 +238,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         Map<String, Object> result = new HashMap<>();
         result.put("sampleItemId", sampleItemId);
         putQuantitySnapshot(result, sampleItemId);
+        result.put("locationId", assignment.getLocationId() != null ? String.valueOf(assignment.getLocationId()) : "");
+        result.put("locationType", assignment.getLocationType() != null ? assignment.getLocationType() : "");
 
         String hierarchicalPath = buildHierarchicalPathForAssignment(assignment);
         result.put("location", hierarchicalPath != null ? hierarchicalPath : "");
@@ -247,8 +249,47 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         result.put("positionCoordinate",
                 assignment.getPositionCoordinate() != null ? assignment.getPositionCoordinate() : "");
         result.put("notes", assignment.getNotes() != null ? assignment.getNotes() : "");
+        StorageDevice device = deviceForAssignment(assignment);
+        result.put("temperatureSetting",
+                device != null && device.getTemperatureSetting() != null
+                        ? device.getTemperatureSetting().toPlainString()
+                        : "");
 
         return result;
+    }
+
+    /**
+     * The storage device that holds an assignment's location, or null when the
+     * sample sits in a room or the location no longer exists. Its temperature
+     * setting is the location's condition order entry compares against the test
+     * catalog's requirement (OGC-1424).
+     */
+    private StorageDevice deviceForAssignment(SampleStorageAssignment assignment) {
+        if (assignment.getLocationId() == null || assignment.getLocationType() == null) {
+            return null;
+        }
+        switch (assignment.getLocationType()) {
+        case "device":
+            return (StorageDevice) storageLocationService.get(assignment.getLocationId(), StorageDevice.class);
+        case "shelf": {
+            StorageShelf shelf = (StorageShelf) storageLocationService.get(assignment.getLocationId(),
+                    StorageShelf.class);
+            return shelf == null ? null : shelf.getParentDevice();
+        }
+        case "rack": {
+            StorageRack rack = (StorageRack) storageLocationService.get(assignment.getLocationId(), StorageRack.class);
+            StorageShelf shelf = rack == null ? null : rack.getParentShelf();
+            return shelf == null ? null : shelf.getParentDevice();
+        }
+        case "box": {
+            StorageBox box = (StorageBox) storageLocationService.get(assignment.getLocationId(), StorageBox.class);
+            StorageRack rack = box == null ? null : box.getParentRack();
+            StorageShelf shelf = rack == null ? null : rack.getParentShelf();
+            return shelf == null ? null : shelf.getParentDevice();
+        }
+        default:
+            return null;
+        }
     }
 
     @Override
@@ -293,8 +334,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
     @Override
     @Transactional
-    public Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes,
-            String sysUserId) {
+    public Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes) {
         try {
             // Validate inputs
             if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
@@ -306,17 +346,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             if (method == null || method.trim().isEmpty()) {
                 throw new LIMSRuntimeException("Disposal method is required");
             }
-            // OGC-738: sysUserId is now required so the global audit row and the
-            // storage-movement row both reflect who actually disposed the sample.
-            if (sysUserId == null || sysUserId.trim().isEmpty()) {
-                throw new LIMSRuntimeException("sysUserId is required for disposal audit");
-            }
-            Integer sysUserIdInt;
-            try {
-                sysUserIdInt = Integer.valueOf(sysUserId.trim());
-            } catch (NumberFormatException e) {
-                throw new LIMSRuntimeException("sysUserId must be numeric: " + sysUserId);
-            }
+
+            Integer actingUserId = Integer.valueOf(userContextHolder.requireSysUserId());
 
             // Resolve SampleItem (handles internal ID, accession number, or external ID)
             SampleItem sampleItem = resolveSampleItem(sampleItemId);
@@ -380,7 +411,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             String disposedStatusId = statusService
                     .getStatusID(org.openelisglobal.common.services.StatusService.SampleStatus.Disposed);
             sampleItem.setStatusId(disposedStatusId);
-            sampleItem.setSysUserId(sysUserId);
+            sampleItem.setSysUserId(String.valueOf(actingUserId));
             sampleItemService.update(sampleItem);
 
             // Create audit movement record for disposal
@@ -400,7 +431,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 movement.setMovementDate(new Timestamp(System.currentTimeMillis()));
                 movement.setReason(
                         "Disposal: " + reason + " | Method: " + method + (notes != null ? " | Notes: " + notes : ""));
-                movement.setMovedByUserId(sysUserIdInt);
+                movement.setMovedByUserId(actingUserId);
 
                 movementIdInt = sampleStorageMovementDAO.insert(movement);
             }
@@ -450,25 +481,19 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 throw new LIMSRuntimeException("SampleItem is already disposed");
             }
 
-            java.math.BigDecimal baseline = sampleItem.getRemainingQuantity();
-            if (baseline == null && sampleItem.getQuantity() != null) {
-                baseline = java.math.BigDecimal.valueOf(sampleItem.getQuantity());
-            }
-
-            java.math.BigDecimal newRemaining;
             if (markUsedUp) {
-                newRemaining = java.math.BigDecimal.ZERO;
+                sampleItem.setRemainingQuantity(java.math.BigDecimal.ZERO);
             } else {
                 if (amountUsed == null || amountUsed.signum() <= 0) {
                     throw new LIMSRuntimeException("Amount used must be a positive number");
                 }
-                if (baseline == null) {
+                if (sampleItem.getRemainingQuantity() == null && sampleItem.getQuantity() == null) {
                     throw new LIMSRuntimeException("SampleItem does not track a quantity; use mark-used-up instead");
                 }
-                newRemaining = baseline.subtract(amountUsed).max(java.math.BigDecimal.ZERO);
+                sampleItem.decrementRemainingQuantity(amountUsed);
             }
+            java.math.BigDecimal newRemaining = sampleItem.getRemainingQuantity();
 
-            sampleItem.setRemainingQuantity(newRemaining);
             sampleItem.setSysUserId(sysUserId);
             sampleItemService.update(sampleItem);
 
@@ -701,6 +726,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                         + ". Must be one of: 'room', 'device', 'shelf', 'rack', 'box'");
             }
 
+            Integer actingUserId = Integer.valueOf(userContextHolder.requireSysUserId());
+
             // Resolve SampleItem: accept either SampleItem ID or accession number
             SampleItem sampleItem = resolveSampleItem(sampleItemId);
 
@@ -866,7 +893,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             }
             assignment.setAssignedDate(new Timestamp(System.currentTimeMillis()));
             assignment.setNotes(notes);
-            assignment.setAssignedByUserId(1); // Default to system user for tests
+            assignment.setAssignedByUserId(actingUserId);
 
             Integer assignmentIdInt = sampleStorageAssignmentDAO.insert(assignment);
             String assignmentId = assignmentIdInt != null ? assignmentIdInt.toString() : null;
@@ -908,7 +935,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
             movement.setMovementDate(new Timestamp(System.currentTimeMillis()));
             movement.setReason(notes);
-            movement.setMovedByUserId(1); // Default to system user for tests
+            movement.setMovedByUserId(actingUserId);
 
             // Log movement audit record for debugging
             if (logger.isDebugEnabled()) {
@@ -960,6 +987,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 throw new LIMSRuntimeException("Invalid location type: " + locationType
                         + ". Must be one of: 'room', 'device', 'shelf', 'rack', 'box'");
             }
+
+            Integer actingUserId = Integer.valueOf(userContextHolder.requireSysUserId());
 
             // Resolve SampleItem: accept either accession number or external ID
             SampleItem sampleItem = resolveSampleItem(sampleItemId);
@@ -1113,7 +1142,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 if (reason != null) {
                     assignment.setNotes(reason);
                 }
-                assignment.setAssignedByUserId(1); // Default to system user for tests
+                assignment.setAssignedByUserId(actingUserId);
                 sampleStorageAssignmentDAO.insert(assignment);
 
                 // Log initial assignment for debugging
@@ -1164,7 +1193,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
             movement.setMovementDate(new Timestamp(System.currentTimeMillis()));
             movement.setReason(reason);
-            movement.setMovedByUserId(1); // Default to system user for tests
+            movement.setMovedByUserId(actingUserId);
 
             // Log new location for debugging
             if (logger.isDebugEnabled()) {
@@ -1424,7 +1453,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     /**
      * Resolve SampleItem from identifier (internal ID, accession number, or
      * external reference)
-     * 
+     *
      * @param identifier Internal SampleItem ID, accession number, or external
      *                   reference
      * @return SampleItem entity
@@ -2027,10 +2056,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     lot.getInventoryItem() != null && lot.getInventoryItem().getName() != null
                             ? lot.getInventoryItem().getName()
                             : "");
-            map.put("type",
-                    lot.getInventoryItem() != null && lot.getInventoryItem().getItemType() != null
-                            ? lot.getInventoryItem().getItemType().toString()
-                            : "");
+            map.put("type", lot.getInventoryItem() != null ? String.join(", ", lot.getInventoryItem().getTags()) : "");
             map.put("quantity", lot.getCurrentQuantity() != null ? lot.getCurrentQuantity() : 0.0);
             map.put("status", lot.getStatus() != null ? lot.getStatus().toString() : "");
             map.put("qcStatus", lot.getQcStatus() != null ? lot.getQcStatus().toString() : "");
@@ -2049,5 +2075,15 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             response.add(map);
         }
         return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Long> getStorageMetrics() {
+        String disposedStatusId = statusService
+                .getStatusID(org.openelisglobal.common.services.StatusService.SampleStatus.Disposed);
+        Map<String, Long> metrics = sampleStorageAssignmentDAO.countSampleItemAssignmentMetrics(disposedStatusId);
+        metrics.put("storageLocations", storageLocationService.countAllLocations());
+        return metrics;
     }
 }

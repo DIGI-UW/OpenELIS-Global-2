@@ -15,7 +15,7 @@ import {
 /**
  * OGC-949 M15 / OGC-992 (epic OGC-762) — Link Reagent modal.
  *
- * Multi-select of reagent inventory (item_type=REAGENT) minus the reagents
+ * Multi-select of inventory items, including culture media, minus the items
  * already linked to this test. "Link Selected" creates one test_reagent_link
  * per selected reagent with default usage_type=PRIMARY (quantity left null,
  * filled in later via the per-row inline edit, OGC-993).
@@ -33,15 +33,22 @@ const LinkReagentModal = ({
   const [selected, setSelected] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setSelected([]);
+      setError(null);
+    }
+  }, [open]);
 
   useEffect(() => {
     if (!open || !testId) {
       return;
     }
-    setSelected([]);
-    setError(null);
     const linked = new Set(linkedReagentIds.map((id) => String(id)));
-    getFromOpenElisServer("/rest/inventory/items/type/REAGENT", (res) => {
+    getFromOpenElisServer("/rest/inventory/items", (res) => {
+      setLoadFailed(!Array.isArray(res));
       const items = Array.isArray(res) ? res : [];
       setAvailable(
         items
@@ -73,11 +80,17 @@ const LinkReagentModal = ({
     setError(null);
     const statuses = await Promise.all(selected.map((s) => linkOne(s.id)));
     setSaving(false);
-    if (statuses.every((s) => s >= 200 && s < 300)) {
-      setSelected([]);
+    const linked = (status) =>
+      (status >= 200 && status < 300) || status === 409;
+    const failed = selected.filter((_, i) => !linked(statuses[i]));
+    if (failed.length < selected.length) {
       onLinked();
+    }
+    if (failed.length === 0) {
+      setSelected([]);
       onClose();
     } else {
+      setSelected(failed);
       setError(
         intl.formatMessage({ id: "label.testCatalog.reagents.linkError" }),
       );
@@ -102,13 +115,26 @@ const LinkReagentModal = ({
       size="md"
     >
       <Stack gap={5}>
-        {noneAvailable ? (
+        {loadFailed ? (
+          <InlineNotification
+            kind="error"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({ id: "error.title" })}
+            subtitle={intl.formatMessage({
+              id: "label.testCatalog.reagents.modal.loadError",
+            })}
+          />
+        ) : noneAvailable ? (
           <InlineNotification
             kind="info"
             lowContrast
             hideCloseButton
             title={intl.formatMessage({
-              id: "label.testCatalog.reagents.modal.allLinked",
+              id:
+                linkedReagentIds.length > 0
+                  ? "label.testCatalog.reagents.modal.allLinked"
+                  : "label.testCatalog.reagents.modal.noneActive",
             })}
           />
         ) : (

@@ -2,10 +2,13 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Button, Select, SelectItem, Tag, TextInput } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import ReferenceSection from "./ReferenceSection";
+import RowRunSummary from "./runs/RowRunSummary";
+import type { WaitingRun } from "./runs/WaitingTag";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
+import { requestFailed, serverMessage } from "../../utils/requestOutcome";
 
 /**
  * OGC-1024 (R5, D5/D11) — the "Reagents, QC & Controls" combo section:
@@ -64,6 +67,20 @@ interface ReagentsQcSectionProps {
   onToggle: (open: boolean) => void;
   /** the dilution inputs, relocated here from the work zone */
   dilution?: React.ReactNode;
+  /** OGC-1200 FR-D7: the run the row is in, or its result was recorded in. */
+  runId?: number | null;
+  /** The row's result is stored, so a control recorded now opens no run. */
+  hasSavedResult?: boolean;
+  /**
+   * The row's run of one is still open: the row keeps its reagent use and
+   * control capture under the run's summary until its value is saved.
+   */
+  runOfOneOpen?: boolean;
+  /**
+   * A control recorded on the row changed its hold: the run that now holds the
+   * row, or null once the run no longer holds its test.
+   */
+  onRowHoldChange?: (waitingRun: WaitingRun | null) => void;
 }
 
 interface QcCaptureDraft {
@@ -122,8 +139,17 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
   open,
   onToggle,
   dilution,
+  runId,
+  hasSavedResult,
+  runOfOneOpen,
+  onRowHoldChange,
 }) => {
   const intl = useIntl();
+  const [rowRunId, setRowRunId] = useState<number | null>(runId ?? null);
+  useEffect(() => setRowRunId(runId ?? null), [runId]);
+  const [rowRunOpen, setRowRunOpen] = useState(Boolean(runOfOneOpen));
+  useEffect(() => setRowRunOpen(Boolean(runOfOneOpen)), [runOfOneOpen]);
+  const [summaryVersion, setSummaryVersion] = useState(0);
   const fromAnalyzer = Boolean(fromAnalyzerId);
   const [links, setLinks] = useState<ReagentLink[] | null>(null);
   const [lotsByItem, setLotsByItem] = useState<Record<string, InventoryLot[]>>(
@@ -199,7 +225,7 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
       ? `testId=${testId}&instrumentId=${fromAnalyzerId}`
       : `testId=${testId}`;
     getFromOpenElisServer(
-      `/rest/qc/controlLots?${query}`,
+      `/rest/qc/results/control-lots?${query}`,
       (body: ControlLot[]) => setControlLots(Array.isArray(body) ? body : []),
     );
   }, [testId, fromAnalyzerId, quantitative]);
@@ -231,12 +257,11 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
       }),
       (response?: { message?: string; error?: string; status?: number }) => {
         setBusyItem(null);
-        if (response && response.status && response.status >= 400) {
+        if (requestFailed(response)) {
           setMessage({
             kind: "error",
             text:
-              response.message ||
-              response.error ||
+              serverMessage(response) ||
               intl.formatMessage({
                 id: "label.results.reagents.recordFailed",
               }),
@@ -315,10 +340,14 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
     setQcBusy(true);
     setQcMessage(null);
     postToOpenElisServerJsonResponse(
-      "/rest/qc/results",
+      !hasSavedResult && analysisId
+        ? `/rest/result-runs/of-analysis/${analysisId}/controls`
+        : "/rest/qc/results",
       JSON.stringify(body),
       (response?: {
         id?: string;
+        runId?: number | null;
+        waitingRun?: WaitingRun | null;
         message?: string;
         error?: string;
         status?: number;
@@ -332,8 +361,7 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
           setQcMessage({
             kind: "error",
             text:
-              response?.message ||
-              response?.error ||
+              serverMessage(response) ||
               intl.formatMessage({
                 id: "label.results.control.capture.failed",
               }),
@@ -341,13 +369,29 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
           return;
         }
         setQcDraft(EMPTY_QC_DRAFT);
+        if (response.runId) {
+          setRowRunId(response.runId);
+          setRowRunOpen(true);
+          setSummaryVersion((version) => version + 1);
+          onRowHoldChange?.(response.waitingRun ?? null);
+        }
+        const onRun = response.runId
+          ? { run: `RUN-${response.runId}` }
+          : undefined;
         setQcMessage({
           kind: failing ? "blocked" : "ok",
-          text: intl.formatMessage({
-            id: failing
-              ? "label.results.control.capture.recordedBlocked"
-              : "label.results.control.capture.recorded",
-          }),
+          text: intl.formatMessage(
+            {
+              id: onRun
+                ? failing
+                  ? "label.results.control.capture.recordedHeld"
+                  : "label.results.control.capture.recordedOnRun"
+                : failing
+                  ? "label.results.control.capture.recordedBlocked"
+                  : "label.results.control.capture.recorded",
+            },
+            onRun,
+          ),
         });
       },
     );
@@ -365,313 +409,16 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
       open={open}
       onToggle={onToggle}
     >
-      <div className="unifiedReagentProvenance">
-        {fromAnalyzer ? (
-          <>
-            <Tag type="gray" size="sm">
-              <FormattedMessage id="label.results.reagents.mode.analyzer" />
-            </Tag>
-            <span className="unifiedHistoryFootnote">
-              <FormattedMessage
-                id="label.results.reagents.analyzerNote"
-                values={{ 0: analyzerName || fromAnalyzerId }}
-              />
-            </span>
-          </>
-        ) : (
-          <Tag type="blue" size="sm">
-            <FormattedMessage id="label.results.reagents.mode.manual" />
-          </Tag>
-        )}
-      </div>
-
-      <div className="cds--label">
-        <FormattedMessage id="label.results.reagents.lotsUsed" />
-      </div>
-      {links !== null && links.length === 0 && (
-        <div className="unifiedHistoryFootnote">
-          <FormattedMessage id="label.results.reagents.noneLinked" />
-        </div>
+      {rowRunId && (
+        <RowRunSummary
+          key={`${rowRunId}-${summaryVersion}`}
+          runId={rowRunId}
+          testId={testId}
+          variant="reagents"
+        />
       )}
-      {(links || []).map((link) => {
-        const key = String(link.reagentId ?? "");
-        const lots = lotsByItem[key] || [];
-        const unit = link.units || link.quantityUnit || "";
-        return (
-          <div
-            className="unifiedReagent"
-            key={key || link.name}
-            data-testid={`reagent-${key}`}
-          >
-            <div className="unifiedReagentHead">
-              <strong>{link.name || key}</strong>
-              {link.usageType && (
-                <Tag size="sm" type="cool-gray">
-                  {link.usageType}
-                </Tag>
-              )}
-              {link.quantityPerTest !== undefined &&
-                link.quantityPerTest !== null && (
-                  <span className="unifiedHistoryFootnote">
-                    <FormattedMessage
-                      id="label.results.reagents.perTest"
-                      values={{ 0: link.quantityPerTest, 1: unit }}
-                    />
-                  </span>
-                )}
-            </div>
-            {!fromAnalyzer && editable && (
-              <>
-                {lots.map((lot, index) => (
-                  <div
-                    className="unifiedLotCard"
-                    key={lot.id ?? lot.lotNumber}
-                    data-testid={`lot-${lot.lotNumber}`}
-                  >
-                    <span className="unifiedAccession">{lot.lotNumber}</span>
-                    {index === 0 && (
-                      <Tag size="sm" type="teal">
-                        <FormattedMessage id="label.results.reagents.fefo" />
-                      </Tag>
-                    )}
-                    <span className="unifiedHistoryFootnote">
-                      {lotExpiry(lot.expirationDate) && (
-                        <FormattedMessage
-                          id="label.results.reagents.expires"
-                          values={{ 0: lotExpiry(lot.expirationDate) }}
-                        />
-                      )}{" "}
-                      <FormattedMessage
-                        id="label.results.reagents.remaining"
-                        values={{ 0: lot.currentQuantity ?? "—", 1: unit }}
-                      />
-                    </span>
-                  </div>
-                ))}
-                {lots.length === 0 && (
-                  <div className="unifiedHistoryFootnote">
-                    <FormattedMessage id="label.results.reagents.noLots" />
-                  </div>
-                )}
-                {lots.length > 0 && (
-                  <div className="unifiedSampleStatusLine">
-                    <TextInput
-                      id={`reagent-qty-${key}`}
-                      labelText={intl.formatMessage({
-                        id: "label.results.reagents.quantityUsed",
-                      })}
-                      size="sm"
-                      className="unifiedMiniNumber"
-                      value={amounts[key] ?? String(link.quantityPerTest ?? "")}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                        setAmounts((prev) => ({
-                          ...prev,
-                          [key]: e.target.value,
-                        }))
-                      }
-                    />
-                    {unit && (
-                      <span className="unifiedHistoryFootnote">{unit}</span>
-                    )}
-                    <Button
-                      kind="secondary"
-                      size="sm"
-                      disabled={busyItem === key}
-                      onClick={() => recordUse(link)}
-                      data-testid={`record-use-${key}`}
-                    >
-                      <FormattedMessage id="label.results.reagents.recordUse" />
-                    </Button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        );
-      })}
-      {message && (
-        <div
-          className={
-            message.kind === "error"
-              ? "unifiedSampleStatusError"
-              : "unifiedReagentOk"
-          }
-        >
-          {message.text}
-        </div>
-      )}
-      {!fromAnalyzer && (
-        <div className="unifiedHistoryFootnote">
-          <FormattedMessage id="label.results.reagents.consumeNote" />
-        </div>
-      )}
-
-      {(fromAnalyzer || canCaptureControl) && (
-        <div className="cds--label unifiedFieldSpacer">
-          <FormattedMessage id="label.results.control.title" />
-        </div>
-      )}
-      {fromAnalyzer ? (
+      {rowRunId && !(rowRunOpen && !hasSavedResult) ? (
         <>
-          {controlLots.length > 0 ? (
-            controlLots.map((lot) => (
-              <div className="unifiedHistoryRow" key={lot.id}>
-                <span className="unifiedHistoryDetail">
-                  {lot.productName}{" "}
-                  <span className="unifiedAccession">{lot.lotNumber}</span>
-                </span>
-                {lot.controlLevel && (
-                  <Tag size="sm" type="cool-gray">
-                    {lot.controlLevel}
-                  </Tag>
-                )}
-                {lot.status && (
-                  <Tag
-                    size="sm"
-                    type={lot.status === "ACTIVE" ? "green" : "gray"}
-                  >
-                    {lot.status}
-                  </Tag>
-                )}
-              </div>
-            ))
-          ) : (
-            <div className="unifiedHistoryFootnote">
-              <FormattedMessage id="label.results.control.noneConfigured" />
-            </div>
-          )}
-          <Button
-            kind="ghost"
-            size="sm"
-            onClick={() => window.open("/qa/qc/dashboard", "_blank")}
-          >
-            <FormattedMessage id="label.results.control.viewResults" />
-          </Button>
-        </>
-      ) : canCaptureControl ? (
-        <div className="unifiedQcCapture" data-testid="qc-capture">
-          <Select
-            id={`qc-outcome-${testId}`}
-            labelText={intl.formatMessage({
-              id: quantitative
-                ? "label.results.control.capture.outcome"
-                : "label.results.control.capture.controlLine",
-            })}
-            size="sm"
-            value={qcDraft.outcome}
-            onChange={setQcField("outcome")}
-            data-testid="qc-outcome"
-          >
-            <SelectItem value="" text="" />
-            {OUTCOME_OPTIONS[quantitative ? "quantitative" : "rdt"].map(
-              (option) => (
-                <SelectItem
-                  key={option.value}
-                  value={option.value}
-                  text={intl.formatMessage({ id: option.labelKey })}
-                />
-              ),
-            )}
-          </Select>
-          {quantitative ? (
-            <>
-              <Select
-                id={`qc-lot-${testId}`}
-                labelText={intl.formatMessage({
-                  id: "label.results.control.capture.lot",
-                })}
-                size="sm"
-                value={qcDraft.lotId}
-                onChange={setQcField("lotId")}
-                data-testid="qc-lot"
-              >
-                <SelectItem value="" text="" />
-                {controlLots.map((lot) => (
-                  <SelectItem
-                    key={lot.id}
-                    value={lot.id}
-                    text={[lot.productName, lot.lotNumber, lot.controlLevel]
-                      .filter(Boolean)
-                      .join(" — ")}
-                  />
-                ))}
-              </Select>
-              {controlLots.length === 0 && (
-                <div
-                  className="unifiedHistoryFootnote"
-                  data-testid="qc-no-bench-lots"
-                >
-                  <FormattedMessage id="label.results.control.capture.noBenchLots" />
-                </div>
-              )}
-              <div className="unifiedSampleStatusLine">
-                <TextInput
-                  id={`qc-measured-${testId}`}
-                  labelText={intl.formatMessage({
-                    id: "label.results.control.capture.measured",
-                  })}
-                  size="sm"
-                  className="unifiedMiniNumber"
-                  value={qcDraft.measured}
-                  onChange={setQcField("measured")}
-                />
-                <TextInput
-                  id={`qc-expected-${testId}`}
-                  labelText={intl.formatMessage({
-                    id: "label.results.control.capture.expected",
-                  })}
-                  size="sm"
-                  className="unifiedMiniNumber"
-                  value={qcDraft.expected}
-                  onChange={setQcField("expected")}
-                />
-                <TextInput
-                  id={`qc-uncertainty-${testId}`}
-                  labelText={intl.formatMessage({
-                    id: "label.results.control.capture.uncertainty",
-                  })}
-                  size="sm"
-                  className="unifiedMiniNumber"
-                  value={qcDraft.uncertainty}
-                  onChange={setQcField("uncertainty")}
-                />
-                {unitOfMeasure && (
-                  <span className="unifiedHistoryFootnote">
-                    {unitOfMeasure}
-                  </span>
-                )}
-              </div>
-            </>
-          ) : (
-            <TextInput
-              id={`qc-kit-lot-${testId}`}
-              labelText={intl.formatMessage({
-                id: "label.results.control.capture.kitLot",
-              })}
-              size="sm"
-              maxLength={120}
-              value={qcDraft.kitLot}
-              onChange={setQcField("kitLot")}
-              data-testid="qc-kit-lot"
-            />
-          )}
-          {failing && (
-            <div
-              className="unifiedSampleStatusError"
-              data-testid="qc-blocked-hint"
-            >
-              <FormattedMessage id="label.results.control.capture.blockedHint" />
-            </div>
-          )}
-          <Button
-            kind="secondary"
-            size="sm"
-            disabled={qcBusy}
-            onClick={recordControl}
-            data-testid="qc-record"
-          >
-            <FormattedMessage id="label.results.control.capture.record" />
-          </Button>
           {qcMessage && (
             <div
               className={
@@ -686,9 +433,338 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
               {qcMessage.text}
             </div>
           )}
-        </div>
-      ) : null}
+        </>
+      ) : (
+        <>
+          <div className="unifiedReagentProvenance">
+            {fromAnalyzer ? (
+              <>
+                <Tag type="gray" size="sm">
+                  <FormattedMessage id="label.results.reagents.mode.analyzer" />
+                </Tag>
+                <span className="unifiedHistoryFootnote">
+                  <FormattedMessage
+                    id="label.results.reagents.analyzerNote"
+                    values={{ 0: analyzerName || fromAnalyzerId }}
+                  />
+                </span>
+              </>
+            ) : (
+              <Tag type="blue" size="sm">
+                <FormattedMessage id="label.results.reagents.mode.manual" />
+              </Tag>
+            )}
+          </div>
 
+          <div className="cds--label">
+            <FormattedMessage id="label.results.reagents.lotsUsed" />
+          </div>
+          {links !== null && links.length === 0 && (
+            <div className="unifiedHistoryFootnote">
+              <FormattedMessage id="label.results.reagents.noneLinked" />
+            </div>
+          )}
+          {(links || []).map((link) => {
+            const key = String(link.reagentId ?? "");
+            const lots = lotsByItem[key] || [];
+            const unit = link.units || link.quantityUnit || "";
+            return (
+              <div
+                className="unifiedReagent"
+                key={key || link.name}
+                data-testid={`reagent-${key}`}
+              >
+                <div className="unifiedReagentHead">
+                  <strong>{link.name || key}</strong>
+                  {link.usageType && (
+                    <Tag size="sm" type="cool-gray">
+                      {link.usageType}
+                    </Tag>
+                  )}
+                  {link.quantityPerTest !== undefined &&
+                    link.quantityPerTest !== null && (
+                      <span className="unifiedHistoryFootnote">
+                        <FormattedMessage
+                          id="label.results.reagents.perTest"
+                          values={{ 0: link.quantityPerTest, 1: unit }}
+                        />
+                      </span>
+                    )}
+                </div>
+                {!fromAnalyzer && editable && (
+                  <>
+                    {lots.map((lot, index) => (
+                      <div
+                        className="unifiedLotCard"
+                        key={lot.id ?? lot.lotNumber}
+                        data-testid={`lot-${lot.lotNumber}`}
+                      >
+                        <span className="unifiedAccession">
+                          {lot.lotNumber}
+                        </span>
+                        {index === 0 && (
+                          <Tag size="sm" type="teal">
+                            <FormattedMessage id="label.results.reagents.fefo" />
+                          </Tag>
+                        )}
+                        <span className="unifiedHistoryFootnote">
+                          {lotExpiry(lot.expirationDate) && (
+                            <FormattedMessage
+                              id="label.results.reagents.expires"
+                              values={{ 0: lotExpiry(lot.expirationDate) }}
+                            />
+                          )}{" "}
+                          <FormattedMessage
+                            id="label.results.reagents.remaining"
+                            values={{ 0: lot.currentQuantity ?? "—", 1: unit }}
+                          />
+                        </span>
+                      </div>
+                    ))}
+                    {lots.length === 0 && (
+                      <div className="unifiedHistoryFootnote">
+                        <FormattedMessage id="label.results.reagents.noLots" />
+                      </div>
+                    )}
+                    {lots.length > 0 && (
+                      <div className="unifiedSampleStatusLine">
+                        <TextInput
+                          id={`reagent-qty-${key}`}
+                          labelText={intl.formatMessage({
+                            id: "label.results.reagents.quantityUsed",
+                          })}
+                          size="sm"
+                          className="unifiedMiniNumber"
+                          value={
+                            amounts[key] ?? String(link.quantityPerTest ?? "")
+                          }
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            setAmounts((prev) => ({
+                              ...prev,
+                              [key]: e.target.value,
+                            }))
+                          }
+                        />
+                        {unit && (
+                          <span className="unifiedHistoryFootnote">{unit}</span>
+                        )}
+                        <Button
+                          kind="secondary"
+                          size="sm"
+                          disabled={busyItem === key}
+                          onClick={() => recordUse(link)}
+                          data-testid={`record-use-${key}`}
+                        >
+                          <FormattedMessage id="label.results.reagents.recordUse" />
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })}
+          {message && (
+            <div
+              className={
+                message.kind === "error"
+                  ? "unifiedSampleStatusError"
+                  : "unifiedReagentOk"
+              }
+            >
+              {message.text}
+            </div>
+          )}
+          {!fromAnalyzer && (
+            <div className="unifiedHistoryFootnote">
+              <FormattedMessage id="label.results.reagents.consumeNote" />
+            </div>
+          )}
+
+          {(fromAnalyzer || canCaptureControl) && (
+            <div className="cds--label unifiedFieldSpacer">
+              <FormattedMessage id="label.results.control.title" />
+            </div>
+          )}
+          {fromAnalyzer ? (
+            <>
+              {controlLots.length > 0 ? (
+                controlLots.map((lot) => (
+                  <div className="unifiedHistoryRow" key={lot.id}>
+                    <span className="unifiedHistoryDetail">
+                      {lot.productName}{" "}
+                      <span className="unifiedAccession">{lot.lotNumber}</span>
+                    </span>
+                    {lot.controlLevel && (
+                      <Tag size="sm" type="cool-gray">
+                        {lot.controlLevel}
+                      </Tag>
+                    )}
+                    {lot.status && (
+                      <Tag
+                        size="sm"
+                        type={lot.status === "ACTIVE" ? "green" : "gray"}
+                      >
+                        {lot.status}
+                      </Tag>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="unifiedHistoryFootnote">
+                  <FormattedMessage id="label.results.control.noneConfigured" />
+                </div>
+              )}
+              <Button
+                kind="ghost"
+                size="sm"
+                onClick={() => window.open("/qa/qc/dashboard", "_blank")}
+              >
+                <FormattedMessage id="label.results.control.viewResults" />
+              </Button>
+            </>
+          ) : canCaptureControl ? (
+            <div className="unifiedQcCapture" data-testid="qc-capture">
+              <Select
+                id={`qc-outcome-${testId}`}
+                labelText={intl.formatMessage({
+                  id: quantitative
+                    ? "label.results.control.capture.outcome"
+                    : "label.results.control.capture.controlLine",
+                })}
+                size="sm"
+                value={qcDraft.outcome}
+                onChange={setQcField("outcome")}
+                data-testid="qc-outcome"
+              >
+                <SelectItem value="" text="" />
+                {OUTCOME_OPTIONS[quantitative ? "quantitative" : "rdt"].map(
+                  (option) => (
+                    <SelectItem
+                      key={option.value}
+                      value={option.value}
+                      text={intl.formatMessage({ id: option.labelKey })}
+                    />
+                  ),
+                )}
+              </Select>
+              {quantitative ? (
+                <>
+                  <Select
+                    id={`qc-lot-${testId}`}
+                    labelText={intl.formatMessage({
+                      id: "label.results.control.capture.lot",
+                    })}
+                    size="sm"
+                    value={qcDraft.lotId}
+                    onChange={setQcField("lotId")}
+                    data-testid="qc-lot"
+                  >
+                    <SelectItem value="" text="" />
+                    {controlLots.map((lot) => (
+                      <SelectItem
+                        key={lot.id}
+                        value={lot.id}
+                        text={[lot.productName, lot.lotNumber, lot.controlLevel]
+                          .filter(Boolean)
+                          .join(" — ")}
+                      />
+                    ))}
+                  </Select>
+                  {controlLots.length === 0 && (
+                    <div
+                      className="unifiedHistoryFootnote"
+                      data-testid="qc-no-bench-lots"
+                    >
+                      <FormattedMessage id="label.results.control.capture.noBenchLots" />
+                    </div>
+                  )}
+                  <div className="unifiedSampleStatusLine">
+                    <TextInput
+                      id={`qc-measured-${testId}`}
+                      labelText={intl.formatMessage({
+                        id: "label.results.control.capture.measured",
+                      })}
+                      size="sm"
+                      className="unifiedMiniNumber"
+                      value={qcDraft.measured}
+                      onChange={setQcField("measured")}
+                    />
+                    <TextInput
+                      id={`qc-expected-${testId}`}
+                      labelText={intl.formatMessage({
+                        id: "label.results.control.capture.expected",
+                      })}
+                      size="sm"
+                      className="unifiedMiniNumber"
+                      value={qcDraft.expected}
+                      onChange={setQcField("expected")}
+                    />
+                    <TextInput
+                      id={`qc-uncertainty-${testId}`}
+                      labelText={intl.formatMessage({
+                        id: "label.results.control.capture.uncertainty",
+                      })}
+                      size="sm"
+                      className="unifiedMiniNumber"
+                      value={qcDraft.uncertainty}
+                      onChange={setQcField("uncertainty")}
+                    />
+                    {unitOfMeasure && (
+                      <span className="unifiedHistoryFootnote">
+                        {unitOfMeasure}
+                      </span>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <TextInput
+                  id={`qc-kit-lot-${testId}`}
+                  labelText={intl.formatMessage({
+                    id: "label.results.control.capture.kitLot",
+                  })}
+                  size="sm"
+                  maxLength={120}
+                  value={qcDraft.kitLot}
+                  onChange={setQcField("kitLot")}
+                  data-testid="qc-kit-lot"
+                />
+              )}
+              {failing && (
+                <div
+                  className="unifiedSampleStatusError"
+                  data-testid="qc-blocked-hint"
+                >
+                  <FormattedMessage id="label.results.control.capture.blockedHint" />
+                </div>
+              )}
+              <Button
+                kind="secondary"
+                size="sm"
+                disabled={qcBusy}
+                onClick={recordControl}
+                data-testid="qc-record"
+              >
+                <FormattedMessage id="label.results.control.capture.record" />
+              </Button>
+              {qcMessage && (
+                <div
+                  className={
+                    qcMessage.kind === "ok"
+                      ? "unifiedReagentOk"
+                      : qcMessage.kind === "blocked"
+                        ? "unifiedQcCaptureWarning"
+                        : "unifiedSampleStatusError"
+                  }
+                  data-testid="qc-capture-message"
+                >
+                  {qcMessage.text}
+                </div>
+              )}
+            </div>
+          ) : null}
+        </>
+      )}
       {dilution && (
         <>
           <div className="cds--label unifiedFieldSpacer">

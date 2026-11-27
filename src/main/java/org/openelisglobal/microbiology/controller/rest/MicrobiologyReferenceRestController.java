@@ -11,10 +11,8 @@ import org.openelisglobal.microbiology.service.MicrobiologyReferenceService;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
-import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroPatientOrigin;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,6 +24,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/rest/microbiology/reference")
 @PreAuthorize(MicrobiologyRestControllerSupport.BENCH_ACCESS)
 public class MicrobiologyReferenceRestController extends BaseRestController {
+    private static final int ORGANISM_PAGE = 20;
+    private static final int MAX_ORGANISMS = 50;
 
     private final MicrobiologyReferenceService referenceService;
     private final MicroBreakpointService breakpointService;
@@ -37,9 +37,10 @@ public class MicrobiologyReferenceRestController extends BaseRestController {
     }
 
     @GetMapping("/ast-panels")
-    public ResponseEntity<List<MicroReferenceOptionForm>> getAstPanels(@RequestParam String workflowType) {
+    public ResponseEntity<List<MicroReferenceOptionForm>> getAstPanels(
+            @RequestParam(required = false) String organismGroup) {
         List<MicroReferenceOptionForm> forms = new ArrayList<>();
-        for (MicroAstPanel panel : referenceService.getActiveAstPanels(MicroWorkflowType.valueOf(workflowType))) {
+        for (MicroAstPanel panel : referenceService.getActiveAstPanels(organismGroup)) {
             forms.add(toPanelForm(panel));
         }
         return ResponseEntity.ok(forms);
@@ -54,13 +55,20 @@ public class MicrobiologyReferenceRestController extends BaseRestController {
         return ResponseEntity.ok(forms);
     }
 
+    /**
+     * The organism list is too long to send whole: a picker asks for the matches to
+     * what was typed, or for the organisms it already holds by id.
+     */
     @GetMapping("/organisms")
-    public ResponseEntity<List<MicroReferenceOptionForm>> getOrganisms() {
-        List<MicroReferenceOptionForm> forms = new ArrayList<>();
-        for (MicroOrganism organism : referenceService.getActiveOrganisms()) {
-            forms.add(toOrganismForm(organism));
+    public ResponseEntity<List<MicroReferenceOptionForm>> getOrganisms(@RequestParam(required = false) String q,
+            @RequestParam(required = false) List<String> id,
+            @RequestParam(defaultValue = "" + ORGANISM_PAGE) int limit) {
+        if (id != null && !id.isEmpty()) {
+            return ResponseEntity.ok(referenceService.getOrganisms(id.stream().limit(MAX_ORGANISMS).toList()).stream()
+                    .map(organism -> toOrganismForm(organism, null)).toList());
         }
-        return ResponseEntity.ok(forms);
+        return ResponseEntity.ok(referenceService.searchOrganisms(q, Math.max(1, Math.min(limit, MAX_ORGANISMS)))
+                .stream().map(match -> toOrganismForm(match.organism(), match.formerName())).toList());
     }
 
     @GetMapping("/breakpoint-standards")
@@ -68,20 +76,6 @@ public class MicrobiologyReferenceRestController extends BaseRestController {
         List<MicroReferenceOptionForm> forms = new ArrayList<>();
         for (MicroBreakpointStandard standard : breakpointService.getActiveStandards()) {
             forms.add(toStandardForm(standard));
-        }
-        return ResponseEntity.ok(forms);
-    }
-
-    @GetMapping("/culture-methods")
-    public ResponseEntity<List<MicroReferenceOptionForm>> getCultureMethods(@RequestParam String workflowType) {
-        List<MicroReferenceOptionForm> forms = new ArrayList<>();
-        for (MicroCultureSetup setup : referenceService
-                .getActiveCultureSetups(MicroWorkflowType.valueOf(workflowType))) {
-            MicroReferenceOptionForm form = new MicroReferenceOptionForm();
-            form.id = setup.getMethodId();
-            form.label = setup.getName();
-            form.code = setup.getWorkflowType();
-            forms.add(form);
         }
         return ResponseEntity.ok(forms);
     }
@@ -127,11 +121,12 @@ public class MicrobiologyReferenceRestController extends BaseRestController {
         return form;
     }
 
-    private MicroReferenceOptionForm toOrganismForm(MicroOrganism organism) {
+    private MicroReferenceOptionForm toOrganismForm(MicroOrganism organism, String formerName) {
         MicroReferenceOptionForm form = new MicroReferenceOptionForm();
         form.id = organism.getId();
         form.label = organism.getDisplayName();
         form.code = organism.getWhonetCode();
+        form.formerName = formerName;
         return form;
     }
 }

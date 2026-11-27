@@ -22,6 +22,17 @@ public abstract class BaseFhirBundleProvider<E, R extends IBaseResource> impleme
     private static final int DEFAULT_PAGE_SIZE = resolveDefaultPageSize();
 
     /**
+     * The largest page a client can ask for with {@code _count}; a larger request
+     * is answered with this many. One page is loaded and transformed in memory.
+     */
+    public static final int MAX_PAGE_SIZE = 500;
+
+    /** The page size a search answers with when the client sends no _count. */
+    public static int defaultPageSize() {
+        return DEFAULT_PAGE_SIZE;
+    }
+
+    /**
      * Unique identifier for this search result set.
      *
      * The value must remain stable for the lifetime of this bundle provider.
@@ -175,7 +186,7 @@ public abstract class BaseFhirBundleProvider<E, R extends IBaseResource> impleme
         if (offset < 0) {
             throw new IllegalArgumentException("_offset must be zero or greater");
         }
-        int size = count == null || count <= 0 ? preferredPageSize : count;
+        int size = count == null || count <= 0 ? preferredPageSize : Math.min(count, MAX_PAGE_SIZE);
         currentPageOffset = offset;
         currentPageSize = size;
     }

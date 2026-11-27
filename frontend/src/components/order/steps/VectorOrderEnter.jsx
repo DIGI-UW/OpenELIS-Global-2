@@ -12,16 +12,15 @@ import {
 } from "@carbon/react";
 import { Printer, Warning } from "@carbon/icons-react";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
-import SaveFailureNotice from "../SaveFailureNotice";
+import SaveFailureNotice, { saveFailureMessage } from "../SaveFailureNotice";
 import InlineNceForm from "../../nonconform/common/InlineNceForm";
 import { useOrderContext } from "../OrderContext";
 import { useNewOrderReset } from "../useNewOrderReset";
 import {
   describeUnmetRequirements,
-  hasRequesterOrRequestor,
+  fieldOrderRequirements,
 } from "../saveRequirements";
 import SaveRequirementsNotice from "../SaveRequirementsNotice";
-import { fetchServerNow } from "../serverClock";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -34,6 +33,7 @@ import RequesterSection from "./sections/RequesterSection";
 import ProgramSection from "./sections/ProgramSection";
 import SampleTestSection from "./sections/SampleTestSection";
 import "../order-workflow.scss";
+import { orderSavedMessage } from "../orderSavedMessage";
 
 const WORKFLOW_TYPE = "vector";
 const WORKFLOW_PREFIX = "/order/vector";
@@ -45,6 +45,7 @@ const VectorOrderEnter = () => {
   const {
     orderData,
     setOrderData,
+    seedOrderData,
     samples,
     setSamples,
     labNumber,
@@ -72,7 +73,7 @@ const VectorOrderEnter = () => {
     const current =
       orderData?.sampleOrderItems?.environmentalFields?.workflowType;
     if (current !== WORKFLOW_TYPE) {
-      setOrderData((prev) => ({
+      seedOrderData((prev) => ({
         ...prev,
         patientUpdateStatus: "NO_ACTION",
         patientProperties: {
@@ -103,9 +104,9 @@ const VectorOrderEnter = () => {
   }, [labNumber, orderData?.sampleOrderItems?.labNo, location.pathname]);
 
   const handleLabNumberChange = useCallback(
-    (newLabNo) => {
+    (newLabNo, { generated = false } = {}) => {
       setLocalLabNumber(newLabNo);
-      setOrderData((prev) => ({
+      (generated ? seedOrderData : setOrderData)((prev) => ({
         ...prev,
         sampleOrderItems: {
           ...prev.sampleOrderItems,
@@ -113,7 +114,7 @@ const VectorOrderEnter = () => {
         },
       }));
     },
-    [setOrderData],
+    [setOrderData, seedOrderData],
   );
 
   const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
@@ -122,22 +123,13 @@ const VectorOrderEnter = () => {
     envFields.vecCollectionSiteName ||
     envFields.vecOrganismGroupId
   );
-  const hasSampleTypes = samples.some((s) => s.sampleTypeId);
-  const saveRequirements = [
-    {
-      met: Boolean(localLabNumber),
-      labelId: "order.save.requirement.labNumber",
-    },
-    {
-      met: hasCollectionSite,
-      labelId: "order.save.requirement.collectionSite",
-    },
-    {
-      met: hasRequesterOrRequestor(orderData?.sampleOrderItems),
-      labelId: "order.save.requirement.requesterOrRequestor",
-    },
-    { met: hasSampleTypes, labelId: "order.save.requirement.sampleType" },
-  ];
+  const saveRequirements = fieldOrderRequirements({
+    labNumber: localLabNumber,
+    hasSite: hasCollectionSite,
+    siteLabelId: "order.save.requirement.collectionSite",
+    sampleOrderItems: orderData?.sampleOrderItems,
+    samples,
+  });
   const canSave = saveRequirements.every((requirement) => requirement.met);
   const canProceed = canSave;
 
@@ -152,18 +144,21 @@ const VectorOrderEnter = () => {
       return;
     }
     try {
-      await saveOrderEntry(await fetchServerNow());
+      await saveOrderEntry();
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "save.order.success.msg" }),
+        message: orderSavedMessage(
+          intl,
+          labNumber || orderData?.sampleOrderItems?.labNo,
+        ),
       });
       setNotificationVisible(true);
     } catch (error) {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message: saveFailureMessage(intl, error),
       });
       setNotificationVisible(true);
     }
@@ -173,18 +168,20 @@ const VectorOrderEnter = () => {
   const handleSaveAndNext = async () => {
     if (!canSave) return;
     try {
-      await saveOrderEntry(await fetchServerNow());
+      await saveOrderEntry();
       markStepComplete("enter");
+      const savedLabNumber =
+        labNumber || orderData?.sampleOrderItems?.labNo || "";
       history.push(
-        labNumber
-          ? `/order/vector/label?order=${encodeURIComponent(labNumber)}`
+        savedLabNumber
+          ? `/order/vector/label?order=${encodeURIComponent(savedLabNumber)}`
           : "/order/vector/label",
       );
     } catch (error) {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message: saveFailureMessage(intl, error),
       });
       setNotificationVisible(true);
     }
@@ -201,7 +198,7 @@ const VectorOrderEnter = () => {
       return;
     }
     try {
-      await saveOrderEntry(await fetchServerNow());
+      await saveOrderEntry();
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -215,7 +212,7 @@ const VectorOrderEnter = () => {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message: saveFailureMessage(intl, error),
       });
       setNotificationVisible(true);
     }

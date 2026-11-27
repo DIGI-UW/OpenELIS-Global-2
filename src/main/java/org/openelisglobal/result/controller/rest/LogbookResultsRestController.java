@@ -10,6 +10,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
@@ -17,12 +19,12 @@ import org.hibernate.StaleObjectStateException;
 import org.openelisglobal.analysis.service.AnalysisAnchorService;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
-import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.paging.PagingUtility;
 import org.openelisglobal.common.provider.validation.AlphanumAccessionValidator;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
@@ -31,16 +33,21 @@ import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
 import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
+import org.openelisglobal.eqa.service.EQACycleSubmissionService;
+import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.microbiology.service.MicroCaseLockedException;
 import org.openelisglobal.notifications.dao.NotificationDAO;
 import org.openelisglobal.notifications.entity.Notification;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.referral.service.ReferralTypeService;
 import org.openelisglobal.referral.valueholder.ReferralType;
+import org.openelisglobal.result.action.util.ResultEntryAlert;
 import org.openelisglobal.result.action.util.ResultSet;
 import org.openelisglobal.result.action.util.ResultUtil;
 import org.openelisglobal.result.action.util.ResultsLoadUtility;
@@ -51,7 +58,12 @@ import org.openelisglobal.result.form.LogbookResultsForm;
 import org.openelisglobal.result.form.LogbookResultsForm.LogbookResults;
 import org.openelisglobal.result.form.StatusResultsForm;
 import org.openelisglobal.result.service.LogbookResultsPersistService;
+import org.openelisglobal.result.service.ResultEntryAcknowledgementService;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.result.valueholder.ResultEntryAcknowledgement;
+import org.openelisglobal.resultrun.form.WaitingRun;
+import org.openelisglobal.resultrun.service.ResultRunService;
+import org.openelisglobal.resultrun.service.RunQcService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -67,7 +79,9 @@ import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
@@ -81,6 +95,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.server.ResponseStatusException;
 
 @Controller
 @RequestMapping(value = "/rest/")
@@ -97,24 +112,40 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             "testResult*.shadowResultValue", "testResult*.reflexJSONResult", "testResult*.testDate",
             "testResult*.analysisMethod", "testResult*.testMethod", "testResult*.testKitInventoryId",
             "testResult*.forceTechApproval", "testResult*.forceTechApprovalNote", "testResult*.lowerNormalRange",
-            "testResult*.upperNormalRange", "testResult*.significantDigits", "testResult*.resultValue",
+            "testResult*.upperNormalRange", "testResult*.reportingDecimalPlaces", "testResult*.resultValue",
             "testResult*.qualifiedResultValue", "testResult*.multiSelectResultValues", "testResult*.testMethod",
             "testResult*.multiSelectResultValues", "testResult*.qualifiedResultValue",
             "testResult*.qualifiedResultValue", "testResult*.shadowReferredOut", "testResult*.referredOut",
             "testResult*.referralReasonId", "testResult*.technician", "testResult*.shadowRejected",
             "testResult*.rejected", "testResult*.rejectReasonId", "testResult*.note", "paging.currentPage",
-            "testResult*.resultFile", "testResult*.resultFile.fileName", "testResult*.resultFile.fileType",
-            "testResult*.resultFile.base64Content", "testResult*.refer", "testResult*.referralItem.referralReasonId",
-            "testResult*.referralItem.referredInstituteId", "testResult*.referralItem.referredTestId",
-            "testResult*.referralItem.referredSendDate", "testResult*.referralItem.referredReportDate",
-            "testResult*.expandedUncertainty", "testResult*.coverageFactor" };
+            // The Analyst column's chosen value. Without this the column posts and
+            // is silently dropped: the binder accepts only what this list names.
+            // eqaPerAnalyst and eqaSchemeId are deliberately NOT here. They are
+            // server-populated for rendering, and the save re-derives both from the
+            // sample rather than trusting the row.
+            "testResult*.eqaAnalystId", "testResult*.resultFile", "testResult*.resultFile.fileName",
+            "testResult*.resultFile.fileType", "testResult*.resultFile.base64Content", "testResult*.refer",
+            "testResult*.referralItem.referralReasonId", "testResult*.referralItem.referredInstituteId",
+            "testResult*.referralItem.referredTestId", "testResult*.referralItem.referredSendDate",
+            "testResult*.referralItem.referredReportDate", "testResult*.expandedUncertainty",
+            "testResult*.coverageFactor" };
 
+    @Autowired
+    private ResultEntryAcknowledgementService acknowledgementService;
     @Autowired
     private TestSectionService testSectionService;
     @Autowired
     private LogbookResultsPersistService logbookPersistService;
     @Autowired
+    private EQACycleSubmissionService cycleSubmissionService;
+    @Autowired
+    private SampleEQAService sampleEQAService;
+    @Autowired
     private AnalysisService analysisService;
+    @Autowired
+    private ResultRunService resultRunService;
+    @Autowired
+    private RunQcService runQcService;
     @Autowired
     private AnalysisAnchorService analysisAnchorService;
     @Autowired
@@ -240,14 +271,16 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                 tests.clear();
                 LogbookStatusResults sectionStatusResults = new LogbookStatusResults(analysisService, sampleService,
                         sampleItemService);
-                tests = sectionStatusResults.setSearchResults(statusResultsForm, resultsLoadUtility,
-                        form.getTestSectionId());
+                tests = keepAccession(sectionStatusResults.setSearchResults(statusResultsForm, resultsLoadUtility,
+                        form.getTestSectionId()), labNumber);
                 filteredTests = userService.filterResultsByLabUnitRoles(getSysUserId(request), tests,
                         Constants.ROLE_RESULTS);
                 request.setAttribute("pageSize", filteredTests.size());
                 form.setSearchFinished(true);
             } else if (!GenericValidator.isBlankOrNull(form.getTestSectionId())) {
-                tests = resultsLoadUtility.getUnfinishedTestResultItemsInTestSection(form.getTestSectionId());
+                tests = keepAccession(
+                        resultsLoadUtility.getUnfinishedTestResultItemsInTestSection(form.getTestSectionId()),
+                        labNumber);
                 filteredTests = userService.filterResultsByLabUnitRoles(getSysUserId(request), tests,
                         Constants.ROLE_RESULTS);
                 int count = resultsLoadUtility.getTotalCountAnalysisByTestSectionAndStatus(form.getTestSectionId());
@@ -284,7 +317,8 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                 LogbookStatusResults reactLogbookStatusResults = new LogbookStatusResults(analysisService,
                         sampleService, sampleItemService);
 
-                tests = reactLogbookStatusResults.setSearchResults(statusResultsForm, resultsLoadUtility);
+                tests = keepAccession(reactLogbookStatusResults.setSearchResults(statusResultsForm, resultsLoadUtility),
+                        labNumber);
                 filteredTests = userService.filterResultsByLabUnitRoles(getSysUserId(request), tests,
                         Constants.ROLE_RESULTS);
 
@@ -319,8 +353,8 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
                     tests = resultsLoadUtility.getGroupedTestsForPatient(patient);
                     patientName = patientService.getLastFirstName(patient);
-                    patientInfo = patient.getNationalId() + ", " + patient.getGender() + ", "
-                            + patient.getBirthDateForDisplay();
+                    patientInfo = StringUtil.joinNonBlank(", ", patient.getNationalId(), patient.getGender(),
+                            patient.getBirthDateForDisplay());
                 }
 
                 filteredTests = userService.filterResultsByLabUnitRoles(getSysUserId(request), tests,
@@ -350,6 +384,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                 }
             }
 
+            resultRunService.markWaiting(filteredTests);
             paging.setDatabaseResults(request, form, filteredTests);
             LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
                     "After setDatabaseResults: form.getTestResult() size="
@@ -392,6 +427,18 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         return (form);
     }
 
+    /**
+     * The Results page sends a typed lab number together with the Lab Unit or date
+     * filters; those branches load by unit or date, so the lab number narrows what
+     * they found instead of being ignored.
+     */
+    private List<TestResultItem> keepAccession(List<TestResultItem> tests, String labNumber) {
+        if (GenericValidator.isBlankOrNull(labNumber)) {
+            return tests;
+        }
+        return tests.stream().filter(test -> labNumber.equals(test.getAccessionNumber())).collect(Collectors.toList());
+    }
+
     private void AddPatientIdToResult(Patient patient, TestResultItem resultItem) {
         if (patient != null) {
             resultItem.setPatientId(patient.getId());
@@ -414,7 +461,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
     @PostMapping(value = "LogbookResults", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public Map<String, List<String>> showReactLogbookResultsUpdate(HttpServletRequest request,
+    public ResponseEntity<Map<String, ?>> showReactLogbookResultsUpdate(HttpServletRequest request,
             @Validated(LogbookResultsForm.LogbookResults.class) @RequestBody LogbookResultsForm form,
             BindingResult result) throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
@@ -428,15 +475,14 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
         if ("true".equals(request.getParameter("pageResults"))) {
             getLogbookResults(request, form, null, "", "", null, true, true);
-            return reflexMap;
+            return ResponseEntity.ok(reflexMap);
         }
 
         if (result.hasErrors()) {
             saveErrors(result);
         }
 
-        List<Result> checkPagedResults = (List<Result>) request.getSession()
-                .getAttribute(IActionConstants.RESULTS_SESSION_CACHE);
+        List<Result> checkPagedResults = new PagingUtility<Result>().getLoadedPages(request.getSession());
         List<Result> checkResults = (List<Result>) checkPagedResults.get(0);
         if (checkResults.size() == 0) {
             LogEvent.logDebug(this.getClass().getSimpleName(), "LogbookResults()", "Attempted save of stale page.");
@@ -472,9 +518,57 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             saveErrors(errors);
         }
 
+        rejectEqaRowsMissingAnalyst(tests);
+
+        for (TestResultItem modified : actionDataSet.getModifiedItems()) {
+            Optional<WaitingRun> waiting = resultRunService.waitingFor(analysisService.get(modified.getAnalysisId()),
+                    modified.getTestResultComponentId());
+            if (waiting.isPresent()) {
+                Map<String, Object> refusal = new HashMap<>();
+                refusal.put("error",
+                        MessageUtil.getMessage(waiting.get().refusalKey(), new String[] { waiting.get().label() }));
+                refusal.put("waitingRun", waiting.get());
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(refusal);
+            }
+        }
+
+        resultRunService.holdRunsOfOneMissingControl(
+                actionDataSet.getModifiedItems().stream().filter(item -> StringUtils.isNotBlank(item.getResultValue()))
+                        .map(TestResultItem::getAnalysisId).filter(Objects::nonNull).toList(),
+                getSysUserId(request));
+        Map<String, Long> holding = runQcService.entryHoldingRuns(actionDataSet.getModifiedItems().stream()
+                .map(TestResultItem::getAnalysisId).filter(Objects::nonNull).toList());
+        if (!holding.isEmpty()) {
+            Map<String, Object> refusal = new HashMap<>();
+            TestResultItem heldItem = actionDataSet.getModifiedItems().stream()
+                    .filter(item -> holding.containsKey(item.getAnalysisId())).findFirst().orElseThrow();
+            WaitingRun held = resultRunService.heldRun(holding.get(heldItem.getAnalysisId()), heldItem.getTestId());
+            refusal.put("error", heldRowRefusal(heldItem, held));
+            refusal.put("waitingRun", held);
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(refusal);
+        }
+
+        List<ResultEntryAlert> alerts = acknowledgementService.alertsForItems(actionDataSet.getModifiedItems());
+        List<ResultEntryAlert> owed = alerts.stream().filter(alert -> !alert.isAcknowledged())
+                .collect(Collectors.toList());
+        if (!owed.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(acknowledgementService.refusalBody(owed));
+        }
+        updaters = new ArrayList<>(updaters);
+        updaters.add(acknowledgementService.acknowledgementRecorder(alerts,
+                ResultEntryAcknowledgement.SOURCE_RESULTS_ENTRY, getSysUserId(request)));
+
         ResultUtil.createResultsFromItems(actionDataSet, supportReferrals, alwaysValidate, useTechnicianName,
                 statusRuleSet, request);
         ResultUtil.createAnalysisOnlyUpdates(actionDataSet, request);
+        ResultUtil.holdOpenWhileRequiredComponentsBlank(actionDataSet);
+        List<Result> savedResults = java.util.stream.Stream
+                .concat(actionDataSet.getNewResults().stream(), actionDataSet.getModifiedResults().stream())
+                .map(resultSet -> resultSet.result).toList();
+        updaters.add(resultRunService.recordIntoWorkplanRuns(savedResults, getSysUserId(request)));
+        updaters.add(resultRunService.recordRunsOfOne(getSysUserId(request)));
+        runQcService.detachFromDecidedRuns(savedResults);
 
         try {
             List<Analysis> reflexAnalysises = logbookPersistService.persistDataSet(actionDataSet, updaters,
@@ -483,6 +577,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                     .map(e -> analysisService.getOrderAccessionNumber(e)).collect(Collectors.toList()));
             reflexMap.put("calculated", reflexAnalysises.stream().filter(e -> e.getResultCalculated())
                     .map(e -> analysisService.getOrderAccessionNumber(e)).collect(Collectors.toList()));
+            recordEqaAnalysts(tests, getSysUserId(request));
             try {
                 fhirTransformService.transformPersistResultsEntryFhirObjects(actionDataSet);
             } catch (FhirTransformationException | FhirPersistanceException e) {
@@ -490,40 +585,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             }
             List<Analysis> newResultAnalyses = actionDataSet.getNewResults().stream().map(a -> a.result.getAnalysis())
                     .collect(Collectors.toList());
-            List<String> systemUserIds = userRoleService.getUserIdsForRole(Constants.ROLE_VALIDATION);
-            String message = MessageUtil.getMessage("notification.result.stat");
-            StringBuffer sb = new StringBuffer(message);
-            for (String userId : systemUserIds) {
-                // Pool-anchored analyses have analysis.sampleItem == null; resolve
-                // the owning Sample via AnalysisAnchorService so vector orders
-                // don't NPE in this STAT-notification path.
-                List<Analysis> userAnalyses = userService
-                        .filterAnalysesByLabUnitRoles(userId, newResultAnalyses, Constants.ROLE_VALIDATION).stream()
-                        .filter(a -> {
-                            Sample s = analysisAnchorService.resolveSample(a);
-                            return s != null && OrderPriority.STAT.equals(s.getPriority());
-                        }).collect(Collectors.toList());
-
-                if (userAnalyses != null && !userAnalyses.isEmpty()) {
-                    List<String> userTests = userAnalyses.stream().map(a -> {
-                        Sample s = analysisAnchorService.resolveSample(a);
-                        String accession = s != null ? s.getAccessionNumber() : "";
-                        return AlphanumAccessionValidator.convertAlphaNumLabNumForDisplay(accession) + " - "
-                                + a.getTest().getLocalizedName();
-                    }).collect(Collectors.toList());
-                    String testString = String.join(", ", userTests);
-                    sb.append(testString);
-                    try {
-                        Notification notification = new Notification();
-                        notification.setMessage(sb.toString());
-                        notification.setUser(systemUserService.getUserById(userId));
-                        notification.setCreatedDate(OffsetDateTime.now());
-                        notification.setReadAt(null);
-                        notificationDAO.save(notification);
-                    } catch (Exception e) {
-                    }
-                }
-            }
+            sendStatResultNotifications(newResultAnalyses);
 
             String currentUser = getSysUserId(request);
             // Reflex / calculated tests triggered by this result entry: surface in
@@ -540,7 +602,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                                 + String.join(", ", calcAccessions));
             }
             // OGC-763: evaluate per-test alert rules on the newly entered results and
-            // dispatch matches to the header bell + SMS/Email senders.
+            // dispatch matches to the header bell.
             if (testAlertEvaluationService != null) {
                 // An edited value is as alertable as a first one - a result
                 // corrected into the critical range has to raise the alert the
@@ -567,12 +629,19 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             if (e.getCause() instanceof StaleObjectStateException) {
                 errorMsg = "errors.OptimisticLockException";
             } else {
-                LogEvent.logDebug(e);
+                LogEvent.logError(e);
                 errorMsg = "errors.UpdateException";
             }
 
             errors.reject(errorMsg, errorMsg);
             saveErrors(errors);
+            Map<String, Object> failure = new HashMap<>();
+            failure.put("error", MessageUtil.getMessage(errorMsg));
+            return ResponseEntity.status(e.getCause() instanceof StaleObjectStateException ? HttpStatus.CONFLICT
+                    : HttpStatus.INTERNAL_SERVER_ERROR).body(failure);
+        } catch (MicroCaseLockedException e) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(Map.of("error", MessageUtil.getMessage("result.refusal." + e.getMessage())));
         }
 
         for (IResultUpdate updater : updaters) {
@@ -590,7 +659,16 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             Map<String, String> params = new HashMap<>();
             params.put("type", form.getType());
         }
-        return reflexMap;
+        return ResponseEntity.ok(reflexMap);
+    }
+
+    /**
+     * OGC-1200: a page save is refused whole when one of its rows is held, so the
+     * refusal names that row's lab number and test as well as the run.
+     */
+    static String heldRowRefusal(TestResultItem heldItem, WaitingRun held) {
+        return MessageUtil.getMessage("run.refusal.heldRow", new String[] { heldItem.getAccessionNumber(),
+                heldItem.getTestName(), MessageUtil.getMessage(held.refusalKey(), new String[] { held.label() }) });
     }
 
     private String findLogBookForward(String forward) {
@@ -676,5 +754,119 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
     private Patient getPatient(String patientID) {
         return patientService.get(patientID);
+    }
+
+    /**
+     * — a scheme that captures analysts may not have a result saved without one.
+     * Refused before anything persists, so a half-attributed save cannot happen;
+     * the grid marks the same rows invalid, and this is the contract for any other
+     * caller.
+     *
+     * <p>
+     * Whether the scheme captures analysts is asked of the database, not read off
+     * the posted row. {@code TestResultItem.eqaPerAnalyst} is populated for the
+     * grid to render but is deliberately not a bound field: a modified row replaces
+     * its session copy wholesale (see
+     * {@code ResultsPaging.TestItemPageHelper#updateCache}), so anything the binder
+     * does not accept arrives at its default — and a rule that a client can switch
+     * off by omitting a field is not a rule.
+     *
+     * <p>
+     * Only modified rows are checked, so an untouched grid costs nothing.
+     */
+    private void rejectEqaRowsMissingAnalyst(List<TestResultItem> tests) {
+        Map<String, Boolean> perAnalystByAnalysis = new HashMap<>();
+        for (TestResultItem item : tests) {
+            boolean answered = !GenericValidator.isBlankOrNull(item.getResultValue())
+                    || !GenericValidator.isBlankOrNull(item.getMultiSelectResultValues());
+            if (!item.getIsModified() || !answered || !GenericValidator.isBlankOrNull(item.getEqaAnalystId())
+                    || GenericValidator.isBlankOrNull(item.getAnalysisId())) {
+                continue;
+            }
+            if (perAnalystByAnalysis.computeIfAbsent(item.getAnalysisId(), this::capturesAnalyst)) {
+                throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                        MessageUtil.getMessage("eqa.result.analystRequired"));
+            }
+        }
+    }
+
+    /** Whether this analysis belongs to an EQA scheme that records the analyst. */
+    private boolean capturesAnalyst(String analysisId) {
+        try {
+            Analysis analysis = analysisService.get(analysisId);
+            if (analysis == null || analysis.getSampleItem() == null || analysis.getSampleItem().getSample() == null) {
+                return false;
+            }
+            return sampleEQAService.findPerAnalystSchemeId(Long.valueOf(analysis.getSampleItem().getSample().getId()))
+                    .isPresent();
+        } catch (RuntimeException e) {
+            LogEvent.logError("checking EQA per-analyst capture for analysis " + analysisId, e);
+            return false;
+        }
+    }
+
+    /**
+     * — mirrors the analyst chosen on the grid onto the EQA participant result.
+     * Failure here must not lose the clinical result that was just saved, so it is
+     * logged rather than thrown.
+     */
+    private void recordEqaAnalysts(List<TestResultItem> tests, String sysUserId) {
+        for (TestResultItem item : tests) {
+            // No eqaPerAnalyst check here either: assignAnalyst re-derives the
+            // scheme from the sample and refuses on its own, so the posted row only
+            // has to say who.
+            if (GenericValidator.isBlankOrNull(item.getEqaAnalystId())
+                    || GenericValidator.isBlankOrNull(item.getAnalysisId())) {
+                continue;
+            }
+            try {
+                cycleSubmissionService.assignAnalyst(analysisService.get(item.getAnalysisId()),
+                        Long.valueOf(item.getEqaAnalystId()), sysUserId);
+            } catch (RuntimeException e) {
+                LogEvent.logError("recording the EQA analyst for analysis " + item.getAnalysisId(), e);
+            }
+        }
+    }
+
+    void sendStatResultNotifications(List<Analysis> newResultAnalyses) {
+        if (newResultAnalyses == null || newResultAnalyses.isEmpty()) {
+            return;
+        }
+        List<String> systemUserIds = userRoleService.getUserIdsForRole(Constants.ROLE_VALIDATION);
+        if (systemUserIds == null || systemUserIds.isEmpty()) {
+            return;
+        }
+        String message = MessageUtil.getMessage("notification.result.stat");
+        String prefix = (message != null && message.endsWith(" ")) ? message : message + " ";
+        for (String userId : systemUserIds) {
+            // Pool-anchored analyses have analysis.sampleItem == null; resolve
+            // the owning Sample via AnalysisAnchorService so vector orders
+            // don't NPE in this STAT-notification path.
+            List<Analysis> userAnalyses = userService
+                    .filterAnalysesByLabUnitRoles(userId, newResultAnalyses, Constants.ROLE_VALIDATION).stream()
+                    .filter(a -> {
+                        Sample s = analysisAnchorService.resolveSample(a);
+                        return s != null && OrderPriority.STAT.equals(s.getPriority());
+                    }).collect(Collectors.toList());
+
+            if (userAnalyses != null && !userAnalyses.isEmpty()) {
+                List<String> userTests = userAnalyses.stream().map(a -> {
+                    Sample s = analysisAnchorService.resolveSample(a);
+                    String accession = s != null ? s.getAccessionNumber() : "";
+                    return AlphanumAccessionValidator.convertAlphaNumLabNumForDisplay(accession) + " - "
+                            + a.getTest().getLocalizedName();
+                }).collect(Collectors.toList());
+                String testString = String.join(", ", userTests);
+                try {
+                    Notification notification = new Notification();
+                    notification.setMessage(prefix + testString);
+                    notification.setUser(systemUserService.getUserById(userId));
+                    notification.setCreatedDate(OffsetDateTime.now());
+                    notification.setReadAt(null);
+                    notificationDAO.save(notification);
+                } catch (Exception e) {
+                }
+            }
+        }
     }
 }

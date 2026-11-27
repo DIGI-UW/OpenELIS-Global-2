@@ -82,9 +82,23 @@ const ProfileTestDefinitions = ({ rows, onChange }) => {
               id={`test-${index}-values`}
               label={text("testValues")}
               values={row.values || []}
-              onChange={(values) =>
-                update(index, "values", values.length ? values : undefined)
-              }
+              onChange={(values) => {
+                const hints = Object.fromEntries(
+                  Object.entries(row.result_value_hints || {}).filter(([raw]) =>
+                    values.includes(raw),
+                  ),
+                );
+                const changed = { ...row, values };
+                if (!values.length) delete changed.values;
+                if (Object.keys(hints).length)
+                  changed.result_value_hints = hints;
+                else delete changed.result_value_hints;
+                onChange(
+                  rows.map((item, current) =>
+                    current === index ? changed : item,
+                  ),
+                );
+              }}
             />
           )}
           <Button

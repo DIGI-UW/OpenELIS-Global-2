@@ -159,12 +159,12 @@ export default function StorageManagementPage() {
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
           <div className="orderLegendBody">
-            <h2>
+            <h1 className="page-heading-05">
               <FormattedMessage
                 id="sidenav.label.storage.management"
                 defaultMessage="Storage Management"
               />
-            </h2>
+            </h1>
 
             <Tabs
               selectedIndex={tabIndex}

@@ -168,10 +168,51 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
 
     private static RangesResponse body(RangeDto... ranges) {
         RangesResponse resp = new RangesResponse();
+        resp.ranges = new java.util.ArrayList<>();
         for (RangeDto r : ranges) {
             resp.ranges.add(r);
         }
         return resp;
+    }
+
+    @org.junit.Test
+    public void saveRanges_storesAndClearsTheReportingRangeTheEditorSends() {
+        RangeDto created = range(null, "M", 0d, 30d);
+        created.setLowReporting(2d);
+        created.setHighReporting(40d);
+        controller.saveRanges(testId(), body(created), authedRequest());
+
+        RangeDto saved = controller.getRanges(testId()).getBody().ranges.get(0);
+        assertEquals(2d, saved.lowReporting, 1e-9);
+        assertEquals(40d, saved.highReporting, 1e-9);
+
+        RangeDto cleared = range(saved.id, "M", 0d, 30d);
+        cleared.setLowReporting(null);
+        cleared.setHighReporting(null);
+        controller.saveRanges(testId(), body(cleared), authedRequest());
+
+        RangeDto after = controller.getRanges(testId()).getBody().ranges.get(0);
+        assertEquals(null, after.lowReporting);
+        assertEquals(null, after.highReporting);
+    }
+
+    @org.junit.Test
+    public void saveRanges_refusesAReportingRangeWhoseLowIsAboveItsHigh() {
+        RangeDto inverted = range(null, "M", 0d, 30d);
+        inverted.setLowReporting(50d);
+        inverted.setHighReporting(10d);
+
+        assertEquals(422, controller.saveRanges(testId(), body(inverted), authedRequest()).getStatusCode().value());
+        assertTrue(controller.getRanges(testId()).getBody().ranges.isEmpty());
+    }
+
+    @org.junit.Test
+    public void aRangeRowKnowsWhetherTheRequestCarriedReportingBounds() throws Exception {
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+
+        assertTrue(!mapper.readValue("{\"gender\":\"M\"}", RangeDto.class).reportingSent);
+        assertTrue(mapper.readValue("{\"lowReporting\":null}", RangeDto.class).reportingSent);
+        assertTrue(!mapper.writeValueAsString(new RangeDto()).contains("reportingSent"));
     }
 
     private String testId() {
@@ -308,6 +349,11 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
     public void saveRanges_preservesDictionaryLimitsAndReportingBounds() {
         // The Ranges editor manages only NUMERIC ranges. Seed a non-numeric
         // (dictionary) limit via the service — it must survive a ranges save.
+        // The lowest id, not a bare lookup by code: the Testcontainer is shared across
+        // the suite, and a fixture that remaps this vocabulary to ids of its own
+        // (result-limit.xml loads Dictionary as id 203) leaves the canonical seed row
+        // alongside the fixture's. The canonical seed always holds the lower id, and
+        // it is the row ResultLimitServiceImpl cached at startup.
         Long dictTypeId = ensureDictionaryResultType();
         org.openelisglobal.resultlimits.valueholder.ResultLimit dict = new org.openelisglobal.resultlimits.valueholder.ResultLimit();
         dict.setTestId(testId());

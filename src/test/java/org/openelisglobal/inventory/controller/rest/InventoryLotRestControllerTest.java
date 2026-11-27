@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -28,6 +29,7 @@ import org.openelisglobal.inventory.controller.rest.InventoryLotRestController.A
 import org.openelisglobal.inventory.controller.rest.InventoryLotRestController.DisposeRequest;
 import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryLotService;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.login.valueholder.UserSessionData;
@@ -61,8 +63,10 @@ public class InventoryLotRestControllerTest {
         when(sampleStorageService.getLocationsForInventoryLots(Arrays.asList(1L, 2L))).thenReturn(
                 Collections.singletonMap("2", Collections.singletonMap("hierarchicalPath", "Room > Freezer")));
 
-        List<InventoryLot> body = controller.getAll().getBody();
+        List<InventoryLot> body = controller.getAll(null).getBody();
 
+        verify(inventoryLotService, times(1)).getAll();
+        verify(inventoryLotService, never()).getByStatus(any());
         verify(sampleStorageService, times(1)).getLocationsForInventoryLots(Arrays.asList(1L, 2L));
         verify(sampleStorageService, never()).getInventoryLotLocation(anyString());
         assertNull("Lot without an assignment keeps a null location", body.get(0).getLocation());
@@ -70,9 +74,37 @@ public class InventoryLotRestControllerTest {
     }
 
     @Test
+    public void getAll_withStatus_filtersLotsAndAttachesLocations() {
+        when(inventoryLotService.getByStatus(LotStatus.ACTIVE)).thenReturn(Collections.singletonList(lot(2L)));
+        when(sampleStorageService.getLocationsForInventoryLots(Collections.singletonList(2L))).thenReturn(
+                Collections.singletonMap("2", Collections.singletonMap("hierarchicalPath", "Room > Freezer")));
+
+        ResponseEntity<List<InventoryLot>> response = controller.getAll(LotStatus.ACTIVE);
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(1, response.getBody().size());
+        assertEquals(2L, response.getBody().get(0).getId().longValue());
+        assertEquals("Room > Freezer", response.getBody().get(0).getLocation().get("hierarchicalPath"));
+        verify(inventoryLotService, never()).getAll();
+        verify(sampleStorageService, times(1)).getLocationsForInventoryLots(Collections.singletonList(2L));
+    }
+
+    @Test
+    public void getAll_withStatusAndNoMatchingLots_returnsEmptyList() {
+        when(inventoryLotService.getByStatus(LotStatus.QUARANTINED)).thenReturn(Collections.emptyList());
+
+        ResponseEntity<List<InventoryLot>> response = controller.getAll(LotStatus.QUARANTINED);
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(Collections.emptyList(), response.getBody());
+        verify(inventoryLotService, never()).getAll();
+        verify(sampleStorageService, never()).getLocationsForInventoryLots(any());
+    }
+
+    @Test
     public void adjustQuantity_answers404WithBody_whenLotDoesNotExist() {
         stubSession();
-        when(inventoryLotService.adjustLotQuantity(999L, 3.0, "recount", "7"))
+        when(inventoryLotService.adjustLotQuantity(999L, 3.0, "recount", null, "7"))
                 .thenThrow(new ObjectNotFoundException(999L, InventoryLot.class.getName()));
 
         ResponseEntity<?> response = controller.adjustQuantity("999", adjust(3.0, "recount"), request);
@@ -84,7 +116,7 @@ public class InventoryLotRestControllerTest {
     @Test
     public void adjustQuantity_answers400WithBody_whenServiceRefuses() {
         stubSession();
-        when(inventoryLotService.adjustLotQuantity(5L, 3.0, "recount", "7"))
+        when(inventoryLotService.adjustLotQuantity(5L, 3.0, "recount", null, "7"))
                 .thenThrow(new IllegalStateException("Cannot adjust a DISPOSED lot: LOT-5"));
 
         ResponseEntity<?> response = controller.adjustQuantity("5", adjust(3.0, "recount"), request);
@@ -171,6 +203,37 @@ public class InventoryLotRestControllerTest {
 
         assertEquals("A lot that carries no barcode can still be given one", "PAR-500-001-LOT-6",
                 updatedLot().getBarcode());
+    }
+
+    @Test
+    public void update_keepsTheStoredQuantity_whenTheBodyChangesIt() {
+        stubSession();
+        InventoryLot stored = lot(6L);
+        stored.setCurrentQuantity(40.0);
+        when(inventoryLotService.get(6L)).thenReturn(stored);
+        InventoryLot body = lot(null);
+        body.setCurrentQuantity(0.0);
+
+        controller.update("6", body, request);
+
+        assertEquals(Double.valueOf(40.0), updatedLot().getCurrentQuantity());
+    }
+
+    @Test
+    public void update_answers400WithBody_whenTheBodyAsksForAStatusOnlyDisposalMayRecord() {
+        stubSession();
+        InventoryLot stored = lot(6L);
+        when(inventoryLotService.get(6L)).thenReturn(stored);
+        doThrow(new IllegalStateException("Lot LOT-6 cannot be set to DISPOSED here; use dispose or adjust"))
+                .when(inventoryLotService).refuseStatusThatMovesStock(stored, LotStatus.DISPOSED);
+        InventoryLot body = lot(null);
+        body.setStatus(LotStatus.DISPOSED);
+
+        ResponseEntity<?> response = controller.update("6", body, request);
+
+        assertEquals(400, response.getStatusCode().value());
+        assertEquals("Lot LOT-6 cannot be set to DISPOSED here; use dispose or adjust", body(response).get("error"));
+        verify(inventoryLotService, never()).update(any());
     }
 
     private InventoryLot updatedLot() {

@@ -265,4 +265,80 @@ public class TestCatalogEditorStorageIntegrationTest extends BaseWebContextSensi
         assertFalse(controller.getStorage(testId()).getBody().protectFromLight);
         assertEquals("AMBIENT", controller.getStorage(String.valueOf(SIBLING_ID)).getBody().storageCondition);
     }
+
+    /**
+     * OGC-1455: a bad id anywhere in the list is refused before any test is
+     * written; the tests listed before it keep their own storage.
+     */
+    @org.junit.Test
+    public void saveGroupStorage_rejectsANonNumericTestId_andWritesNoTest() {
+        seedDifferingSiblings();
+        StorageDto form = new StorageDto();
+        form.storageCondition = "AMBIENT";
+        GroupStorageUpdate body = groupUpdate(form, List.of("storageCondition"));
+        body.testIds = List.of(testId(), String.valueOf(SIBLING_ID), "abc");
+
+        assertEquals(400, controller.saveGroupStorage(body, authedRequest()).getStatusCode().value());
+        assertEquals("FROZEN", controller.getStorage(testId()).getBody().storageCondition);
+        assertEquals("REFRIGERATED", controller.getStorage(String.valueOf(SIBLING_ID)).getBody().storageCondition);
+    }
+
+    @org.junit.Test
+    public void saveGroupStorage_rejectsAnUnknownTestId_andWritesNoTest() {
+        seedDifferingSiblings();
+        StorageDto form = new StorageDto();
+        form.storageCondition = "AMBIENT";
+        GroupStorageUpdate body = groupUpdate(form, List.of("storageCondition"));
+        body.testIds = List.of(testId(), "959999999");
+
+        assertEquals(404, controller.saveGroupStorage(body, authedRequest()).getStatusCode().value());
+        assertEquals("FROZEN", controller.getStorage(testId()).getBody().storageCondition);
+    }
+
+    /** OGC-1465: the server applies the Storage form's rules. */
+    @org.junit.Test
+    public void unknownConditionsLongTextAndNegativeDurationsAreRefusedNamingTheField() {
+        String[][] cases = { { "storageCondition", "BOGUS" }, { "storageCondition", "frozen" },
+                { "storageConditionCustom", "c".repeat(201) },
+                { "storageConditionCustom", " " + "c".repeat(200) + " " }, { "storageDurationUnit", "u".repeat(21) },
+                { "disposalMethod", "d".repeat(101) } };
+        for (String[] c : cases) {
+            StorageDto put = new StorageDto();
+            if ("storageCondition".equals(c[0])) {
+                put.storageCondition = c[1];
+            } else if ("storageConditionCustom".equals(c[0])) {
+                put.storageConditionCustom = c[1];
+            } else if ("storageDurationUnit".equals(c[0])) {
+                put.storageDurationUnit = c[1];
+            } else {
+                put.disposalMethod = c[1];
+            }
+            ResponseEntity<StorageDto> refused = controller.saveStorage(testId(), put, authedRequest());
+            assertEquals(c[0] + "=" + c[1], 422, refused.getStatusCode().value());
+            assertEquals(c[0], refused.getBody().invalidField);
+        }
+        StorageDto negative = new StorageDto();
+        negative.storageDuration = -3;
+        assertEquals("storageDuration",
+                controller.saveStorage(testId(), negative, authedRequest()).getBody().invalidField);
+
+        StorageDto valid = new StorageDto();
+        valid.storageCondition = "FROZEN";
+        valid.storageDuration = 30;
+        assertEquals(200, controller.saveStorage(testId(), valid, authedRequest()).getStatusCode().value());
+        assertEquals("FROZEN", controller.getStorage(testId()).getBody().storageCondition);
+    }
+
+    /**
+     * An imported condition the form does not offer stays saveable while unchanged.
+     */
+    @org.junit.Test
+    public void aConditionTheTestAlreadyHoldsStaysSaveable() {
+        jdbc.update("INSERT INTO clinlims.test_sample_handling (id, test_id, storage_condition, last_updated)"
+                + " VALUES (?, ?, 'IMPORTED_CODE', NOW())", java.util.UUID.randomUUID().toString(), TEST_ID);
+        StorageDto unchanged = controller.getStorage(testId()).getBody();
+        unchanged.stabilityNotes = "notes";
+
+        assertEquals(200, controller.saveStorage(testId(), unchanged, authedRequest()).getStatusCode().value());
+    }
 }

@@ -110,6 +110,12 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
         return inventoryLotDAO.getForUpdate(lotId);
     }
 
+    @Override
+    @Transactional
+    public void refreshForUpdate(InventoryLot lot) {
+        inventoryLotDAO.refreshForUpdate(lot);
+    }
+
     /**
      * Item code plus lot number, so a human can still identify the lot when the
      * printed barcode is damaged; falls back to whichever half is present.
@@ -149,6 +155,12 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
 
     @Override
     @Transactional(readOnly = true)
+    public List<InventoryLot> getByStatus(LotStatus status) {
+        return inventoryLotDAO.getByStatus(status);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<InventoryLot> getByInventoryItemId(Long itemId) {
         return inventoryLotDAO.getByInventoryItemId(itemId);
     }
@@ -163,6 +175,12 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
     @Transactional(readOnly = true)
     public List<InventoryLot> getExpiredActiveLots() {
         return inventoryLotDAO.getExpiredActiveLots();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<InventoryLot> getStockedLotsExpiringWithin(int daysAhead) {
+        return inventoryLotDAO.getStockedLotsExpiringWithin(daysAhead);
     }
 
     @Override
@@ -215,9 +233,8 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
         lot.setStatus(LotStatus.IN_USE);
         lot.setDateOpened(openedDate);
 
-        // Calculate expiry after opening for reagents
         InventoryItem item = lot.getInventoryItem();
-        if (item != null && item.isReagent() && item.getStabilityAfterOpening() != null) {
+        if (item != null && item.getStabilityAfterOpening() != null) {
             Calendar cal = Calendar.getInstance();
             cal.setTime(openedDate);
             cal.add(Calendar.DAY_OF_MONTH, item.getStabilityAfterOpening());
@@ -267,6 +284,8 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
             throw new IllegalArgumentException("Lot not found: " + lotId);
         }
 
+        refuseStatusThatMovesStock(lot, status);
+
         lot.setStatus(status);
         lot.setSysUserId(sysUserId);
         lot.setLastupdated(new Timestamp(System.currentTimeMillis()));
@@ -276,8 +295,19 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
     }
 
     @Override
+    public void refuseStatusThatMovesStock(InventoryLot lot, LotStatus status) {
+        // Dispose and adjust write the transaction; a bare status change would skip it.
+        if (status == LotStatus.DISPOSED
+                || (status == LotStatus.CONSUMED && lot.getCurrentQuantity() != null && lot.getCurrentQuantity() > 0)) {
+            throw new IllegalStateException(
+                    "Lot " + lot.getLotNumber() + " cannot be set to " + status + " here; use dispose or adjust");
+        }
+    }
+
+    @Override
     @Transactional
-    public InventoryLot adjustLotQuantity(Long lotId, Double newQuantity, String reason, String sysUserId) {
+    public InventoryLot adjustLotQuantity(Long lotId, Double newQuantity, String reason, String notes,
+            String sysUserId) {
         InventoryLot lot = get(lotId);
         if (lot == null) {
             throw new IllegalArgumentException("Lot not found: " + lotId);
@@ -306,8 +336,11 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
         update(lot);
 
         // Record transaction
+        String transactionNotes = notes == null || notes.trim().isEmpty()
+                ? (reason != null ? reason : "Manual quantity adjustment")
+                : buildReasonAndNotes(reason, notes);
         transactionService.recordTransaction(lotId, TransactionType.ADJUSTMENT, quantityChange, newQuantity, null, null,
-                reason != null ? reason : "Manual quantity adjustment", sysUserId);
+                transactionNotes, sysUserId);
 
         return lot;
     }
@@ -332,14 +365,14 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
         update(lot);
 
         // Record transaction with reason and notes
-        String transactionNotes = buildDisposalNotes(reason, notes);
+        String transactionNotes = buildReasonAndNotes(reason, notes);
         transactionService.recordTransaction(lotId, TransactionType.DISPOSAL, -quantityDisposed, 0.0, null, null,
                 transactionNotes, sysUserId);
 
         return lot;
     }
 
-    private String buildDisposalNotes(String reason, String notes) {
+    private String buildReasonAndNotes(String reason, String notes) {
         StringBuilder sb = new StringBuilder();
         if (reason != null && !reason.trim().isEmpty()) {
             sb.append("Reason: ").append(reason);

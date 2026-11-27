@@ -31,10 +31,10 @@ const BENCH_STAGE_WALKTHROUGH = [
 ];
 
 /**
- * Three fixed options ahead of the eleven stages: a disabled placeholder and
- * two groupings.
+ * Four fixed options ahead of the eleven stages: a disabled placeholder and
+ * three groupings.
  */
-const STAGE_FILTER_OPTION_COUNT = 3 + 11;
+const STAGE_FILTER_OPTION_COUNT = 4 + 11;
 
 test.describe("OGC-264: Pathology Dashboard bench stages", () => {
   test("the stage filter names every bench stage in the user's language", async ({
@@ -67,8 +67,8 @@ test.describe("OGC-264: Pathology Dashboard bench stages", () => {
       await demo.pause(2000);
     });
 
-    await test.step("The filter opens on the in-progress grouping", async () => {
-      await expect(stageFilter).toHaveValue("IN_PROGRESS", {
+    await test.step("The filter opens on the landing worklist", async () => {
+      await expect(stageFilter).toHaveValue("NOT_COMPLETED", {
         timeout: LONG_TIMEOUT,
       });
       await expect(stageFilter.locator("option")).toHaveCount(
@@ -117,28 +117,25 @@ test.describe("OGC-264: Pathology Dashboard bench stages", () => {
 
       await expect(
         page.getByRole("heading", {
-          name: "Result Entry Configuration",
+          name: "Result & Validation Configuration",
           exact: true,
         }),
       ).toBeVisible({ timeout: NAV_TIMEOUT });
 
-      // Widen the table to its largest page so the scene does not depend on
-      // how many configuration rows this deployment happens to hold.
-      const pagination = page.locator(".cds--pagination");
-      await expect(pagination).toBeVisible({ timeout: UI_TIMEOUT });
-      await pagination.getByLabel("Items per page").selectOption("50");
-
-      const decalcificationSwitch = page.getByRole("cell", {
-        name: "pathology.stage.DECALCIFICATION.enabled",
+      const pathology = page.getByTestId("settings-group-pathology");
+      const decalcificationSwitch = pathology.getByRole("switch", {
+        name: "Pathology stage: Decalcification",
+        exact: true,
       });
       await expect(decalcificationSwitch).toBeVisible({ timeout: UI_TIMEOUT });
 
-      // The switches sit further down a long configuration table, so bring
-      // them into the frame before the camera and the screenshot record it.
+      // The switches sit further down the page, so bring them into the frame
+      // before the camera and the screenshot record it.
       await decalcificationSwitch.scrollIntoViewIfNeeded();
       await expect(
-        page.getByRole("cell", {
-          name: "pathology.stage.UNDER_REVIEW.enabled",
+        pathology.getByRole("switch", {
+          name: "Pathology stage: Under Pathologist Review",
+          exact: true,
         }),
       ).toBeVisible();
 

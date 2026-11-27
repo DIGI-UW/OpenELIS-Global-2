@@ -54,7 +54,6 @@ public class RejectionReportByPanel extends RejectionReport implements IReportPa
     protected void buildReportContent(ReportSpecificationList panelSelection) {
 
         panelName = getNameForId(panelSelection);
-        createReportParameters();
 
         rejections = new ArrayList<>();
         ArrayList<RejectionReportBean> rawResults = new ArrayList<>();

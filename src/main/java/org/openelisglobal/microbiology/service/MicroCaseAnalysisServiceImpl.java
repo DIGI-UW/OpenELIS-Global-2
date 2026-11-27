@@ -5,7 +5,6 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis;
-import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,21 +19,24 @@ public class MicroCaseAnalysisServiceImpl implements MicroCaseAnalysisService {
 
     @Override
     @Transactional
-    public MicroCaseAnalysis linkAnalysis(MicroCase microCase, Analysis analysis, MicroCultureSetup cultureSetup) {
+    public MicroCaseAnalysis linkAnalysis(MicroCase microCase, Analysis analysis, String reportableTestAnalyteId) {
         if (microCase == null || microCase.getId() == null || analysis == null || analysis.getId() == null) {
             throw new IllegalArgumentException(
                     "A persisted microbiology case and analysis are required for report linkage");
+        }
+        MicroCaseAnalysis owner = caseAnalysisDAO.getActiveByAnalysisId(analysis.getId());
+        if (owner != null && !microCase.getId().equals(owner.getCaseId())) {
+            throw new IllegalArgumentException("Analysis already belongs to another case");
         }
         MicroCaseAnalysis existing = caseAnalysisDAO.getByCaseAndAnalysis(microCase.getId(), analysis.getId());
         if (existing != null) {
             return existing;
         }
+        MicroCaseMutationGuard.requireMutable(microCase);
         MicroCaseAnalysis link = new MicroCaseAnalysis();
         link.setCaseId(microCase.getId());
         link.setAnalysisId(analysis.getId());
-        if (cultureSetup != null) {
-            link.setReportableTestAnalyteId(cultureSetup.getReportableTestAnalyteId());
-        }
+        link.setReportableTestAnalyteId(reportableTestAnalyteId);
         caseAnalysisDAO.insert(link);
         return link;
     }

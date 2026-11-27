@@ -1,0 +1,21 @@
+package org.openelisglobal.microbiology.form;
+
+import java.sql.Timestamp;
+
+public class MicroCaseSpecimenForm {
+    public String id;
+    public String sampleItemId;
+    public boolean sampleRejected;
+    public String label;
+    public String sampleTypeId;
+    public String specimenType;
+    public String samplingPoint;
+    public String bodySite;
+    public String collector;
+    public String collectionLocationId;
+    public Integer cultureSetNumber;
+    public String containerType;
+    public String containerPopulation;
+    public boolean collectedInSets;
+    public Timestamp collectionDate;
+}

@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+  <!-- OGC-439 / OGC-1506: Result Delivery foundation. One channel row per
+       transport (Email, SMS, WhatsApp), a persistent outbox on the existing
+       notification log (Queued and Skipped statuses, retry times, every
+       attempt kept), lab-wide delivery settings, and the Sent Messages page
+       under Reports. -->
+
+  <changeSet id="018-delivery-channel" author="openelisglobal">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists schemaName="clinlims" tableName="delivery_channel"/></not>
+    </preConditions>
+    <createTable schemaName="clinlims" tableName="delivery_channel">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+      <column name="channel" type="VARCHAR(16)"><constraints nullable="false" unique="true" uniqueConstraintName="uq_delivery_channel_channel"/></column>
+      <column name="active" type="BOOLEAN" defaultValueBoolean="true"><constraints nullable="false"/></column>
+      <column name="host" type="VARCHAR(255)"/>
+      <column name="port" type="INTEGER"/>
+      <column name="security" type="VARCHAR(16)" defaultValue="STARTTLS"/>
+      <column name="username" type="VARCHAR(255)"/>
+      <column name="secret" type="VARCHAR(2048)"/>
+      <column name="sender_address" type="VARCHAR(255)"/>
+      <column name="sender_name" type="VARCHAR(255)"/>
+      <column name="reply_to" type="VARCHAR(255)"/>
+      <column name="gateway" type="VARCHAR(16)"/>
+      <column name="country_code" type="VARCHAR(8)"/>
+      <column name="last_success_at" type="TIMESTAMPTZ"/>
+      <column name="last_failure_at" type="TIMESTAMPTZ"/>
+      <column name="last_error" type="VARCHAR(2000)"/>
+      <column name="last_updated" type="TIMESTAMPTZ" defaultValueComputed="now()"/>
+    </createTable>
+    <rollback>
+      <dropTable schemaName="clinlims" tableName="delivery_channel"/>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="018-delivery-channel-rows" author="openelisglobal">
+    <sql>
+      INSERT INTO clinlims.delivery_channel (channel, active, security, last_updated)
+      SELECT c.name, true, CASE WHEN c.name = 'EMAIL' THEN 'STARTTLS' ELSE NULL END, now()
+      FROM (VALUES ('EMAIL'), ('SMS'), ('WHATSAPP')) AS c(name)
+      WHERE NOT EXISTS (SELECT 1 FROM clinlims.delivery_channel d WHERE d.channel = c.name);
+    </sql>
+    <rollback>
+      <sql>DELETE FROM clinlims.delivery_channel WHERE channel IN ('EMAIL', 'SMS', 'WHATSAPP');</sql>
+    </rollback>
+  </changeSet>
+
+  <!-- The SMTP and WhatsApp External Connection rows move into Channels
+       (FR-H2): host and port come from the URI, the credentials are copied as
+       stored (same encryption), and the old rows are switched off so nothing
+       reads two configurations. SMS gateways (BMP, SMPP) keep their property
+       path until their own story lands. -->
+  <changeSet id="018-delivery-channel-migrate-connections" author="openelisglobal">
+    <preConditions onFail="MARK_RAN">
+      <tableExists schemaName="clinlims" tableName="external_connection"/>
+      <tableExists schemaName="clinlims" tableName="basic_authentication_data"/>
+    </preConditions>
+    <sql>
+      UPDATE clinlims.delivery_channel d
+      SET host = COALESCE(NULLIF(substring(e.uri from '://([^:/]+)'), ''), NULLIF(split_part(e.uri, ':', 1), '')),
+          port = CAST(NULLIF(substring(e.uri from ':([0-9]+)/?$'), '') AS INTEGER),
+          security = CASE CAST(NULLIF(substring(e.uri from ':([0-9]+)/?$'), '') AS INTEGER)
+                     WHEN 465 THEN 'SSL_TLS' WHEN 587 THEN 'STARTTLS' ELSE 'NONE' END,
+          username = b.username,
+          secret = b.password,
+          last_updated = now()
+      FROM clinlims.external_connection e
+      LEFT JOIN clinlims.basic_authentication_data b ON b.external_connection_id = e.id
+      WHERE d.channel = 'EMAIL' AND d.host IS NULL
+        AND e.programmed_connection = 'SMTP_SERVER' AND e.active = true;
+
+      UPDATE clinlims.delivery_channel d
+      SET host = e.uri,
+          username = b.username,
+          secret = b.password,
+          last_updated = now()
+      FROM clinlims.external_connection e
+      LEFT JOIN clinlims.basic_authentication_data b ON b.external_connection_id = e.id
+      WHERE d.channel = 'WHATSAPP' AND d.host IS NULL AND d.username IS NULL
+        AND e.programmed_connection = 'WHATSAPP_SERVER' AND e.active = true;
+
+      UPDATE clinlims.external_connection
+      SET active = false
+      WHERE programmed_connection IN ('SMTP_SERVER', 'WHATSAPP_SERVER') AND active = true;
+    </sql>
+    <rollback>
+      <sql>UPDATE clinlims.external_connection SET active = true WHERE programmed_connection IN ('SMTP_SERVER', 'WHATSAPP_SERVER');</sql>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="018-notification-log-product" author="openelisglobal">
+    <preConditions onFail="MARK_RAN">
+      <tableExists schemaName="clinlims" tableName="notification_log"/>
+      <not><columnExists schemaName="clinlims" tableName="notification_log" columnName="product"/></not>
+    </preConditions>
+    <addColumn schemaName="clinlims" tableName="notification_log">
+      <column name="product" type="VARCHAR(16)" defaultValue="TRIGGER"><constraints nullable="false"/></column>
+      <column name="rule_name" type="VARCHAR(255)"/>
+      <column name="report_version_id" type="BIGINT"/>
+      <column name="report_format" type="VARCHAR(16)"/>
+      <column name="template_external_id" type="VARCHAR(255)"/>
+      <column name="template_variables" type="TEXT"/>
+    </addColumn>
+    <createIndex schemaName="clinlims" tableName="notification_log" indexName="idx_notification_log_product_fired">
+      <column name="product"/>
+      <column name="fired_at" descending="true"/>
+    </createIndex>
+    <createIndex schemaName="clinlims" tableName="notification_log" indexName="idx_notification_log_accession">
+      <column name="reference_accession"/>
+    </createIndex>
+    <rollback>
+      <dropIndex schemaName="clinlims" tableName="notification_log" indexName="idx_notification_log_accession"/>
+      <dropIndex schemaName="clinlims" tableName="notification_log" indexName="idx_notification_log_product_fired"/>
+      <dropColumn schemaName="clinlims" tableName="notification_log" columnName="template_variables"/>
+      <dropColumn schemaName="clinlims" tableName="notification_log" columnName="template_external_id"/>
+      <dropColumn schemaName="clinlims" tableName="notification_log" columnName="report_format"/>
+      <dropColumn schemaName="clinlims" tableName="notification_log" columnName="report_version_id"/>
+      <dropColumn schemaName="clinlims" tableName="notification_log" columnName="rule_name"/>
+      <dropColumn schemaName="clinlims" tableName="notification_log" columnName="product"/>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="018-notification-log-channel-outbox" author="openelisglobal">
+    <preConditions onFail="MARK_RAN">
+      <tableExists schemaName="clinlims" tableName="notification_log_channel"/>
+      <not><columnExists schemaName="clinlims" tableName="notification_log_channel" columnName="next_attempt_at"/></not>
+    </preConditions>
+    <addColumn schemaName="clinlims" tableName="notification_log_channel">
+      <column name="next_attempt_at" type="TIMESTAMPTZ"/>
+      <column name="locked_by" type="VARCHAR(64)"/>
+      <column name="locked_until" type="TIMESTAMPTZ"/>
+      <column name="gateway_message_id" type="VARCHAR(128)"/>
+    </addColumn>
+    <sql>ALTER TABLE clinlims.notification_log_channel ALTER COLUMN attempts SET DEFAULT 0;</sql>
+    <createIndex schemaName="clinlims" tableName="notification_log_channel" indexName="idx_notification_log_channel_due">
+      <column name="status"/>
+      <column name="next_attempt_at"/>
+    </createIndex>
+    <rollback>
+      <dropIndex schemaName="clinlims" tableName="notification_log_channel" indexName="idx_notification_log_channel_due"/>
+      <dropColumn schemaName="clinlims" tableName="notification_log_channel" columnName="gateway_message_id"/>
+      <dropColumn schemaName="clinlims" tableName="notification_log_channel" columnName="locked_until"/>
+      <dropColumn schemaName="clinlims" tableName="notification_log_channel" columnName="locked_by"/>
+      <dropColumn schemaName="clinlims" tableName="notification_log_channel" columnName="next_attempt_at"/>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="018-notification-log-attempt" author="openelisglobal">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists schemaName="clinlims" tableName="notification_log_attempt"/></not>
+    </preConditions>
+    <createTable schemaName="clinlims" tableName="notification_log_attempt">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+      <column name="notification_log_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="channel" type="VARCHAR(16)"><constraints nullable="false"/></column>
+      <column name="attempted_at" type="TIMESTAMPTZ"><constraints nullable="false"/></column>
+      <column name="succeeded" type="BOOLEAN" defaultValueBoolean="false"><constraints nullable="false"/></column>
+      <column name="error_message" type="VARCHAR(2000)"/>
+      <column name="last_updated" type="TIMESTAMPTZ" defaultValueComputed="now()"/>
+    </createTable>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="notification_log_attempt" baseColumnNames="notification_log_id" constraintName="fk_notification_log_attempt_log" referencedTableSchemaName="clinlims" referencedTableName="notification_log" referencedColumnNames="id" onDelete="CASCADE"/>
+    <createIndex schemaName="clinlims" tableName="notification_log_attempt" indexName="idx_notification_log_attempt_log">
+      <column name="notification_log_id"/>
+    </createIndex>
+    <rollback>
+      <dropTable schemaName="clinlims" tableName="notification_log_attempt"/>
+    </rollback>
+  </changeSet>
+
+  <!-- Lab-wide delivery settings (FR-A16), read by name, in a domain of their
+       own: the Result Reporting Configuration page lists every row of its
+       domain by group and breaks on rows it does not know. -->
+  <changeSet id="018-delivery-settings" author="openelisglobal">
+    <sql>
+      INSERT INTO clinlims.site_information_domain (id, name, description)
+      SELECT nextval('clinlims.site_information_domain_seq'), 'delivery', 'Result delivery settings'
+      WHERE NOT EXISTS (SELECT 1 FROM clinlims.site_information_domain WHERE name = 'delivery');
+
+      INSERT INTO clinlims.site_information (id, name, description, value, value_type, domain_id, lastupdated)
+      SELECT nextval('clinlims.site_information_seq'), s.name, s.description, s.value, 'text',
+             (SELECT id FROM clinlims.site_information_domain WHERE name = 'delivery'), now()
+      FROM (VALUES
+        ('delivery.retryDelays', 'Minutes between delivery attempts after a failure, in order', '1,5,15'),
+        ('delivery.defaultFormat', 'Report format for recipients with no delivery password', 'MASKED'),
+        ('delivery.holdMinutes', 'Minutes to wait before a new report version is sent', '10'),
+        ('delivery.sendPartials', 'Send partial reports automatically', 'true'),
+        ('delivery.labContact', 'Laboratory contact line used in messages', NULL),
+        ('delivery.location', 'Where reports, alerts and notices are sent from: LOCAL or CENTRAL', 'LOCAL'),
+        ('delivery.centralAddress', 'Address of the central delivery service', NULL),
+        ('delivery.secureLinks', 'Carry secure links in report messages', 'false'),
+        ('delivery.linkDays', 'Days a secure link stays open', '14'),
+        ('delivery.countryCode', 'Default country code for phone numbers', NULL)
+      ) AS s(name, description, value)
+      WHERE NOT EXISTS (SELECT 1 FROM clinlims.site_information i WHERE i.name = s.name);
+    </sql>
+    <rollback>
+      <sql>DELETE FROM clinlims.site_information WHERE name LIKE 'delivery.%';</sql>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="018-sent-messages-module" author="openelisglobal">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'SentMessages'</sqlCheck>
+    </preConditions>
+    <insert schemaName="clinlims" tableName="system_module">
+      <column name="id" valueSequenceNext="system_module_seq"/>
+      <column name="name" value="SentMessages"/>
+      <column name="description" value="Open Sent Messages and resend a message from it"/>
+      <column name="has_select_flag" value="Y"/>
+      <column name="has_add_flag" value="N"/>
+      <column name="has_update_flag" value="N"/>
+      <column name="has_delete_flag" value="N"/>
+    </insert>
+    <insert schemaName="clinlims" tableName="system_module_url">
+      <column name="id" valueSequenceNext="system_module_url_seq"/>
+      <column name="url_path" value="/SentMessages"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'SentMessages')"/>
+    </insert>
+    <rollback>
+      <delete schemaName="clinlims" tableName="system_module_url"><where>url_path = '/SentMessages'</where></delete>
+      <delete schemaName="clinlims" tableName="system_module"><where>name = 'SentMessages'</where></delete>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="018-sent-messages-module-grants" author="openelisglobal">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'SentMessages'</sqlCheck>
+    </preConditions>
+    <sql>
+      INSERT INTO clinlims.system_role_module (id, has_select, has_add, has_update, has_delete, system_role_id, system_module_id)
+      SELECT nextval('clinlims.system_role_module_seq'), 'Y', 'N', 'N', 'N', r.id, m.id
+      FROM clinlims.system_role r
+      CROSS JOIN clinlims.system_module m
+      WHERE m.name = 'SentMessages'
+        AND (r.name IN ('Reports', 'Global Administrator')
+             OR EXISTS (SELECT 1 FROM clinlims.system_role_module rm
+                        JOIN clinlims.system_module pm ON pm.id = rm.system_module_id
+                        WHERE pm.name = 'ReportPrintQueue' AND rm.system_role_id = r.id AND rm.has_select = 'Y'))
+        AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_module x
+                        WHERE x.system_role_id = r.id AND x.system_module_id = m.id);
+    </sql>
+    <rollback>
+      <sql>
+        DELETE FROM clinlims.system_role_module
+        WHERE system_module_id = (SELECT id FROM clinlims.system_module WHERE name = 'SentMessages');
+      </sql>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="018-sent-messages-menu" author="openelisglobal">
+    <comment>Reports menu entry for Sent Messages, right after the Report Print Queue</comment>
+    <sql>
+      INSERT INTO clinlims.menu (id, parent_id, presentation_order, element_id, action_url, display_key, is_active)
+      SELECT nextval('clinlims.menu_seq'),
+             (SELECT id FROM clinlims.menu WHERE element_id = 'menu_reports_routine'),
+             COALESCE((SELECT presentation_order FROM clinlims.menu WHERE element_id = 'menu_reports_printqueue'), 0) + 1,
+             'menu_reports_sentmessages', '/SentMessages', 'sidenav.label.reports.sentMessages', true
+      WHERE NOT EXISTS (SELECT 1 FROM clinlims.menu WHERE element_id = 'menu_reports_sentmessages')
+        AND EXISTS (SELECT 1 FROM clinlims.menu WHERE element_id = 'menu_reports_routine');
+    </sql>
+    <rollback>
+      <sql>DELETE FROM clinlims.menu WHERE element_id = 'menu_reports_sentmessages';</sql>
+    </rollback>
+  </changeSet>
+
+  <!-- FR-D1: the shipped patient result template named the patient. The
+       system default loses the name; an edited template is left alone. -->
+  <changeSet id="018-test-result-template-privacy" author="openelisglobal">
+    <preConditions onFail="MARK_RAN">
+      <tableExists schemaName="clinlims" tableName="notification_payload_template"/>
+    </preConditions>
+    <sql>
+      UPDATE clinlims.notification_payload_template
+      SET subject_template = '[testName] results ready',
+          message_template = '[testName] results are ready. Please contact your clinician or the laboratory.',
+          last_updated = now()
+      WHERE type = 'TEST_RESULT'
+        AND message_template LIKE '[testName] testing results have been finalized for Patient%';
+
+      UPDATE clinlims.notification_payload_template
+      SET message_template = 'Sample [sampleAccessionNumber] has been referred to [labName] for test [testName]. Referral id: [referralId].',
+          last_updated = now()
+      WHERE type = 'REFERRAL_OUT'
+        AND message_template = 'Sample [sampleAccessionNumber] for patient [patientFirstName] [patientLastName] has been referred to [labName] for test [testName]. Referral id: [referralId].';
+
+      UPDATE clinlims.notification_payload_template
+      SET message_template = 'Result for sample [sampleAccessionNumber] (test [testName]) returned by [labName] was rejected: [rejectReason]. Please re-collect and re-refer. Order: [deepLink]',
+          last_updated = now()
+      WHERE type = 'REFERRAL_REJECTED_NEEDS_RECOLLECTION'
+        AND message_template = 'Result for sample [sampleAccessionNumber] (patient [patientFirstName] [patientLastName], test [testName]) returned by [labName] was rejected: [rejectReason]. Please re-collect and re-refer. Order: [deepLink]';
+    </sql>
+    <rollback>
+      <sql>
+        UPDATE clinlims.notification_payload_template
+        SET subject_template = '[testName] Testing Results',
+            message_template = '[testName] testing results have been finalized for Patient : [patientFirstName] [patientLastNameInitial].' || chr(10) || chr(10) || 'Result : [testResult]'
+        WHERE type = 'TEST_RESULT' AND message_template = '[testName] results are ready. Please contact your clinician or the laboratory.';
+      </sql>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

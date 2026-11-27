@@ -36,7 +36,7 @@ public class QCResultDAOImpl extends BaseDAOImpl<QCResult, String> implements QC
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
             CriteriaQuery<QCResult> cq = cb.createQuery(QCResult.class);
             Root<QCResult> root = cq.from(QCResult.class);
-            cq.where(cb.equal(root.get("controlLotId"), controlLotId));
+            cq.where(cb.equal(root.get("controlLotId"), controlLotId), cb.isNotNull(root.get("resultValue")));
             cq.orderBy(cb.desc(root.get("runDateTime")));
             return entityManager.createQuery(cq).getResultList();
         } catch (RuntimeException e) {
@@ -50,7 +50,7 @@ public class QCResultDAOImpl extends BaseDAOImpl<QCResult, String> implements QC
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
             CriteriaQuery<QCResult> cq = cb.createQuery(QCResult.class);
             Root<QCResult> root = cq.from(QCResult.class);
-            cq.where(cb.equal(root.get("controlLotId"), controlLotId));
+            cq.where(cb.equal(root.get("controlLotId"), controlLotId), cb.isNotNull(root.get("resultValue")));
             cq.orderBy(cb.desc(root.get("runDateTime")));
             return entityManager.createQuery(cq).setMaxResults(limit).getResultList();
         } catch (RuntimeException e) {
@@ -86,7 +86,7 @@ public class QCResultDAOImpl extends BaseDAOImpl<QCResult, String> implements QC
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
             CriteriaQuery<QCResult> cq = cb.createQuery(QCResult.class);
             Root<QCResult> root = cq.from(QCResult.class);
-            cq.where(cb.equal(root.get("controlLotId"), controlLotId));
+            cq.where(cb.equal(root.get("controlLotId"), controlLotId), cb.isNotNull(root.get("resultValue")));
             cq.orderBy(cb.asc(root.get("runDateTime")));
             return entityManager.createQuery(cq).getResultList();
         } catch (RuntimeException e) {
@@ -169,17 +169,18 @@ public class QCResultDAOImpl extends BaseDAOImpl<QCResult, String> implements QC
      * that one.
      *
      * <p>
-     * Returns {testSectionId, testId, source, totalRuns, failedRuns, lastRun}.
-     * Aggregated in SQL: a busy lab unit runs controls all day and this must not
-     * pull every row into memory to count them.
+     * Returns {testSectionId, testId, source, totalRuns, failedRuns, lastRun,
+     * lastRunId}, the last being the latest result run a control of the group was
+     * recorded on (OGC-1200 FR-G2). Aggregated in SQL: a busy lab unit runs
+     * controls all day and this must not pull every row into memory to count them.
      */
     @Override
     @Transactional(readOnly = true)
     public List<Object[]> summariseBenchQc(Timestamp startDate, Timestamp endDate, QCSource source)
             throws LIMSRuntimeException {
         String hql = "SELECT r.testSectionId, r.testId, r.source, COUNT(r.id),"
-                + " SUM(CASE WHEN r.qualitativeOutcome IN (:failing) THEN 1 ELSE 0 END), MAX(r.runDateTime)"
-                + " FROM QCResult r WHERE r.source IN (:sources)"
+                + " SUM(CASE WHEN r.qualitativeOutcome IN (:failing) THEN 1 ELSE 0 END), MAX(r.runDateTime),"
+                + " MAX(r.runId)" + " FROM QCResult r WHERE r.source IN (:sources)"
                 + " AND r.runDateTime >= :startDate AND r.runDateTime < :endDate"
                 + " GROUP BY r.testSectionId, r.testId, r.source ORDER BY MAX(r.runDateTime) DESC";
         try {
@@ -232,6 +233,23 @@ public class QCResultDAOImpl extends BaseDAOImpl<QCResult, String> implements QC
             return entityManager.createQuery(cq).getResultList();
         } catch (RuntimeException e) {
             throw new LIMSRuntimeException("Error retrieving distinct instrument IDs from QC results", e);
+        }
+    }
+
+    @Override
+    public List<QCResult> findByRunIds(java.util.Collection<Long> runIds) throws LIMSRuntimeException {
+        if (runIds == null || runIds.isEmpty()) {
+            return List.of();
+        }
+        try {
+            CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+            CriteriaQuery<QCResult> cq = cb.createQuery(QCResult.class);
+            Root<QCResult> root = cq.from(QCResult.class);
+            cq.where(root.get("runId").in(runIds));
+            cq.orderBy(cb.asc(root.get("runDateTime")), cb.asc(root.get("id")));
+            return entityManager.createQuery(cq).getResultList();
+        } catch (RuntimeException e) {
+            throw new LIMSRuntimeException("Error retrieving the QC results of runs", e);
         }
     }
 }

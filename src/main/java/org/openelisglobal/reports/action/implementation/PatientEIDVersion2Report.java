@@ -15,14 +15,8 @@ package org.openelisglobal.reports.action.implementation;
 
 public class PatientEIDVersion2Report extends PatientEIDReport implements IReportCreator {
     @Override
-    protected String reportFileName() {
-        return "RetroCI_Patient_EID_Version2";
+    protected boolean usesVersionTwoLayout() {
+        return true;
     }
 
-    @Override
-    protected void createReportParameters() {
-        super.createReportParameters();
-        reportParameters.put("contact",
-                "CHU de Treichville, 01 BP 1712 Tel : 21-21-42-50/21-25-4189 Fax : 21-24-29-69/" + " 21-25-10-63");
-    }
 }

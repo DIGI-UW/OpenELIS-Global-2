@@ -73,6 +73,38 @@ public class NameValidator implements ConstraintValidator<ValidName, String>, Co
         return false;
     }
 
+    /**
+     * The characters the site allows in a name of this type, as configured (a
+     * regular-expression character class such as {@code a-z ._@-}), for messages
+     * that tell the user what to type.
+     */
+    public static String allowedCharacters(NameType nameType) {
+        String setting;
+        switch (nameType) {
+        case FIRST_NAME:
+            setting = "firstNameCharset";
+            break;
+        case LAST_NAME:
+            setting = "lastNameCharset";
+            break;
+        case USERNAME:
+            setting = "userNameCharset";
+            break;
+        default:
+            return DEFAULT_REGEX;
+        }
+        return SpringContext.getBean(SiteInformationService.class).getMatch("name", setting)
+                .map(SiteInformation::getValue)
+                .filter(value -> !org.apache.commons.validator.GenericValidator.isBlankOrNull(value))
+                .orElse(DEFAULT_REGEX);
+    }
+
+    /** Whether the value uses only the characters the site allows for that name. */
+    public static boolean usesAllowedCharacters(NameType nameType, String value) {
+        return org.apache.commons.validator.GenericValidator.isBlankOrNull(value)
+                || value.matches("(?iu)^[" + allowedCharacters(nameType) + "]*$");
+    }
+
     @Override
     public void refreshConfiguration() {
 

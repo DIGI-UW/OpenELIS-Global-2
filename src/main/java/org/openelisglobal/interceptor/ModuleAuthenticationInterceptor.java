@@ -6,18 +6,16 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.URLUtil;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.systemmodule.service.SystemModuleUrlService;
 import org.openelisglobal.systemmodule.valueholder.SystemModuleParam;
 import org.openelisglobal.systemmodule.valueholder.SystemModuleUrl;
-import org.openelisglobal.systemusermodule.service.PermissionModuleService;
-import org.openelisglobal.systemusermodule.valueholder.PermissionModule;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -45,13 +43,11 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
     private SystemModuleUrlService systemModuleUrlService;
     @Autowired
     private UserRoleService userRoleService;
-    @Autowired
-    private PermissionModuleService<PermissionModule> permissionModuleService;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
             throws IOException {
-        String path = request.getRequestURI().substring(request.getContextPath().length());
+        String path = URLUtil.getRequestPath(request);
         Errors errors = new BaseErrors();
         if (!hasPermission(errors, request, path)) {
             LogEvent.logInfo("ModuleAuthenticationInterceptor", "preHandle()",
@@ -95,8 +91,8 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
         }
 
         if (accessMap == null) {
-            Set<String> permittedPages = getPermittedForms(getSysUserId(request));
-            accessMap = (HashSet<String>) permittedPages;
+            accessMap = new HashSet<>(
+                    userRoleService.getAllPermittedPagesForUser(Integer.toString(getSysUserId(request))));
         }
         List<SystemModuleUrl> sysModsByUrl = systemModuleUrlService.getByRequest(request);
 
@@ -138,20 +134,6 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
             }
         }
         return filteredSysModsByUrl;
-    }
-
-    private Set<String> getPermittedForms(int systemUserId) {
-        Set<String> allPermittedPages = new HashSet<>();
-
-        List<String> roleIds = userRoleService.getRoleIdsForUser(Integer.toString(systemUserId));
-
-        for (String roleId : roleIds) {
-            Set<String> permittedPagesForRole = permissionModuleService
-                    .getAllPermittedPagesFromAgentId(Integer.parseInt(roleId));
-            allPermittedPages.addAll(permittedPagesForRole);
-        }
-
-        return allPermittedPages;
     }
 
     protected int getSysUserId(HttpServletRequest request) {

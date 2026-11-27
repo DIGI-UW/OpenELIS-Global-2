@@ -48,9 +48,11 @@ public class TestQcTargetServiceImpl extends BaseObjectServiceImpl<TestQcTarget,
                 match.setComponentId(blankToNull(d.getComponentId()));
                 match.setControlLevel(d.getControlLevel());
                 match.setQcControlLotId(blankToNull(d.getQcControlLotId()));
-                match.setExpectedValue(d.getExpectedValue());
-                match.setUncertainty(d.getUncertainty());
-                match.setExpectedDictResultId(blankToNull(d.getExpectedDictResultId()));
+                if (d.isActive() || hasValues(d)) {
+                    match.setExpectedValue(d.getExpectedValue());
+                    match.setUncertainty(d.getUncertainty());
+                    match.setExpectedDictResultId(blankToNull(d.getExpectedDictResultId()));
+                }
                 match.setActive(d.isActive());
                 match.setSysUserId(sysUserId);
                 update(match);
@@ -91,6 +93,25 @@ public class TestQcTargetServiceImpl extends BaseObjectServiceImpl<TestQcTarget,
             }
         }
         return levelDefault;
+    }
+
+    @Override
+    @Transactional
+    public void retireTargetsNotFitting(String testId, boolean quantitative, String sysUserId) {
+        for (TestQcTarget target : baseObjectDAO.getByTestId(testId)) {
+            boolean fits = quantitative ? target.getExpectedValue() != null && target.getUncertainty() != null
+                    : !GenericValidator.isBlankOrNull(target.getExpectedDictResultId());
+            if (target.isActive() && !fits) {
+                target.setActive(false);
+                target.setSysUserId(sysUserId);
+                update(target);
+            }
+        }
+    }
+
+    private static boolean hasValues(TestQcTarget target) {
+        return target.getExpectedValue() != null || target.getUncertainty() != null
+                || !GenericValidator.isBlankOrNull(target.getExpectedDictResultId());
     }
 
     private static String blankToNull(String value) {

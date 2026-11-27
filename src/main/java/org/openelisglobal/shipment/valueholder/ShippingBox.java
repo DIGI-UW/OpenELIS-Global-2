@@ -64,6 +64,15 @@ public class ShippingBox extends BaseObject<Integer> {
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
 
+    /**
+     * What an imported consignment says it holds — a JSON list of {label, type}
+     * captured from the SupplyDelivery at import time. Read-side only: an imported
+     * box has no box_sample_item rows (their FKs name rows only the sender has), so
+     * this is the manifest BoxDetails renders. Null on locally-created boxes.
+     */
+    @Column(name = "imported_contents", columnDefinition = "TEXT")
+    private String importedContents;
+
     @Column(name = "created_date", nullable = false)
     private Timestamp createdDate;
 
@@ -94,6 +103,14 @@ public class ShippingBox extends BaseObject<Integer> {
 
     @Column(name = "sys_user_id", nullable = false)
     private Integer systemUserId;
+
+    /**
+     * The EQA cycle this box distributes panel material for. Plain id rather than a
+     * reference to the EQA module: the shipment module never reads cycle state, and
+     * only the EQA side joins on it.
+     */
+    @Column(name = "eqa_cycle_id")
+    private Long eqaCycleId;
 
     // Relationships
     @OneToMany(mappedBy = "shippingBox", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
@@ -186,6 +203,14 @@ public class ShippingBox extends BaseObject<Integer> {
         this.notes = notes;
     }
 
+    public String getImportedContents() {
+        return importedContents;
+    }
+
+    public void setImportedContents(String importedContents) {
+        this.importedContents = importedContents;
+    }
+
     public Timestamp getCreatedDate() {
         return createdDate;
     }
@@ -272,6 +297,14 @@ public class ShippingBox extends BaseObject<Integer> {
 
     public void setBoxSampleItems(List<BoxSampleItem> boxSampleItems) {
         this.boxSampleItems = boxSampleItems;
+    }
+
+    public Long getEqaCycleId() {
+        return eqaCycleId;
+    }
+
+    public void setEqaCycleId(Long eqaCycleId) {
+        this.eqaCycleId = eqaCycleId;
     }
 
     public Shipment getShipment() {

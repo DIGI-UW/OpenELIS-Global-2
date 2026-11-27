@@ -25,6 +25,7 @@ import org.openelisglobal.fhir.springserialization.QuestionnaireSerializer;
 import org.openelisglobal.interceptor.CommonPageAttributesInterceptor;
 import org.openelisglobal.interceptor.UrlErrorsInterceptor;
 import org.openelisglobal.internationalization.GlobalLocaleResolver;
+import org.openelisglobal.module.runtime.ModuleConfig;
 import org.openelisglobal.security.SecurityConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -32,6 +33,7 @@ import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.context.annotation.Scope;
@@ -45,15 +47,18 @@ import org.springframework.web.multipart.support.StandardServletMultipartResolve
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.web.servlet.ViewResolver;
-import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.i18n.LocaleChangeInterceptor;
 import org.springframework.web.servlet.view.InternalResourceViewResolver;
 
-@EnableWebMvc
+/*
+ * Spring MVC is enabled by ModuleWebMvcConfiguration (imported through ModuleConfig), the same configuration
+ * @EnableWebMvc would import, with a request mapping that module controllers can be registered into.
+ */
 @Configuration
+@Import(ModuleConfig.class)
 @EnableJpaRepositories(basePackages = { "org.itech", "org.ozeki.sms" })
 @PropertySource("classpath:application.properties")
 @PropertySource("file:/run/secrets/common.properties")
@@ -61,7 +66,7 @@ import org.springframework.web.servlet.view.InternalResourceViewResolver;
 @PropertySource(value = "classpath:SystemConfiguration.properties", ignoreResourceNotFound = true)
 @PropertySource(value = "file:/var/lib/openelis-global/properties/TotalSystemConfiguration.properties", ignoreResourceNotFound = true)
 @PropertySource(value = "file:/var/lib/openelis-global/properties/SystemConfiguration.properties", ignoreResourceNotFound = true)
-@ComponentScan(basePackages = { "spring", "org.openelisglobal", "org.itech", "org.ozeki.sms", "oe.plugin" })
+@ComponentScan(basePackages = { "spring", "org.openelisglobal", "org.itech", "org.ozeki.sms" })
 public class AppConfig implements WebMvcConfigurer {
 
     @Autowired
@@ -100,10 +105,14 @@ public class AppConfig implements WebMvcConfigurer {
                 .excludePathPatterns(SecurityConfig.OPEN_PAGES) //
                 .excludePathPatterns(SecurityConfig.LOGIN_PAGES) //
                 .excludePathPatterns(SecurityConfig.RESOURCE_PAGES) //
-                .excludePathPatterns(SecurityConfig.AUTH_OPEN_PAGES);
+                .excludePathPatterns(SecurityConfig.AUTH_OPEN_PAGES) //
+                // authorized by the Bridge certificate chain; no user modules apply
+                .excludePathPatterns(SecurityConfig.BRIDGE_INGRESS_PATHS) //
+                // module frontend assets: an authenticated session is enough, like the core's
+                // static files
+                .excludePathPatterns(SecurityConfig.MODULE_ASSET_PAGES);
         // TO DO ,we need to have a better way to handle user roles for rest controllers
         // .excludePathPatterns(SecurityConfig.REST_CONTROLLERS);
-        // .excludePathPatterns(SecurityConfig.CLIENT_CERTIFICATE_PAGES);
         registry.addInterceptor(urlLocatedErrorsInterceptor).addPathPatterns("/**");
         registry.addInterceptor(pageAttributesInterceptor).addPathPatterns("/**");
     }
