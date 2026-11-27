@@ -48,6 +48,8 @@ import {
 import {
   advanceBlockedReason,
   advanceLabelKey,
+  awaitedConsultationNames,
+  consultationActionLock,
   COVERSLIPPING_SECTION_ID,
   decalcificationFlagFrozen,
   FINDINGS_SECTION_ID,
@@ -63,7 +65,9 @@ import {
   railCurrentIndex,
   returnBlockedReason,
   REVIEW_SECTION_ID,
+  reviewTakesConsultations,
   reviewTakesRequests,
+  secondOpinionSummary,
   sectionBadge,
   sectionHeader,
   sectionHoldsRecords,
@@ -84,6 +88,7 @@ import {
   stripClientKeys,
 } from "./pathologyRows";
 import DeactivateRowDialog from "./DeactivateRowDialog";
+import { REQUEST_CONSULTATION_BUTTON_ID } from "./ConsultationsPanel";
 import { NEW_REQUEST_BUTTON_ID } from "./RequestsTable";
 import { focusFirstOf } from "./focus";
 import CaseInformationSection from "./sections/CaseInformationSection";
@@ -153,6 +158,17 @@ const REQUEST_STATUS_TOASTS = Object.freeze({
   CANCELLED: "pathology.toast.requestCancelled",
   OPENED: "pathology.toast.requestReopened",
 });
+
+const CONSULTATION_REASONS_URL =
+  "/rest/dictionary/category/pathology_consultation_reasons";
+
+// Where focus lands once a second-opinion change has been read back: the
+// panel's Request second opinion, or the Review section's header where it is
+// not offered.
+const AFTER_CONSULTATION_CHANGE = [
+  "#" + REQUEST_CONSULTATION_BUTTON_ID,
+  sectionHeader(REVIEW_SECTION_ID),
+];
 
 const STAINS_URL =
   "/rest/dictionary/category/" + encodeURIComponent("Pathology Stains");
@@ -239,6 +255,8 @@ function PathologyCaseView() {
   // laboratory has configured none.
   const [tissueTypes, setTissueTypes] = useState(null);
   const [stains, setStains] = useState(null);
+  // Null until read; `{ failed: true }` when the first read failed.
+  const [consultationReasons, setConsultationReasons] = useState(null);
   const [loadingReport, setLoadingReport] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [postSavePrintModel, setPostSavePrintModel] = useState(null);
@@ -373,6 +391,16 @@ function PathologyCaseView() {
     getFromOpenElisServer(STAINS_URL, (list) => {
       if (componentMounted.current && Array.isArray(list)) {
         setStains(list);
+      }
+    });
+    getFromOpenElisServer(CONSULTATION_REASONS_URL, (list) => {
+      if (!componentMounted.current) {
+        return;
+      }
+      if (Array.isArray(list)) {
+        setConsultationReasons(list);
+      } else {
+        setConsultationReasons((had) => had ?? { failed: true });
       }
     });
     getFromOpenElisServer(caseUrl, loadCase);
@@ -843,8 +871,79 @@ function PathologyCaseView() {
       startedBy,
     });
 
+  // A second-opinion change (FR-11): requesting one, recording its outcome
+  // or withdrawing it, each sent as a request change is, so a refusal keeps
+  // the inline row as typed and a lost race re-reads the case and says so.
+  const sendConsultationChange = ({ path, body, toastKey, startedBy }) => {
+    const refusalTargets = [
+      ...(startedBy?.id ? ["#" + startedBy.id] : []),
+      ...AFTER_CONSULTATION_CHANGE,
+    ];
+    return sendHeld({
+      path,
+      body,
+      startedBy,
+      onAnswer: (response, ok) => {
+        if (ok) {
+          addNotification({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: intl.formatMessage({ id: toastKey }),
+          });
+          return AFTER_CONSULTATION_CHANGE;
+        }
+        // A lost race on the row's version is this row's conflict too, not
+        // the designation one refusalMessage names for "version".
+        const conflicted =
+          response?.conflict === "consultation" ||
+          response?.conflict === "version";
+        addNotification({
+          kind: NotificationKinds.error,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: conflicted
+            ? (translatedRefusal(response) ??
+              intl.formatMessage({
+                id: "pathology.error.consultationConflict",
+              }))
+            : refusalMessage(response, "error.save.msg"),
+        });
+        return refusalTargets;
+      },
+    }).then((outcome) => {
+      if (!outcome.ok && startedBy) {
+        focusFirstOf(refusalTargets, { onlyFrom: [startedBy] });
+      }
+      return outcome;
+    });
+  };
+
+  const requestConsultation = (body, startedBy) =>
+    sendConsultationChange({
+      path: "/consultations",
+      body,
+      toastKey: "pathology.toast.consultationRequested",
+      startedBy,
+    });
+
+  const answerConsultation = (row, body, startedBy) =>
+    sendConsultationChange({
+      path: "/consultations/" + row.id + "/answer",
+      body,
+      toastKey: "pathology.toast.consultationAnswered",
+      startedBy,
+    });
+
+  const withdrawConsultation = (row, startedBy) =>
+    sendConsultationChange({
+      path: "/consultations/" + row.id + "/withdraw",
+      body: {},
+      toastKey: "pathology.toast.consultationWithdrawn",
+      startedBy,
+    });
+
   const openRequestRows = openRequests(caseInfo.requests);
   const openNames = openRequestNames(caseInfo.requests);
+  const awaitedNames = awaitedConsultationNames(caseInfo.consultations);
 
   // FR-10.11: a case that would land on the pathologist with requests open
   // asks first, inline, since nothing is destroyed; every other move goes at
@@ -1185,6 +1284,28 @@ function PathologyCaseView() {
             requestPrefill={requestPrefill}
             onRaiseRequest={raiseRequest}
             onChangeRequestStatus={changeRequestStatus}
+            consultations={caseInfo.consultations ?? []}
+            canRequestConsultation={reviewTakesConsultations(
+              section,
+              caseInfo,
+              isPathologist,
+            )}
+            viewerId={userSessionDetails.userId}
+            isPathologist={isPathologist}
+            colleagues={pathologistUsers.filter(
+              (user) => String(user.id) !== String(userSessionDetails.userId),
+            )}
+            consultationReasons={consultationReasons}
+            suggestedFor={caseInfo.secondOpinionSuggestedFor ?? []}
+            consultationLock={consultationActionLock({
+              dirty,
+              saving: isSubmitting,
+              moving: held,
+            })}
+            consultationsShown={section.state !== SECTION_STATE.DISABLED}
+            onRequestConsultation={requestConsultation}
+            onAnswerConsultation={answerConsultation}
+            onWithdrawConsultation={withdrawConsultation}
           />
         );
       // A locked Findings renders no body: the accordion still mounts a
@@ -1518,6 +1639,11 @@ function PathologyCaseView() {
           : undefined,
     },
     {
+      id: "secondOpinion",
+      labelKey: "pathology.label.secondOpinion",
+      ...secondOpinionSummary(intl, caseInfo.consultations),
+    },
+    {
       id: "conclusion",
       labelKey: "pathology.label.conclusion",
       value:
@@ -1613,6 +1739,7 @@ function PathologyCaseView() {
                       status: stage,
                       reportCount: (caseInfo.reports ?? []).length,
                       openRequestNames: openNames,
+                      awaitedConsultationNames: awaitedNames,
                       caseInfo,
                       configurationProperties,
                     })}
@@ -1648,6 +1775,7 @@ function PathologyCaseView() {
                       lockedHintValues={section.lockedHintValues}
                       badge={sectionBadge(section, {
                         openRequestCount: openNames.length,
+                        awaitedConsultationNames: awaitedNames,
                         caseInfo,
                         configurationProperties,
                       })}

@@ -3,6 +3,7 @@ import { Stack, TextArea } from "@carbon/react";
 import { useIntl } from "react-intl";
 import SearchableSelect from "../../common/SearchableSelect";
 import RequestsTable from "../RequestsTable";
+import ConsultationsPanel from "../ConsultationsPanel";
 import SlidesReceived from "./SlidesReceived";
 import {
   neverCheckedSlides,
@@ -39,6 +40,12 @@ const READING_STAGES = Object.freeze(["READY_PATHOLOGIST", "UNDER_REVIEW"]);
  * stage, unsaved work (`dirty`), a save (`saving`) and a change in flight,
  * as Staining holds its marks. `requestPrefill` opens a new request with its
  * kind and target set.
+ *
+ * Last come the second opinions (FR-11, see ConsultationsPanel), shown on any
+ * review but a locked one (`consultationsShown`). `canRequestConsultation`
+ * offers Request second opinion; each row's own actions follow the viewer
+ * (`viewerId`, `isPathologist`), and every one is held by `consultationLock`,
+ * which a signed-out case does not set.
  */
 const ReviewSection = ({
   caseInfo,
@@ -54,6 +61,18 @@ const ReviewSection = ({
   requestPrefill,
   onRaiseRequest,
   onChangeRequestStatus,
+  consultations = [],
+  canRequestConsultation = false,
+  viewerId,
+  isPathologist = false,
+  colleagues = [],
+  consultationReasons = null,
+  suggestedFor = [],
+  consultationLock,
+  consultationsShown = false,
+  onRequestConsultation,
+  onAnswerConsultation,
+  onWithdrawConsultation,
 }) => {
   const intl = useIntl();
   const neverChecked = READING_STAGES.includes(caseInfo.status)
@@ -122,6 +141,21 @@ const ReviewSection = ({
         prefill={requestPrefill}
         onRaise={onRaiseRequest}
         onChangeStatus={onChangeRequestStatus}
+      />
+      <ConsultationsPanel
+        consultations={consultations}
+        canRequest={canRequestConsultation}
+        viewerId={viewerId}
+        isPathologist={isPathologist}
+        colleagues={colleagues}
+        reasons={consultationReasons}
+        suggestedFor={suggestedFor}
+        lock={consultationLock}
+        held={held}
+        shown={consultationsShown}
+        onRequest={onRequestConsultation}
+        onAnswer={onAnswerConsultation}
+        onWithdraw={onWithdrawConsultation}
       />
     </Stack>
   );

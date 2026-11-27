@@ -5341,3 +5341,388 @@ describe("the reading: Review, Findings and the save", () => {
     );
   });
 });
+
+describe("Review section, second opinions", () => {
+  const REVIEW = "pathology-section-review";
+  const CONSULTATIONS_URL = CASE_URL + "/consultations";
+  const REASONS_URL =
+    "/rest/dictionary/category/pathology_consultation_reasons";
+
+  let reasonCatalogue;
+
+  const awaitedRow = (overrides = {}) => ({
+    id: 41,
+    status: "REQUESTED",
+    consultedUserId: "12",
+    consultedUser: "Robert Read",
+    reason: null,
+    preTreatment: false,
+    requested: { at: "20/11/2026 10:00", by: "Sam Session" },
+    outcome: null,
+    outcomeNote: null,
+    answered: null,
+    ...overrides,
+  });
+
+  const withConsultations = (status, consultations, overrides = {}) =>
+    caseAtStage(status, {
+      takesConsultations: true,
+      consultations,
+      secondOpinionSuggestedFor: [],
+      ...overrides,
+    });
+
+  const byId = (id) => document.getElementById(id);
+  const panel = () =>
+    document.querySelector(".pathology-case-view__consultations");
+  const loaded = () => waitFor(() => expect(stageReadout()).not.toBeNull());
+  const lastJsonPost = () => postToOpenElisServerJsonResponse.mock.calls.at(-1);
+  const answer = async (response) => {
+    const callback = lastJsonPost()[2];
+    await act(async () => {
+      callback(response);
+    });
+  };
+  const reasonReads = () =>
+    getFromOpenElisServer.mock.calls.filter(([url]) => url === REASONS_URL)
+      .length;
+
+  beforeEach(() => {
+    reasonCatalogue = [
+      { id: "51", value: "Treatment planning" },
+      { id: "52", value: "Retired reason" },
+    ];
+    const base = getFromOpenElisServer.getMockImplementation();
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === "/rest/users/Pathologist") {
+        return callback([
+          { id: "1", value: "Sam Session" },
+          { id: "8", value: "Paula Path" },
+          { id: "12", value: "Robert Read" },
+        ]);
+      }
+      if (url === REASONS_URL) {
+        return callback(reasonCatalogue);
+      }
+      return base(url, callback);
+    });
+  });
+
+  const chooseColleague = async (typed, name) => {
+    const input = byId("consultationColleague");
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: typed } });
+    fireEvent.click(await within(panel()).findByText(name));
+  };
+
+  const openRequestForm = async () => {
+    fireEvent.click(byId("requestConsultation"));
+    await waitFor(() => expect(byId("consultationColleague")).not.toBeNull());
+  };
+
+  it("the second opinions are the fifth thing in Review, after the bench requests", async () => {
+    hasRole.mockReturnValue(true);
+    servedCase = withConsultations("READY_PATHOLOGIST", []);
+    renderCaseView();
+    await loaded();
+
+    const shown = panel();
+    expect(section(REVIEW).contains(shown)).toBe(true);
+    expect(Array.from(shown.parentElement.children).indexOf(shown)).toBe(4);
+    expect(shown.previousElementSibling.contains(byId("newRequest"))).toBe(
+      true,
+    );
+  });
+
+  it("the second opinions are the fifth thing in Review, after the bench requests: a locked Review renders no panel", async () => {
+    hasRole.mockReturnValue(true);
+    servedCase = withConsultations("GROSSING", [awaitedRow()], {
+      takesConsultations: false,
+    });
+    renderCaseView();
+    await loaded();
+
+    expect(panel()).toBeNull();
+  });
+
+  it("a request posts to `/consultations`, reads the case back, says so, and a second press posts nothing", async () => {
+    hasRole.mockReturnValue(true);
+    servedCase = withConsultations("READY_PATHOLOGIST", []);
+    renderCaseView();
+    await loaded();
+    const fetchesBefore = caseFetchCount();
+
+    await openRequestForm();
+    await chooseColleague("Read", "Robert Read");
+    fireEvent.click(
+      within(screen.getByTestId("newConsultationRow")).getByRole("radio", {
+        name: messages["label.no"],
+      }),
+    );
+    fireEvent.click(byId("askColleague"));
+    fireEvent.click(byId("askColleague"));
+
+    expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1);
+    const [url, body] = lastJsonPost();
+    expect(url).toBe(CONSULTATIONS_URL);
+    expect(JSON.parse(body)).toEqual({
+      consultedUserId: "12",
+      reasonId: null,
+      preTreatment: false,
+    });
+
+    servedCase = withConsultations("READY_PATHOLOGIST", [awaitedRow()]);
+    await answer({ id: 41, status: "REQUESTED" });
+
+    expect(caseFetchCount()).toBe(fetchesBefore + 1);
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "success",
+        message: messages["pathology.toast.consultationRequested"],
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByTestId("newConsultationRow")).toBeNull(),
+    );
+    expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["consultation", "version"])(
+    "a second opinion changed elsewhere (409, %s) says so and shows the case as re-read",
+    async (conflict) => {
+      hasRole.mockReturnValue(true);
+      servedCase = withConsultations("READY_PATHOLOGIST", [awaitedRow()]);
+      renderCaseView();
+      await loaded();
+      const fetchesBefore = caseFetchCount();
+
+      fireEvent.click(byId("withdrawConsultation-41"));
+      await waitFor(() =>
+        expect(byId("consultationWithdrawConfirm-41")).not.toBeNull(),
+      );
+      fireEvent.click(byId("consultationWithdrawConfirm-41"));
+
+      const [url, body] = lastJsonPost();
+      expect(url).toBe(CONSULTATIONS_URL + "/41/withdraw");
+      expect(JSON.parse(body)).toEqual({});
+
+      servedCase = withConsultations("READY_PATHOLOGIST", [
+        awaitedRow({
+          status: "ANSWERED",
+          outcome: "DISAGREE",
+          answered: { at: "21/11/2026 08:00", by: "Robert Read" },
+        }),
+      ]);
+      await answer({ status: 409, conflict });
+
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: messages["pathology.error.consultationConflict"],
+        }),
+      );
+      expect(caseFetchCount()).toBe(fetchesBefore + 1);
+      await waitFor(() =>
+        expect(
+          within(panel()).getAllByText(
+            messages["pathology.consultationOutcome.DISAGREE"],
+          ).length,
+        ).toBeGreaterThan(0),
+      );
+      expect(byId("withdrawConsultation-41")).toBeNull();
+    },
+  );
+
+  it("over unsaved work the second-opinion actions are held with the save-first words, and the bench-request words are unchanged", async () => {
+    hasRole.mockReturnValue(true);
+    servedCase = withConsultations("READY_PATHOLOGIST", [awaitedRow()], {
+      blocks: [savedBlock(1, "A1", { cassetteState: "BLOCK" })],
+      requests: [
+        {
+          id: 11,
+          kind: "SLIDE",
+          targetBlockId: 1,
+          targetSlideId: null,
+          targetName: "A1",
+          stainId: null,
+          stainName: null,
+          priority: "NORMAL",
+          instruction: "Two deeper levels",
+          status: "OPENED",
+          cancelReason: null,
+          resultBlockId: null,
+          resultSlideId: null,
+          resultName: null,
+          raisedAt: null,
+          raisedBy: null,
+        },
+      ],
+    });
+    renderCaseView();
+    await loaded();
+    expect(byId("requestConsultation")).toBeEnabled();
+    expect(byId("withdrawConsultation-41")).toBeEnabled();
+
+    fireEvent.change(
+      screen.getByLabelText(messages["pathology.label.microscopyExam"]),
+      { target: { value: "Typed and not saved" } },
+    );
+
+    expect(byId("requestConsultation")).toBeDisabled();
+    expect(byId("withdrawConsultation-41")).toBeDisabled();
+    expect(byId("consultationsHold")).toHaveTextContent(
+      messages["pathology.locked.saveBeforeConsultation"],
+    );
+    expect(byId("completeRequest-11")).toHaveAttribute(
+      "title",
+      messages["pathology.locked.saveBeforeRequest"],
+    );
+  });
+
+  it("the Case Summary has a Second opinion row between Requests and Conclusion, with the names in its title while one is awaited", async () => {
+    servedCase = withConsultations("READY_PATHOLOGIST", [
+      awaitedRow(),
+      awaitedRow({ id: 42, consultedUserId: "8", consultedUser: "Paula Path" }),
+    ]);
+    renderCaseView();
+    await loaded();
+
+    const labels = Array.from(
+      document.querySelectorAll(".case-view__summary-row"),
+    ).map((row) => row.children[0].textContent);
+    const at = labels.indexOf(messages["pathology.label.secondOpinion"]);
+    expect(labels[at - 1]).toBe(messages["pathology.label.request"]);
+    expect(labels[at + 1]).toBe(messages["pathology.label.conclusion"]);
+
+    const label = messages["pathology.label.secondOpinion"];
+    expect(summaryValue(label)).toBe(
+      messages["pathology.consultationStatus.REQUESTED"],
+    );
+    expect(summaryRow(label)).toHaveAttribute(
+      "title",
+      intl.formatMessage(
+        { id: "pathology.badge.secondOpinionAwaitedFrom" },
+        { names: "Robert Read, Paula Path" },
+      ),
+    );
+  });
+
+  it("the case save still sends exactly the keys it sent before", async () => {
+    hasRole.mockReturnValue(true);
+    const keysSaved = async (served) => {
+      servedCase = served;
+      postToOpenElisServerFullResponse.mockClear();
+      const { unmount } = renderCaseView();
+      await loaded();
+      fireEvent.change(byId("reviewNotes"), {
+        target: { value: "Noted before the opinion" },
+      });
+      const posted = await postedCase();
+      unmount();
+      return Object.keys(posted).sort();
+    };
+
+    const before = await keysSaved(caseAtStage("READY_PATHOLOGIST"));
+    const withOpinions = await keysSaved(
+      withConsultations("READY_PATHOLOGIST", [awaitedRow()], {
+        secondOpinionSuggestedFor: ["Adenocarcinoma"],
+      }),
+    );
+
+    expect(withOpinions).toEqual(before);
+    expect(withOpinions.filter((key) => /consult/i.test(key))).toEqual([]);
+    // The pinned list of the reading's save, less the pathologist's own
+    // immunohistochemistry choice.
+    expect(
+      withOpinions.filter((key) => key !== "immunoHistoChemistryTestIds"),
+    ).toEqual([
+      "assignedPathologistId",
+      "assignedTechnicianId",
+      "blocks",
+      "conclusionText",
+      "conclusions",
+      "decalcificationRequired",
+      "grossExam",
+      "microscopyExam",
+      "referToImmunoHistoChemistry",
+      "release",
+      "reports",
+      "reviewNotes",
+      "slides",
+      "techniques",
+    ]);
+  });
+
+  it("the reasons are read from their dictionary category with each case read, so one retired since the page loaded is gone after a refusal; the viewer is not offered as a colleague", async () => {
+    hasRole.mockReturnValue(true);
+    servedCase = withConsultations("READY_PATHOLOGIST", [
+      awaitedRow({
+        consultedUserId: "8",
+        consultedUser: "Paula Path",
+        requested: { at: "20/11/2026 10:00", by: "Paula Path" },
+      }),
+    ]);
+    renderCaseView();
+    await loaded();
+    expect(reasonReads()).toBe(caseFetchCount());
+
+    const reasonOptions = () =>
+      Array.from(byId("consultationReason").querySelectorAll("option")).map(
+        (option) => option.textContent,
+      );
+    await openRequestForm();
+    expect(reasonOptions()).toContain("Retired reason");
+
+    // The viewer is not among the colleagues; another pathologist is.
+    const input = byId("consultationColleague");
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "Session" } });
+    expect(within(panel()).queryByText("Sam Session")).toBeNull();
+    await chooseColleague("Read", "Robert Read");
+
+    // Refused: the reason was retired since the page loaded.
+    reasonCatalogue = [{ id: "51", value: "Treatment planning" }];
+    fireEvent.click(byId("withdrawConsultation-41"));
+    await waitFor(() =>
+      expect(byId("consultationWithdrawConfirm-41")).not.toBeNull(),
+    );
+    fireEvent.click(byId("consultationWithdrawConfirm-41"));
+    await answer({ status: 409, conflict: "consultation" });
+
+    expect(reasonReads()).toBe(caseFetchCount());
+    await waitFor(() =>
+      expect(reasonOptions()).not.toContain("Retired reason"),
+    );
+    expect(reasonOptions()).toContain("Treatment planning");
+  });
+
+  it("on a signed-out case the consulted pathologist can still record the outcome and nobody is offered Request second opinion", async () => {
+    hasRole.mockReturnValue(true);
+    servedCase = withConsultations(
+      "COMPLETED",
+      [awaitedRow({ consultedUserId: "1", consultedUser: "Sam Session" })],
+      { takesConsultations: false },
+    );
+    renderCaseView();
+    await loaded();
+
+    expect(byId("requestConsultation")).toBeNull();
+    expect(byId("withdrawConsultation-41")).toBeNull();
+    expect(byId("recordOutcome-41")).toBeEnabled();
+
+    fireEvent.click(byId("recordOutcome-41"));
+    await waitFor(() =>
+      expect(screen.getByTestId("consultationAnswer-41")).toBeInTheDocument(),
+    );
+    fireEvent.click(
+      within(screen.getByTestId("consultationAnswer-41")).getByRole("radio", {
+        name: messages["pathology.consultationOutcome.AGREE"],
+      }),
+    );
+    fireEvent.click(byId("consultationAnswerConfirm-41"));
+
+    const [url, body] = lastJsonPost();
+    expect(url).toBe(CONSULTATIONS_URL + "/41/answer");
+    expect(JSON.parse(body)).toMatchObject({ outcome: "AGREE" });
+  });
+});

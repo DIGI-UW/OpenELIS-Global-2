@@ -345,6 +345,7 @@ $stain-picker-min-size: 9.5rem;
 .pathology-case-view__slide-work,
 .pathology-case-view__slide-work-body,
 .pathology-case-view__requests,
+.pathology-case-view__consultations,
 .pathology-case-view__slides-received,
 .pathology-case-view__review-notes {
   min-inline-size: 0;
@@ -354,21 +355,25 @@ $stain-picker-min-size: 9.5rem;
 // give up the empty quarter Carbon keeps at the end of an accordion's content.
 .cds--accordion__content:has(.pathology-case-view__slide-work),
 .cds--accordion__content:has(.pathology-case-view__requests),
+.cds--accordion__content:has(.pathology-case-view__consultations),
 .cds--accordion__content:has(.pathology-case-view__slides-received) {
   padding-inline-end: spacing.$spacing-03;
 }
 
 // A phrase list or the diagnosis menu opens over what follows its field, and
 // in the last section that is past the section's own end. A section holding
-// one shows what spills out of it rather than cutting the list short.
+// one shows what spills out of it rather than cutting the list short. The
+// second opinion's colleague menu opens the same way.
 .cds--accordion__item--active:has(
     .text-macro-field,
-    .pathology-case-view__conclusion-picker
+    .pathology-case-view__conclusion-picker,
+    .pathology-case-view__consultations
   )
   > .cds--accordion__wrapper,
 .cds--accordion__content:has(
   .text-macro-field,
-  .pathology-case-view__conclusion-picker
+  .pathology-case-view__conclusion-picker,
+  .pathology-case-view__consultations
 ) {
   overflow: visible;
 }
@@ -467,6 +472,51 @@ $stain-picker-min-size: 9.5rem;
   @include type.type-style("body-compact-01");
 
   flex-basis: 100%;
+}
+
+// The second opinion table. A row can hold a long note, so every cell starts
+// at the top and the colleague's name stays beside the start of the note.
+.pathology-case-view__consultation-table.cds--data-table td {
+  padding-block: spacing.$spacing-03;
+  vertical-align: top;
+}
+
+// The colleague keeps a quarter of the width and a long name breaks inside
+// it, as a long word does in the inline form rows' one cell. When the request
+// was made and the row's buttons take only the room their content needs, and
+// the outcome, which holds the note, takes the rest.
+.pathology-case-view__consultation-table
+  th.pathology-case-view__consultation-colleague {
+  inline-size: 25%;
+}
+
+.pathology-case-view__consultation-table
+  td.pathology-case-view__consultation-colleague,
+.pathology-case-view__consultation-table
+  td.pathology-case-view__consultation-form-cell {
+  overflow-wrap: anywhere;
+}
+
+.pathology-case-view__consultation-table
+  th.pathology-case-view__consultation-requested,
+.pathology-case-view__consultation-table
+  th.pathology-case-view__consultation-actions {
+  inline-size: 1%;
+}
+
+// The date and time stay on one line; who asked and before treatment wrap
+// under it.
+.pathology-case-view__consultation-table
+  th.pathology-case-view__consultation-requested,
+.pathology-case-view__consultation-table
+  td.pathology-case-view__consultation-requested {
+  white-space: nowrap;
+}
+
+.pathology-case-view__consultation-table
+  td.pathology-case-view__consultation-requested
+  .pathology-case-view__slide-stamp {
+  white-space: normal;
 }
 
 // The bench requests in the review section. They share the slide tables'

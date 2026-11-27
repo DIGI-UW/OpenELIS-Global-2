@@ -432,6 +432,45 @@ export function requestActionLock({
   });
 }
 
+/**
+ * Whether the review offers Request second opinion (FR-11): the server says
+ * the case takes one (from the queue until sign-out), the viewer is a
+ * pathologist, and the review is open or complete for them. The bench, a
+ * locked review and a signed-out case offer none.
+ */
+export function reviewTakesConsultations(section, caseInfo, isPathologist) {
+  return Boolean(
+    section?.id === REVIEW_SECTION_ID &&
+    caseInfo?.takesConsultations &&
+    isPathologist &&
+    (section.state === SECTION_STATE.OPEN ||
+      section.state === SECTION_STATE.COMPLETE),
+  );
+}
+
+/**
+ * Whether a second-opinion action can be sent, and if not, the hint that
+ * says why: while a save, a move or another change is unanswered, and over
+ * unsaved work, since the case is read again after it. A signed-out case
+ * does not hold it: the consulted pathologist still records the outcome.
+ */
+export function consultationActionLock({
+  dirty = false,
+  saving = false,
+  moving = false,
+} = {}) {
+  if (saving || moving) {
+    return { disabled: true, reasonKey: "pathology.locked.requestInFlight" };
+  }
+  if (dirty) {
+    return {
+      disabled: true,
+      reasonKey: "pathology.locked.saveBeforeConsultation",
+    };
+  }
+  return { disabled: false, reasonKey: null };
+}
+
 // What a request names as its target, by its kind: a slide request names the
 // block to cut it from, a stain request the slide to stain.
 const REQUEST_TARGET_FIELD = Object.freeze({
@@ -868,20 +907,29 @@ export function grossingComplete(caseInfo) {
  */
 export function sectionBadge(
   section,
-  { openRequestCount, caseInfo, configurationProperties } = {},
+  {
+    openRequestCount,
+    awaitedConsultationNames: awaitedNames,
+    caseInfo,
+    configurationProperties,
+  } = {},
 ) {
   if (section.readOnlyBecauseUntracked) {
     return { kind: "none", textKey: "pathology.locked.stageDisabled" };
   }
   // The bench works the requests from a read-only review, so the count is
   // said there too; any other read-only section leaves the slot to the
-  // shell's own marker.
+  // shell's own marker. An awaited second opinion is said on any review,
+  // read-only or not, once no request is open to outrank it.
   if (section.id === REVIEW_SECTION_ID && openRequestCount > 0) {
     return {
       kind: "pending",
       textKey: "pathology.badge.openRequestCount",
       values: { count: openRequestCount },
     };
+  }
+  if (section.id === REVIEW_SECTION_ID && awaitedNames?.length > 0) {
+    return { kind: "pending", textKey: "pathology.badge.secondOpinionAwaited" };
   }
 
   if (section.state === SECTION_STATE.READ_ONLY) {
@@ -1136,6 +1184,85 @@ export function openRequestsLabel(intl, names) {
     moreKey: "pathology.badge.openRequestsMore",
     shorten: shortened,
   });
+}
+
+/** The second opinions still awaited on a case, in the order it holds them. */
+export function awaitedConsultations(consultations) {
+  return (consultations ?? []).filter((row) => row.status === "REQUESTED");
+}
+
+/** The names of the pathologists whose second opinion is still awaited. */
+export function awaitedConsultationNames(consultations) {
+  return awaitedConsultations(consultations).map((row) => row.consultedUser);
+}
+
+/**
+ * What a viewer can do with one second opinion (FR-11): the
+ * consulted pathologist records the outcome, whatever their role; another
+ * pathologist can withdraw it; an answered or withdrawn one takes nothing.
+ */
+export function consultationRowActions(row, viewerId, isPathologist) {
+  if (row?.status !== "REQUESTED") {
+    return { answer: false, withdraw: false };
+  }
+  const consulted =
+    viewerId != null && String(row.consultedUserId) === String(viewerId);
+  return { answer: consulted, withdraw: Boolean(isPathologist) && !consulted };
+}
+
+/** The rail's and the summary's sentence about the opinions still awaited. */
+export function secondOpinionAwaitedLabel(intl, names) {
+  return namedListLabel(intl, names, {
+    allKey: "pathology.badge.secondOpinionAwaitedFrom",
+    moreKey: "pathology.badge.secondOpinionAwaitedFromMore",
+  });
+}
+
+/**
+ * The Case Summary's Second opinion row: while one is awaited, the awaited
+ * status with every name in the title; else the most recent outcome with who
+ * gave it; else None, which a withdrawn request alone also reads. The most
+ * recent outcome is the answered row with the greatest `answeredAtMillis`,
+ * since the rows arrive newest request first and an earlier request can be
+ * answered later. A row without that time never displaces one before it, so
+ * without any time the first answered row in the order sent is taken.
+ */
+export function secondOpinionSummary(intl, consultations) {
+  const names = awaitedConsultationNames(consultations);
+  if (names.length > 0) {
+    return {
+      value: intl.formatMessage({
+        id: "pathology.consultationStatus.REQUESTED",
+      }),
+      title: secondOpinionAwaitedLabel(intl, names).full,
+    };
+  }
+  const answeredAt = (row) =>
+    typeof row.answeredAtMillis === "number" ? row.answeredAtMillis : null;
+  const latest = (consultations ?? [])
+    .filter((row) => row.status === "ANSWERED")
+    .reduce((best, row) => {
+      if (!best) {
+        return row;
+      }
+      const at = answeredAt(row);
+      const bestAt = answeredAt(best);
+      return at !== null && (bestAt === null || at > bestAt) ? row : best;
+    }, null);
+  if (latest?.outcome) {
+    // i18n-keys: pathology.consultationOutcome.*
+    const outcome = intl.formatMessage({
+      id: "pathology.consultationOutcome." + latest.outcome,
+    });
+    return {
+      value: outcome,
+      title: intl.formatMessage(
+        { id: "pathology.label.consultationOutcomeBy" },
+        { name: latest.consultedUser, outcome },
+      ),
+    };
+  }
+  return { value: intl.formatMessage({ id: "common.none" }), title: undefined };
 }
 
 /**
@@ -1508,6 +1635,7 @@ export function deriveRailItems(
     status,
     reportCount,
     openRequestNames: names,
+    awaitedConsultationNames: awaitedNames,
     caseInfo,
     configurationProperties,
   } = {},
@@ -1541,8 +1669,21 @@ export function deriveRailItems(
     }
 
     let pending;
-    if (section.id === REVIEW_SECTION_ID && names?.length > 0) {
-      pending = openRequestsLabel(intl, names);
+    if (
+      section.id === REVIEW_SECTION_ID &&
+      (names?.length > 0 || awaitedNames?.length > 0)
+    ) {
+      // Open requests first, then the awaited second opinions, each by name.
+      const parts = [
+        ...(names?.length > 0 ? [openRequestsLabel(intl, names)] : []),
+        ...(awaitedNames?.length > 0
+          ? [secondOpinionAwaitedLabel(intl, awaitedNames)]
+          : []),
+      ];
+      pending = {
+        visible: parts.map((part) => part.visible).join("; "),
+        full: parts.map((part) => part.full).join("; "),
+      };
     } else if (
       section.id === EMBEDDING_SECTION_ID &&
       embeddingAwaitsBench(embedding, status, notApplicable)

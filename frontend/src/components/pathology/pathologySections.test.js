@@ -51,6 +51,10 @@ import {
   grossExamPlace,
   slidesReceived,
   neverCheckedSlides,
+  reviewTakesConsultations,
+  consultationActionLock,
+  consultationRowActions,
+  secondOpinionSummary,
 } from "./pathologySections";
 
 const intl = createIntl({ locale: "en", messages });
@@ -2978,5 +2982,322 @@ describe("requestStatusBody, what a status change posts", () => {
     expect(
       requestStatusBody(request(), "COMPLETED", { cancelReason: "x" }),
     ).toMatchObject({ cancelReason: null });
+  });
+});
+
+describe("second opinions on the review", () => {
+  const review = (status, { isPathologist = true, ...rest } = {}) =>
+    byId(
+      deriveCaseSections({ intl, status, isPathologist, ...rest }),
+      REVIEW_SECTION_ID,
+    );
+
+  const consultation = (overrides = {}) => ({
+    id: 1,
+    status: "REQUESTED",
+    consultedUserId: "7",
+    consultedUser: "Chen, Wei",
+    outcome: null,
+    ...overrides,
+  });
+
+  const awaitedFrom = (names) =>
+    intl.formatMessage(
+      { id: "pathology.badge.secondOpinionAwaitedFrom" },
+      { names },
+    );
+
+  it.each([
+    ["on the bench", "MICROTOMY", { requestCount: 1 }, true, true, false],
+    ["in the queue", "READY_PATHOLOGIST", {}, true, true, true],
+    ["in the queue", "READY_PATHOLOGIST", {}, false, true, false],
+    ["under review", "UNDER_REVIEW", {}, true, true, true],
+    ["under review", "UNDER_REVIEW", {}, false, true, false],
+    [
+      "completed and never released",
+      "COMPLETED",
+      { findingsOpen: true },
+      true,
+      true,
+      true,
+    ],
+    [
+      "completed and never released",
+      "COMPLETED",
+      { findingsOpen: true },
+      false,
+      true,
+      false,
+    ],
+    ["signed out", "COMPLETED", {}, true, false, false],
+    ["signed out", "COMPLETED", {}, true, true, false],
+    ["in the queue", "READY_PATHOLOGIST", {}, true, false, false],
+  ])(
+    "a second opinion can be requested only by a pathologist where the case takes one: %s at %s (%o), pathologist %s, the case takes one %s: %s",
+    (_where, status, flags, isPathologist, takesConsultations, takes) => {
+      const section = review(status, { isPathologist, ...flags });
+
+      expect(
+        reviewTakesConsultations(
+          section,
+          { takesConsultations },
+          isPathologist,
+        ),
+      ).toBe(takes);
+    },
+  );
+
+  it("a second opinion can be requested only by a pathologist where the case takes one: never from a section other than the review", () => {
+    const findings = byId(
+      deriveCaseSections({
+        intl,
+        status: "READY_PATHOLOGIST",
+        isPathologist: true,
+        readingStage: "READY_PATHOLOGIST",
+        findingsOpen: true,
+      }),
+      "pathology-section-findings",
+    );
+
+    expect(findings.state).toBe(SECTION_STATE.OPEN);
+    expect(
+      reviewTakesConsultations(findings, { takesConsultations: true }, true),
+    ).toBe(false);
+  });
+
+  it("the consultation lock: free when clean and idle, the save-first words over unsaved work, the in-flight words while a change is sent, and never the signed-out words", () => {
+    expect(consultationActionLock({})).toEqual({
+      disabled: false,
+      reasonKey: null,
+    });
+    expect(consultationActionLock({ dirty: true })).toEqual({
+      disabled: true,
+      reasonKey: "pathology.locked.saveBeforeConsultation",
+    });
+    expect(consultationActionLock({ dirty: true, saving: true })).toEqual({
+      disabled: true,
+      reasonKey: "pathology.locked.requestInFlight",
+    });
+    expect(consultationActionLock({ moving: true })).toEqual({
+      disabled: true,
+      reasonKey: "pathology.locked.requestInFlight",
+    });
+    // A signed-out case does not hold it: the consulted pathologist still
+    // records the outcome there.
+    expect(consultationActionLock({ status: "COMPLETED" })).toEqual({
+      disabled: false,
+      reasonKey: null,
+    });
+    expect(messages["pathology.locked.saveBeforeConsultation"]).toBeTruthy();
+    expect(messages["pathology.locked.saveBeforeConsultation"]).not.toBe(
+      messages["pathology.locked.saveBeforeRequest"],
+    );
+  });
+
+  it('the Review badge: open requests outrank, an awaited second opinion alone reads "Second opinion awaited" also on a read-only Review, nothing awaited reads as before', () => {
+    const open = review("READY_PATHOLOGIST");
+    const readOnly = review("READY_PATHOLOGIST", { isPathologist: false });
+    const signedOut = review("COMPLETED");
+    expect(readOnly.state).toBe(SECTION_STATE.READ_ONLY);
+    expect(signedOut.state).toBe(SECTION_STATE.READ_ONLY);
+
+    // Both, the requests' count is the badge.
+    expect(
+      sectionBadge(open, {
+        openRequestCount: 2,
+        awaitedConsultationNames: ["Chen, Wei"],
+      }),
+    ).toEqual({
+      kind: "pending",
+      textKey: "pathology.badge.openRequestCount",
+      values: { count: 2 },
+    });
+
+    // An awaited opinion alone, on an open and on a read-only review.
+    for (const section of [open, readOnly, signedOut]) {
+      expect(
+        sectionBadge(section, {
+          openRequestCount: 0,
+          awaitedConsultationNames: ["Chen, Wei"],
+        }),
+      ).toEqual({
+        kind: "pending",
+        textKey: "pathology.badge.secondOpinionAwaited",
+      });
+    }
+    expect(messages["pathology.badge.secondOpinionAwaited"]).toBe(
+      "Second opinion awaited",
+    );
+
+    // Nothing awaited reads as before.
+    expect(
+      sectionBadge(open, { openRequestCount: 0, awaitedConsultationNames: [] }),
+    ).toBeNull();
+    expect(sectionBadge(readOnly, { openRequestCount: 0 })).toBeNull();
+    // Requests only, as before.
+    expect(
+      sectionBadge(open, { openRequestCount: 1, awaitedConsultationNames: [] }),
+    ).toEqual({
+      kind: "pending",
+      textKey: "pathology.badge.openRequestCount",
+      values: { count: 1 },
+    });
+  });
+
+  it('the rail names open requests and awaited second opinions together, each by name, with the full text in the title and "and N more" past the limit', () => {
+    const sections = deriveCaseSections({
+      intl,
+      status: "READY_PATHOLOGIST",
+      isPathologist: true,
+    });
+    const reviewItem = (openRequestNames, awaitedConsultationNames) =>
+      deriveRailItems(sections, {
+        intl,
+        status: "READY_PATHOLOGIST",
+        reportCount: 0,
+        openRequestNames,
+        awaitedConsultationNames,
+      }).find((item) => item.id === REVIEW_SECTION_ID);
+
+    const requests = messages["pathology.badge.openRequests"].replace(
+      "{names}",
+      "Recut",
+    );
+
+    // Both, requests first.
+    const both = reviewItem(["Recut"], ["Chen, Wei"]);
+    expect(both.pendingLabel).toBe(requests + "; " + awaitedFrom("Chen, Wei"));
+    expect(both.pendingTitle).toBe(both.pendingLabel);
+
+    // Awaited only, every name.
+    expect(reviewItem([], ["Chen, Wei"]).pendingLabel).toBe(
+      awaitedFrom("Chen, Wei"),
+    );
+    expect(reviewItem([], ["Chen, Wei", "Okoth, Amina"]).pendingLabel).toBe(
+      awaitedFrom("Chen, Wei, Okoth, Amina"),
+    );
+
+    // Past the limit the visible label counts the rest and the title names
+    // every one.
+    const three = reviewItem([], ["Chen, Wei", "Okoth, Amina", "Diallo, Awa"]);
+    expect(three.pendingLabel).toBe(
+      intl.formatMessage(
+        { id: "pathology.badge.secondOpinionAwaitedFromMore" },
+        { names: "Chen, Wei, Okoth, Amina", count: 1 },
+      ),
+    );
+    expect(three.pendingTitle).toBe(
+      awaitedFrom("Chen, Wei, Okoth, Amina, Diallo, Awa"),
+    );
+
+    // Nothing pending, as before.
+    expect(reviewItem([], []).pendingLabel).toBeUndefined();
+    expect(reviewItem([], undefined).pendingLabel).toBeUndefined();
+  });
+
+  it("the row actions by viewer: the consulted user records the outcome, another pathologist withdraws, anyone else gets none, and an answered or withdrawn row offers none", () => {
+    const awaited = consultation();
+
+    // The consulted user, whatever their role, and an id of either type.
+    expect(consultationRowActions(awaited, 7, true)).toEqual({
+      answer: true,
+      withdraw: false,
+    });
+    expect(consultationRowActions(awaited, "7", false)).toEqual({
+      answer: true,
+      withdraw: false,
+    });
+    // Another pathologist.
+    expect(consultationRowActions(awaited, "8", true)).toEqual({
+      answer: false,
+      withdraw: true,
+    });
+    // Anyone else.
+    expect(consultationRowActions(awaited, "8", false)).toEqual({
+      answer: false,
+      withdraw: false,
+    });
+    expect(consultationRowActions(awaited, undefined, false)).toEqual({
+      answer: false,
+      withdraw: false,
+    });
+    // An answered or withdrawn row.
+    for (const status of ["ANSWERED", "WITHDRAWN"]) {
+      const closed = consultation({ status, outcome: "AGREE" });
+      expect(consultationRowActions(closed, "7", true)).toEqual({
+        answer: false,
+        withdraw: false,
+      });
+      expect(consultationRowActions(closed, "8", true)).toEqual({
+        answer: false,
+        withdraw: false,
+      });
+    }
+  });
+
+  it("the summary row: awaiting with the names, the latest outcome with who gave it, None", () => {
+    // Asked first, answered last.
+    const answered = consultation({
+      id: 2,
+      status: "ANSWERED",
+      consultedUserId: "9",
+      consultedUser: "Okoth, Amina",
+      outcome: "DISAGREE",
+      answeredAtMillis: 1764000000000,
+    });
+    // The rows arrive newest request first; this one was answered earlier.
+    const newerAnswered = consultation({
+      id: 3,
+      status: "ANSWERED",
+      consultedUser: "Chen, Wei",
+      outcome: "AGREE",
+      answeredAtMillis: 1763900000000,
+    });
+    const withdrawn = consultation({ id: 4, status: "WITHDRAWN" });
+
+    // Awaiting, every name in the title, ahead of any outcome.
+    expect(
+      secondOpinionSummary(intl, [
+        answered,
+        consultation(),
+        consultation({ id: 5, consultedUser: "Diallo, Awa" }),
+      ]),
+    ).toEqual({
+      value: messages["pathology.consultationStatus.REQUESTED"],
+      title: awaitedFrom("Chen, Wei, Diallo, Awa"),
+    });
+
+    // The most recent outcome and who gave it, by the answer time, whatever
+    // order the rows arrive in: a later Disagree is never hidden behind an
+    // earlier Agree on a newer request.
+    const latest = {
+      value: messages["pathology.consultationOutcome.DISAGREE"],
+      title: "Okoth, Amina: Disagree",
+    };
+    expect(
+      secondOpinionSummary(intl, [newerAnswered, answered, withdrawn]),
+    ).toEqual(latest);
+    expect(
+      secondOpinionSummary(intl, [withdrawn, answered, newerAnswered]),
+    ).toEqual(latest);
+
+    // Without the answer time, the first answered row in the order sent.
+    const untimed = (row) => ({ ...row, answeredAtMillis: null });
+    expect(
+      secondOpinionSummary(intl, [
+        untimed(newerAnswered),
+        untimed(answered),
+        withdrawn,
+      ]),
+    ).toEqual({
+      value: messages["pathology.consultationOutcome.AGREE"],
+      title: "Chen, Wei: Agree",
+    });
+
+    // Withdrawn only, or nothing, reads None.
+    const none = { value: messages["common.none"], title: undefined };
+    expect(secondOpinionSummary(intl, [withdrawn])).toEqual(none);
+    expect(secondOpinionSummary(intl, [])).toEqual(none);
+    expect(secondOpinionSummary(intl, undefined)).toEqual(none);
   });
 });
