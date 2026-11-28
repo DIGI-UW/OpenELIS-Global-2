@@ -144,5 +144,20 @@ export default function ConfiguredSideNav({ menus }) {
       </Item>
     );
   };
-  return expandedMenus.map((item) => renderItem(item));
+  return expandedMenus.map((item, index) => {
+    const followsSection =
+      index > 0 &&
+      expandedMenus[index - 1].menu.presentationStyle === "section";
+    const rendered = renderItem(item);
+    if (followsSection && item.menu.presentationStyle !== "section") {
+      const id = item.menu.elementId || item.menu.id;
+      return (
+        <React.Fragment key={`divider-${id}`}>
+          <SideNavDivider />
+          {rendered}
+        </React.Fragment>
+      );
+    }
+    return rendered;
+  });
 }

@@ -77,12 +77,12 @@ public class QCExportWriterTest {
     public void benchCsvWritesOneRegisterRowPerControlRun() {
         BenchExportRow manual = new BenchExportRow(Timestamp.valueOf("2026-06-15 09:00:00"), "MANUAL", "Haematology",
                 "Bench Haemoglobin", "BENCH-A (NORMAL)", new BigDecimal("100.00"), new BigDecimal("5.00"),
-                new BigDecimal("112.50"), "PASS", "Bench Tech");
+                new BigDecimal("112.50"), "PASS", "Bench Tech", "RUN-42");
         // An RDT line has no lot, no number and no target. The register still has to
         // carry it, which is why bench QC is a flat export rather than one section per
         // control lot.
         BenchExportRow rdt = new BenchExportRow(Timestamp.valueOf("2026-06-15 10:00:00"), "RDT", "Parasitology",
-                "Bench Malaria RDT", "Malaria RDT, LOT-1", null, null, null, "INVALID", "Bench Tech");
+                "Bench Malaria RDT", "Malaria RDT, LOT-1", null, null, null, "INVALID", "Bench Tech", "");
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         QCExportWriter.writeBenchCsv(new BenchExport(List.of(manual, rdt), false), out);
@@ -97,6 +97,27 @@ public class QCExportWriterTest {
         assertTrue("a comma in the control label is quoted", csv.contains("\"Malaria RDT, LOT-1\""));
         assertTrue("an RDT run leaves the numeric columns empty rather than inventing a value",
                 lines[2].contains("INVALID") && lines[2].contains(",,,"));
+    }
+
+    /**
+     * OGC-1200 FR-G2: a control recorded on a run names that run in the register.
+     */
+    @Test
+    public void benchCsvNamesTheRunEachControlWasRecordedOn() {
+        BenchExportRow onRun = new BenchExportRow(Timestamp.valueOf("2026-06-15 09:00:00"), "MANUAL", "Biochemistry",
+                "Amylase", "BENCH-A (NORMAL)", new BigDecimal("80"), new BigDecimal("8"), new BigDecimal("140"), "FAIL",
+                "Bench Tech", "RUN-42");
+        BenchExportRow onNoRun = new BenchExportRow(Timestamp.valueOf("2026-06-15 10:00:00"), "MANUAL", "Biochemistry",
+                "Amylase", "BENCH-A (NORMAL)", new BigDecimal("80"), new BigDecimal("8"), new BigDecimal("81"), "PASS",
+                "Bench Tech", "");
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        QCExportWriter.writeBenchCsv(new BenchExport(List.of(onRun, onNoRun), false), out);
+        String[] lines = out.toString(StandardCharsets.UTF_8).split("\\R");
+
+        assertTrue("the header names the run column", lines[0].endsWith(",Results Run"));
+        assertTrue("the control on a run names it", lines[1].endsWith(",RUN-42"));
+        assertTrue("a control on no run leaves the column empty", lines[2].endsWith("Bench Tech,"));
     }
 
     @Test

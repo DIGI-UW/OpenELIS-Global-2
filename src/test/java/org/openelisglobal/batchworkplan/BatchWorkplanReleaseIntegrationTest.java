@@ -9,6 +9,7 @@ import static org.junit.Assert.fail;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -89,6 +90,12 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
     private SampleService sampleService;
     @Autowired
     private SampleItemService sampleItemService;
+    @Autowired
+    private org.openelisglobal.inventory.service.InventoryManagementService inventoryManagementService;
+    @Autowired
+    private org.openelisglobal.result.service.ResultService resultService;
+    @Autowired
+    private org.springframework.transaction.PlatformTransactionManager txManager;
 
     private String testId;
     private String testSectionId;
@@ -504,6 +511,263 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
         }
         assertEquals("OPEN",
                 jdbcTemplate.queryForObject("SELECT state FROM clinlims.result_run WHERE id = ?", String.class, runId));
+    }
+
+    /**
+     * OGC-1200 FR-G5: each result recorded in a batch run uses the run's lot once,
+     * by the quantity the Test Catalog links the reagent to the test with. A second
+     * save on the analysis, and an analysis whose reagent use was already recorded
+     * on its row, use nothing more.
+     */
+    @Test
+    public void eachResultRecordedInABatchRunUsesTheRunsLotOnce() {
+        jdbcTemplate.update("UPDATE clinlims.test_reagent_link SET quantity_per_test = 0.5 WHERE reagent_id = ?",
+                reagentId);
+        jdbcTemplate.update(
+                "INSERT INTO clinlims.batch_workplan_item (id, batch_workplan_id, analysis_id, sort_order)"
+                        + " VALUES (nextval('clinlims.batch_workplan_item_seq'), ?, CAST(? AS numeric), 2)",
+                batchId, createAnalysis());
+        Long runId = releaseIntoRun();
+        String first = batchAnalysisIds().get(0);
+        String usedOnRow = batchAnalysisIds().get(1);
+
+        assertEquals("the lot picker knows what one test uses", 0, new java.math.BigDecimal("0.5").compareTo(
+                resultRunService.lotOptions(runId, unitViewer()).orElseThrow().reagents().get(0).quantityPerTest()));
+
+        recordInRun(first);
+        assertEquals("the result uses half a unit of the run's lot", List.of(0.5), usesOf(first, reagentLotId));
+        assertEquals(Double.valueOf(9.5), lotQuantity(reagentLotId));
+
+        recordInRun(first);
+        assertEquals("a second save on the analysis uses nothing more", List.of(0.5), usesOf(first, reagentLotId));
+
+        inventoryManagementService.consumeSelectedLot(reagentLotId, 1.0, null, Long.valueOf(usedOnRow), ACTOR);
+        recordInRun(usedOnRow);
+        assertEquals("the use recorded on the row is the analysis's only use", List.of(1.0),
+                usesOf(usedOnRow, reagentLotId));
+        assertEquals(Double.valueOf(8.5), lotQuantity(reagentLotId));
+        assertEquals("COMPLETE",
+                jdbcTemplate.queryForObject("SELECT state FROM clinlims.result_run WHERE id = ?", String.class, runId));
+    }
+
+    /**
+     * OGC-1200 FR-G5: a lot that cannot give the quantity any more is not used and
+     * never stops the result; a lot chosen on the run afterwards is used for the
+     * results already recorded in it.
+     */
+    @Test
+    public void aLotChosenOnARunIsUsedForTheResultsAlreadyRecordedInItAndAnEmptyLotStopsNoResult() {
+        jdbcTemplate.update("UPDATE clinlims.test_reagent_link SET quantity_per_test = 0.5 WHERE reagent_id = ?",
+                reagentId);
+        jdbcTemplate.update(
+                "INSERT INTO clinlims.batch_workplan_item (id, batch_workplan_id, analysis_id, sort_order)"
+                        + " VALUES (nextval('clinlims.batch_workplan_item_seq'), ?, CAST(? AS numeric), 2)",
+                batchId, createAnalysis());
+        Long runId = releaseIntoRun();
+        String analysisId = batchAnalysisIds().get(0);
+        jdbcTemplate.update("UPDATE clinlims.inventory_lot SET current_quantity = 0.2 WHERE id = ?", reagentLotId);
+        assertFalse("a lot short of one test is not the suggested one", resultRunService.lotOptions(runId, unitViewer())
+                .orElseThrow().reagents().get(0).lots().get(0).suggested());
+
+        recordInRun(analysisId);
+        assertTrue("an empty lot gives nothing", usesOf(analysisId, reagentLotId).isEmpty());
+        assertEquals(Double.valueOf(0.2), lotQuantity(reagentLotId));
+        assertEquals("the result is recorded in the run all the same", 1,
+                resultRunService.getHeader(runId, unitViewer()).orElseThrow().dispositioned());
+
+        InventoryLot fresh = new InventoryLot();
+        fresh.setFhirUuid(UUID.randomUUID());
+        fresh.setInventoryItem(inventoryItemService.get(reagentId));
+        fresh.setLotNumber("R3-" + UUID.randomUUID().toString().substring(0, 8));
+        fresh.setInitialQuantity(5.0);
+        fresh.setCurrentQuantity(5.0);
+        fresh.setQcStatus(QCStatus.PASSED);
+        fresh.setStatus(LotStatus.ACTIVE);
+        fresh.setExpirationDate(Timestamp.valueOf(LocalDateTime.now().plusYears(1)));
+        fresh.setSysUserId(ACTOR);
+        Long freshLotId = inventoryLotService.insert(fresh);
+
+        assertEquals("the lot that holds a test is the suggested one", List.of(freshLotId),
+                resultRunService.lotOptions(runId, unitViewer()).orElseThrow().reagents().get(0).lots().stream()
+                        .filter(org.openelisglobal.batchworkplan.form.ReagentLotOptionResponse::suggested)
+                        .map(org.openelisglobal.batchworkplan.form.ReagentLotOptionResponse::id).toList());
+
+        resultRunService.setReagentLot(runId, reagentId, freshLotId, unitViewer(), ACTOR);
+        assertEquals("the lot chosen afterwards is used for the recorded result", List.of(0.5),
+                usesOf(analysisId, freshLotId));
+        assertEquals(Double.valueOf(4.5), lotQuantity(freshLotId));
+    }
+
+    private void recordInRun(String analysisId) {
+        String resultId = jdbcTemplate
+                .queryForObject("INSERT INTO clinlims.result (id, analysis_id, value, result_type, lastupdated)"
+                        + " VALUES (nextval('clinlims.result_seq'), CAST(? AS numeric), '81', 'N', now())"
+                        + " RETURNING CAST(id AS VARCHAR)", String.class, analysisId);
+        org.openelisglobal.result.valueholder.Result result = resultService.get(resultId);
+        org.openelisglobal.common.services.registration.interfaces.IResultUpdate update = resultRunService
+                .recordIntoWorkplanRuns(List.of(result), ACTOR);
+        jdbcTemplate.update("UPDATE clinlims.result SET run_id = ? WHERE id = CAST(? AS numeric)", result.getRunId(),
+                resultId);
+        new org.springframework.transaction.support.TransactionTemplate(txManager)
+                .executeWithoutResult(status -> update.transactionalUpdate(null));
+        update.postTransactionalCommitUpdate(null);
+    }
+
+    /**
+     * OGC-1200 FR-G5: two results saved into one run that carries a lot at the same
+     * moment both save, and each uses the lot once. Each save has stored its result
+     * in the run, which holds the run's row through its foreign key, before either
+     * updates the run; the second updates it while the first is still open.
+     */
+    @Test
+    public void twoResultsSavedIntoOneRunAtOnceBothSaveAndEachUsesTheLot() throws Exception {
+        jdbcTemplate.update("UPDATE clinlims.test_reagent_link SET quantity_per_test = 0.5 WHERE reagent_id = ?",
+                reagentId);
+        jdbcTemplate.update(
+                "INSERT INTO clinlims.batch_workplan_item (id, batch_workplan_id, analysis_id, sort_order)"
+                        + " VALUES (nextval('clinlims.batch_workplan_item_seq'), ?, CAST(? AS numeric), 2)",
+                batchId, createAnalysis());
+        Long runId = releaseIntoRun();
+        List<String> analyses = batchAnalysisIds();
+        org.springframework.transaction.support.TransactionTemplate tx = new org.springframework.transaction.support.TransactionTemplate(
+                txManager);
+        java.util.concurrent.CountDownLatch firstStored = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch secondStored = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch firstUpdated = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.ExecutorService benches = java.util.concurrent.Executors.newFixedThreadPool(2);
+        java.util.concurrent.Future<Object> first = benches.submit(() -> {
+            saveInRun(tx, analyses.get(0), () -> {
+                firstStored.countDown();
+                awaitQuietly(secondStored);
+            }, () -> {
+                firstUpdated.countDown();
+                pauseQuietly(1000);
+            });
+            return null;
+        });
+        java.util.concurrent.Future<Object> second = benches.submit(() -> {
+            firstStored.await();
+            saveInRun(tx, analyses.get(1), () -> {
+                secondStored.countDown();
+                awaitQuietly(firstUpdated);
+            }, () -> {
+            });
+            return null;
+        });
+        first.get(90, java.util.concurrent.TimeUnit.SECONDS);
+        second.get(90, java.util.concurrent.TimeUnit.SECONDS);
+        benches.shutdown();
+
+        assertEquals(List.of(0.5), usesOf(analyses.get(0), reagentLotId));
+        assertEquals(List.of(0.5), usesOf(analyses.get(1), reagentLotId));
+        assertEquals(Double.valueOf(9.0), lotQuantity(reagentLotId));
+        assertEquals("COMPLETE",
+                jdbcTemplate.queryForObject("SELECT state FROM clinlims.result_run WHERE id = ?", String.class, runId));
+    }
+
+    /**
+     * OGC-1200 FR-G5: a result whose lot use runs while the run's lot is being
+     * changed is charged once: the change uses the new lot for it, and the use
+     * waits for the change and then finds that use.
+     */
+    @Test
+    public void aResultUsedWhileTheRunsLotChangesIsChargedOnce() throws Exception {
+        jdbcTemplate.update("UPDATE clinlims.test_reagent_link SET quantity_per_test = 0.5 WHERE reagent_id = ?",
+                reagentId);
+        jdbcTemplate.update(
+                "INSERT INTO clinlims.batch_workplan_item (id, batch_workplan_id, analysis_id, sort_order)"
+                        + " VALUES (nextval('clinlims.batch_workplan_item_seq'), ?, CAST(? AS numeric), 2)",
+                batchId, createAnalysis());
+        Long runId = releaseIntoRun();
+        resultRunService.setReagentLot(runId, reagentId, reagentLotId, unitViewer(), ACTOR);
+        String analysisId = batchAnalysisIds().get(0);
+        String resultId = jdbcTemplate
+                .queryForObject("INSERT INTO clinlims.result (id, analysis_id, value, result_type, run_id, lastupdated)"
+                        + " VALUES (nextval('clinlims.result_seq'), CAST(? AS numeric), '81', 'N', ?, now())"
+                        + " RETURNING CAST(id AS VARCHAR)", String.class, analysisId, runId);
+        InventoryLot other = new InventoryLot();
+        other.setFhirUuid(UUID.randomUUID());
+        other.setInventoryItem(inventoryItemService.get(reagentId));
+        other.setLotNumber("R4-" + UUID.randomUUID().toString().substring(0, 8));
+        other.setInitialQuantity(5.0);
+        other.setCurrentQuantity(5.0);
+        other.setQcStatus(QCStatus.PASSED);
+        other.setStatus(LotStatus.ACTIVE);
+        other.setExpirationDate(Timestamp.valueOf(LocalDateTime.now().plusYears(1)));
+        other.setSysUserId(ACTOR);
+        Long otherLotId = inventoryLotService.insert(other);
+
+        org.springframework.transaction.support.TransactionTemplate tx = new org.springframework.transaction.support.TransactionTemplate(
+                txManager);
+        java.util.concurrent.CountDownLatch changed = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.ExecutorService benches = java.util.concurrent.Executors.newFixedThreadPool(2);
+        java.util.concurrent.Future<Object> change = benches.submit(() -> {
+            tx.executeWithoutResult(status -> {
+                resultRunService.setReagentLot(runId, reagentId, otherLotId, unitViewer(), ACTOR);
+                changed.countDown();
+                pauseQuietly(1500);
+            });
+            return null;
+        });
+        java.util.concurrent.Future<Object> use = benches.submit(() -> {
+            changed.await();
+            resultRunService.useRunLot(runId, resultId, ACTOR);
+            return null;
+        });
+        change.get(90, java.util.concurrent.TimeUnit.SECONDS);
+        use.get(90, java.util.concurrent.TimeUnit.SECONDS);
+        benches.shutdown();
+
+        assertEquals(List.of(0.5), usesOf(analysisId, otherLotId));
+        assertTrue("nothing is charged on the lot the run had before", usesOf(analysisId, reagentLotId).isEmpty());
+    }
+
+    private void saveInRun(org.springframework.transaction.support.TransactionTemplate tx, String analysisId,
+            Runnable stored, Runnable updated) {
+        List<org.openelisglobal.common.services.registration.interfaces.IResultUpdate> update = new ArrayList<>();
+        tx.executeWithoutResult(status -> {
+            String resultId = jdbcTemplate
+                    .queryForObject("INSERT INTO clinlims.result (id, analysis_id, value, result_type, lastupdated)"
+                            + " VALUES (nextval('clinlims.result_seq'), CAST(? AS numeric), '81', 'N', now())"
+                            + " RETURNING CAST(id AS VARCHAR)", String.class, analysisId);
+            org.openelisglobal.result.valueholder.Result result = resultService.get(resultId);
+            update.add(resultRunService.recordIntoWorkplanRuns(List.of(result), ACTOR));
+            jdbcTemplate.update("UPDATE clinlims.result SET run_id = ? WHERE id = CAST(? AS numeric)",
+                    result.getRunId(), resultId);
+            stored.run();
+            update.get(0).transactionalUpdate(null);
+            updated.run();
+        });
+        update.get(0).postTransactionalCommitUpdate(null);
+    }
+
+    private static void awaitQuietly(java.util.concurrent.CountDownLatch latch) {
+        try {
+            latch.await(15, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private static void pauseQuietly(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private List<Double> usesOf(String analysisId, Long lotId) {
+        return jdbcTemplate.queryForList(
+                "SELECT CAST(quantity_used AS double precision) FROM clinlims.inventory_usage"
+                        + " WHERE analysis_id = CAST(? AS bigint) AND lot_id = ? ORDER BY id",
+                Double.class, analysisId, lotId);
+    }
+
+    private Double lotQuantity(Long lotId) {
+        return jdbcTemplate.queryForObject(
+                "SELECT CAST(current_quantity AS double precision) FROM clinlims.inventory_lot WHERE id = ?",
+                Double.class, lotId);
     }
 
     private List<String> batchAnalysisIds() {

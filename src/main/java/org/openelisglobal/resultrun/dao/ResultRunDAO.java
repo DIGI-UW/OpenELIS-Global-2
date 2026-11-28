@@ -62,8 +62,19 @@ public interface ResultRunDAO extends BaseDAO<ResultRun, Long> {
      */
     void lockRunOfOne(String analysisId);
 
+    /**
+     * Holds the run until the transaction ends, then reads its row again, so two
+     * saves into one run update it one after the other; answers the run as read. An
+     * advisory lock, not a row lock: each save's result already holds the run's row
+     * through its foreign key, and two row locks taken on top of those deadlock.
+     */
+    ResultRun lockForUpdate(ResultRun run);
+
     /** The run each of the results was recorded in, by result id. */
     java.util.Map<String, Long> getRunIdsOfResults(Collection<String> resultIds);
+
+    /** The results recorded in a run. */
+    List<org.openelisglobal.result.valueholder.Result> getResultsOfRun(Long runId);
 
     /** How many analyses have a value recorded in the run. */
     int countResultedAnalyses(Long runId);
